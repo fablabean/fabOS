@@ -33,7 +33,8 @@ docker compose exec -u sail laravel.test php artisan migrate --seed
 | PostgreSQL   | `localhost:5432`        |
 
 **Mailpit intercepta todo el correo saliente en local**, así que el ingreso por
-código funciona de punta a punta sin necesidad de configurar `fablab.club`.
+código funciona de punta a punta sin necesidad de contratar un proveedor de
+correo ni de tener un dominio configurado.
 
 ### Windows
 
@@ -253,6 +254,20 @@ Si el usuario no existe, lo crea; entrará con su código al correo como todos.
 > con el código al correo, que hereda la seguridad de la bandeja de entrada.
 
 ## Ingreso con carné digital
+
+> **Esto es propio de la Universidad EAN.** El lector habla con el servicio de
+> carné digital de la EAN, así que en cualquier otra instalación no sirve tal
+> cual. Por eso la puerta **nace apagada** —`Settings::carnetLoginEnabled()`
+> vale `false` mientras nadie la encienda— y `/ingresar/carnet` responde 404. Y
+> aunque se encienda, sin `CARNET_EAN_BASE_URL` cada lectura devuelve «el
+> servicio de carné no está configurado». El sistema funciona igual: el ingreso
+> normal es el código al correo.
+>
+> Otro laboratorio con su propio carné puede aprovechar la misma puerta: el
+> contrato está aislado en `app/Services/Identity/CarnetClient.php`, que espera
+> un servicio que reciba el identificador del QR y devuelva los datos de la
+> persona. Cambiar ese cliente —y `CARNET_EAN_BASE_URL`— basta; el resto del
+> flujo de vinculación e ingreso no depende de quién emita el carné.
 
 Puerta temporal para las pruebas, mientras se habilita el correo institucional.
 
