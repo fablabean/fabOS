@@ -72,12 +72,29 @@ destino.
 El registro DNS lo crea Cloudflare solo al guardar el hostname. No hace falta
 tocar el DNS a mano ni abrir puertos en el router.
 
+> **Ojo con lo que hay hoy en ese registro.** `<DOMINIO>` ya resuelve, pero
+> a la página del constructor de sitios de GoDaddy — no a fabOS. Los
+> nameservers ya son de Cloudflare (`lola` y `lee.ns.cloudflare.com`), así que
+> al guardar el hostname público Cloudflare **reemplaza** ese registro por el
+> del túnel. Es decir: la página de GoDaddy deja de verse. Si esa página
+> todavía hace falta para algo, hay que moverla antes a otro subdominio.
+
 ## 3. Comprobar
 
 ```bash
 curl -I https://<DOMINIO>
 docker compose exec -u sail laravel.test php artisan fabos:revisar
 ```
+
+Que devuelva `200` no basta: la página de GoDaddy también devuelve `200`. La
+comprobación que sí distingue es pedir una ruta que solo existe en fabOS:
+
+```bash
+curl -o /dev/null -w '%{http_code}
+' https://<DOMINIO>/ingresar
+```
+
+`200` es fabOS. `404` es que el dominio sigue apuntando a otro sitio.
 
 `fabos:revisar` debería dejar de marcar HTTPS. Lo que seguirá pendiente es el
 correo, que depende del proveedor que elijas para `<DOMINIO>`.

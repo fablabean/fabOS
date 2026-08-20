@@ -94,6 +94,21 @@ Todo lo que sigue va como `fabos`, no como root.
 > tareas a las 3 de la mañana. Por Wi-Fi funciona, pero si hay un cable cerca,
 > vale la pena — una caída de la red a esa hora se lleva el respaldo del día.
 
+## El camino corto: `desplegar.sh`
+
+Todo lo que sigue —dependencias, contenedores, migraciones, cachés, instalación
+y revisión— lo hace un script. Desde tu equipo:
+
+```bash
+git archive --format=tar HEAD | gzip > /tmp/fabos-despliegue.tar.gz
+scp /tmp/fabos-despliegue.tar.gz fabos@<SERVIDOR>:~/
+ssh fabos@<SERVIDOR> 'tar -xzf fabos-despliegue.tar.gz desplegar.sh && bash desplegar.sh'
+```
+
+Es idempotente: la segunda vez actualiza el código y vuelve a migrar,
+conservando el `.env`. El resto de esta guía explica qué hace cada paso, y sirve
+cuando algo falla o cuando el servidor no es este.
+
 ## 2. Traer el proyecto
 
 ```bash
