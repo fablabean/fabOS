@@ -181,10 +181,10 @@ return [
         ['estado' => 'listo',   'nombre' => 'Reservas',                  'detalle' => 'Agenda por equipo, con llegada y salida escaneando el QR de la máquina.'],
         ['estado' => 'listo',   'nombre' => 'Habilitaciones',            'detalle' => 'Los certifabs que abren cada equipo, verificables públicamente.'],
         ['estado' => 'listo',   'nombre' => 'Formación',                 'detalle' => 'Los cursos bit, byte, kilo, mega, giga y tera, hasta Fab Academy. Aprobar habilita las máquinas y deja un certificado verificable.'],
-        ['estado' => 'curso',   'nombre' => 'Mantenimiento',             'detalle' => 'Planes preventivos y órdenes correctivas de cada máquina.'],
-        ['estado' => 'curso',   'nombre' => 'FabCoins',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Ya calcula lo que cuesta cada reserva; falta fijar las tarifas definitivas.'],
-        ['estado' => 'curso',   'nombre' => 'Tienda',                    'detalle' => 'Venta de insumos y trabajos por encargo, pagados en FabCoins. Se pide desde el sitio, se cotiza y se produce.'],
-        ['estado' => 'curso',   'nombre' => 'Proyectos',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero y cronograma.'],
+        ['estado' => 'listo',   'nombre' => 'Mantenimiento',             'detalle' => 'Planes preventivos que se vuelven órdenes solos, y órdenes correctivas con evidencia fotográfica.'],
+        ['estado' => 'curso',   'nombre' => 'FabCoins',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Ya calcula y guarda lo que cuesta cada reserva, pero el cobro sigue apagado hasta que se fijen las tarifas: así, cuando se encienda, ya hay histórico con el que contrastar.'],
+        ['estado' => 'listo',   'nombre' => 'Tienda',                    'detalle' => 'Venta de insumos y trabajos por encargo. Se pide desde el sitio, se cotiza, se produce y se entrega, descontando el material del inventario.'],
+        ['estado' => 'listo',   'nombre' => 'Proyectos',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero, cronograma y el costo real de lo que consumió.'],
     ],
 
 
