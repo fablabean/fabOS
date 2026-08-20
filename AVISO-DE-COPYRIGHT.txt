@@ -1,0 +1,24 @@
+fabOS — sistema de gestión para laboratorios de fabricación digital
+Copyright (C) 2026 Ean Fablab, Universidad EAN
+
+Este programa es software libre: puedes redistribuirlo y/o modificarlo bajo los
+términos de la Licencia Pública General Affero de GNU publicada por la Free
+Software Foundation, en su versión 3 o (a tu elección) cualquier versión
+posterior.
+
+Este programa se distribuye con la esperanza de que sea útil, pero SIN NINGUNA
+GARANTÍA; ni siquiera la garantía implícita de COMERCIABILIDAD o APTITUD PARA UN
+PROPÓSITO PARTICULAR. Consulta la Licencia Pública General Affero de GNU para
+más detalles.
+
+Deberías haber recibido una copia de la Licencia Pública General Affero de GNU
+junto con este programa. Si no, ve a <https://www.gnu.org/licenses/>.
+
+
+El texto completo de la licencia está en el archivo LICENSE, y en línea en
+<https://www.gnu.org/licenses/agpl-3.0.txt>.
+
+Por qué AGPL y no MIT: fabOS se usa a través de la red. Con una licencia
+permisiva, un laboratorio podría tomar este trabajo, mejorarlo, ofrecerlo como
+servicio y no devolver nada, porque nunca «distribuye» el programa. La AGPL
+cierra ese hueco: quien lo ofrezca por red debe ofrecer también su código.
