@@ -253,6 +253,47 @@ Si el usuario no existe, lo crea; entrará con su código al correo como todos.
 > `superadmin` (§16) aún no está implementado. Hoy el backoffice se protege solo
 > con el código al correo, que hereda la seguridad de la bandeja de entrada.
 
+## Cómo se entra a fabOS
+
+No hay contraseñas. Hay tres formas de demostrar quién eres, y ninguna es «la
+buena»: lo que importa es cuántas distintas se usaron, porque cada una prueba
+algo diferente.
+
+| Factor | Qué prueba | Cuándo se usa |
+|---|---|---|
+| `correo` | Controlas ese buzón | Código de 6 dígitos, por defecto |
+| `app` | Tienes el teléfono donde vive el secreto | Cuando la persona configuró una app de autenticación |
+| `carne` | Tienes la sesión viva de la app de la Universidad | Al escanear el carné digital |
+
+**Una basta** para reservar una máquina, ver tus certifabs o pedir un encargo.
+**El backoffice exige dos distintas** — da igual cuáles. Lo que protege no es
+una combinación concreta: es que un solo teléfono robado, o un solo buzón
+comprometido, no alcance para encender los cobros ni para mirar el libro
+contable.
+
+### La app de autenticación
+
+Cualquiera puede activarla desde *Mi cuenta → Cómo entro*. A partir de ahí, al
+escribir su correo **no se le envía nada**: escribe el código que genera su
+teléfono. Funciona sin señal, sin correo y sin que nadie apruebe ninguna cuenta
+de proveedor.
+
+La pantalla de ingreso es idéntica haya app o no, así que probar direcciones no
+sirve para averiguar quién está registrado.
+
+Quien administra no puede desactivársela: ahí la app no es una comodidad, es la
+reja del backoffice.
+
+### Validar a alguien que está delante
+
+En la ficha de cada persona, *Validar y dar acceso* emite un código que **se
+dicta en persona** y caduca en quince minutos. Es la puerta que no depende del
+correo: quien atiende el laboratorio tiene enfrente a quien quiere entrar, y eso
+es una comprobación de identidad más fuerte que cualquier buzón. Queda
+constancia de quién validó a quién.
+
+Con ese único ingreso la persona configura su app, y desde entonces entra sola.
+
 ## Ingreso con carné digital
 
 > **Esto es propio de la Universidad EAN.** El lector habla con el servicio de
@@ -269,7 +310,14 @@ Si el usuario no existe, lo crea; entrará con su código al correo como todos.
 > persona. Cambiar ese cliente —y `CARNET_EAN_BASE_URL`— basta; el resto del
 > flujo de vinculación e ingreso no depende de quién emita el carné.
 
-Puerta temporal para las pruebas, mientras se habilita el correo institucional.
+**El carné identifica, no autentica.** El servicio de la EAN solo devuelve el
+nombre completo —`Identificación` viene vacío en los carnés observados—, así que
+por sí solo no puede abrir una cuenta: dos personas homónimas serían
+indistinguibles, y ante un homónimo el sistema lo dice en vez de adivinar.
+
+Lo que ahorra es teclear el correo, que desde un teléfono no es poco: al
+escanear, reconoce la cuenta y pide solo el código. Y cuenta como uno de los dos
+factores del backoffice.
 
 ```bash
 docker compose exec laravel.test php artisan fabos:access carnet on|off
