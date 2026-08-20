@@ -13,7 +13,11 @@ use Illuminate\Support\Str;
  */
 class CarnetLink extends Command
 {
-    protected $signature = 'fabos:carnet:link {email} {url : URL del QR o su identificador}';
+    protected $signature = 'fabos:carnet:link
+                            {email : La cuenta que quedara vinculada}
+                            {url? : URL del QR o su identificador}
+                            {--desvincular : Quita el carne de esa cuenta, sin tocar nada mas}
+                            {--mover : Si el carne pertenece a otra cuenta, lo traslada}';
 
     protected $description = 'Vincula un carné digital a una cuenta';
 
@@ -23,6 +27,16 @@ class CarnetLink extends Command
 
         if (! $user) {
             $this->error('No existe una cuenta con ese correo.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('desvincular')) {
+            return $this->desvincular($user);
+        }
+
+        if (! $this->argument('url')) {
+            $this->error('Falta la URL del carne. O usa --desvincular.');
 
             return self::FAILURE;
         }
@@ -43,10 +57,20 @@ class CarnetLink extends Command
             return self::FAILURE;
         }
 
-        if (User::where('carnet_subject', $subject)->where('id', '!=', $user->id)->exists()) {
-            $this->error('Ese carné ya está vinculado a otra cuenta.');
+        $otra = User::where('carnet_subject', $subject)->where('id', '!=', $user->id)->first();
+
+        if ($otra && ! $this->option('mover')) {
+            // No se traslada en silencio: un carne que cambia de cuenta cambia
+            // quien puede entrar, y eso se decide a proposito.
+            $this->error("Ese carné ya está vinculado a {$otra->email}.");
+            $this->line('Si de verdad quieres trasladarlo, repite con --mover.');
 
             return self::FAILURE;
+        }
+
+        if ($otra) {
+            $this->limpiar($otra);
+            $this->warn("Carné retirado de {$otra->email}.");
         }
 
         $user->forceFill([
@@ -62,5 +86,41 @@ class CarnetLink extends Command
         $this->line('Documento en el carné: ' . ($identity->documentNumber ?? 'no viene'));
 
         return self::SUCCESS;
+    }
+
+    private function desvincular(User $user): int
+    {
+        if (! $user->carnet_subject) {
+            $this->warn('Esa cuenta no tenía ningún carné vinculado.');
+
+            return self::SUCCESS;
+        }
+
+        $this->limpiar($user);
+        $this->info("Carné desvinculado de {$user->email}.");
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Quita el carne y con el la verificacion de identidad que aportaba: si la
+     * cuenta se quedara marcada como «identidad verificada» sin carne detras,
+     * estaria afirmando algo que ya nadie respalda.
+     */
+    private function limpiar(User $user): void
+    {
+        $user->forceFill([
+            'carnet_subject'   => null,
+            'carnet_linked_at' => null,
+        ]);
+
+        if ($user->identity_verified_via === 'carnet_ean') {
+            $user->forceFill([
+                'identity_verified_at'  => null,
+                'identity_verified_via' => null,
+            ]);
+        }
+
+        $user->save();
     }
 }
