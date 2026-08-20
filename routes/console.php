@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 use Illuminate\Foundation\Inspiring;
@@ -32,3 +33,12 @@ Schedule::command('fabos:respaldar')->dailyAt('03:00');
 // La dotación del mes, el día 1. Repetirla no abona dos veces: la clave de
 // idempotencia lleva el periodo, así que un reintento es inofensivo (§12).
 Schedule::command('fabos:dotar')->monthlyOn(1, '06:00');
+
+// El latido del propio planificador. Sin esto, `fabos:revisar` solo puede
+// buscar rastro de tareas ya ejecutadas, y entonces no distingue «nadie
+// arrancó el cron» de «el cron corre pero aún no vencía ninguna tarea» — que
+// es justo el estado de un servidor recién desplegado. Un aviso que grita
+// cuando todo está bien enseña a ignorar los avisos.
+Schedule::call(fn () => Cache::put('fabos:planificador', now()->toIso8601String(), now()->addDays(7)))
+    ->everyMinute()
+    ->name('fabos:latido');

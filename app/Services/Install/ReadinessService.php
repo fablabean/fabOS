@@ -5,6 +5,7 @@ namespace App\Services\Install;
 use App\Models\NotificationLog;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -134,15 +135,33 @@ class ReadinessService
      */
     private function planificador(): array
     {
-        $ultimo = DB::table('cache')->where('key', 'like', '%schedule%')->exists();
+        // El planificador deja un latido cada minuto. Es la señal directa: si
+        // está fresco, el cron corre ahora mismo.
+        $latido = Cache::get('fabos:planificador');
 
-        // Rastro indirecto: si nunca salió un aviso automático y el sistema
-        // lleva días operando, es probable que nadie esté corriendo el cron.
+        if ($latido) {
+            $hace = now()->diffInMinutes(\Illuminate\Support\Carbon::parse($latido)->utc(), absolute: true);
+
+            // Que haya latido no basta: uno de hace tres días significa que el
+            // cron corrió alguna vez y dejó de hacerlo, que es peor que no
+            // haberlo puesto nunca —porque nadie lo va a notar—.
+            if ($hace <= 15) {
+                return $this->ok('Planificador', 'Latiendo: la última pasada fue hace menos de 15 minutos.');
+            }
+
+            return $this->aviso('El planificador dejó de correr',
+                "Corrió alguna vez, pero su última señal es de hace {$hace} minutos. Mientras esté "
+                . 'parado no se liberan reservas sin llegada, no salen recordatorios y no hay respaldos.',
+                'Revisar el cron del usuario que ejecuta fabOS: crontab -l');
+        }
+
+        // Rastro indirecto, para instalaciones anteriores al latido: si alguna
+        // vez salió un aviso automático, el cron estuvo corriendo.
         $avisosAutomaticos = NotificationLog::whereIn('key', [
             'reserva.recordatorio', 'reserva.no_show',
         ])->exists();
 
-        if ($ultimo || $avisosAutomaticos) {
+        if ($avisosAutomaticos) {
             return $this->ok('Planificador', 'Hay rastro de tareas ejecutadas.');
         }
 

@@ -8,8 +8,10 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Auth\TwoFactorService;
 use App\Services\Install\InstallationService;
+use App\Services\Install\ReadinessService;
 use App\Support\LabSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
@@ -193,5 +195,47 @@ class InstalacionTest extends TestCase
         $this->entra($this->persona(User::ROL_ADMINISTRADOR))
             ->get('/admin/instalacion')
             ->assertForbidden();
+    }
+
+    // ------------------------------------------------- el aviso que mentía
+
+    /**
+     * Un servidor recién desplegado tiene el cron puesto pero todavía no ha
+     * vencido ninguna tarea. Antes, la revisión no podía verlo y avisaba de
+     * que «no hay rastro del planificador» — con todo bien configurado.
+     */
+    public function test_el_latido_reciente_confirma_que_el_cron_corre(): void
+    {
+        Cache::put('fabos:planificador', now()->toIso8601String(), now()->addDays(7));
+
+        $planificador = app(ReadinessService::class)->revisar()
+            ->firstWhere('titulo', 'Planificador');
+
+        $this->assertNotNull($planificador, 'La revisión no informó del planificador.');
+        $this->assertSame(ReadinessService::BIEN, $planificador['nivel']);
+    }
+
+    /**
+     * Y lo contrario importa más: un cron que corrió y dejó de correr no da
+     * ningún error. Nadie se entera hasta que falta un respaldo.
+     */
+    public function test_un_latido_viejo_avisa_de_que_se_detuvo(): void
+    {
+        Cache::put('fabos:planificador', now()->subHours(6)->toIso8601String(), now()->addDays(7));
+
+        $planificador = app(ReadinessService::class)->revisar()
+            ->firstWhere('titulo', 'El planificador dejó de correr');
+
+        $this->assertNotNull($planificador, 'No avisó de que el planificador está parado.');
+        $this->assertSame(ReadinessService::AVISO, $planificador['nivel']);
+    }
+
+    public function test_sin_latido_ni_rastro_sigue_avisando(): void
+    {
+        Cache::forget('fabos:planificador');
+
+        $titulos = app(ReadinessService::class)->revisar()->pluck('titulo');
+
+        $this->assertContains('No hay rastro del planificador', $titulos->all());
     }
 }
