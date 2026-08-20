@@ -31,39 +31,41 @@ class IngresoTest extends TestCase
             'email' => 'quien@ejemplo.edu.co',
         ]);
 
-        $respuesta->assertRedirect('/ingresar');
-        $respuesta->assertSessionHasErrors('email');
+        // No es un callejon: puede que le hayan entregado un codigo en mano en
+        // el laboratorio, que es justo la salida cuando el correo no funciona.
+        $respuesta->assertRedirect(route('login.code', ['email' => 'quien@ejemplo.edu.co']));
 
         $this->assertStringContainsString(
-            'No pudimos enviar',
-            session('errors')->first('email'),
+            'No pudimos enviarte el correo',
+            (string) session('status'),
         );
     }
 
     /**
-     * El mensaje de error no puede delatar si esa dirección tiene cuenta: si
-     * lo hiciera, esta pantalla serviría para averiguar quién está registrado.
+     * Ni el destino ni el mensaje pueden delatar si esa direccion tiene cuenta:
+     * si lo hicieran, esta pantalla serviria para averiguar quien esta
+     * registrado probando correos.
      */
-    public function test_el_mensaje_de_fallo_no_revela_si_la_direccion_existe(): void
+    public function test_el_fallo_no_revela_si_la_direccion_existe(): void
     {
         Mail::shouldReceive('to')->andThrow(new TransportException('lo que sea'));
 
-        // Una direccion existe y la otra no: el mensaje debe ser identico.
-        User::factory()->create(['email' => 'existe@ejemplo.edu.co']);
+        User::factory()->create(['email' => 'existe@ejemplo.edu.co', 'status' => 'activo']);
 
-        // Se afirma el texto exacto en ambos casos, que es mas fuerte que
-        // compararlos entre si: si alguien cambiara el mensaje para una rama,
-        // esto falla aunque las dos ramas siguieran coincidiendo.
-        $esperado = 'No pudimos enviar el codigo en este momento. Vuelve a intentarlo '
-            . 'en unos minutos; si sigue igual, avisa a la coordinacion del laboratorio.';
+        $vistos = [];
 
         foreach (['existe@ejemplo.edu.co', 'noexiste@ejemplo.edu.co'] as $correo) {
-            $this->from('/ingresar')
-                ->post('/ingresar', ['email' => $correo])
-                ->assertSessionHasErrors(['email' => $esperado]);
+            $respuesta = $this->from('/ingresar')->post('/ingresar', ['email' => $correo]);
+
+            $vistos[] = [
+                str_replace(rawurlencode($correo), 'CORREO', (string) $respuesta->headers->get('Location')),
+                (string) session('status'),
+            ];
 
             $this->flushSession();
         }
+
+        $this->assertSame($vistos[0], $vistos[1]);
     }
 
     public function test_cuando_el_correo_sale_el_codigo_queda_guardado(): void
