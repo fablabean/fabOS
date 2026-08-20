@@ -56,6 +56,19 @@ class CarnetLoginController extends Controller
             throw ValidationException::withMessages(['carnet' => $identity->failureReason]);
         }
 
+        // Homonimos: si el carne solo trae el nombre —que es lo habitual— y ese
+        // nombre coincide con varias cuentas, adivinar seria meter a alguien en
+        // la cuenta de otro. Se dice, y se pide el correo.
+        if ($this->hayHomonimos($identity)) {
+            $request->session()->put('carnet_verificado', true);
+
+            return redirect()->route('login')->with(
+                'status',
+                'Tu carné es válido, pero hay más de una cuenta a nombre de '
+                . $identity->fullName . '. Escribe tu correo para saber cuál es la tuya.'
+            );
+        }
+
         $user = $this->resolveUser($identity);
 
         if (! $user) {
@@ -64,6 +77,7 @@ class CarnetLoginController extends Controller
             // dejar a la persona en un callejón, se guarda el carné y se le pide
             // que se identifique una vez: al entrar queda vinculado solo.
             $request->session()->put('carnet_pendiente', $data['carnet']);
+            $request->session()->put('carnet_verificado', true);
 
             return redirect()->route('login')->with(
                 'status',
@@ -77,10 +91,18 @@ class CarnetLoginController extends Controller
             'identity_verified_via' => 'carnet_ean',
         ])->save();
 
-        Auth::login($user, remember: true);
-        $request->session()->regenerate();
+        // El carne **identifica**, no autentica. Prueba que quien escanea tiene
+        // una sesion viva de la app de la Universidad, y eso vale como factor;
+        // pero como el unico dato que trae es el nombre, por si solo no puede
+        // abrir una cuenta: dos personas homonimas serian indistinguibles.
+        //
+        // Lo que ahorra es teclear el correo, que no es poco desde un telefono.
+        $request->session()->put('carnet_verificado', true);
 
-        return redirect()->intended(route('home'));
+        return redirect()->route('login.code', ['email' => $user->email])->with(
+            'status',
+            'Carné validado. Escribe tu código para terminar de entrar.'
+        );
     }
 
     /** Vincula el carné a la cuenta autenticada. Se hace una sola vez. */
@@ -202,5 +224,24 @@ class CarnetLoginController extends Controller
             'user_id' => $user->id,
             'via'     => $identity->documentNumber ? 'documento' : 'nombre',
         ]);
+    }
+
+    /**
+     * Mas de una cuenta activa con ese mismo nombre.
+     *
+     * Solo aplica cuando el carne no trae documento, que en los carnes
+     * observados es lo normal: `Identificacion: None`.
+     */
+    private function hayHomonimos(CarnetIdentity $identity): bool
+    {
+        if ($identity->documentNumber || ! $identity->fullName) {
+            return false;
+        }
+
+        $normalizado = Str::lower(Str::ascii(preg_replace('/\s+/u', ' ', trim($identity->fullName))));
+
+        return User::where('status', 'activo')
+            ->whereRaw('LOWER(name) = ?', [$normalizado])
+            ->count() > 1;
     }
 }

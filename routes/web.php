@@ -64,11 +64,21 @@ Route::middleware('auth')->group(function () {
     // Vincular el carne a la cuenta: se hace una vez, ya autenticado.
     Route::post('/cuenta/carnet', [CarnetLoginController::class, 'link'])->name('carnet.link');
 
+    // La app de autenticacion, para cualquiera: deja de depender del correo.
+    Route::get('/cuenta/app', [TwoFactorController::class, 'miApp'])->name('cuenta.app');
+    Route::post('/cuenta/app/activar', [TwoFactorController::class, 'activarMiApp'])->name('cuenta.app.activar');
+    Route::post('/cuenta/app/desactivar', [TwoFactorController::class, 'desactivarMiApp'])->name('cuenta.app.desactivar');
+
     // Segundo factor para el backoffice (§16).
     Route::get('/segundo-factor/configurar', [TwoFactorController::class, 'configurar'])->name('dosfactores.configurar');
     Route::post('/segundo-factor/activar', [TwoFactorController::class, 'activar'])->name('dosfactores.activar');
     Route::get('/segundo-factor', [TwoFactorController::class, 'verificar'])->name('dosfactores.verificar');
     Route::post('/segundo-factor', [TwoFactorController::class, 'comprobar'])->name('dosfactores.comprobar');
+
+    // Cuando ya se entro con la app, el segundo factor tiene que ser otro.
+    Route::get('/segundo-factor/otro', [TwoFactorController::class, 'otroFactor'])->name('dosfactores.otroFactor');
+    Route::post('/segundo-factor/otro/enviar', [TwoFactorController::class, 'enviarOtroFactor'])->name('dosfactores.otroFactor.enviar');
+    Route::post('/segundo-factor/otro', [TwoFactorController::class, 'comprobarOtroFactor'])->name('dosfactores.otroFactor.comprobar');
 
     // Reservas (§10)
     Route::get('/reservar', [ReservationController::class, 'index'])->name('reservas.index');

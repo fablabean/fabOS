@@ -138,7 +138,9 @@ class SegundoFactorTest extends TestCase
             ->post(route('dosfactores.comprobar'), ['codigo' => $this->codigoActual($secreto)])
             ->assertRedirect('/admin');
 
-        $this->assertTrue(session('segundo_factor_verificado'));
+        // El paso ya no se marca con un si/no: se anota QUE factor se uso, porque
+        // el backoffice exige dos distintos.
+        $this->assertTrue(session('factores_de_identidad')['app'] ?? false);
     }
 
     public function test_un_consultor_entra_sin_segundo_factor(): void

@@ -23,7 +23,6 @@ class Accesos extends Page
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedKey;
 
     public bool $carnetLogin = false;
-    public bool $carnetEnrollment = false;
     public bool $otpLogin = true;
 
     /** Configurar accesos es competencia exclusiva del superadmin. */
@@ -52,7 +51,6 @@ class Accesos extends Page
     public function mount(): void
     {
         $this->carnetLogin      = Settings::carnetLoginEnabled();
-        $this->carnetEnrollment = Settings::carnetEnrollmentEnabled();
         $this->otpLogin         = Settings::otpLoginEnabled();
     }
 
@@ -70,13 +68,8 @@ class Accesos extends Page
                 ->send();
         }
 
-        // Enrolar sin poder ingresar no tiene sentido.
-        if (! $this->carnetLogin) {
-            $this->carnetEnrollment = false;
-        }
 
         Setting::put(Settings::CARNET_LOGIN, $this->carnetLogin, 'auth');
-        Setting::put(Settings::CARNET_ENROLLMENT, $this->carnetEnrollment, 'auth');
         Setting::put(Settings::OTP_LOGIN, $this->otpLogin, 'auth');
 
         Notification::make()->title('Accesos actualizados')->success()->send();

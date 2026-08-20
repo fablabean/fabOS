@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\FactoresDeSesion;
 use App\Filament\Resources\CourseEditions\Pages\ListCourseEditions;
 use App\Models\Area;
 use App\Models\Certifab;
@@ -60,7 +61,7 @@ class BackofficeFormacionTest extends TestCase
         $secreto = $servicio->generarSecreto($u);
         $servicio->confirmar($u, app(Google2FA::class)->getCurrentOtp($secreto));
 
-        $this->actingAs($u->fresh())->withSession(['segundo_factor_verificado' => true]);
+        $this->actingAs($u->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         return $this;
     }

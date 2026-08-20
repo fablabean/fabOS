@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 class SetAccess extends Command
 {
     protected $signature = 'fabos:access
-                            {method : carnet|carnet-enrolamiento|otp}
+                            {method : carnet|otp}
                             {state : on|off}';
 
     protected $description = 'Activa o desactiva un método de ingreso';
@@ -22,13 +22,12 @@ class SetAccess extends Command
     {
         $key = match ($this->argument('method')) {
             'carnet'              => Settings::CARNET_LOGIN,
-            'carnet-enrolamiento' => Settings::CARNET_ENROLLMENT,
             'otp'                 => Settings::OTP_LOGIN,
             default               => null,
         };
 
         if (! $key) {
-            $this->error('Método no válido: carnet | carnet-enrolamiento | otp');
+            $this->error('Método no válido: carnet | otp');
 
             return self::FAILURE;
         }

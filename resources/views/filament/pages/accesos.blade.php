@@ -36,16 +36,6 @@
                         </span>
                     </span>
                 </label>
-
-                <label class="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" wire:model="carnetEnrollment" class="mt-1 h-4 w-4 rounded">
-                    <span>
-                        <span class="font-medium">Crear cuentas nuevas al escanear</span>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">
-                            Si está apagado, el carné solo deja entrar a quien ya tiene cuenta.
-                        </span>
-                    </span>
-                </label>
             </div>
 
             <x-slot name="footer">

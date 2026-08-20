@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\FactoresDeSesion;
 use App\Filament\Pages\Bandeja;
 use App\Models\Area;
 use App\Models\Asset;
@@ -62,7 +63,7 @@ class BandejaTest extends TestCase
         $secreto = $servicio->generarSecreto($u);
         $servicio->confirmar($u, app(Google2FA::class)->getCurrentOtp($secreto));
 
-        $this->actingAs($u->fresh())->withSession(['segundo_factor_verificado' => true]);
+        $this->actingAs($u->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         return $this;
     }

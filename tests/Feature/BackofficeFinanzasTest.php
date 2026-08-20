@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\FactoresDeSesion;
 use App\Filament\Resources\LedgerAccounts\Pages\ListLedgerAccounts;
 use App\Filament\Resources\RateCards\Pages\EditRateCard;
 use App\Models\Area;
@@ -53,7 +54,7 @@ class BackofficeFinanzasTest extends TestCase
         $secreto = $servicio->generarSecreto($u);
         $servicio->confirmar($u, app(Google2FA::class)->getCurrentOtp($secreto));
 
-        $this->actingAs($u->fresh())->withSession(['segundo_factor_verificado' => true]);
+        $this->actingAs($u->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         return $this;
     }

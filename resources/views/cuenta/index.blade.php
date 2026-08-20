@@ -206,6 +206,24 @@
         </div>
     @endif
 
+    {{-- ------------------------------------------------ como entro --}}
+    <h2>Cómo entro</h2>
+    <div class="panel">
+        @if (auth()->user()->tieneSegundoFactor())
+            <p>
+                Entras con el código de tu <strong>aplicación de autenticación</strong>. No
+                dependes del correo: el código lo genera tu teléfono.
+            </p>
+        @else
+            <p>
+                Ahora entras con un código que te llega al correo. Puedes usar una
+                <strong>aplicación de autenticación</strong> en su lugar: el código lo genera
+                tu teléfono, así que funciona aunque el correo tarde o no llegue.
+            </p>
+        @endif
+        <p><a href="{{ route('cuenta.app') }}">Configurar la aplicación de autenticación →</a></p>
+    </div>
+
     {{-- ---------------------------------------------------- avisos --}}
     @if ($avisos->isNotEmpty())
         <h2>Qué avisos quiero recibir</h2>

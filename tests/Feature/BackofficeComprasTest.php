@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\FactoresDeSesion;
 use App\Filament\Resources\PurchaseRequests\Pages\ListPurchaseRequests;
 use App\Models\Budget;
 use App\Models\PurchaseRequest;
@@ -41,7 +42,7 @@ class BackofficeComprasTest extends TestCase
         $secreto = $servicio->generarSecreto($u);
         $servicio->confirmar($u, app(Google2FA::class)->getCurrentOtp($secreto));
 
-        $this->actingAs($u->fresh())->withSession(['segundo_factor_verificado' => true]);
+        $this->actingAs($u->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         return $this;
     }

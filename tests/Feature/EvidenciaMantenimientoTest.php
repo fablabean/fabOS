@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\FactoresDeSesion;
 use App\Models\Area;
 use App\Models\Asset;
 use App\Models\User;
@@ -93,7 +94,7 @@ class EvidenciaMantenimientoTest extends TestCase
         $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
 
         $this->actingAs($admin->fresh())
-            ->withSession(['segundo_factor_verificado' => true])
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
             ->get('/admin/work-orders/' . $orden->id . '/edit')
             ->assertOk()
             ->assertSee('Evidencia fotográfica')

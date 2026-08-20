@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Exceptions\EnvioDeCodigoFallido;
+use App\Models\User;
 use App\Services\Auth\LoginCodeService;
+use App\Services\Auth\TwoFactorService;
 use App\Services\Identity\CarnetLinker;
+use App\Support\FactoresDeSesion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -33,6 +36,13 @@ class LoginCodeController extends Controller
         // convierta en herramienta de hostigamiento por correo.
         $this->throttle('otp:email:' . $email, config('fabos.otp.throttle_per_email'));
         $this->throttle('otp:ip:' . $request->ip(), config('fabos.otp.throttle_per_email') * 5);
+
+        // Quien ya configuro la app no necesita correo: su codigo lo genera el
+        // telefono. La pantalla siguiente es la misma en ambos casos, asi que
+        // esto no revela quien tiene cuenta ni quien tiene app.
+        if ($this->usaLaApp($email)) {
+            return redirect()->route('login.code', ['email' => $email]);
+        }
 
         try {
             $this->codes->issue($email, $request->ip(), $request->userAgent());
@@ -72,7 +82,11 @@ class LoginCodeController extends Controller
 
         $this->throttle('otp:verify:' . Str::lower($data['email']), 10);
 
-        $user = $this->codes->verify($data['email'], $data['code']);
+        // Un solo campo acepta las tres cosas: el codigo que va al correo, el que
+        // genera la app y uno de recuperacion. Para quien entra son todos "mi
+        // codigo"; preguntarle de cual se trata seria trasladarle un detalle
+        // que es nuestro.
+        [$user, $factor] = $this->identificar($data['email'], $data['code']);
 
         if (! $user) {
             throw ValidationException::withMessages([
@@ -84,6 +98,17 @@ class LoginCodeController extends Controller
         // todo el semestre sin volver a pedir codigo en cada ingreso (§5).
         Auth::login($user, remember: true);
         $request->session()->regenerate();
+
+        // Los factores de la sesion anterior no cuentan para esta: regenerate()
+        // conserva los datos de sesion, asi que hay que olvidarlos a mano.
+        FactoresDeSesion::olvidar($request);
+        FactoresDeSesion::anotar($request, $factor);
+
+        // Un carne escaneado antes de identificarse prueba algo por su cuenta:
+        // cuenta como factor propio de cara al backoffice.
+        if ($request->session()->pull('carnet_verificado')) {
+            FactoresDeSesion::anotar($request, FactoresDeSesion::CARNE);
+        }
 
         // Si venía de escanear un carné que no pudimos identificar, ahora sí
         // sabemos de quién es: se vincula sin pedirle nada más.
@@ -116,5 +141,50 @@ class LoginCodeController extends Controller
         }
 
         RateLimiter::hit($key, $window);
+    }
+
+    /** Esta cuenta genera sus codigos con la app. */
+    private function usaLaApp(string $email): bool
+    {
+        return User::where('email', $email)
+            ->whereNotNull('two_factor_confirmed_at')
+            ->exists();
+    }
+
+    /**
+     * Resuelve un codigo, venga de donde venga.
+     *
+     * El orden importa poco para la seguridad y algo para el gasto: el del
+     * correo es el caso comun, y comprobarlo primero evita descifrar el secreto
+     * de la app en cada intento.
+     *
+     * @return array{0: ?User, 1: string}
+     */
+    private function identificar(string $email, string $codigo): array
+    {
+        if ($user = $this->codes->verify($email, $codigo)) {
+            return [$user, FactoresDeSesion::CORREO];
+        }
+
+        $user = User::where('email', Str::lower(trim($email)))
+            ->whereNotNull('two_factor_confirmed_at')
+            ->first();
+
+        if (! $user || $user->status !== 'activo') {
+            return [null, ''];
+        }
+
+        $dosFactores = app(TwoFactorService::class);
+
+        if ($dosFactores->verificar($user, $codigo)) {
+            return [$user, FactoresDeSesion::APP];
+        }
+
+        // Los de recuperacion son de un solo uso: entrar con uno lo consume.
+        if ($dosFactores->usarCodigoDeRecuperacion($user, $codigo)) {
+            return [$user, FactoresDeSesion::APP];
+        }
+
+        return [null, ''];
     }
 }

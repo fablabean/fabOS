@@ -16,7 +16,15 @@ final class Settings
     /** Ingreso por carnet digital habilitado (§5). */
     public const CARNET_LOGIN = 'auth.carnet_login_enabled';
 
-    /** Permite crear cuentas nuevas al escanear un carne desconocido. */
+    /**
+     * Se conserva la constante solo para poder borrar el ajuste viejo.
+     *
+     * Crear cuentas desde el carne no debe hacerse: el servicio de la EAN solo
+     * devuelve el nombre completo, asi que la cuenta naceria **sin correo** —
+     * incapaz de recibir un codigo, un recordatorio o un aviso de reserva, y
+     * sin forma de arreglarla salvo a mano. La casilla existia en la pantalla
+     * de Accesos sin estar conectada a nada.
+     */
     public const CARNET_ENROLLMENT = 'auth.carnet_enrollment_enabled';
 
     /** Ingreso por codigo al correo. */
@@ -37,11 +45,6 @@ final class Settings
     public static function carnetLoginEnabled(): bool
     {
         return (bool) Setting::get(self::CARNET_LOGIN, false);
-    }
-
-    public static function carnetEnrollmentEnabled(): bool
-    {
-        return (bool) Setting::get(self::CARNET_ENROLLMENT, false);
     }
 
     public static function otpLoginEnabled(): bool

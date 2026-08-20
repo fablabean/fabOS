@@ -28,25 +28,30 @@ use Illuminate\Support\Str;
  */
 class LoginCodeService
 {
+    /**
+     * Emite un codigo y lo devuelve en claro, sin mandar ningun correo.
+     *
+     * Es para entregarlo en persona: alguien del equipo tiene delante a quien
+     * quiere entrar, y se lo dicta. Ahi el correo no aporta ninguna garantia
+     * —la identidad la esta comprobando una persona mirando a otra— y en cambio
+     * es justo lo que no siempre funciona.
+     */
+    public function emitirEnMano(string $email, int $minutos = 15): string
+    {
+        $email = $this->normalize($email);
+        $code  = $this->generateCode();
+
+        $this->guardar($email, $code, $minutos);
+
+        return $code;
+    }
+
     public function issue(string $email, ?string $ip = null, ?string $userAgent = null): void
     {
         $email = $this->normalize($email);
         $code  = $this->generateCode();
 
-        DB::transaction(function () use ($email, $code, $ip, $userAgent) {
-            // Un solo codigo vivo por correo.
-            LoginCode::where('email', $email)
-                ->whereNull('consumed_at')
-                ->update(['consumed_at' => now()]);
-
-            LoginCode::create([
-                'email'      => $email,
-                'code_hash'  => Hash::make($code),
-                'expires_at' => now()->addMinutes(config('fabos.otp.ttl_minutes')),
-                'request_ip' => $ip,
-                'user_agent' => Str::limit((string) $userAgent, 250, ''),
-            ]);
-        });
+        $this->guardar($email, $code, config('fabos.otp.ttl_minutes'), $ip, $userAgent);
 
         // Copia legible solo si alguien encendio la captura para las pruebas.
         // Sin eso, esta linea no hace nada.
@@ -144,5 +149,23 @@ class LoginCodeService
     private function normalize(string $email): string
     {
         return Str::lower(trim($email));
+    }
+
+    /** Un solo codigo vivo por correo: emitir uno nuevo invalida los anteriores. */
+    private function guardar(string $email, string $code, int $minutos, ?string $ip = null, ?string $userAgent = null): void
+    {
+        DB::transaction(function () use ($email, $code, $minutos, $ip, $userAgent) {
+            LoginCode::where('email', $email)
+                ->whereNull('consumed_at')
+                ->update(['consumed_at' => now()]);
+
+            LoginCode::create([
+                'email'      => $email,
+                'code_hash'  => Hash::make($code),
+                'expires_at' => now()->addMinutes($minutos),
+                'request_ip' => $ip,
+                'user_agent' => Str::limit((string) $userAgent, 250, ''),
+            ]);
+        });
     }
 }
