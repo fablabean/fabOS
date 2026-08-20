@@ -98,9 +98,26 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(UserCategory::class, 'user_category_id');
     }
 
-    /** Pertenece a la Universidad segun su correo (§5). */
+    /** Pertenece a la institucion segun su correo (§5). */
     public function isInstitutional(): bool
     {
-        return str_ends_with($this->email, '@' . config('fabos.identity.institutional_domain'));
+        return self::correoInstitucional($this->email);
+    }
+
+    /**
+     * Sin dominio configurado, nadie es institucional.
+     *
+     * El guarda importa. Sin el, una instalacion nueva heredaba el dominio de
+     * la EAN y quien entrara con ese correo en el fablab de otra ciudad quedaba
+     * registrado como estudiante suyo, sin que nadie lo hubiera decidido.
+     *
+     * La comparacion incluye la arroba a proposito: sin ella, `noejemplo.edu.co`
+     * pasaria por `ejemplo.edu.co`.
+     */
+    public static function correoInstitucional(string $email): bool
+    {
+        $dominio = trim((string) config('fabos.identity.institutional_domain'));
+
+        return $dominio !== '' && str_ends_with(strtolower($email), '@' . strtolower($dominio));
     }
 }

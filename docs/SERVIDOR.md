@@ -1,13 +1,20 @@
 # Poner fabOS en el servidor
 
-Escrito contra el servidor real del laboratorio:
+Escrito contra un servidor propio en la red del laboratorio. A lo largo de la
+guía aparecen estos marcadores; sustitúyelos por los tuyos:
 
-| | |
+| Marcador | Qué es |
 |---|---|
-| IP fija | `<SERVIDOR>/24` |
-| Gateway | `<GATEWAY>` |
-| Interfaz | `<INTERFAZ>` (Wi-Fi) |
-| Dominio | `<DOMINIO>` |
+| `<SERVIDOR>` | IP fija del servidor en la red del laboratorio |
+| `<GATEWAY>` | Puerta de enlace de esa red |
+| `<INTERFAZ>` | Interfaz de red (`eth0`, `<INTERFAZ>`…) |
+| `<DOMINIO>` | El dominio público, si lo hay |
+| `<CORREO>` | Correo de la primera persona administradora |
+
+Los valores reales de una instalación **no van en el repositorio**: viven en el
+`.env` del servidor y en las notas de quien lo administra. Un repositorio
+público con la topología de la red interna es un mapa gratis que no le sirve a
+nadie más.
 
 ---
 
@@ -129,7 +136,7 @@ APP_TIMEZONE=America/Bogota
 LAB_NAME="Ean Fablab"
 LAB_INSTITUTION="Universidad EAN"
 LAB_CITY="Bogotá, Colombia"
-INSTITUTIONAL_EMAIL_DOMAIN=universidadean.edu.co
+INSTITUTIONAL_EMAIL_DOMAIN=<DOMINIO-INSTITUCIONAL>
 
 # Base de datos: usuario propio de fabOS, contraseña generada
 DB_CONNECTION=pgsql

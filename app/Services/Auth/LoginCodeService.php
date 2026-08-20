@@ -100,7 +100,7 @@ class LoginCodeService
             return $user;
         }
 
-        $institutional = str_ends_with($email, '@' . config('fabos.identity.institutional_domain'));
+        $institutional = User::correoInstitucional($email);
         $category = UserCategory::firstWhere('slug', $institutional ? 'estudiante' : 'externo');
 
         return User::create([

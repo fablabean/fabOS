@@ -19,6 +19,16 @@ set -euo pipefail
 
 DESTINO="${DESTINO:-$HOME/fabos}"
 PAQUETE="${PAQUETE:-$HOME/fabos-despliegue.tar.gz}"
+
+# Lo propio de cada laboratorio. Se pasan como variables de entorno:
+#
+#     DOMINIO=fablab.ejemplo.org CORREO=quien@ejemplo.org bash desplegar.sh
+#
+# Si no se pasan, el script deja el .env a medias a propósito y lo dice: es
+# preferible a inventar un dominio que luego nadie recuerda haber puesto.
+DOMINIO="${DOMINIO:-}"
+CORREO="${CORREO:-}"
+NOMBRE="${NOMBRE:-}"
 COMPOSE="docker compose -f compose.yaml -f compose.produccion.yaml"
 
 paso() { printf '\n\033[1m· %s\033[0m\n' "$1"; }
@@ -83,11 +93,15 @@ if [ ! -f .env ]; then
 
     sed -i "s|^APP_ENV=.*|APP_ENV=production|"                        .env
     sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|"                         .env
-    sed -i "s|^APP_URL=.*|APP_URL=https://<DOMINIO>|"             .env
+    if [ -n "$DOMINIO" ]; then
+        sed -i "s|^APP_URL=.*|APP_URL=https://${DOMINIO}|" .env
+    else
+        aviso 'Sin DOMINIO: APP_URL queda como esté en .env.example'
+    fi
     sed -i "s|^DB_USERNAME=.*|DB_USERNAME=fabos|"                     .env
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${CLAVE_BD}|"               .env
     sed -i "s|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=redis|"           .env
-    sed -i "s|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=\"no-reply@<DOMINIO>\"|" .env
+    [ -n "$DOMINIO" ] && sed -i "s|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=\"no-reply@${DOMINIO}\"|" .env
 
     # En Linux el contenedor debe correr con el mismo usuario que el host, o
     # los archivos que escriba quedan de root y la aplicación no puede leerlos.
@@ -161,7 +175,13 @@ $ARTISAN view:cache
 # El propio comando se niega a sembrar si ya hay personas, así que correrlo
 # siempre es seguro: en el primer despliegue instala, en los demás no hace nada.
 paso 'Datos iniciales'
-$ARTISAN fabos:instalar --admin=<CORREO> --nombre="Erick Hansen" || true
+if [ -n "$CORREO" ]; then
+    $ARTISAN fabos:instalar --admin="$CORREO" --nombre="${NOMBRE:-$CORREO}" || true
+else
+    echo "  Sin CORREO: no se crea la primera persona. Para hacerlo:"
+    echo "    $COMPOSE exec -u sail laravel.test php artisan fabos:instalar \\"
+    echo "        --admin=tu@correo --nombre=\"Tu nombre\""
+fi
 
 # ------------------------------------------------------------------ revisión
 

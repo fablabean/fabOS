@@ -113,4 +113,32 @@ class MultiLaboratorioTest extends TestCase
         $this->assertFileExists(base_path('LICENSE'));
         $this->assertFileExists(base_path('docs/DESPLIEGUE.md'));
     }
+
+    // ------------------------------- el dominio institucional no se hereda
+
+    /**
+     * Una instalación nueva no puede traer puesto el dominio de la EAN: quien
+     * entrara con un correo `@universidadean.edu.co` en el fablab de otra
+     * ciudad quedaría como estudiante suyo, y nadie lo habría decidido.
+     */
+    public function test_sin_dominio_configurado_nadie_es_institucional(): void
+    {
+        config(['fabos.identity.institutional_domain' => '']);
+
+        $this->assertFalse(User::correoInstitucional('quien@universidadean.edu.co'));
+        $this->assertFalse(User::correoInstitucional('quien@loquesea.org'));
+    }
+
+    public function test_con_dominio_configurado_solo_ese_dominio_cuenta(): void
+    {
+        config(['fabos.identity.institutional_domain' => 'ejemplo.edu.co']);
+
+        $this->assertTrue(User::correoInstitucional('quien@ejemplo.edu.co'));
+        $this->assertTrue(User::correoInstitucional('QUIEN@Ejemplo.Edu.Co'));
+        $this->assertFalse(User::correoInstitucional('quien@otra.edu.co'));
+
+        // Y no basta con que termine parecido: «noejemplo.edu.co» no es el
+        // dominio, aunque acabe igual.
+        $this->assertFalse(User::correoInstitucional('quien@noejemplo.edu.co'));
+    }
 }

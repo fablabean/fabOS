@@ -251,3 +251,10 @@ decisión tuya
   Se reemplazan subiendo la foto desde el backoffice.
 - ~~Sin HTTPS~~: resuelto con el túnel Cloudflare (perfil `tunel`).
 - `APP_DEBUG` ya está en `false`.
+
+## Compartir fabOS con otros laboratorios
+
+fabOS se instala en otro laboratorio sin tocar código: la identidad sale de la
+configuración y `fabos:instalar` deja el sistema listo y vacío. El plan de dar a
+cada laboratorio un subdominio de `fablabs.club` —y la decisión de fondo sobre
+quién guarda los datos de quién— está en `docs/FABLABS-CLUB.md`.

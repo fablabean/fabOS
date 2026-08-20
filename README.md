@@ -276,7 +276,7 @@ existente —estando autenticado por correo— y a partir de ahí el QR sirve de
 atajo. La identidad la aporta la cuenta vinculada, no lo que diga el HTML.
 
 **La cámara exige contexto seguro.** El navegador solo entrega la cámara por
-HTTPS o desde `localhost`. Desde `http://<SERVIDOR>` **no la va a dar**, por
+HTTPS o desde `localhost`. Desde `http://<IP-DEL-SERVIDOR>` **no la va a dar**, por
 diseño y sin importar el navegador: ahí la página ofrece pegar el enlace a mano.
 Para escanear desde teléfonos hace falta servir por HTTPS.
 
@@ -308,8 +308,8 @@ lo completa. Reimportar la hoja corregida no crea copias.
 
 - **La identidad se ancla al correo, no al proveedor.** `users.external_id` queda
   nulo hasta que se active Entra ID; ese día los usuarios se vinculan sin migración.
-- **El dominio de envío no es el dominio de identidad.** El correo sale por
-  `fablab.club`; las personas se identifican con `@universidadean.edu.co`.
+- **El dominio de envío no es el dominio de identidad.** El correo puede salir por
+  un dominio y las personas identificarse con otro, el de su institución.
 - **El dinero se maneja en enteros.** 1 FabCoin = 100 unidades menores. Nunca `float`.
   Los importes se guardan en unidades menores y se editan en FabCoins: la
   conversión vive en el formulario, no repartida por el código.

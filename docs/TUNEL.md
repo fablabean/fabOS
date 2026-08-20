@@ -1,7 +1,10 @@
-# El túnel de `<DOMINIO>`
+# El túnel de Cloudflare
 
-Va **en el servidor de producción** (`<SERVIDOR>`), no en la máquina de
-desarrollo. El túnel identifica *una* instalación: si el mismo token corre en
+Una forma de publicar fabOS en internet sin IP pública ni abrir puertos en el
+router. **No es obligatoria**: si tu laboratorio ya tiene dominio y certificado,
+o entra solo por la red interna, sáltate esta guía entera.
+
+Va **en el servidor de producción**, no en la máquina de desarrollo. El túnel identifica *una* instalación: si el mismo token corre en
 dos sitios, Cloudflare reparte el tráfico entre los dos y la mitad de las
 peticiones acaban en la máquina equivocada.
 
@@ -52,7 +55,7 @@ Sin esto el túnel queda conectado pero el dominio no responde — que es
 exactamente lo que pasa ahora mismo: `<DOMINIO>` resuelve a Cloudflare y se
 queda esperando, porque nadie le ha dicho a dónde mandar el tráfico.
 
-**Zero Trust → Networks → Tunnels →** el túnel `<ID-DEL-TUNEL>…` **→ Public Hostname
+**Zero Trust → Networks → Tunnels →** el túnel <`ID-DEL-TUNEL`> **→ Public Hostname
 → Add a public hostname**
 
 | Campo | Valor |
@@ -109,7 +112,7 @@ imprimirlas entrando por `https://<DOMINIO>`, no por la IP de la red. Una
 etiqueta impresa desde `<SERVIDOR>` solo funciona dentro del laboratorio, y
 el punto del QR es que funcione desde el teléfono de cualquiera.
 
-**El token viejo sigue vivo.** El de `<ID-ANTERIOR>…`, que quedó en el historial de
+**El token viejo sigue vivo.** El de <el token anterior>, que quedó en el historial de
 nuestra conversación de hace unos días y hoy corre en la máquina de desarrollo.
 Cuando ya no lo necesites, bórralo desde *Zero Trust → Networks → Tunnels*: un
 túnel activo es una puerta abierta hacia dentro de la red.

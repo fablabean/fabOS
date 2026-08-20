@@ -144,10 +144,10 @@ return [
     |--------------------------------------------------------------------------
     | El dominio de identidad NO es el dominio de envio: los usuarios se
     | identifican con su correo institucional aunque el correo salga por
-    | fablab.club (§5).
+    | del laboratorio (§5).
     */
     'identity' => [
-        'institutional_domain' => env('INSTITUTIONAL_EMAIL_DOMAIN', 'universidadean.edu.co'),
+        'institutional_domain' => env('INSTITUTIONAL_EMAIL_DOMAIN', ''),
     ],
 
     /*
