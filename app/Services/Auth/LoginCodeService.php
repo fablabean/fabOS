@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Exceptions\EnvioDeCodigoFallido;
 use App\Mail\LoginCodeMail;
 use App\Models\LoginCode;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Models\UserCategory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -45,9 +47,22 @@ class LoginCodeService
             ]);
         });
 
-        Mail::to($email)->send(
-            new LoginCodeMail($code, config('fabos.otp.ttl_minutes'))
-        );
+        try {
+            Mail::to($email)->send(
+                new LoginCodeMail($code, config('fabos.otp.ttl_minutes'))
+            );
+        } catch (\Throwable $e) {
+            // Se registra el dominio, no la direccion: la bitacora no tiene por
+            // que acumular los correos de quien intenta entrar.
+            Log::error('No se pudo enviar el codigo de ingreso', [
+                'dominio' => Str::after($email, '@'),
+                'error'   => $e->getMessage(),
+            ]);
+
+            throw new EnvioDeCodigoFallido(
+                'El proveedor de correo rechazo el envio.', previous: $e
+            );
+        }
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\EnvioDeCodigoFallido;
 use App\Services\Auth\LoginCodeService;
 use App\Services\Identity\CarnetLinker;
 use Illuminate\Http\Request;
@@ -33,7 +34,18 @@ class LoginCodeController extends Controller
         $this->throttle('otp:email:' . $email, config('fabos.otp.throttle_per_email'));
         $this->throttle('otp:ip:' . $request->ip(), config('fabos.otp.throttle_per_email') * 5);
 
-        $this->codes->issue($email, $request->ip(), $request->userAgent());
+        try {
+            $this->codes->issue($email, $request->ip(), $request->userAgent());
+        } catch (EnvioDeCodigoFallido) {
+            // El mensaje no distingue si la direccion existe: un fallo del
+            // proveedor no es especifico de nadie, y decir de mas aqui
+            // convertiria esta pantalla en una forma de averiguar quien tiene
+            // cuenta.
+            return back()->withInput()->withErrors([
+                'email' => 'No pudimos enviar el codigo en este momento. '
+                    . 'Vuelve a intentarlo en unos minutos; si sigue igual, avisa a la coordinacion del laboratorio.',
+            ]);
+        }
 
         return redirect()
             ->route('login.code', ['email' => $email])
