@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Support\Facades\Schedule;
+
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
+
+// Red de seguridad para las reservas a las que nadie llegó (§10).
+Schedule::command('fabos:liberar-ausencias')->everyFifteenMinutes();
+
+// Los planes preventivos se vuelven órdenes reales cada madrugada (§8).
+Schedule::command('fabos:generar-preventivas')->dailyAt('05:00');
+
+// Recordatorio de las reservas del día siguiente. Corre cada hora, pero cada
+// reserva se recuerda una sola vez: de eso se encarga la bitácora (§15).
+Schedule::command('fabos:recordatorios')->hourly();
+
+// Cierra las esperas cuya ventana ya pasó: nadie quiere ese aviso (§10).
+Schedule::call(fn () => app(App\Services\Booking\WaitlistService::class)->vencerAntiguas())
+    ->dailyAt('04:30')
+    ->name('fabos:vencer-esperas');
+
+// Respaldo diario. Lo que hay dentro de fabOS no se puede volver a teclear:
+// el histórico de uso, las habilitaciones y un libro contable encadenado por
+// hash. Se conservan 30 días (§18).
+Schedule::command('fabos:respaldar')->dailyAt('03:00');
+
+// La dotación del mes, el día 1. Repetirla no abona dos veces: la clave de
+// idempotencia lleva el periodo, así que un reintento es inofensivo (§12).
+Schedule::command('fabos:dotar')->monthlyOn(1, '06:00');

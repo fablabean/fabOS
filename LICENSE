@@ -1,0 +1,43 @@
+fabOS — sistema de gestión para laboratorios de fabricación digital
+Copyright (C) 2026 Ean Fablab, Universidad EAN
+
+Este programa es software libre: puedes redistribuirlo y/o modificarlo bajo los
+términos de la Licencia Pública General Affero de GNU publicada por la Free
+Software Foundation, en su versión 3 o (a tu elección) cualquier versión
+posterior.
+
+Este programa se distribuye con la esperanza de que sea útil, pero SIN NINGUNA
+GARANTÍA; ni siquiera la garantía implícita de COMERCIABILIDAD o APTITUD PARA UN
+PROPÓSITO PARTICULAR. Consulta la Licencia Pública General Affero de GNU para
+más detalles.
+
+Deberías haber recibido una copia de la Licencia Pública General Affero de GNU
+junto con este programa. Si no, ve a <https://www.gnu.org/licenses/>.
+
+
+                        ── FALTA EL TEXTO COMPLETO ──
+
+Este archivo contiene el AVISO de licencia, no la licencia completa. El texto
+canónico de la AGPL-3.0 son unas 34 000 palabras de texto legal, y transcribirlo
+de memoria sería irresponsable: una licencia con una palabra cambiada deja de
+ser esa licencia.
+
+Antes de publicar el repositorio, reemplaza este archivo por el texto oficial:
+
+    curl -o LICENSE https://www.gnu.org/licenses/agpl-3.0.txt
+
+y vuelve a poner el aviso de copyright de arriba en un archivo aparte
+(`COPYRIGHT` o al inicio del README), como recomienda la propia FSF.
+
+
+                        ── POR QUÉ AGPL Y NO MIT ──
+
+fabOS se usa a través de la red: alguien podría tomarlo, mejorarlo, ofrecerlo
+como servicio a otros laboratorios y no devolver nada. La AGPL cierra ese hueco
+—quien lo ofrezca como servicio debe publicar sus cambios— y es lo coherente
+con pertenecer a una red como la Fab Foundation, donde lo que se aprende en un
+laboratorio se comparte con los demás.
+
+La contrapartida es real y conviene decirla: una institución que quiera
+integrarlo en un sistema propietario no podrá hacerlo sin liberar ese sistema.
+Es una decisión deliberada, no un descuido.

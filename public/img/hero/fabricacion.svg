@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <!--
+    Fabricación. Curvas de nivel apiladas: una pieza construyéndose capa sobre
+    capa, que es lo que hace una impresora 3D y lo que hace un laboratorio.
+
+    Ilustración provisional, dibujada a mano en SVG: pesa poco, se ve nítida en
+    cualquier pantalla y no depende de ningún banco de imágenes. Reemplazable
+    por una foto real del taller cuando la haya.
+  -->
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12241f"/>
+      <stop offset="1" stop-color="#0d1512"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#fondo)"/>
+
+  <g fill="none" stroke="#5CC9B8" stroke-width="2">
+    <g opacity=".22">
+      <ellipse cx="1120" cy="470" rx="430" ry="120"/>
+      <ellipse cx="1120" cy="430" rx="395" ry="110"/>
+      <ellipse cx="1120" cy="390" rx="355" ry="99"/>
+      <ellipse cx="1120" cy="350" rx="310" ry="87"/>
+      <ellipse cx="1120" cy="310" rx="262" ry="73"/>
+      <ellipse cx="1120" cy="270" rx="208" ry="58"/>
+      <ellipse cx="1120" cy="230" rx="150" ry="42"/>
+      <ellipse cx="1120" cy="190" rx="86" ry="24"/>
+    </g>
+    <g opacity=".10">
+      <ellipse cx="300" cy="820" rx="330" ry="92"/>
+      <ellipse cx="300" cy="775" rx="272" ry="76"/>
+      <ellipse cx="300" cy="730" rx="205" ry="57"/>
+      <ellipse cx="300" cy="685" rx="128" ry="36"/>
+    </g>
+  </g>
+
+  <!-- El cabezal: el punto donde la máquina está depositando material. -->
+  <g opacity=".5">
+    <rect x="1092" y="120" width="56" height="34" rx="6" fill="#5CC9B8" opacity=".7"/>
+    <path d="M1120 154 l0 34" stroke="#5CC9B8" stroke-width="3"/>
+  </g>
+</svg>

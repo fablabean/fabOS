@@ -1,0 +1,175 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\Asset;
+use App\Models\Reservation;
+use App\Models\User;
+use App\Services\Booking\ApprovalService;
+use App\Services\Booking\BookingException;
+use App\Services\Staffing\CoverageService;
+use App\Services\Staffing\OvertimeService;
+use BackedEnum;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
+
+/**
+ * La bandeja de solicitudes (§10).
+ *
+ * Aquí llega lo que la gente pide y el sistema no puede confirmar solo: un
+ * sábado, un equipo que se pide en vez de reservarse, o una sesión más larga de
+ * lo que su certifab permite.
+ *
+ * Cada solicitud muestra **quién podría atenderla y a qué costo en horas
+ * extras**. Decidir sin ver eso es cómo un «sí» amable se convierte, tres
+ * sábados después, en un problema con Talento Humano.
+ */
+class Bandeja extends Page
+{
+    protected string $view = 'filament.pages.bandeja';
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxArrowDown;
+
+    protected static ?int $navigationSort = 0;
+
+    /** Quién atiende cada solicitud, por id de reserva. */
+    public array $acompanante = [];
+
+    /** El motivo del rechazo, por id de reserva. */
+    public array $motivo = [];
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]) ?? false;
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return 'Reservas';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Solicitudes';
+    }
+
+    public function getTitle(): string
+    {
+        return 'Solicitudes por decidir';
+    }
+
+    /** El número al lado del menú: lo que está esperando respuesta. */
+    public static function getNavigationBadge(): ?string
+    {
+        $pendientes = Reservation::where('status', 'solicitada')->where('ends_at', '>', now())->count();
+
+        return $pendientes ?: null;
+    }
+
+    public function aprobar(int $reservaId): void
+    {
+        $solicitud = Reservation::find($reservaId);
+
+        if (! $solicitud) {
+            return;
+        }
+
+        $quien = ! empty($this->acompanante[$reservaId])
+            ? User::find($this->acompanante[$reservaId])
+            : null;
+
+        try {
+            app(ApprovalService::class)->aprobar($solicitud, $quien, auth()->user());
+        } catch (BookingException $e) {
+            Notification::make()
+                ->title('No se pudo aprobar')
+                ->body($e->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Solicitud aprobada')
+            ->body($quien
+                ? $quien->name . ' queda con la jornada programada y su tiempo reservado.'
+                : 'La reserva quedó confirmada.')
+            ->success()
+            ->send();
+    }
+
+    public function rechazar(int $reservaId): void
+    {
+        $solicitud = Reservation::find($reservaId);
+
+        if (! $solicitud) {
+            return;
+        }
+
+        $motivo = (string) ($this->motivo[$reservaId] ?? '');
+
+        if (trim($motivo) === '') {
+            Notification::make()
+                ->title('Falta el motivo')
+                ->body('Quien pidió algo y recibe un «no» sin explicación vuelve a pedir lo mismo la semana siguiente.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        try {
+            app(ApprovalService::class)->rechazar($solicitud, $motivo, auth()->user());
+        } catch (BookingException $e) {
+            Notification::make()->title('No se pudo rechazar')->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+
+        Notification::make()->title('Solicitud rechazada')->success()->send();
+    }
+
+    /** @return array<string,mixed> */
+    public function getViewData(): array
+    {
+        $solicitudes = app(ApprovalService::class)->bandeja();
+
+        $equipos = Asset::with('area')
+            ->whereIn('id', $solicitudes->pluck('reservable_id'))
+            ->get()
+            ->keyBy('id');
+
+        $cobertura = app(CoverageService::class);
+        $extras = app(OvertimeService::class);
+
+        return [
+            'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $cobertura, $extras) {
+                $equipo = $equipos[$s->reservable_id] ?? null;
+
+                // Quién puede atenderla. Se ofrece a TODO el que esté
+                // certificado, no solo a quien esté en jornada: en un sábado
+                // no hay nadie en jornada por definición, y aun así hay que
+                // poder decidir a quién llamar. Al lado de cada nombre, sus
+                // extras del mes, que es el costo real de decir que sí.
+                $candidatos = $equipo ? $cobertura->certificadosPara($equipo) : collect();
+
+                $enJornada = $cobertura->enJornada($s->starts_at, $s->ends_at)->pluck('id');
+
+                return [
+                    'reserva'    => $s,
+                    'equipo'     => $equipo,
+                    'candidatos' => $candidatos->map(fn (User $u) => [
+                        'id'         => $u->id,
+                        'nombre'     => $u->name,
+                        'en_jornada' => $enJornada->contains($u->id),
+                        'extras_mes' => round($extras->minutosMes($u, $s->starts_at->copy()) / 60, 1),
+                    ]),
+                ];
+            }),
+            'topeMes' => round(config('fabos.overtime.max_mes_minutos') / 60),
+        ];
+    }
+}

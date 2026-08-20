@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <!--
+    Formación. La escalera bit → tera: cada peldaño habilita más máquinas y da
+    más autonomía. El último llega a Fab Academy.
+  -->
+  <defs>
+    <linearGradient id="fondoF" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#161f2a"/>
+      <stop offset="1" stop-color="#0e1216"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#fondoF)"/>
+
+  <g opacity=".5">
+    <rect x="900"  y="640" width="96" height="120" rx="8" fill="#5CC9B8" opacity=".18"/>
+    <rect x="1010" y="580" width="96" height="180" rx="8" fill="#5CC9B8" opacity=".26"/>
+    <rect x="1120" y="510" width="96" height="250" rx="8" fill="#5CC9B8" opacity=".34"/>
+    <rect x="1230" y="430" width="96" height="330" rx="8" fill="#5CC9B8" opacity=".42"/>
+    <rect x="1340" y="340" width="96" height="420" rx="8" fill="#5CC9B8" opacity=".5"/>
+    <rect x="1450" y="230" width="96" height="530" rx="8" fill="#5CC9B8" opacity=".62"/>
+  </g>
+
+  <g fill="#F3F4EC" opacity=".22" font-family="monospace" font-size="26" text-anchor="middle">
+    <text x="948"  y="800">bit</text>
+    <text x="1058" y="800">byte</text>
+    <text x="1168" y="800">kilo</text>
+    <text x="1278" y="800">mega</text>
+    <text x="1388" y="800">giga</text>
+    <text x="1498" y="800">tera</text>
+  </g>
+
+  <!-- El sello de la habilitación que se otorga al final. -->
+  <g opacity=".16" fill="none" stroke="#5CC9B8" stroke-width="3">
+    <circle cx="300" cy="330" r="96"/>
+    <path d="M252 330 l34 34 l64 -70"/>
+  </g>
+</svg>

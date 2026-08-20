@@ -1,0 +1,46 @@
+# Ajustes de producción, sobre compose.yaml.
+#
+#   docker compose -f compose.yaml -f compose.produccion.yaml up -d
+#
+# Tres diferencias con el entorno de desarrollo, y las tres importan:
+#
+#  1. **La base de datos y Redis dejan de publicar puertos.** En desarrollo se
+#     exponen para poder conectarse con un cliente; en el servidor eso los deja
+#     accesibles desde toda la red del laboratorio. Los contenedores se hablan
+#     entre sí por la red interna de Docker sin necesidad de publicar nada.
+#  2. **Mailpit no existe.** Es un buzón de pruebas que atrapa el correo y no lo
+#     entrega: en producción los códigos de ingreso tienen que salir de verdad.
+#  3. **Todo se reinicia solo.** Un servidor que se reinicia a las 3 de la
+#     mañana debe volver con fabOS arriba, sin que nadie entre a levantarlo.
+
+services:
+    laravel.test:
+        restart: unless-stopped
+        # `!override` reemplaza en vez de sumar: sin eso, Compose fusiona las
+        # listas y volverían el puerto de Vite y la dependencia de Mailpit.
+        ports: !override
+            # Solo el puerto de la aplicación. El túnel de Cloudflare o el proxy
+            # se encargan del 443 y del certificado.
+            - '${APP_PORT:-80}:80'
+        depends_on: !override
+            - pgsql
+            - redis
+
+    pgsql:
+        restart: unless-stopped
+        # Sin `ports`: nadie fuera del servidor tiene por qué hablarle a la base
+        # de datos. Para conectarse desde el propio servidor:
+        #   docker compose exec pgsql psql -U fabos -d fabos
+        ports: !reset []
+
+    redis:
+        restart: unless-stopped
+        ports: !reset []
+
+    # El buzón de pruebas no corre en producción.
+    mailpit:
+        profiles:
+            - nunca
+
+    cloudflared:
+        restart: unless-stopped

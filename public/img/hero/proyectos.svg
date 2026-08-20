@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <!--
+    Proyectos. Un cronograma con sus hitos: barras escalonadas que avanzan de la
+    idea al cierre. Los rombos son los compromisos con fecha.
+  -->
+  <defs>
+    <linearGradient id="fondoP" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1a26"/>
+      <stop offset="1" stop-color="#0f0e14"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#fondoP)"/>
+
+  <g stroke="#5CC9B8" stroke-width="1" opacity=".10">
+    <path d="M880 140 V780 M1020 140 V780 M1160 140 V780 M1300 140 V780 M1440 140 V780"/>
+  </g>
+
+  <g opacity=".55">
+    <rect x="880"  y="190" width="300" height="26" rx="13" fill="#5CC9B8" opacity=".5"/>
+    <rect x="990"  y="260" width="360" height="26" rx="13" fill="#5CC9B8" opacity=".42"/>
+    <rect x="1080" y="330" width="240" height="26" rx="13" fill="#5CC9B8" opacity=".36"/>
+    <rect x="1160" y="400" width="380" height="26" rx="13" fill="#5CC9B8" opacity=".3"/>
+    <rect x="1250" y="470" width="200" height="26" rx="13" fill="#DFA163" opacity=".38"/>
+    <rect x="1300" y="540" width="260" height="26" rx="13" fill="#5CC9B8" opacity=".24"/>
+  </g>
+
+  <!-- Hitos: los compromisos de los que se levanta acta. -->
+  <g fill="#DFA163" opacity=".6">
+    <path d="M1180 203 l16 -16 l16 16 l-16 16 z"/>
+    <path d="M1350 273 l16 -16 l16 16 l-16 16 z"/>
+    <path d="M1540 413 l16 -16 l16 16 l-16 16 z"/>
+  </g>
+
+  <!-- Tarjetas del tablero, al otro lado. -->
+  <g opacity=".09" fill="none" stroke="#5CC9B8" stroke-width="2">
+    <rect x="140" y="250" width="150" height="70" rx="8"/>
+    <rect x="140" y="345" width="150" height="70" rx="8"/>
+    <rect x="320" y="250" width="150" height="70" rx="8"/>
+  </g>
+</svg>

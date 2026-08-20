@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <!--
+    Reservas. Una agenda por equipo: columnas de horas y bloques ocupados. Es
+    literalmente lo que el sistema garantiza que no se superponga.
+  -->
+  <defs>
+    <linearGradient id="fondoR" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101d20"/>
+      <stop offset="1" stop-color="#0d1315"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#fondoR)"/>
+
+  <!-- La retícula de la semana. -->
+  <g stroke="#5CC9B8" stroke-width="1" opacity=".14">
+    <path d="M860 120 H1560 M860 220 H1560 M860 320 H1560 M860 420 H1560 M860 520 H1560 M860 620 H1560 M860 720 H1560"/>
+    <path d="M860 120 V760 M960 120 V760 M1060 120 V760 M1160 120 V760 M1260 120 V760 M1360 120 V760 M1460 120 V760 M1560 120 V760"/>
+  </g>
+
+  <!-- Bloques reservados: ninguno se pisa con otro, que es el punto. -->
+  <g opacity=".55">
+    <rect x="868" y="228" width="84" height="184" rx="6" fill="#5CC9B8" opacity=".55"/>
+    <rect x="968" y="128" width="84" height="88" rx="6" fill="#5CC9B8" opacity=".35"/>
+    <rect x="1068" y="328" width="84" height="180" rx="6" fill="#5CC9B8" opacity=".45"/>
+    <rect x="1168" y="228" width="84" height="88" rx="6" fill="#5CC9B8" opacity=".3"/>
+    <rect x="1268" y="428" width="84" height="284" rx="6" fill="#5CC9B8" opacity=".5"/>
+    <rect x="1368" y="128" width="84" height="180" rx="6" fill="#5CC9B8" opacity=".38"/>
+    <rect x="1468" y="528" width="84" height="88" rx="6" fill="#5CC9B8" opacity=".28"/>
+  </g>
+
+  <!-- La línea de "ahora" cruzando la agenda. -->
+  <path d="M840 470 H1580" stroke="#DFA163" stroke-width="2" opacity=".45"/>
+  <circle cx="840" cy="470" r="6" fill="#DFA163" opacity=".6"/>
+
+  <g opacity=".08" stroke="#5CC9B8" stroke-width="1" fill="none">
+    <rect x="120" y="560" width="220" height="150" rx="10"/>
+    <path d="M120 610 H340"/>
+    <path d="M175 560 V585 M285 560 V585"/>
+  </g>
+</svg>
