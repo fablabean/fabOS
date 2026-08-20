@@ -47,6 +47,10 @@ Route::middleware('guest')->group(function () {
     Route::get('/ingresar/codigo', [LoginCodeController::class, 'showCodeForm'])->name('login.code');
     Route::post('/ingresar/codigo', [LoginCodeController::class, 'verifyCode'])->name('login.verify');
 
+    // Forzar el envio al correo aunque la cuenta use app: es la salida cuando
+    // alguien pierde el telefono, y sin ella la app seria una trampa.
+    Route::post('/ingresar/codigo/enviar', [LoginCodeController::class, 'reenviarPorCorreo'])->name('login.code.enviar');
+
     // Ingreso por QR del carne digital. Se apaga desde el backoffice (§5).
     Route::get('/ingresar/carnet', [CarnetLoginController::class, 'show'])->name('carnet');
     Route::post('/ingresar/carnet', [CarnetLoginController::class, 'login'])->name('carnet.login');

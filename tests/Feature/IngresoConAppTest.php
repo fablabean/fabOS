@@ -216,4 +216,37 @@ class IngresoConAppTest extends TestCase
 
         $this->assertTrue($persona->fresh()->tieneSegundoFactor());
     }
+
+    // ------------------------------------------ la salida cuando falla la app
+
+    /**
+     * Sin esto, configurar la app seria una trampa: quien pierde el telefono se
+     * queda fuera, porque la pantalla de ingreso deja de enviarle nada.
+     */
+    public function test_se_puede_pedir_un_codigo_al_correo_aunque_haya_app(): void
+    {
+        $this->conApp(['email' => 'quien@ejemplo.edu.co']);
+
+        $this->post('/ingresar', ['email' => 'quien@ejemplo.edu.co']);
+        $this->assertSame(0, LoginCode::where('email', 'quien@ejemplo.edu.co')->count());
+
+        $this->post('/ingresar/codigo/enviar', ['email' => 'quien@ejemplo.edu.co'])
+            ->assertRedirect();
+
+        $this->assertSame(1, LoginCode::where('email', 'quien@ejemplo.edu.co')->count());
+    }
+
+    /**
+     * La pantalla no puede prometer un correo que no se envio: quien tiene app
+     * se quedaria esperando algo que nunca llega.
+     */
+    public function test_la_pantalla_no_promete_un_correo_que_no_se_mando(): void
+    {
+        $this->conApp(['email' => 'quien@ejemplo.edu.co']);
+
+        $this->get(route('login.code', ['email' => 'quien@ejemplo.edu.co']))
+            ->assertOk()
+            ->assertSee('aplicación de autenticación', false)
+            ->assertDontSee('Lo enviamos a');
+    }
 }

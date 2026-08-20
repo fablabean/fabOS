@@ -187,4 +187,31 @@ class LoginCodeController extends Controller
 
         return [null, ''];
     }
+
+    /**
+     * Manda un codigo al correo aunque la cuenta use la app.
+     *
+     * Sin esto, configurar la app seria una trampa: quien perdiera el telefono
+     * se quedaria fuera para siempre, porque la pantalla de ingreso dejaria de
+     * enviarle nada. Los codigos de recuperacion existen, pero suponer que
+     * alguien los guardo es suponer demasiado.
+     */
+    public function reenviarPorCorreo(Request $request)
+    {
+        $data = $request->validate(['email' => ['required', 'email:rfc', 'max:255']]);
+        $email = Str::lower(trim($data['email']));
+
+        $this->throttle('otp:email:' . $email, config('fabos.otp.throttle_per_email'));
+
+        try {
+            $this->codes->issue($email, $request->ip(), $request->userAgent());
+        } catch (EnvioDeCodigoFallido) {
+            return back()->withErrors([
+                'code' => 'No pudimos enviar el codigo en este momento. Si tienes tu app de '
+                    . 'autenticacion, usa su codigo; si no, avisa a la coordinacion del laboratorio.',
+            ]);
+        }
+
+        return back()->with('status', 'Te enviamos un codigo al correo.');
+    }
 }
