@@ -55,9 +55,6 @@ echo "  Docker $(docker --version | cut -d' ' -f3 | tr -d ,) · destino $DESTINO
 
 paso 'Desplegando el código'
 
-PRIMERA_VEZ=false
-[ -d "$DESTINO" ] || PRIMERA_VEZ=true
-
 mkdir -p "$DESTINO"
 
 # Si ya había una instalación, se guarda el .env antes de descomprimir encima.
@@ -116,7 +113,7 @@ paso 'Instalando dependencias de PHP'
 # --no-scripts a propósito: los scripts de post-instalación arrancan Laravel, y
 # la imagen de Composer no trae la misma versión de PHP que el proyecto. Se
 # ejecutan después, dentro del contenedor de la aplicación, donde sí procede.
-if [ ! -d vendor/laravel/sail ]; then
+if [ ! -f vendor/autoload.php ]; then
     docker run --rm \
         -v "$PWD":/app -w /app \
         -u "$(id -u):$(id -g)" \
@@ -161,10 +158,10 @@ $ARTISAN config:cache
 $ARTISAN route:cache
 $ARTISAN view:cache
 
-if [ "$PRIMERA_VEZ" = true ]; then
-    paso 'Primera instalación'
-    $ARTISAN fabos:instalar --admin=<CORREO> --nombre="Erick Hansen" || true
-fi
+# El propio comando se niega a sembrar si ya hay personas, así que correrlo
+# siempre es seguro: en el primer despliegue instala, en los demás no hace nada.
+paso 'Datos iniciales'
+$ARTISAN fabos:instalar --admin=<CORREO> --nombre="Erick Hansen" || true
 
 # ------------------------------------------------------------------ revisión
 

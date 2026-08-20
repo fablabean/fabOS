@@ -2,20 +2,28 @@
 #
 #   docker compose -f compose.yaml -f compose.produccion.yaml up -d
 #
-# Tres diferencias con el entorno de desarrollo, y las tres importan:
+# Las diferencias con el entorno de desarrollo, y todas importan:
 #
-#  1. **La base de datos y Redis dejan de publicar puertos.** En desarrollo se
+#  1. **La imagen se construye desde `docker/`, no desde `vendor/`.** Sail es una
+#     dependencia de desarrollo: en producción se instala con `--no-dev` y no
+#     existe. Ver `docker/LEEME.md`.
+#  2. **La base de datos y Redis dejan de publicar puertos.** En desarrollo se
 #     exponen para poder conectarse con un cliente; en el servidor eso los deja
 #     accesibles desde toda la red del laboratorio. Los contenedores se hablan
 #     entre sí por la red interna de Docker sin necesidad de publicar nada.
-#  2. **Mailpit no existe.** Es un buzón de pruebas que atrapa el correo y no lo
+#  3. **Mailpit no existe.** Es un buzón de pruebas que atrapa el correo y no lo
 #     entrega: en producción los códigos de ingreso tienen que salir de verdad.
-#  3. **Todo se reinicia solo.** Un servidor que se reinicia a las 3 de la
+#  4. **Todo se reinicia solo.** Un servidor que se reinicia a las 3 de la
 #     mañana debe volver con fabOS arriba, sin que nadie entre a levantarlo.
 
 services:
     laravel.test:
         restart: unless-stopped
+        build:
+            context: './docker/aplicacion'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
         # `!override` reemplaza en vez de sumar: sin eso, Compose fusiona las
         # listas y volverían el puerto de Vite y la dependencia de Mailpit.
         ports: !override
@@ -25,6 +33,13 @@ services:
         depends_on: !override
             - pgsql
             - redis
+        environment:
+            # Sin esto, `artisan serve` atiende **una** petición a la vez: la
+            # siguiente espera a que termine la anterior. Filament hace varias
+            # por pantalla, así que con un solo proceso el sistema se siente
+            # roto aun con una persona usándolo.
+            PHP_CLI_SERVER_WORKERS: '${PHP_CLI_SERVER_WORKERS:-8}'
+            XDEBUG_MODE: 'off'
 
     pgsql:
         restart: unless-stopped
@@ -32,6 +47,10 @@ services:
         # de datos. Para conectarse desde el propio servidor:
         #   docker compose exec pgsql psql -U fabos -d fabos
         ports: !reset []
+        # Mismo motivo que la imagen: el script de arranque venía de vendor/.
+        volumes: !override
+            - 'sail-pgsql:/var/lib/postgresql'
+            - './docker/pgsql/create-testing-database.sql:/docker-entrypoint-initdb.d/10-create-testing-database.sql'
 
     redis:
         restart: unless-stopped
