@@ -156,6 +156,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'otp' => [
+        // Redis, no el almacen por defecto: en produccion la cache va a la
+        // base de datos, y un codigo en claro acabaria dentro del respaldo
+        // diario. En pruebas se sustituye por 'array'.
+        'captura_almacen' => env('OTP_CAPTURA_ALMACEN', 'redis'),
+
         'length'           => (int) env('OTP_LENGTH', 6),
         'ttl_minutes'      => (int) env('OTP_TTL_MINUTES', 10),
         'max_attempts'     => (int) env('OTP_MAX_ATTEMPTS', 5),

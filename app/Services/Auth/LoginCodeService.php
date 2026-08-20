@@ -6,6 +6,7 @@ use App\Exceptions\EnvioDeCodigoFallido;
 use App\Mail\LoginCodeMail;
 use App\Models\LoginCode;
 use App\Models\User;
+use App\Support\CapturaDeCodigos;
 use App\Models\UserCategory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,10 @@ class LoginCodeService
                 'user_agent' => Str::limit((string) $userAgent, 250, ''),
             ]);
         });
+
+        // Copia legible solo si alguien encendio la captura para las pruebas.
+        // Sin eso, esta linea no hace nada.
+        CapturaDeCodigos::guardar($email, $code, now()->addMinutes(config('fabos.otp.ttl_minutes')));
 
         try {
             Mail::to($email)->send(

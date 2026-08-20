@@ -4,6 +4,7 @@ namespace App\Services\Install;
 
 use App\Models\NotificationLog;
 use App\Models\User;
+use App\Support\CapturaDeCodigos;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,7 @@ class ReadinessService
             $this->cola(),
             $this->superadmin(),
             $this->segundoFactor(),
+            $this->capturaDeCodigos(),
         ])->filter()->values();
     }
 
@@ -169,6 +171,25 @@ class ReadinessService
             'De él dependen liberar reservas sin llegada, generar preventivas, recordar reservas y '
             . 'abonar la dotación. Si nadie lo arranca, nada de eso ocurre y no hay error que lo delate.',
             '* * * * * cd /ruta && php artisan schedule:run >> /dev/null 2>&1');
+    }
+
+    /**
+     * La captura de codigos deja entrar como cualquiera. Bloquea el despliegue
+     * a proposito: es preferible que estorbe a que se quede encendida y nadie
+     * se acuerde.
+     */
+    private function capturaDeCodigos(): ?array
+    {
+        if (! CapturaDeCodigos::activa()) {
+            return null;
+        }
+
+        $hasta = CapturaDeCodigos::hasta()?->timezone(config('app.timezone'));
+
+        return $this->mal('La captura de codigos de ingreso esta activa',
+            'Mientras lo este, cualquier superadmin puede ver el codigo de cualquiera y entrar '
+            . 'como esa persona. Se apagara sola el ' . $hasta?->format('d/m/Y H:i') . '.',
+            'Apagarla en Configuracion -> Codigos de prueba');
     }
 
     private function baseDeDatos(): array
