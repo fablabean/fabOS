@@ -51,10 +51,14 @@ class LoginCodeController extends Controller
             // proveedor no es especifico de nadie, y decir de mas aqui
             // convertiria esta pantalla en una forma de averiguar quien tiene
             // cuenta.
-            return back()->withInput()->withErrors([
-                'email' => 'No pudimos enviar el codigo en este momento. '
-                    . 'Vuelve a intentarlo en unos minutos; si sigue igual, avisa a la coordinacion del laboratorio.',
-            ]);
+            // No es un callejon: quien atiende el laboratorio pudo haberle
+            // entregado un codigo en mano, y esa es justo la salida cuando el
+            // correo no funciona. Se le lleva a la pantalla donde escribirlo.
+            return redirect()->route('login.code', ['email' => $email])->with(
+                'status',
+                'No pudimos enviarte el correo. Si tienes un codigo de tu app de '
+                . 'autenticacion, o uno que te hayan dado en el laboratorio, escribelo aqui.'
+            );
         }
 
         return redirect()

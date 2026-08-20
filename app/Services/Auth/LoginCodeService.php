@@ -51,16 +51,25 @@ class LoginCodeService
         $email = $this->normalize($email);
         $code  = $this->generateCode();
 
-        $this->guardar($email, $code, config('fabos.otp.ttl_minutes'), $ip, $userAgent);
-
-        // Copia legible solo si alguien encendio la captura para las pruebas.
-        // Sin eso, esta linea no hace nada.
-        CapturaDeCodigos::guardar($email, $code, now()->addMinutes(config('fabos.otp.ttl_minutes')));
-
+        // Guardar y enviar van juntos o no van.
+        //
+        // Guardar invalida los codigos anteriores de ese correo. Si despues
+        // fallara el envio, el fallo se llevaria por delante un codigo que si
+        // servia —por ejemplo el que alguien acaba de entregar en mano en el
+        // laboratorio— y dejaria en su lugar uno que nadie ha visto nunca.
+        // Dentro de la transaccion, un envio fallido no destruye nada.
         try {
-            Mail::to($email)->send(
-                new LoginCodeMail($code, config('fabos.otp.ttl_minutes'))
-            );
+            DB::transaction(function () use ($email, $code, $ip, $userAgent) {
+                $this->guardar($email, $code, config('fabos.otp.ttl_minutes'), $ip, $userAgent);
+
+                // Copia legible solo si alguien encendio la captura para las
+                // pruebas. Sin eso, esta linea no hace nada.
+                CapturaDeCodigos::guardar($email, $code, now()->addMinutes(config('fabos.otp.ttl_minutes')));
+
+                Mail::to($email)->send(
+                    new LoginCodeMail($code, config('fabos.otp.ttl_minutes'))
+                );
+            });
         } catch (\Throwable $e) {
             // Se registra el dominio, no la direccion: la bitacora no tiene por
             // que acumular los correos de quien intenta entrar.

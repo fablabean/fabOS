@@ -7,6 +7,7 @@ use App\Services\Auth\LoginCodeService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
@@ -127,11 +128,20 @@ class UsersTable
                     'validated_at'       => now(),
                 ])->save();
 
+                // El enlace lleva **directo a escribir el codigo**, no a la
+                // pantalla de ingreso: alli el sistema intentaria mandar un
+                // correo que quiza no salga, y la persona se quedaria atascada
+                // justo en el caso para el que existe este boton.
+                $url = route('login.code', ['email' => $record->email]);
+
                 Notification::make()
                     ->title('Codigo para ' . $record->name)
-                    ->body("**{$codigo}**
-
-Que lo escriba en " . route('login') . " con su correo. Caduca en 15 minutos.")
+                    ->body(new HtmlString(
+                        '<span style="font-family:ui-monospace,monospace;font-size:1.6rem;'
+                        . 'font-weight:700;letter-spacing:.18em">' . e($codigo) . '</span>'
+                        . '<br><br>Que lo escriba en <a href="' . e($url) . '" target="_blank" '
+                        . 'style="text-decoration:underline">esta pantalla</a>. Caduca en 15 minutos.'
+                    ))
                     ->persistent()
                     ->success()
                     ->send();

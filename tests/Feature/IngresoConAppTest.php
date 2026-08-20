@@ -249,4 +249,44 @@ class IngresoConAppTest extends TestCase
             ->assertSee('aplicación de autenticación', false)
             ->assertDontSee('Lo enviamos a');
     }
+
+    // ---------------------------------- cuando el correo no puede salir
+
+    /**
+     * El caso real: se le entrega un codigo en mano a alguien de un dominio al
+     * que el proveedor todavia no entrega. Si al escribir su correo el intento
+     * fallido invalidara el codigo, el boton de «validar y dar acceso» seria
+     * inutil justo cuando hace falta.
+     */
+    public function test_un_envio_fallido_no_destruye_el_codigo_entregado_en_mano(): void
+    {
+        User::factory()->create(['email' => 'nuevo@ejemplo.edu.co', 'status' => 'activo']);
+
+        $codigo = app(LoginCodeService::class)->emitirEnMano('nuevo@ejemplo.edu.co');
+
+        Mail::shouldReceive('to')->andThrow(
+            new \Symfony\Component\Mailer\Exception\TransportException('dominio no permitido')
+        );
+
+        $this->post('/ingresar', ['email' => 'nuevo@ejemplo.edu.co']);
+
+        // El codigo entregado sigue sirviendo.
+        $this->post('/ingresar/codigo', ['email' => 'nuevo@ejemplo.edu.co', 'code' => $codigo])
+            ->assertRedirect();
+
+        $this->assertAuthenticated();
+    }
+
+    /** Y el fallo de correo no puede ser un callejon sin salida. */
+    public function test_si_el_correo_falla_igual_se_llega_a_escribir_el_codigo(): void
+    {
+        User::factory()->create(['email' => 'nuevo@ejemplo.edu.co', 'status' => 'activo']);
+
+        Mail::shouldReceive('to')->andThrow(
+            new \Symfony\Component\Mailer\Exception\TransportException('dominio no permitido')
+        );
+
+        $this->post('/ingresar', ['email' => 'nuevo@ejemplo.edu.co'])
+            ->assertRedirect(route('login.code', ['email' => 'nuevo@ejemplo.edu.co']));
+    }
 }

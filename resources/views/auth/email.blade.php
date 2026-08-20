@@ -25,6 +25,12 @@
             o <a href="{{ route('carnet') }}">escanea tu carné digital</a>
         </p>
     @endif
+    <p class="foot">
+        ¿Te dieron un código en el laboratorio, o usas una app de autenticación?
+        <a href="{{ route('login.code', ['email' => '']) }}"
+           onclick="event.preventDefault(); const c=document.getElementById('email').value.trim(); if(c) location.href='{{ route('login.code') }}?email='+encodeURIComponent(c); else document.getElementById('email').focus();">Ya tengo un código</a>
+    </p>
+
 
     <p class="foot">
         Si eres de la Universidad, usa tu correo institucional: así quedas
