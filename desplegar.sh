@@ -105,6 +105,28 @@ fi
 
 chmod 600 .env
 
+# --------------------------------------------------------------- dependencias
+
+paso 'Instalando dependencias de PHP'
+
+# Huevo y gallina: Compose construye la imagen desde
+# vendor/laravel/sail/runtimes, pero vendor/ no se versiona. Así que las
+# dependencias se instalan antes, con un contenedor de Composer desechable.
+#
+# --no-scripts a propósito: los scripts de post-instalación arrancan Laravel, y
+# la imagen de Composer no trae la misma versión de PHP que el proyecto. Se
+# ejecutan después, dentro del contenedor de la aplicación, donde sí procede.
+if [ ! -d vendor/laravel/sail ]; then
+    docker run --rm \
+        -v "$PWD":/app -w /app \
+        -u "$(id -u):$(id -g)" \
+        -e COMPOSER_HOME=/tmp \
+        composer:2 install --no-dev --no-scripts --ignore-platform-reqs --no-interaction
+    echo "  vendor/ creado"
+else
+    echo "  vendor/ ya existe"
+fi
+
 # ---------------------------------------------------------------- servicios
 
 paso 'Levantando los servicios'
