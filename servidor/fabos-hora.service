@@ -1,0 +1,8 @@
+[Unit]
+Description=Poner el reloj en hora por HTTPS (cuando NTP esta bloqueado)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fabos-hora

@@ -80,7 +80,7 @@ class GrantRole extends Command
             ['Nombre', 'Categoría', 'Roles'],
             [[$user->name, $user->category?->name ?? '—', $user->getRoleNames()->implode(', ')]]
         );
-        $this->line('Ingresa por /ingresar con ese correo; el código llega a Mailpit.');
+        $this->line('Ingresa por /ingresar con ese correo; el código llega a su correo.');
 
         return self::SUCCESS;
     }

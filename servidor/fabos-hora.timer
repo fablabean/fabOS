@@ -1,0 +1,11 @@
+[Unit]
+Description=Revisar el reloj cada 15 minutos
+
+[Timer]
+# Al arrancar, porque un servidor apagado un fin de semana despierta desfasado.
+OnBootSec=1min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

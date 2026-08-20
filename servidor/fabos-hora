@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# Pone el reloj en hora usando la cabecera Date de HTTPS.
+#
+# Existe porque muchas redes institucionales bloquean NTP (UDP 123) hacia
+# fuera. Cuando eso pasa, chronyd se queda con todas sus fuentes en `Reach 0`,
+# el reloj se va yendo, y **el segundo factor deja de funcionar**: TOTP compara
+# ventanas de 30 segundos, asi que un minuto de desfase invalida cualquier
+# codigo. El sintoma que ve la gente es "mi telefono tiene mal la hora", y no.
+#
+# La precision de la cabecera Date es de un segundo, mas la latencia. Es mucho
+# peor que NTP y perfectamente suficiente para TOTP, para las reservas y para
+# los registros.
+#
+# No sustituye a NTP: si algun dia la red deja salir el 123, chronyd vuelve a
+# tomar el mando y esto se queda sin trabajo que hacer.
+
+set -uo pipefail
+
+# Varias fuentes: si una falla o miente, quedan las otras.
+FUENTES=(
+    'https://cloudflare.com/'
+    'https://www.google.com/'
+    'https://api.postmarkapp.com/'
+)
+
+# Por debajo de esto no se toca el reloj: corregir cada segundo solo introduce
+# saltos hacia atras, que son peores que un desfase pequeno.
+TOLERANCIA=2
+
+ahora_remoto() {
+    local cabecera
+    cabecera=$(curl -sI --max-time 10 "$1" 2>/dev/null | tr -d '\r' | grep -i '^date:' | cut -d' ' -f2-)
+    [ -n "$cabecera" ] || return 1
+    date -u -d "$cabecera" '+%s' 2>/dev/null
+}
+
+for fuente in "${FUENTES[@]}"; do
+    remoto=$(ahora_remoto "$fuente") || continue
+    [ -n "$remoto" ] || continue
+
+    local_ts=$(date -u '+%s')
+    desfase=$(( remoto - local_ts ))
+    absoluto=${desfase#-}
+
+    if [ "$absoluto" -le "$TOLERANCIA" ]; then
+        echo "Reloj en hora (desfase ${desfase}s, fuente ${fuente})"
+        exit 0
+    fi
+
+    if date -u -s "@${remoto}" >/dev/null 2>&1; then
+        hwclock --systohc 2>/dev/null || true
+        echo "Reloj ajustado ${desfase}s desde ${fuente} — ahora $(date -u '+%F %T') UTC"
+        exit 0
+    fi
+
+    echo "No se pudo ajustar el reloj (¿hace falta root?)" >&2
+    exit 1
+done
+
+echo "Ninguna fuente de hora respondio" >&2
+exit 1

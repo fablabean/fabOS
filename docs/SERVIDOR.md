@@ -231,6 +231,38 @@ Si de momento no sale a internet, apunta el nombre en el DNS interno —o en el
 certificado válido el escáner QR no abre la cámara**: los navegadores solo la
 entregan en contexto seguro. Es la razón práctica para preferir el túnel.
 
+## El reloj, y por qué el segundo factor deja de funcionar
+
+Un problema que no parece de red y lo es. El segundo factor compara ventanas de
+**30 segundos**: si el reloj del servidor se desfasa un minuto, ningun codigo
+coincide nunca, y quien lo intenta concluye que su telefono tiene mal la hora.
+
+Muchas redes institucionales dejan salir HTTPS y bloquean todo lo demas —
+incluido **NTP (UDP 123)**. Cuando eso pasa, `chronyd` corre pero no sincroniza
+con nadie, y nada lo avisa:
+
+```bash
+timedatectl                # System clock synchronized: no
+chronyc sources            # todas las fuentes con Reach 0
+```
+
+El desfase real se mide contra cualquier servidor HTTPS:
+
+```bash
+curl -sI https://cloudflare.com/ | grep -i ^date
+date -u
+```
+
+Si NTP esta bloqueado, `servidor/` trae un temporizador que pone el reloj en
+hora por HTTPS cada quince minutos. Su instalacion esta en `servidor/LEEME.md`.
+
+Y una linea que conviene no olvidar, porque devuelve el problema en cada
+reinicio:
+
+```bash
+timedatectl set-local-rtc 0     # el reloj del hardware, en UTC
+```
+
 ## 6. El planificador
 
 Lo que más se olvida, y no da ningún error cuando falta. Como usuario `fabos`:
