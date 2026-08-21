@@ -266,10 +266,17 @@ algo diferente.
 | `carne` | Tienes la sesión viva de la app de la Universidad | Al escanear el carné digital |
 
 **Una basta** para reservar una máquina, ver tus certifabs o pedir un encargo.
-**El backoffice exige dos distintas** — da igual cuáles. Lo que protege no es
-una combinación concreta: es que un solo teléfono robado, o un solo buzón
-comprometido, no alcance para encender los cobros ni para mirar el libro
-contable.
+
+**El backoffice exige la app**, y solo la app. No «dos cualesquiera»: el otro
+factor disponible es el correo, y un correo que no siempre llega convierte la
+segunda comprobación en una forma de quedarse fuera del propio sistema. Un
+candado que se traba solo no protege nada — hace que la gente busque cómo
+saltárselo.
+
+La app no depende de la red, del proveedor de correo ni de que alguien apruebe
+una cuenta: el código lo genera el teléfono. A cambio se acepta que quien tenga
+el teléfono desbloqueado con la app abierta entre a la administración. Es una
+decisión del laboratorio, tomada sabiendo cuál era la alternativa.
 
 ### La app de autenticación
 

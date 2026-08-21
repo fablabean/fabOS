@@ -79,11 +79,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/segundo-factor', [TwoFactorController::class, 'verificar'])->name('dosfactores.verificar');
     Route::post('/segundo-factor', [TwoFactorController::class, 'comprobar'])->name('dosfactores.comprobar');
 
-    // Cuando ya se entro con la app, el segundo factor tiene que ser otro.
-    Route::get('/segundo-factor/otro', [TwoFactorController::class, 'otroFactor'])->name('dosfactores.otroFactor');
-    Route::post('/segundo-factor/otro/enviar', [TwoFactorController::class, 'enviarOtroFactor'])->name('dosfactores.otroFactor.enviar');
-    Route::post('/segundo-factor/otro', [TwoFactorController::class, 'comprobarOtroFactor'])->name('dosfactores.otroFactor.comprobar');
-
     // Reservas (§10)
     Route::get('/reservar', [ReservationController::class, 'index'])->name('reservas.index');
     Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->name('reservas.show');

@@ -132,30 +132,48 @@ class IngresoConAppTest extends TestCase
 
     // --------------------------------------------- dos factores en el backoffice
 
-    public function test_el_backoffice_no_se_abre_con_un_solo_factor(): void
+    /**
+     * Entrar con la app abre el backoffice sin pedir nada mas.
+     *
+     * La app es el factor que exige la administracion, y quien entro con ella ya
+     * la demostro en esta sesion. Volver a pedirle el mismo codigo no probaria
+     * nada nuevo, y apoyarse en el correo —que no siempre llega— convertiria la
+     * segunda comprobacion en una forma de quedarse fuera del propio sistema.
+     */
+    public function test_entrar_con_la_app_abre_el_backoffice(): void
     {
         [$persona, $secreto] = $this->conApp(['email' => 'jefa@ejemplo.edu.co']);
         $persona->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
 
-        // Entra solo con la app: un factor.
         $this->post('/ingresar/codigo', [
             'email' => 'jefa@ejemplo.edu.co',
             'code'  => app(Google2FA::class)->getCurrentOtp($secreto),
         ]);
 
         $this->assertAuthenticatedAs($persona->fresh());
-
-        // Y el panel le pide el otro, en vez de repetirle el mismo.
-        $this->get('/admin/tablero')->assertRedirect(route('dosfactores.otroFactor'));
+        $this->get('/admin/tablero')->assertOk();
     }
 
-    public function test_con_dos_factores_distintos_el_backoffice_se_abre(): void
+    /** Entrar por correo no abre la administracion: ahi la app es obligatoria. */
+    public function test_entrar_solo_por_correo_no_abre_el_backoffice(): void
+    {
+        [$persona] = $this->conApp(['email' => 'jefa@ejemplo.edu.co']);
+        $persona->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+
+        $codigo = app(LoginCodeService::class)->emitirEnMano('jefa@ejemplo.edu.co');
+        $this->post('/ingresar/codigo', ['email' => 'jefa@ejemplo.edu.co', 'code' => $codigo]);
+
+        $this->assertAuthenticatedAs($persona->fresh());
+        $this->get('/admin/tablero')->assertRedirect(route('dosfactores.verificar'));
+    }
+
+    public function test_con_la_app_verificada_en_la_sesion_el_backoffice_se_abre(): void
     {
         [$persona] = $this->conApp(['email' => 'jefa@ejemplo.edu.co']);
         $persona->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
 
         $this->actingAs($persona->fresh())
-            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['app' => true]])
             ->get('/admin/tablero')
             ->assertOk();
     }

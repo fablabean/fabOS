@@ -90,68 +90,6 @@ class TwoFactorController extends Controller
         return redirect()->intended('/admin');
     }
 
-    /**
-     * Le falta el otro factor.
-     *
-     * Pasa cuando alguien entro con la app: pedirle el mismo codigo otra vez no
-     * probaria nada nuevo, asi que se le manda uno al correo. El carne tambien
-     * sirve, y por eso la pantalla lo ofrece.
-     */
-    public function otroFactor(Request $request)
-    {
-        return view('auth.dos-factores.otro-factor', [
-            'correo'  => $request->user()->email,
-            'enviado' => $request->session()->get('otro_factor_enviado', false),
-        ]);
-    }
-
-    public function enviarOtroFactor(Request $request, LoginCodeService $codigos)
-    {
-        $clave = 'otro-factor:' . $request->user()->id;
-
-        if (RateLimiter::tooManyAttempts($clave, 3)) {
-            return back()->withErrors(['codigo' => 'Demasiados envios. Espera unos minutos.']);
-        }
-
-        RateLimiter::hit($clave, 600);
-
-        try {
-            $codigos->issue($request->user()->email, $request->ip(), $request->userAgent());
-        } catch (EnvioDeCodigoFallido) {
-            return back()->withErrors([
-                'codigo' => 'No pudimos enviar el codigo. Si tienes el carne digital a mano, '
-                    . 'escanealo: tambien sirve como segundo factor.',
-            ]);
-        }
-
-        $request->session()->put('otro_factor_enviado', true);
-
-        return back();
-    }
-
-    public function comprobarOtroFactor(Request $request, LoginCodeService $codigos)
-    {
-        $datos = $request->validate(['codigo' => ['required', 'string', 'max:20']]);
-
-        $clave = 'otro-factor:verify:' . $request->user()->id;
-
-        if (RateLimiter::tooManyAttempts($clave, 5)) {
-            throw ValidationException::withMessages(['codigo' => 'Demasiados intentos. Espera unos minutos.']);
-        }
-
-        RateLimiter::hit($clave, 300);
-
-        if (! $codigos->verify($request->user()->email, $datos['codigo'])) {
-            throw ValidationException::withMessages(['codigo' => 'Ese codigo no es valido o ya expiro.']);
-        }
-
-        RateLimiter::clear($clave);
-        $request->session()->forget('otro_factor_enviado');
-        FactoresDeSesion::anotar($request, FactoresDeSesion::CORREO);
-
-        return redirect()->intended('/admin');
-    }
-
     // ------------------------------------------------- desde la propia cuenta
 
     /**

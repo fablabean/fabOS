@@ -8,15 +8,23 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * El backoffice exige **dos factores distintos** (§16).
+ * El backoffice exige **la aplicación de autenticación** (§16).
  *
  * Se aplica al panel entero y no a cada pantalla: si dependiera de recordarlo
  * en cada sitio, tarde o temprano habría una puerta sin cerrar.
  *
- * No exige una combinación concreta —correo, app o carné valen igual— sino que
- * sean dos. Lo que protege no es cuál se usó: es que un solo teléfono robado, o
- * un solo buzón comprometido, no alcance para encender los cobros ni para
- * mirar el libro contable.
+ * Se exige ese factor y no «dos cualesquiera» por una razón práctica: el otro
+ * factor disponible es el correo, y un correo que no siempre llega convierte la
+ * segunda comprobación en una forma de quedarse fuera del propio sistema. Un
+ * candado que se traba solo no protege nada; hace que la gente busque cómo
+ * saltárselo.
+ *
+ * La app no depende de la red, del proveedor de correo ni de que alguien
+ * apruebe una cuenta: el código lo genera el teléfono.
+ *
+ * Lo que esto acepta a cambio: quien tenga el teléfono desbloqueado con la app
+ * abierta entra al backoffice. Es una decisión consciente del laboratorio,
+ * tomada sabiendo que la alternativa era peor.
  */
 class RequiereSegundoFactor
 {
@@ -35,19 +43,15 @@ class RequiereSegundoFactor
             return $next($request);
         }
 
-        if (FactoresDeSesion::cuantos($request) >= 2) {
+        // Quien entró con la app ya la demostró en esta sesión: pedirle el mismo
+        // código otra vez no probaría nada nuevo.
+        if (FactoresDeSesion::tiene($request, FactoresDeSesion::APP)) {
             return $next($request);
         }
 
         // Sin configurar: se manda a configurarlo, no se le niega el paso sin más.
         if (! $user->tieneSegundoFactor()) {
             return redirect()->route('dosfactores.configurar');
-        }
-
-        // Ya entró con la app y le falta el otro factor. Pedirle el mismo código
-        // otra vez no probaría nada nuevo, así que se le manda al correo.
-        if (FactoresDeSesion::tiene($request, FactoresDeSesion::APP)) {
-            return redirect()->route('dosfactores.otroFactor');
         }
 
         return redirect()->route('dosfactores.verificar');
