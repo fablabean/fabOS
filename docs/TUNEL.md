@@ -69,7 +69,7 @@ queda esperando, porque nadie le ha dicho a dónde mandar el tráfico.
 `laravel.test:80` y **no** `localhost:80`: cloudflared corre dentro de la red de
 contenedores, donde `localhost` es él mismo y no la aplicación.
 
-Conviene añadir un segundo hostname para `<www.DOMINIO>` con el mismo
+Conviene añadir un segundo hostname para `www.<DOMINIO>` con el mismo
 destino.
 
 El registro DNS lo crea Cloudflare solo al guardar el hostname. No hace falta

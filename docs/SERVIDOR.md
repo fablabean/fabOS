@@ -7,7 +7,7 @@ guía aparecen estos marcadores; sustitúyelos por los tuyos:
 |---|---|
 | `<SERVIDOR>` | IP fija del servidor en la red del laboratorio |
 | `<GATEWAY>` | Puerta de enlace de esa red |
-| `<INTERFAZ>` | Interfaz de red (`eth0`, `<INTERFAZ>`…) |
+| `<INTERFAZ>` | Interfaz de red (`eth0`, `enp3s0`, `wlan0`…) |
 | `<DOMINIO>` | El dominio público, si lo hay |
 | `<CORREO>` | Correo de la primera persona administradora |
 
