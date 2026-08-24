@@ -343,4 +343,72 @@ class AsesoriasTest extends TestCase
             'ends_at'         => $this->hora('11:30'),
         ]);
     }
+
+    // ------------------------------------------------ la zona de administracion
+
+    private function jefa(): User
+    {
+        $u = User::factory()->create(['status' => 'activo']);
+        $u->assignRole(\Spatie\Permission\Models\Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+
+        $this->actingAs($u->fresh())->withSession([
+            \App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['app' => true],
+        ]);
+
+        return $u->fresh();
+    }
+
+    public function test_la_pantalla_de_asesorias_muestra_el_reparto(): void
+    {
+        $this->jefa();
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $this->asesora($ana);
+        $this->asesora($beto);
+
+        app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        );
+
+        $this->get('/admin/asesorias')
+            ->assertOk()
+            ->assertSee('Cómo va el reparto')
+            ->assertSee('Cortadora láser')
+            ->assertSee('Ana')
+            ->assertSee('Beto');
+    }
+
+    /**
+     * Un equipo con una sola persona declarada es un punto unico de fallo: el
+     * dia que falte, nadie puede pedir asesoria de esa maquina y el sistema no
+     * lo dice — simplemente no hay horas libres.
+     */
+    public function test_avisa_de_los_equipos_con_un_solo_asesor(): void
+    {
+        $this->jefa();
+        $this->asesora($this->colaborador('Ana'));
+
+        $this->get('/admin/asesorias')
+            ->assertOk()
+            ->assertSee('Equipos con un solo asesor')
+            ->assertSee('Cortadora láser');
+    }
+
+    public function test_con_dos_asesores_ya_no_avisa(): void
+    {
+        $this->jefa();
+        $this->asesora($this->colaborador('Ana'));
+        $this->asesora($this->colaborador('Beto'));
+
+        $this->get('/admin/asesorias')
+            ->assertOk()
+            ->assertDontSee('Equipos con un solo asesor');
+    }
+
+    public function test_la_pantalla_es_del_backoffice(): void
+    {
+        $this->actingAs($this->alguien());
+
+        $this->get('/admin/asesorias')->assertForbidden();
+    }
 }
