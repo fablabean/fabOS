@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\Reservation;
+use App\Models\User;
 use App\Models\Enrollment;
 use App\Models\NotificationTemplate;
 use App\Services\Ledger\LedgerService;
@@ -68,6 +69,30 @@ class AccountController extends Controller
                 ->orderBy('starts_at')
                 ->get()
                 ->each(fn (Reservation $r) => $r->setRelation('reservable', Asset::find($r->reservable_id))),
+
+            // Las asesorias van aparte porque no reservan una maquina sino el
+            // TIEMPO de quien asesora, asi que su `reservable` es una persona.
+            // Sin esto, quien pedia una asesoria no la veia en ningun sitio.
+            'asesorias' => Reservation::query()
+                ->where('user_id', $user->id)
+                ->where('mode', 'asesoria')
+                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
+                ->where('ends_at', '>=', now())
+                ->with(['advisoryAsset.area', 'reservable'])
+                ->orderBy('starts_at')
+                ->get(),
+
+            // Y las que ATIENDE, si es del equipo: su agenda del dia depende de
+            // esto tanto como de sus propias reservas.
+            'asesoriasQueAtiendo' => Reservation::query()
+                ->where('reservable_type', User::class)
+                ->where('reservable_id', $user->id)
+                ->where('mode', 'asesoria')
+                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
+                ->where('ends_at', '>=', now())
+                ->with(['advisoryAsset', 'user'])
+                ->orderBy('starts_at')
+                ->get(),
             'qr'        => $this->qr,
         ]);
     }

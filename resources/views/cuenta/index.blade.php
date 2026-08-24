@@ -174,6 +174,51 @@
         </div>
     @endif
 
+    {{-- --------------------------------------------------- asesorías --}}
+    @if ($asesorias->isNotEmpty())
+        <h2>Mis próximas asesorías</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
+                usarla, resérvala aparte.
+            </p>
+
+            <table>
+                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th></tr></thead>
+                <tbody>
+                @foreach ($asesorias as $a)
+                    <tr>
+                        <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
+                        <td>{{ $a->reservable?->name ?? '—' }}</td>
+                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    {{-- Para quien es del equipo: lo que le toca atender. --}}
+    @if ($asesoriasQueAtiendo->isNotEmpty())
+        <h2>Asesorías que voy a atender</h2>
+
+        <div class="panel">
+            <table>
+                <thead><tr><th>Equipo</th><th>Quién la pidió</th><th>Cuándo</th></tr></thead>
+                <tbody>
+                @foreach ($asesoriasQueAtiendo as $a)
+                    <tr>
+                        <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
+                        <td>{{ $a->user?->name ?? '—' }}</td>
+                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- ---------------------------------------------------- reservas --}}
     <h2>Mis próximas reservas</h2>
 

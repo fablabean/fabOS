@@ -140,6 +140,16 @@ class AsesoriaService
         ?string $motivo = null,
     ): ?Reservation {
         return DB::transaction(function () use ($solicitante, $asset, $desde, $hasta, $motivo) {
+            // Quien pide tambien tiene que estar libre. Se comprobaba solo al
+            // asesor, asi que una misma persona podia agendarse dos asesorias a
+            // la misma hora —con dos asesores distintos— y dejar plantado a uno.
+            //
+            // No basta con mirar `reservable`: las reservas de esa persona sobre
+            // una maquina la tienen como `user_id`, no como reservable.
+            if ($this->tieneAlgoALaMismaHora($solicitante, $desde, $hasta)) {
+                return null;
+            }
+
             $asesor = $this->elegir($asset, $desde, $hasta, $solicitante);
 
             if (! $asesor) {
@@ -262,5 +272,22 @@ class AsesoriaService
     public function seAsesora(Asset $asset): bool
     {
         return $this->asesoresDe($asset)->isNotEmpty();
+    }
+
+    /**
+     * ¿Esta persona ya tiene algo suyo a esa hora?
+     *
+     * Cuenta lo que reservo —una maquina, otra asesoria—, no lo que otros
+     * reservaron sobre ella: un colaborador que acompana a alguien esta ocupado
+     * por esa via, y eso ya lo cubre `estaLibre`.
+     */
+    public function tieneAlgoALaMismaHora(User $persona, CarbonInterface $desde, CarbonInterface $hasta): bool
+    {
+        return Reservation::query()
+            ->where('user_id', $persona->id)
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->exists();
     }
 }

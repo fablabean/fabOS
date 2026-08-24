@@ -39,6 +39,20 @@ class AsesoriasTest extends TestCase
         ]);
     }
 
+    /**
+     * Un lunes por venir.
+     *
+     * Las pantallas de «proximas» filtran por `ends_at >= now()`, asi que una
+     * hora de hoy que ya paso no aparece — y la prueba fallaria por la hora del
+     * dia en que se ejecuta, no por el codigo.
+     */
+    private function horaFutura(string $hhmm): Carbon
+    {
+        return Carbon::now(config('fabos.lab.timezone'))
+            ->next(Carbon::MONDAY)
+            ->setTimeFromTimeString($hhmm);
+    }
+
     /** Lunes 24/08/2026, hora del laboratorio. */
     private function hora(string $hhmm): Carbon
     {
@@ -559,5 +573,75 @@ class AsesoriasTest extends TestCase
             ->get(route('reservas.show', $this->equipo))
             ->assertOk()
             ->assertSee('/storage/activos/ejemplo.jpg', false);
+    }
+
+    // --------------------------------------------------------- en Mi cuenta
+
+    /**
+     * Una asesoria reserva el tiempo de OTRA persona, asi que no aparecia en la
+     * lista de reservas de quien la pidio —filtrada a equipos— y se quedaba sin
+     * verse en ninguna parte.
+     */
+    public function test_quien_pide_una_asesoria_la_ve_en_su_cuenta(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $quien = $this->alguien();
+
+        app(AsesoriaService::class)->agendar(
+            $quien, $this->equipo, $this->horaFutura('10:00'), $this->horaFutura('11:00'),
+        );
+
+        $this->actingAs($quien)
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('Mis próximas asesorías', false)
+            ->assertSee('Cortadora láser')
+            ->assertSee('Ana');
+    }
+
+    /** Y quien la atiende la ve en su propia agenda. */
+    public function test_quien_atiende_ve_lo_que_le_toca(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $quien = $this->alguien();
+
+        app(AsesoriaService::class)->agendar(
+            $quien, $this->equipo, $this->horaFutura('10:00'), $this->horaFutura('11:00'),
+        );
+
+        $this->actingAs($ana)
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('Asesorías que voy a atender', false)
+            ->assertSee($quien->name);
+    }
+
+    /**
+     * Se comprobaba que el ASESOR estuviera libre, pero no quien pedia: una
+     * misma persona podia agendarse dos asesorias a la misma hora con dos
+     * asesores distintos, y dejar plantado a uno.
+     */
+    public function test_nadie_puede_tener_dos_asesorias_a_la_misma_hora(): void
+    {
+        $this->asesora($this->colaborador('Ana'));
+        $this->asesora($this->colaborador('Beto'));
+
+        $quien = $this->alguien();
+        $servicio = app(AsesoriaService::class);
+
+        $this->assertNotNull($servicio->agendar(
+            $quien, $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        ));
+
+        $this->assertNull($servicio->agendar(
+            $quien, $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        ));
+
+        // Ni solapada a medias.
+        $this->assertNull($servicio->agendar(
+            $quien, $this->equipo, $this->hora('10:30'), $this->hora('11:30'),
+        ));
     }
 }
