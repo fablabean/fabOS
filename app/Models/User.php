@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -91,6 +92,12 @@ class User extends Authenticatable implements FilamentUser
     public function certifabs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Certifab::class);
+    }
+
+    /** Patron semanal de jornada, una fila por dia (§5). */
+    public function workSchedules(): HasMany
+    {
+        return $this->hasMany(WorkSchedule::class);
     }
 
     public function category(): BelongsTo
