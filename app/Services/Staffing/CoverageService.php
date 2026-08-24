@@ -124,6 +124,7 @@ class CoverageService
         $jornadas = WorkSchedule::query()
             ->vigenteEn($fecha)
             ->where('weekday', $fecha->isoWeekday())
+            ->where('modalidad', WorkSchedule::PRESENCIAL)
             ->whereNotIn('user_id', $ausentes)
             ->get();
 
@@ -151,6 +152,9 @@ class CoverageService
         $ids = WorkSchedule::query()
             ->vigenteEn($d)
             ->where('weekday', $d->isoWeekday())
+            // Una jornada remota es jornada, pero no cobertura: quien trabaja
+            // desde casa no abre la puerta ni acompana una maquina.
+            ->where('modalidad', WorkSchedule::PRESENCIAL)
             ->whereNotIn('user_id', $ausentes)
             ->where('starts_at', '<=', $d->format('H:i:s'))
             ->where('ends_at', '>=', $h->format('H:i:s'))

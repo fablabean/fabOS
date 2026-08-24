@@ -11,7 +11,7 @@ class WorkSchedule extends Model
 {
     protected $fillable = [
         'user_id', 'weekday', 'starts_at', 'ends_at',
-        'break_minutes', 'effective_from', 'effective_until',
+        'break_minutes', 'modalidad', 'effective_from', 'effective_until',
     ];
 
     protected function casts(): array
@@ -20,6 +20,26 @@ class WorkSchedule extends Model
             'effective_from'  => 'date',
             'effective_until' => 'date',
         ];
+    }
+
+    public const PRESENCIAL = 'presencial';
+    public const REMOTA     = 'remota';
+
+    /**
+     * Presencial abre el laboratorio; remota no.
+     *
+     * La franja atendida se deriva de las jornadas, y de ella dependen si se
+     * puede reservar y quién acompaña. Alguien desde casa cumple su jornada,
+     * pero no abre la puerta.
+     */
+    public const MODALIDADES = [
+        self::PRESENCIAL => 'Presencial',
+        self::REMOTA     => 'Remota',
+    ];
+
+    public function esPresencial(): bool
+    {
+        return $this->modalidad === self::PRESENCIAL;
     }
 
     public const DIAS = [

@@ -51,12 +51,22 @@ class WorkSchedulesTable
                     ->state(fn (WorkSchedule $record) => $record->horasEfectivas() . ' h')
                     ->badge()->color('gray'),
 
+                TextColumn::make('modalidad')
+                    ->label('Modalidad')
+                    ->formatStateUsing(fn ($state) => WorkSchedule::MODALIDADES[$state] ?? $state)
+                    ->badge()
+                    ->color(fn ($state) => $state === WorkSchedule::PRESENCIAL ? 'success' : 'warning')
+                    ->tooltip(fn ($state) => $state === WorkSchedule::PRESENCIAL
+                        ? 'Cuenta como cobertura del laboratorio'
+                        : 'No abre el laboratorio ni acompaña reservas'),
+
                 TextColumn::make('effective_from')->label('Vigente desde')->date('d/m/Y'),
                 TextColumn::make('effective_until')->label('Hasta')->date('d/m/Y')->placeholder('sin fin'),
             ])
             ->filters([
                 SelectFilter::make('user_id')->label('Persona')->relationship('user', 'name')->preload(),
                 SelectFilter::make('weekday')->label('Día')->options(WorkSchedule::DIAS),
+                SelectFilter::make('modalidad')->label('Modalidad')->options(WorkSchedule::MODALIDADES),
             ])
             ->headerActions([self::copiarJornadas()])
             ->recordActions([EditAction::make()])

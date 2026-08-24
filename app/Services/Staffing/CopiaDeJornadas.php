@@ -50,6 +50,7 @@ final class CopiaDeJornadas
                     'starts_at'       => $jornada->starts_at,
                     'ends_at'         => $jornada->ends_at,
                     'break_minutes'   => $jornada->break_minutes,
+                    'modalidad'       => $jornada->modalidad,
                     'effective_from'  => $desde,
                     'effective_until' => $jornada->effective_until,
                 ]);

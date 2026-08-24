@@ -5,6 +5,7 @@ namespace App\Filament\Resources\WorkSchedules\Schemas;
 use App\Models\WorkSchedule;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
@@ -70,6 +71,15 @@ class WorkScheduleForm
                     ->maxValue(480)
                     ->required()
                     ->default(60),
+
+                Radio::make('modalidad')
+                    ->label('Modalidad')
+                    ->options(WorkSchedule::MODALIDADES)
+                    ->default(WorkSchedule::PRESENCIAL)
+                    ->required()
+                    ->inline()
+                    ->inlineLabel(false)
+                    ->helperText('Solo la presencial cuenta como cobertura: quien trabaja desde casa cumple su jornada, pero no abre el laboratorio ni acompaña una máquina.'),
 
                 DatePicker::make('effective_from')
                     ->label('Vigente desde')

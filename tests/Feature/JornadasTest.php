@@ -7,6 +7,7 @@ use App\Filament\Resources\WorkSchedules\Pages\EditWorkSchedule;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\Staffing\CopiaDeJornadas;
+use App\Services\Staffing\CoverageService;
 use Illuminate\Support\Carbon;
 use App\Support\FactoresDeSesion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -287,5 +288,98 @@ class JornadasTest extends TestCase
 
         $this->assertSame([], $r['copiados']);
         $this->assertSame(2, WorkSchedule::where('user_id', $michael->id)->count());
+    }
+
+    // ---------------------------------------------- presencial contra remota
+
+    public function test_una_jornada_nace_presencial(): void
+    {
+        $persona = User::factory()->create(['status' => 'activo']);
+        $this->jornadasDe($persona, [1]);
+
+        $this->assertSame(WorkSchedule::PRESENCIAL, WorkSchedule::first()->modalidad);
+        $this->assertTrue(WorkSchedule::first()->esPresencial());
+    }
+
+    /**
+     * Lo que de verdad importa de este campo: la franja atendida se DERIVA de
+     * las jornadas, y de ella depende si se puede reservar. Quien trabaja desde
+     * casa cumple su jornada, pero no abre la puerta.
+     */
+    public function test_una_jornada_remota_no_abre_el_laboratorio(): void
+    {
+        $persona = User::factory()->create(['status' => 'activo']);
+
+        WorkSchedule::create([
+            'user_id' => $persona->id, 'weekday' => 1,
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_minutes' => 60, 'modalidad' => WorkSchedule::REMOTA,
+            'effective_from' => '2026-01-01',
+        ]);
+
+        $lunes = Carbon::parse('2026-08-24 10:00', config('fabos.lab.timezone'));
+
+        $this->assertNull(app(CoverageService::class)->franjaAtendida($lunes));
+    }
+
+    public function test_una_jornada_presencial_si_lo_abre(): void
+    {
+        $persona = User::factory()->create(['status' => 'activo']);
+
+        WorkSchedule::create([
+            'user_id' => $persona->id, 'weekday' => 1,
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_minutes' => 60, 'modalidad' => WorkSchedule::PRESENCIAL,
+            'effective_from' => '2026-01-01',
+        ]);
+
+        $lunes = Carbon::parse('2026-08-24 10:00', config('fabos.lab.timezone'));
+
+        $this->assertNotNull(app(CoverageService::class)->franjaAtendida($lunes));
+    }
+
+    /** Ni acompaña una reserva: para eso hay que estar delante de la máquina. */
+    public function test_quien_esta_en_remoto_no_cuenta_como_personal_en_jornada(): void
+    {
+        $remoto = User::factory()->create(['status' => 'activo']);
+        $presencial = User::factory()->create(['status' => 'activo']);
+
+        foreach ([[$remoto, WorkSchedule::REMOTA], [$presencial, WorkSchedule::PRESENCIAL]] as [$u, $modo]) {
+            WorkSchedule::create([
+                'user_id' => $u->id, 'weekday' => 1,
+                'starts_at' => '08:00', 'ends_at' => '17:00',
+                'break_minutes' => 60, 'modalidad' => $modo,
+                'effective_from' => '2026-01-01',
+            ]);
+        }
+
+        $tz = config('fabos.lab.timezone');
+        $enJornada = app(CoverageService::class)->enJornada(
+            Carbon::parse('2026-08-24 10:00', $tz),
+            Carbon::parse('2026-08-24 12:00', $tz),
+        );
+
+        $this->assertTrue($enJornada->contains('id', $presencial->id));
+        $this->assertFalse($enJornada->contains('id', $remoto->id));
+    }
+
+    public function test_copiar_conserva_la_modalidad(): void
+    {
+        $origen = User::factory()->create(['status' => 'activo']);
+        $destino = User::factory()->create(['status' => 'activo']);
+
+        WorkSchedule::create([
+            'user_id' => $origen->id, 'weekday' => 5,
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_minutes' => 60, 'modalidad' => WorkSchedule::REMOTA,
+            'effective_from' => '2026-08-24',
+        ]);
+
+        app(CopiaDeJornadas::class)->copiar($origen->id, $destino->id, Carbon::parse('2026-09-01'));
+
+        $this->assertSame(
+            WorkSchedule::REMOTA,
+            WorkSchedule::where('user_id', $destino->id)->first()->modalidad,
+        );
     }
 }
