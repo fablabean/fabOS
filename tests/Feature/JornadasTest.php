@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\WorkSchedules\Pages\CreateWorkSchedule;
+use App\Filament\Resources\WorkSchedules\Pages\EditWorkSchedule;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\FactoresDeSesion;
@@ -173,5 +174,36 @@ class JornadasTest extends TestCase
             ])
             ->call('create')
             ->assertHasFormErrors(['weekdays']);
+    }
+
+    // ------------------------------------------------------------ al editar
+
+    /**
+     * Al editar se toca una sola jornada. Cada fila abre una franja horaria
+     * propia, asi que tocar una no puede arrastrar a las demas.
+     */
+    public function test_editar_una_jornada_no_toca_las_de_otros_dias(): void
+    {
+        $this->jefa();
+        $persona = User::factory()->create(['status' => 'activo']);
+
+        foreach ([1, 2] as $dia) {
+            WorkSchedule::create([
+                'user_id' => $persona->id, 'weekday' => $dia,
+                'starts_at' => '08:00', 'ends_at' => '17:30',
+                'break_minutes' => 60, 'effective_from' => '2026-08-24',
+            ]);
+        }
+
+        $lunes = WorkSchedule::where('weekday', 1)->first();
+
+        Livewire::test(EditWorkSchedule::class, ['record' => $lunes->getKey()])
+            ->fillForm(['starts_at' => '07:00'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('07:00:00', WorkSchedule::where('weekday', 1)->first()->starts_at);
+        $this->assertSame('08:00:00', WorkSchedule::where('weekday', 2)->first()->starts_at);
+        $this->assertSame(2, WorkSchedule::where('user_id', $persona->id)->count());
     }
 }

@@ -36,9 +36,15 @@ class WorkScheduleForm
                     ->bulkToggleable()
                     ->visibleOn('create'),
 
-                // Al editar se toca UNA jornada concreta, así que aquí el día es
-                // uno solo: convertir esto en múltiple significaría decidir en
-                // silencio si se duplican filas o se mueven.
+                // Al editar se toca UNA jornada, y aquí el día es uno solo.
+                //
+                // Cada fila abre una franja horaria propia, así que unas
+                // casillas aquí tendrían que decidir en silencio qué significa
+                // marcar y desmarcar: ¿duplicar la jornada, moverla, o borrar
+                // la del día que se quita? Esa última se llevaría por delante
+                // el histórico —estas filas guardan vigencia— sin que nadie lo
+                // hubiera pedido. Para varios días a la vez está el formulario
+                // de creación; para quitar una jornada, el botón de Borrar.
                 Select::make('weekday')
                     ->label('Día')
                     ->options(WorkSchedule::DIAS)
