@@ -25,6 +25,11 @@ class WorkSchedulesTable
         return $table
             ->defaultGroup(Group::make('user.name')->label('Persona')->titlePrefixedWithLabel(false))
             ->defaultSort('weekday')
+            // Las jornadas vienen de cinco en cinco o de siete en siete, y con
+            // diez por pagina una persona queda partida entre dos: parece que
+            // le faltan dias cuando estan en la pagina siguiente.
+            ->defaultPaginationPageOption(50)
+            ->paginated([25, 50, 100, 'all'])
             ->columns([
                 TextColumn::make('weekday')
                     ->label('Día')

@@ -238,6 +238,9 @@ class JornadasTest extends TestCase
         $this->assertSame('08:30:00', $copiadas->first()->starts_at);
         $this->assertSame(60, $copiadas->first()->break_minutes);
         $this->assertSame('2026-09-01', $copiadas->first()->effective_from->toDateString());
+
+        // Copiar no es mover: el origen conserva las suyas intactas.
+        $this->assertSame(5, WorkSchedule::where('user_id', $michael->id)->count());
     }
 
     /** Copiar jornadas ya vencidas le inventaria a la persona un pasado que no tuvo. */
