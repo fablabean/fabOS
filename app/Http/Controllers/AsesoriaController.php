@@ -69,16 +69,29 @@ class AsesoriaController extends Controller
             ]);
         }
 
-        app(NotificationService::class)->enviar(
-            'reserva.confirmada',
-            $reserva->reservable,
-            [
-                'persona' => $reserva->reservable->name,
-                'equipo'  => 'Asesoría de ' . $asset->name,
-                'cuando'  => $inicio->format('d/m/Y H:i'),
-            ],
-            $reserva,
-        );
+        // Dos avisos distintos, a dos personas distintas.
+        //
+        // Antes salia uno solo, con la plantilla de «reserva confirmada», y le
+        // llegaba a quien iba a ATENDER diciendole «tu reserva quedo
+        // confirmada»: el mensaje equivocado a la persona equivocada. Y con los
+        // huecos vacios, porque esa plantilla espera otras variables.
+        $datos = [
+            'equipo' => $asset->name,
+            'fecha'  => $inicio->format('d/m/Y'),
+            'inicio' => $inicio->format('H:i'),
+            'fin'    => $fin->format('H:i'),
+        ];
+
+        $avisos = app(NotificationService::class);
+
+        $avisos->enviar('asesoria.confirmada', $request->user(), $datos + [
+            'asesor' => $reserva->reservable->name,
+        ], $reserva);
+
+        $avisos->enviar('asesoria.asignada', $reserva->reservable, $datos + [
+            'solicitante' => $request->user()->name,
+            'motivo'      => $reserva->purpose ?: 'No lo dijo.',
+        ], $reserva);
 
         return redirect()->route('home')->with(
             'status',

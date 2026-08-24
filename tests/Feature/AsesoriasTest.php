@@ -644,4 +644,63 @@ class AsesoriasTest extends TestCase
             $quien, $this->equipo, $this->hora('10:30'), $this->hora('11:30'),
         ));
     }
+
+    // ------------------------------------------------------------ los avisos
+
+    /**
+     * Antes salia un solo aviso, con la plantilla de «reserva confirmada», y le
+     * llegaba a quien iba a ATENDER diciendole «tu reserva quedo confirmada».
+     * El mensaje equivocado a la persona equivocada.
+     */
+    public function test_cada_uno_recibe_el_aviso_que_le_corresponde(): void
+    {
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $quien = $this->alguien();
+
+        $franja = app(AsesoriaService::class)->franjasDisponibles($this->equipo, $quien)->first();
+
+        $this->actingAs($quien)->post(route('asesoria.store', $this->equipo), [
+            'inicio' => $franja['inicio']->format('Y-m-d H:i:s'),
+            'motivo' => 'Cortar MDF',
+        ]);
+
+        $avisos = \App\Models\NotificationLog::all();
+
+        $aQuienPidio   = $avisos->firstWhere('user_id', $quien->id);
+        $aQuienAtiende = $avisos->firstWhere('user_id', $ana->id);
+
+        $this->assertNotNull($aQuienPidio, 'Quien pidio la asesoria no recibio nada.');
+        $this->assertNotNull($aQuienAtiende, 'Quien la atiende no se entero.');
+
+        $this->assertSame('asesoria.confirmada', $aQuienPidio->key);
+        $this->assertSame('asesoria.asignada', $aQuienAtiende->key);
+    }
+
+    /** Y sin huecos sin rellenar, que es como se veia antes. */
+    public function test_los_avisos_no_dejan_variables_sin_rellenar(): void
+    {
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $quien = $this->alguien();
+
+        $franja = app(AsesoriaService::class)->franjasDisponibles($this->equipo, $quien)->first();
+
+        $this->actingAs($quien)->post(route('asesoria.store', $this->equipo), [
+            'inicio' => $franja['inicio']->format('Y-m-d H:i:s'),
+            'motivo' => 'Cortar MDF',
+        ]);
+
+        foreach (\App\Models\NotificationLog::all() as $log) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/\{[a-z_]+\}/',
+                $log->subject . ' ' . $log->body,
+                "El aviso [{$log->key}] salio con huecos sin rellenar.",
+            );
+        }
+    }
 }

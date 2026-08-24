@@ -33,6 +33,53 @@ class NotificationTemplateSeeder extends Seeder
     {
         return [
             [
+                'key'          => 'asesoria.confirmada',
+                'name'         => 'Asesoría confirmada',
+                'description'  => 'A quien pide una asesoría, cuando queda agendada.',
+                'is_essential' => true,
+                'subject'      => 'Tu asesoría de {equipo} quedó para el {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu asesoría quedó agendada:
+
+                    Equipo: {equipo}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Te atiende: {asesor}
+
+                    No hace falta que tengas el certifab: para eso es la asesoría.
+
+                    Ojo: esto reserva el tiempo de quien te acompaña, no la máquina.
+                    Si además vas a usarla, resérvala aparte.
+
+                    Si ya no puedes, cancélala desde tu cuenta: esa hora le sirve a
+                    alguien más.
+                    TXT,
+            ],
+            [
+                'key'          => 'asesoria.asignada',
+                'name'         => 'Te asignaron una asesoría',
+                'description'  => 'A quien la va a atender, cuando el reparto se la asigna.',
+                'is_essential' => true,
+                'subject'      => 'Te asignaron una asesoría de {equipo} el {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Te toca atender una asesoría:
+
+                    Equipo: {equipo}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    La pidió: {solicitante}
+                    Lo que quiere hacer: {motivo}
+
+                    Queda reservado en tu agenda, así que a esa hora no se te
+                    asignará nada más.
+
+                    Si no vas a poder, avisa a la coordinación para que se
+                    reasigne a tiempo.
+                    TXT,
+            ],
+            [
                 'key'          => 'reserva.confirmada',
                 'name'         => 'Reserva confirmada',
                 'description'  => 'Se envía al reservar un equipo, cuando la reserva queda confirmada.',
