@@ -69,18 +69,23 @@
         <div class="panel">
             <h2 style="margin-top:0">Elegir horario</h2>
 
-            <form method="POST" action="{{ route('reservas.store', $activo) }}">
+            <form method="POST" action="{{ route('reservas.store', $activo) }}" class="agenda">
                 @csrf
 
+                <div class="agenda-campo">
                 <label for="fecha">Fecha</label>
                 <input id="fecha" name="fecha" type="date" required
                        min="{{ now($tz)->format('Y-m-d') }}"
                        value="{{ old('fecha', now($tz)->format('Y-m-d')) }}">
+                </div>
 
+                <div class="agenda-campo">
                 <label for="inicio">Hora de inicio</label>
                 <input id="inicio" name="inicio" type="time" required step="900"
                        value="{{ old('inicio', $franjaHoy ? substr($franjaHoy[0], 0, 5) : '09:00') }}">
+                </div>
 
+                <div class="agenda-campo">
                 <label for="duracion">Duración</label>
                 <select id="duracion" name="duracion" required>
                     @foreach ([30, 60, 90, 120, 180, 240, 360, 480, 720] as $min)
@@ -94,12 +99,17 @@
                         @endif
                     @endforeach
                 </select>
+                </div>
 
+                <div class="agenda-campo agenda-ancho">
                 <label for="proposito">¿Para qué? <span style="text-transform:none;letter-spacing:0">(opcional)</span></label>
                 <input id="proposito" name="proposito" type="text" maxlength="500"
                        placeholder="Prototipo de la clase de diseño" value="{{ old('proposito') }}">
+                </div>
 
-                <button type="submit">Reservar</button>
+                <div class="agenda-campo agenda-boton">
+                    <button type="submit">Reservar</button>
+                </div>
             </form>
         </div>
     @endif
@@ -252,4 +262,21 @@
             @endif
         </table>
     </div>
+
+    <style>
+        /* En pantalla ancha, los tres datos de la reserva caben en una fila:
+           fecha, hora y duracion son una sola decision, y separarlos en tres
+           bloques obligaba a recorrer media pantalla para tomarla. */
+        .agenda { display: grid; gap: .75rem 1rem; align-items: end; }
+        .agenda-campo { display: flex; flex-direction: column; gap: .3rem; margin: 0; }
+        .agenda-campo > label { margin: 0; }
+        .agenda-campo > input, .agenda-campo > select { margin: 0; width: 100%; }
+        .agenda-boton { align-self: end; }
+        .agenda-boton > button { margin: 0; width: 100%; }
+
+        @media (min-width: 720px) {
+            .agenda { grid-template-columns: repeat(3, 1fr); }
+            .agenda-ancho { grid-column: span 2; }
+        }
+    </style>
 @endsection
