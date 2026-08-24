@@ -155,6 +155,19 @@ return [
     | Codigo de un solo uso (OTP)
     |--------------------------------------------------------------------------
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Asesorias
+    |--------------------------------------------------------------------------
+    | La puerta para quien todavia no tiene el certifab (§10). La duracion es
+    | corta a proposito: una asesoria ocupa a alguien del equipo, y bloques
+    | largos vacian la agenda del laboratorio.
+    */
+    'asesorias' => [
+        'minutos' => (int) env('ASESORIA_MINUTOS', 45),
+        'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),
+    ],
+
     'otp' => [
         // Redis, no el almacen por defecto: en produccion la cache va a la
         // base de datos, y un codigo en claro acabaria dentro del respaldo

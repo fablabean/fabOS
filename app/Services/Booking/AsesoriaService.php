@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Services\Staffing\CoverageService;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -187,5 +188,79 @@ class AsesoriaService
                 ],
             ])
             ->all();
+    }
+
+    /**
+     * Horas en las que alguien puede atender, de aqui a unos dias.
+     *
+     * Se ofrecen **solo franjas con cupo**: pedir algo que despues nadie puede
+     * cumplir genera una espera y un rechazo, y las dos cosas cuestan mas que
+     * no ofrecerlo.
+     *
+     * Es deliberadamente una comprobacion por franja y no una consulta lista:
+     * la disponibilidad depende de la jornada, de la modalidad, de las
+     * ausencias y de lo que cada persona ya tenga reservado, y todo eso ya lo
+     * sabe responder el resto del sistema. Reimplementarlo en SQL seria una
+     * segunda verdad que se separaria de la primera.
+     *
+     * @return Collection<int,array{inicio:CarbonInterface,fin:CarbonInterface,cuantos:int}>
+     */
+    public function franjasDisponibles(
+        Asset $asset,
+        ?User $solicitante = null,
+        int $dias = 7,
+        ?int $minutos = null,
+    ): Collection {
+        if ($this->asesoresDe($asset)->isEmpty()) {
+            return collect();
+        }
+
+        $minutos = $minutos ?? (int) config('fabos.asesorias.minutos', 45);
+        $tz = config('fabos.lab.timezone');
+        $ahora = Carbon::now($tz);
+
+        $franjas = collect();
+
+        for ($i = 0; $i < $dias; $i++) {
+            $dia = $ahora->copy()->addDays($i)->startOfDay();
+            $atendido = $this->cobertura->franjaAtendida($dia);
+
+            // Dia sin cobertura presencial: ni se mira.
+            if (! $atendido) {
+                continue;
+            }
+
+            [$abre, $cierra] = $atendido;
+
+            $inicio = $dia->copy()->setTimeFromTimeString($abre);
+            $fin    = $dia->copy()->setTimeFromTimeString($cierra);
+
+            while ($inicio->copy()->addMinutes($minutos)->lessThanOrEqualTo($fin)) {
+                $hasta = $inicio->copy()->addMinutes($minutos);
+
+                // Una hora que ya paso no es una opcion.
+                if ($inicio->greaterThan($ahora)) {
+                    $cuantos = $this->disponiblesPara($asset, $inicio, $hasta, $solicitante)->count();
+
+                    if ($cuantos > 0) {
+                        $franjas->push([
+                            'inicio'  => $inicio->copy(),
+                            'fin'     => $hasta->copy(),
+                            'cuantos' => $cuantos,
+                        ]);
+                    }
+                }
+
+                $inicio->addMinutes($minutos);
+            }
+        }
+
+        return $franjas;
+    }
+
+    /** Este equipo admite asesorias porque hay alguien declarado (§10). */
+    public function seAsesora(Asset $asset): bool
+    {
+        return $this->asesoresDe($asset)->isNotEmpty();
     }
 }

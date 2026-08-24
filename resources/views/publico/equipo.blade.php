@@ -86,13 +86,31 @@
                     @endif
                 </div>
 
-                <p style="margin-top:1.6rem">
+                <p style="margin-top:1.6rem;display:flex;gap:.6rem;flex-wrap:wrap">
                     @auth
                         <a class="btn" href="{{ route('reservas.show', $equipo) }}">Reservar este equipo</a>
                     @else
                         <a class="btn" href="{{ route('login') }}">Ingresar para reservar</a>
                     @endauth
+
+                    {{-- La asesoria es la puerta para quien todavia no esta
+                         habilitado, asi que tiene que verse ANTES de ingresar:
+                         quien llega al catalogo sin cuenta es justo quien mas la
+                         necesita. Sin sesion, el enlace pasa por el ingreso y
+                         vuelve aqui. --}}
+                    @if ($equipo->advisors_count > 0)
+                        <a class="btn secundario" href="{{ route('asesoria.show', $equipo) }}">
+                            Pedir asesoría
+                        </a>
+                    @endif
                 </p>
+
+                @if ($equipo->advisors_count > 0)
+                    <p class="help" style="margin-top:.6rem">
+                        ¿No tienes el certifab de este equipo? La asesoría no lo necesita:
+                        alguien del laboratorio te acompaña y te enseña a usarlo.
+                    </p>
+                @endif
             </div>
         </div>
 

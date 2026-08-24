@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AsesoriaController;
 use App\Http\Controllers\Auth\CarnetLoginController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\ReservationController;
@@ -87,6 +88,10 @@ Route::middleware('auth')->group(function () {
 
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');
+
+    // Asesoria: la salida para quien todavia no tiene el certifab (§10).
+    Route::get('/asesoria/{asset}', [AsesoriaController::class, 'show'])->name('asesoria.show');
+    Route::post('/asesoria/{asset}', [AsesoriaController::class, 'store'])->name('asesoria.store');
     Route::post('/espera/{entry}/salir', [ReservationController::class, 'salirDeEspera'])->name('reservas.espera.salir');
 
     // Escaneo del QR pegado en la maquina. La ruta es corta a proposito: cabe

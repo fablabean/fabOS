@@ -44,6 +44,7 @@ class PublicSiteController extends Controller
     public function equipos()
     {
         $equipos = Asset::query()
+            ->withCount('advisors')
             ->with('area', 'riskFamily')
             ->where('is_public', true)
             ->orderBy('name')
@@ -61,7 +62,7 @@ class PublicSiteController extends Controller
         abort_unless($asset->is_public, 404);
 
         return view('publico.equipo', [
-            'equipo'    => $asset->load('area', 'riskFamily'),
+            'equipo'    => $asset->loadCount('advisors')->load('area', 'riskFamily'),
             'estado'    => $this->disponibilidad->estadoAhora(collect([$asset]))[$asset->id],
             'similares' => Asset::where('area_id', $asset->area_id)
                 ->where('id', '!=', $asset->id)

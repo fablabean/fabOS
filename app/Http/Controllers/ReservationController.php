@@ -44,6 +44,9 @@ class ReservationController extends Controller
 
         $equipos = Asset::query()
             ->with(['area', 'riskFamily', 'dependencies'])
+            // Contar los asesores aqui y no por tarjeta: sin esto seria una
+            // consulta por equipo solo para decidir si se pinta un boton.
+            ->withCount('advisors')
             ->where('is_reservable', true)
             ->orderBy('name')
             ->get()
@@ -73,7 +76,7 @@ class ReservationController extends Controller
         $referencia = max(60, $asset->min_minutes);
 
         return view('reservas.show', [
-            'activo'    => $asset->load(['area', 'riskFamily', 'dependencies']),
+            'activo'    => $asset->loadCount('advisors')->load(['area', 'riskFamily', 'dependencies']),
             'veredicto' => $veredicto,
             'franjaHoy' => $this->coverage->franjaAtendida(Carbon::now(config('fabos.lab.timezone'))),
             'cotizacion' => $this->cotizador->cotizar(

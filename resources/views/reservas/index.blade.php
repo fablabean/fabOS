@@ -74,12 +74,32 @@
         <div class="cards">
             @foreach ($filas as $fila)
                 @php $v = $fila['veredicto']; @endphp
-                <a class="card" href="{{ route('reservas.show', $fila['activo']) }}">
-                    <span class="pill {{ $clase($v->resultado) }}">{{ $etiqueta($v->resultado) }}</span>
-                    <span class="n">{{ $fila['activo']->name }}</span>
-                    <span class="m">{{ $v->motivo }}</span>
-                </a>
+                <div class="card-envoltura">
+                    <a class="card" href="{{ route('reservas.show', $fila['activo']) }}">
+                        <span class="pill {{ $clase($v->resultado) }}">{{ $etiqueta($v->resultado) }}</span>
+                        <span class="n">{{ $fila['activo']->name }}</span>
+                        <span class="m">{{ $v->motivo }}</span>
+                    </a>
+
+                    {{-- Solo cuando falta el certifab Y hay alguien declarado para
+                         asesorar: ofrecer una asesoria que nadie puede atender
+                         seria prometer en falso. --}}
+                    @if (! $v->puedeReservar() && $fila['activo']->advisors_count > 0)
+                        <a class="asesoria-enlace" href="{{ route('asesoria.show', $fila['activo']) }}">
+                            Pedir asesoría →
+                        </a>
+                    @endif
+                </div>
             @endforeach
         </div>
     @endforeach
+
+    <style>
+        .card-envoltura { display: flex; flex-direction: column; }
+        .card-envoltura .card { flex: 1; }
+        .asesoria-enlace { display: block; padding: .55rem .9rem; font-size: .85rem;
+            font-weight: 700; text-align: center; border: 1px solid rgba(15,118,110,.35);
+            border-top: 0; border-radius: 0 0 .6rem .6rem; color: #0f766e; }
+        .asesoria-enlace:hover { background: rgba(15,118,110,.08); }
+    </style>
 @endsection

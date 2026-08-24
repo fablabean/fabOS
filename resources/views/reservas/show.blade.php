@@ -39,10 +39,22 @@
                     <li>{{ $f }}</li>
                 @endforeach
             </ul>
-            <p class="help" style="margin-top:.9rem">
-                Escribe a la coordinación para agendar la asesoría. Al terminarla quedas
-                habilitado y podrás reservar por tu cuenta.
-            </p>
+            @if ($activo->advisors_count > 0)
+                <p class="help" style="margin-top:.9rem">
+                    Puedes empezar por una asesoría: alguien del equipo te acompaña y te
+                    muestra cómo se usa. No necesitas el certifab para pedirla.
+                </p>
+                <p style="margin-top:.75rem">
+                    <a class="btn" href="{{ route('asesoria.show', $activo) }}">Pedir asesoría</a>
+                </p>
+            @else
+                {{-- Sin nadie declarado para asesorar, el sistema no tendria a quien
+                     asignarla: se dice la verdad en vez de ofrecer un boton muerto. --}}
+                <p class="help" style="margin-top:.9rem">
+                    Escribe a la coordinación para agendar una asesoría de este equipo.
+                    Al terminarla quedas habilitado y podrás reservar por tu cuenta.
+                </p>
+            @endif
         @endif
 
         @if ($veredicto->requierePresencia())

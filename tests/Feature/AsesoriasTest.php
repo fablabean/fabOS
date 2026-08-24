@@ -411,4 +411,84 @@ class AsesoriasTest extends TestCase
 
         $this->get('/admin/asesorias')->assertForbidden();
     }
+
+    // ------------------------------------------------------- la puerta publica
+
+    public function test_la_pantalla_ofrece_solo_horas_con_cupo(): void
+    {
+        $this->asesora($this->colaborador('Ana'));
+        $quien = $this->alguien();
+
+        $this->actingAs($quien)
+            ->get(route('asesoria.show', $this->equipo))
+            ->assertOk()
+            ->assertSee('Elige una hora');
+    }
+
+    /**
+     * Un equipo sin nadie declarado no puede ofrecer asesorias: no habria a
+     * quien asignarlas, y un boton que lleva a una pagina vacia es peor que no
+     * tener boton.
+     */
+    public function test_sin_asesores_la_pantalla_no_existe(): void
+    {
+        $this->actingAs($this->alguien())
+            ->get(route('asesoria.show', $this->equipo))
+            ->assertNotFound();
+    }
+
+    public function test_pedirla_la_agenda_y_avisa(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $quien = $this->alguien();
+
+        $franjas = app(AsesoriaService::class)->franjasDisponibles($this->equipo, $quien);
+        $this->assertNotEmpty($franjas, 'No se genero ninguna franja disponible.');
+
+        $primera = $franjas->first();
+
+        $this->actingAs($quien)
+            ->post(route('asesoria.store', $this->equipo), [
+                'inicio' => $primera['inicio']->format('Y-m-d H:i:s'),
+                'motivo' => 'Cortar unas piezas de MDF',
+            ])
+            ->assertRedirect(route('home'));
+
+        $this->assertDatabaseHas('reservations', [
+            'mode'              => 'asesoria',
+            'advisory_asset_id' => $this->equipo->id,
+            'user_id'           => $quien->id,
+            'reservable_id'     => $ana->id,
+        ]);
+    }
+
+    /** Entre ver la hora libre y pedirla puede haberla tomado otra persona. */
+    public function test_si_la_hora_se_ocupo_entre_medias_lo_dice_sin_alarmar(): void
+    {
+        $this->asesora($this->colaborador('Ana'));
+        $quien = $this->alguien();
+
+        $primera = app(AsesoriaService::class)->franjasDisponibles($this->equipo, $quien)->first();
+
+        // Otra persona se adelanta.
+        app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $primera['inicio'], $primera['fin'],
+        );
+
+        $this->actingAs($quien)
+            ->post(route('asesoria.store', $this->equipo), [
+                'inicio' => $primera['inicio']->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('inicio');
+    }
+
+    public function test_sin_sesion_la_asesoria_pasa_por_el_ingreso(): void
+    {
+        $this->asesora($this->colaborador('Ana'));
+
+        $this->get(route('asesoria.show', $this->equipo))
+            ->assertRedirect(route('login'));
+    }
 }
