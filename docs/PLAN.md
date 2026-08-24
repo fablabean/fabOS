@@ -258,3 +258,51 @@ fabOS se instala en otro laboratorio sin tocar código: la identidad sale de la
 configuración y `fabos:instalar` deja el sistema listo y vacío. El plan de dar a
 cada laboratorio un subdominio de `fablabs.club` —y la decisión de fondo sobre
 quién guarda los datos de quién— está en `docs/FABLABS-CLUB.md`.
+
+## Lo que se construyó después del despliegue
+
+Anotado aquí para que el porqué no se pierda: casi todo salió de usar el sistema
+con datos reales y encontrarse con lo que faltaba.
+
+### Jornadas del equipo
+
+- **Varios días a la vez.** El formulario pedía el día de la semana como un
+  número. Ahora se marcan con casillas y se crea una jornada por cada día — pero
+  **solo al crear**: al editar el día es uno solo, porque cada fila abre una
+  franja horaria propia y unas casillas ahí tendrían que decidir en silencio si
+  desmarcar borra. Eso se llevaría el histórico sin que nadie lo pidiera.
+- **Presencial o remota.** No es una etiqueta: la franja atendida del
+  laboratorio se DERIVA de las jornadas, y quien trabaja desde casa cumple su
+  horario pero no abre la puerta ni acompaña una máquina. Solo la presencial
+  cuenta como cobertura.
+- **Copiar el horario de una persona a otra.** Copia solo las vigentes —
+  arrastrar las vencidas le inventaría a alguien un pasado que no tuvo— y no
+  pisa los días que el destino ya tenga.
+
+### Asesorías
+
+Ver `docs/ASESORIAS.md`.
+
+### Ingreso
+
+- **Se puede entrar con una app de autenticación**, no solo con el código al
+  correo. El backoffice exige la app y solo la app: el otro factor disponible es
+  el correo, y un correo que no siempre llega convierte la segunda comprobación
+  en una forma de quedarse fuera del propio sistema.
+- **El carné identifica, no autentica.** El servicio de la EAN solo devuelve el
+  nombre completo, así que por sí solo no puede abrir una cuenta: dos homónimos
+  serían indistinguibles. Ahorra teclear el correo, y cuenta como factor.
+- **Validar y dar acceso** desde la ficha de cada persona: un código que se
+  dicta en persona y caduca en quince minutos. Es la puerta que no depende del
+  correo.
+
+## Trampas que costaron caro, y ya están fijadas con pruebas
+
+| Qué pasó | Por qué no se veía |
+|---|---|
+| Las fotos salían rotas | El disco por defecto es `local`, cuya raíz es `storage/app/private`. La subida decía que fue bien y el archivo quedaba donde nadie lo buscaba |
+| El segundo factor no coincidía nunca | El reloj del servidor iba 61 s adelantado: la red bloquea NTP y `chronyd` corría sin sincronizar con nadie |
+| El correo no salía | La red bloquea el puerto 587. El transporte por API sobre HTTPS sí sale |
+| El reparto de asesorías se torcía | `sortBy()` con un array de funciones las trata como comparadores, no como extractores de clave |
+| «1 hora» aparecía dos veces | `intdiv(90, 60)` descarta los minutos sueltos |
+| Un envío fallido borraba un código entregado en mano | Guardar invalidaba lo anterior antes de intentar enviar |

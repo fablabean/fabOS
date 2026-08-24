@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Http\Middleware\RequiereSegundoFactor;
+use App\Models\User;
+use Filament\Navigation\NavigationItem;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,6 +40,18 @@ class AdminPanelProvider extends PanelProvider
             // App\Filament\Pages. Sin el Dashboard vacío de Filament: al entrar
             // hay que ver qué necesita atención, no una pantalla en blanco.
             ->pages([])
+            // La hoja de etiquetas no es una pantalla de Filament: es una vista
+            // pensada para imprimirse, sin menu ni cabecera. Pero tiene que
+            // encontrarse desde el backoffice, que es donde esta quien decide
+            // etiquetar el laboratorio.
+            ->navigationItems([
+                NavigationItem::make('Etiquetas QR')
+                    ->url(fn () => route('etiquetas'), shouldOpenInNewTab: true)
+                    ->icon('heroicon-o-qr-code')
+                    ->group('Operación')
+                    ->sort(9)
+                    ->visible(fn () => auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false),
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([

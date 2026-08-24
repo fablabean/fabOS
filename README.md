@@ -253,6 +253,15 @@ Si el usuario no existe, lo crea; entrará con su código al correo como todos.
 > `superadmin` (§16) aún no está implementado. Hoy el backoffice se protege solo
 > con el código al correo, que hereda la seguridad de la bandeja de entrada.
 
+## Asesorías
+
+La puerta para quien todavía no tiene el certifab: alguien del equipo le
+acompaña. Se reparte por turno entre quienes están declarados para cada equipo,
+y solo se ofrecen horas donde alguien puede atender de verdad.
+
+El detalle —el reparto, qué no puede coincidir, y qué mirar para saber si sale
+parejo— está en `docs/ASESORIAS.md`.
+
 ## Cómo se entra a fabOS
 
 No hay contraseñas. Hay tres formas de demostrar quién eres, y ninguna es «la

@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Assets\Tables;
 
 use App\Models\Asset;
+use App\Services\Qr\QrRenderer;
 use Filament\Actions\Action;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -128,6 +131,7 @@ class AssetsTable
                     ->tooltip('Los QR para pegar en cada máquina, listos para imprimir'),
             ])
             ->recordActions([
+                self::verQr(),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -149,5 +153,44 @@ class AssetsTable
         $resto = $minutos % 60;
 
         return $resto ? "{$horas} h {$resto} min" : "{$horas} h";
+    }
+
+    /**
+     * El QR de una maquina concreta, sin pasar por la hoja completa.
+     *
+     * La hoja de etiquetas sirve para etiquetar el laboratorio entero de una
+     * vez. Pero lo que se necesita a diario es otra cosa: una maquina nueva,
+     * una etiqueta que se despego, un QR que alguien rayo. Para eso, imprimir
+     * 82 etiquetas para usar una es absurdo.
+     */
+    private static function verQr(): Action
+    {
+        return Action::make('qr')
+            ->label('QR')
+            ->icon('heroicon-o-qr-code')
+            ->color('gray')
+            ->modalHeading(fn (Asset $record) => 'QR de ' . $record->name)
+            ->modalDescription('Escanearlo abre la ficha del equipo: registrar llegada, salida o reportar una falla.')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalContent(function (Asset $record) {
+                // El token se crea al pedirlo por primera vez: un activo sin
+                // token no tendria QR que enseñar.
+                if (! $record->qr_token) {
+                    $record->forceFill(['qr_token' => (string) Str::uuid()])->save();
+                }
+
+                $url = route('escaneo.equipo', $record->qr_token);
+
+                return new HtmlString(
+                    '<div style="text-align:center;padding:1rem">'
+                    . app(QrRenderer::class)->svg($url, 220)
+                    . '<p style="margin-top:1rem;font-weight:700">' . e($record->name) . '</p>'
+                    . '<p style="font-size:.8rem;opacity:.6;word-break:break-all">' . e($url) . '</p>'
+                    . '<p style="font-size:.8rem;opacity:.75;margin-top:.75rem">'
+                    . 'Imprime esta ventana, o usa la hoja completa para etiquetar varias máquinas.'
+                    . '</p></div>'
+                );
+            });
     }
 }
