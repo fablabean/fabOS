@@ -9,6 +9,7 @@ use App\Models\Reservation;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\Booking\AsesoriaService;
+use App\Services\Booking\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -64,6 +65,17 @@ class AsesoriasTest extends TestCase
         AssetAdvisor::create([
             'user_id' => $u->id, 'asset_id' => $this->equipo->id,
             'es_responsable' => $responsable,
+        ]);
+    }
+
+    private function certificar(User $u): void
+    {
+        \App\Models\Certifab::create([
+            'public_code' => 'CF-' . $u->id,
+            'user_id'     => $u->id,
+            'asset_id'    => $this->equipo->id,
+            'level'       => 'autonomo',
+            'granted_at'  => now()->subMonth(),
         ]);
     }
 
@@ -238,5 +250,97 @@ class AsesoriasTest extends TestCase
         );
 
         $this->assertSame($primera->reservable_id, $segunda->reservable_id);
+    }
+
+    // ------------------------------- asesoria y acompanamiento, en los dos sentidos
+
+    /**
+     * Una asesoria ocupa a una persona en el laboratorio.
+     *
+     * Si esa misma persona hacia falta para acompanar una maquina que lo exige,
+     * las dos cosas se pisan — y en los dos sentidos. La garantia de fondo no
+     * esta en el codigo sino en la base: la restriccion EXCLUDE impide dos
+     * reservas solapadas sobre el mismo reservable, y tanto la asesoria como el
+     * acompanamiento reservan a la persona.
+     */
+    public function test_quien_esta_en_una_asesoria_no_puede_acompanar_una_maquina(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $this->certificar($ana);
+
+        // Antes de la asesoria, Ana puede acompanar.
+        $antes = app(BookingService::class)
+            ->acompanantesDisponibles($this->equipo, $this->hora('10:00'), $this->hora('11:00'));
+        $this->assertTrue($antes->contains('id', $ana->id));
+
+        app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        );
+
+        // Despues, ya no.
+        $despues = app(BookingService::class)
+            ->acompanantesDisponibles($this->equipo, $this->hora('10:00'), $this->hora('11:00'));
+        $this->assertFalse($despues->contains('id', $ana->id));
+
+        // Y sigue libre en otra franja: se ocupa la hora, no el dia.
+        $otra = app(BookingService::class)
+            ->acompanantesDisponibles($this->equipo, $this->hora('12:00'), $this->hora('13:00'));
+        $this->assertTrue($otra->contains('id', $ana->id));
+    }
+
+    public function test_quien_acompana_una_maquina_no_recibe_asesorias_a_esa_hora(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+
+        // Acompanamiento: el tiempo de Ana reservado por otra via.
+        Reservation::create([
+            'reservable_type' => User::class,
+            'reservable_id'   => $ana->id,
+            'user_id'         => $this->alguien()->id,
+            'status'          => 'confirmada',
+            'mode'            => 'directa',
+            'starts_at'       => $this->hora('10:00'),
+            'ends_at'         => $this->hora('11:00'),
+            'purpose'         => 'Acompanamiento',
+        ]);
+
+        $this->assertNull(app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        ));
+
+        // Media hora despues tampoco: se solapan aunque no coincidan exactas.
+        $this->assertNull(app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('10:30'), $this->hora('11:30'),
+        ));
+
+        // Pero mas tarde si.
+        $this->assertNotNull(app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('11:00'), $this->hora('12:00'),
+        ));
+    }
+
+    /** La red de seguridad: aunque el codigo fallara, la base no lo permite. */
+    public function test_la_base_de_datos_rechaza_doblar_a_una_persona(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+
+        app(AsesoriaService::class)->agendar(
+            $this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('11:00'),
+        );
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        Reservation::create([
+            'reservable_type' => User::class,
+            'reservable_id'   => $ana->id,
+            'user_id'         => $this->alguien()->id,
+            'status'          => 'confirmada',
+            'mode'            => 'directa',
+            'starts_at'       => $this->hora('10:30'),
+            'ends_at'         => $this->hora('11:30'),
+        ]);
     }
 }
