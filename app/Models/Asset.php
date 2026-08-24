@@ -117,4 +117,12 @@ class Asset extends Model
             && $this->status === 'operativo'
             && ! $this->dependencies()->where('status', '!=', 'operativo')->exists();
     }
+
+    /** Personas declaradas para asesorar sobre este equipo (§10). */
+    public function advisors(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'asset_advisors')
+            ->withPivot('es_responsable')
+            ->withTimestamps();
+    }
 }

@@ -332,7 +332,13 @@ class BookingService
     }
 
     /** @param class-string<Model> $tipo */
-    private function estaLibre(string $tipo, int $id, CarbonInterface $desde, CarbonInterface $hasta): bool
+    /**
+     * Publico porque las asesorias necesitan la misma respuesta.
+     *
+     * Duplicarlo alli seria invitar a que las dos copias se separen, y la parte
+     * delicada —pasar a UTC antes de comparar— es justo la que se olvida.
+     */
+    public function estaLibre(string $tipo, int $id, CarbonInterface $desde, CarbonInterface $hasta): bool
     {
         return ! Reservation::where('reservable_type', $tipo)
             ->where('reservable_id', $id)

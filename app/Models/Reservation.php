@@ -17,6 +17,7 @@ class Reservation extends Model
 {
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
+        'advisory_asset_id',
         'parent_reservation_id',
         'status', 'mode', 'starts_at', 'ends_at',
         'checked_in_at', 'checked_out_at',
@@ -45,6 +46,7 @@ class Reservation extends Model
 
     public const MODOS = [
         'directa'        => 'Directa',
+        'asesoria'       => 'Asesoría',
         'con_aprobacion' => 'Con aprobación',
         'solo_solicitud' => 'Solo por solicitud',
     ];
@@ -77,5 +79,16 @@ class Reservation extends Model
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    /** El equipo sobre el que trata una asesoría; nulo en el resto (§10). */
+    public function advisoryAsset(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class, 'advisory_asset_id');
+    }
+
+    public function esAsesoria(): bool
+    {
+        return $this->mode === 'asesoria';
     }
 }
