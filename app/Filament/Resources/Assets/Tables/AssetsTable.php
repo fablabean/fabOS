@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Assets\Tables;
 
 use App\Models\Asset;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -116,6 +117,15 @@ class AssetsTable
                     ->falseLabel('Solo presenciales'),
 
                 TrashedFilter::make(),
+            ])
+            ->headerActions([
+                Action::make('etiquetas')
+                    ->label('Hoja de etiquetas QR')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('gray')
+                    ->url(fn () => route('etiquetas'))
+                    ->openUrlInNewTab()
+                    ->tooltip('Los QR para pegar en cada máquina, listos para imprimir'),
             ])
             ->recordActions([
                 EditAction::make(),

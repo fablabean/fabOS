@@ -77,6 +77,31 @@
         @endif
     </div>
 
+    {{-- Lo que se necesita ademas de esta maquina.
+         Hasta ahora las dependencias solo se usaban para bloquear —«no se puede
+         usar mientras el compresor no este operativo»— y quien reservaba no
+         sabia que existian hasta que algo fallaba. Dicho antes, se planifica. --}}
+    @if ($activo->dependencies->isNotEmpty())
+        <div class="panel">
+            <h2 style="margin-top:0">No va solo</h2>
+            <p class="help" style="margin-top:0">
+                Este equipo trabaja junto con estos otros. Tenlo en cuenta al planear tu
+                trabajo: si vas a necesitarlos, resérvalos aparte.
+            </p>
+            <ul class="falta">
+                @foreach ($activo->dependencies as $dep)
+                    <li>
+                        <strong>{{ $dep->name }}</strong>
+                        @if ($dep->pivot->note) — {{ $dep->pivot->note }} @endif
+                        @if ($dep->status !== 'operativo')
+                            <span style="color:#b45309">· {{ \App\Models\Asset::ESTADOS[$dep->status] ?? $dep->status }}</span>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     @if ($activo->photoUrl())
         <div class="panel" style="padding:0;overflow:hidden">
             <img src="{{ $activo->photoUrl() }}" alt="{{ $activo->name }}"

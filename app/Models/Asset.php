@@ -47,7 +47,18 @@ class Asset extends Model
         ];
     }
 
-    public const TIPOS = ['fijo' => 'Activo fijo', 'herramienta' => 'Herramienta'];
+    /**
+     * Qué clase de cosa es.
+     *
+     * `computador` va aparte de «activo fijo» porque se reserva de otra manera:
+     * no exige certifab —usar un computador no es operar una máquina de riesgo—
+     * y su valor está en la hora de uso, no en el material que consume.
+     */
+    public const TIPOS = [
+        'fijo'        => 'Activo fijo',
+        'herramienta' => 'Herramienta',
+        'computador'  => 'Computador',
+    ];
 
     /** Un estado distinto de operativo bloquea la agenda (§8). */
     /** Cómo se toma este recurso (§10). El modo puede exigir más que la
