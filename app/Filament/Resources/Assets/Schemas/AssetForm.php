@@ -152,6 +152,19 @@ class AssetForm
                     ->schema([
                         FileUpload::make('photo_path')
                             ->label('Foto')
+                            // Disco publico EXPLICITO. El disco por defecto es
+                            // `local`, cuya raiz en Laravel 11+ es
+                            // storage/app/private: el archivo se guardaba ahi,
+                            // la base apuntaba a el, y la pagina lo buscaba en
+                            // storage/app/public. Resultado: la foto se subia
+                            // «bien» y salia rota, sin ningun error.
+                            //
+                            // Aqui va explicito porque esta foto SE PUBLICA. Lo
+                            // que no se publica —contratos de proyecto,
+                            // evidencia de mantenimiento— se queda en el disco
+                            // privado a proposito.
+                            ->disk('public')
+                            ->visibility('public')
                             ->image()
                             ->imageEditor()
                             ->directory('activos')

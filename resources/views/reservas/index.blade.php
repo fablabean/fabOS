@@ -76,6 +76,14 @@
                 @php $v = $fila['veredicto']; @endphp
                 <div class="card-envoltura">
                     <a class="card" href="{{ route('reservas.show', $fila['activo']) }}">
+                        {{-- La foto ayuda a reconocer la maquina de un vistazo,
+                             que es justo lo que hace falta en un catalogo de 82
+                             equipos con nombres parecidos. --}}
+                        @if ($fila['activo']->photoUrl())
+                            <img class="card-foto" src="{{ $fila['activo']->photoUrl() }}"
+                                 alt="{{ $fila['activo']->name }}" loading="lazy">
+                        @endif
+
                         <span class="pill {{ $clase($v->resultado) }}">{{ $etiqueta($v->resultado) }}</span>
                         <span class="n">{{ $fila['activo']->name }}</span>
                         <span class="m">{{ $v->motivo }}</span>
@@ -96,6 +104,9 @@
 
     <style>
         .card-envoltura { display: flex; flex-direction: column; }
+        .card-foto { width: calc(100% + 2rem); margin: -1rem -1rem .75rem; aspect-ratio: 4/3;
+            object-fit: cover; display: block; border-radius: .6rem .6rem 0 0;
+            background: rgba(128,128,128,.1); }
         .card-envoltura .card { flex: 1; }
         .asesoria-enlace { display: block; padding: .55rem .9rem; font-size: .85rem;
             font-weight: 700; text-align: center; border: 1px solid rgba(15,118,110,.35);
