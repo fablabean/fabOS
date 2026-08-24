@@ -491,4 +491,39 @@ class AsesoriasTest extends TestCase
         $this->get(route('asesoria.show', $this->equipo))
             ->assertRedirect(route('login'));
     }
+
+    /**
+     * Estar habilitado no significa saberlo todo.
+     *
+     * Una maquina que no se toca hace meses, un material raro o un acabado
+     * nuevo se resuelven antes preguntando que a base de intentos, asi que la
+     * asesoria sigue ofreciendose a quien ya puede reservar.
+     */
+    public function test_quien_ya_puede_reservar_tambien_ve_la_asesoria(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+
+        $quien = $this->alguien();
+        $this->certificar($quien);
+
+        $this->actingAs($quien)
+            ->get(route('reservas.show', $this->equipo))
+            ->assertOk()
+            ->assertSee('Pedir asesoría', false);
+    }
+
+    /** Y en el catalogo, el enlace esta en todas las tarjetas con asesor. */
+    public function test_el_catalogo_ofrece_asesoria_en_los_equipos_con_asesor(): void
+    {
+        $this->asesora($this->colaborador('Ana'));
+
+        $quien = $this->alguien();
+        $this->certificar($quien);
+
+        $this->actingAs($quien)
+            ->get(route('reservas.index'))
+            ->assertOk()
+            ->assertSee('Pedir asesoría sobre Cortadora láser', false);
+    }
 }

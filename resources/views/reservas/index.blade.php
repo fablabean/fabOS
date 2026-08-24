@@ -89,12 +89,27 @@
                         <span class="m">{{ $v->motivo }}</span>
                     </a>
 
-                    {{-- Solo cuando falta el certifab Y hay alguien declarado para
-                         asesorar: ofrecer una asesoria que nadie puede atender
-                         seria prometer en falso. --}}
-                    @if (! $v->puedeReservar() && $fila['activo']->advisors_count > 0)
-                        <a class="asesoria-enlace" href="{{ route('asesoria.show', $fila['activo']) }}">
-                            Pedir asesoría →
+                    {{-- La asesoria se ofrece TAMBIEN a quien ya puede reservar:
+                         estar habilitado no significa saberlo todo, y una
+                         maquina nueva o un material raro se resuelven antes
+                         preguntando que a base de intentos.
+
+                         Solo se esconde si nadie esta declarado para asesorar
+                         ese equipo: ahi el boton llevaria a una pagina vacia. --}}
+                    @if ($fila['activo']->advisors_count > 0)
+                        <a class="asesoria-icono"
+                           href="{{ route('asesoria.show', $fila['activo']) }}"
+                           title="Pedir asesoría sobre {{ $fila['activo']->name }}"
+                           aria-label="Pedir asesoría sobre {{ $fila['activo']->name }}">
+                            {{-- Birrete: alguien que enseña. Con titulo y
+                                 aria-label, porque un icono solo no se explica
+                                 a quien nunca ha pedido una asesoria. --}}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+                                 width="20" height="20" aria-hidden="true">
+                                <path d="M12 4 2 9l10 5 10-5-10-5Z"/>
+                                <path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/>
+                            </svg>
                         </a>
                     @endif
                 </div>
@@ -108,9 +123,10 @@
             object-fit: cover; display: block; border-radius: .6rem .6rem 0 0;
             background: rgba(128,128,128,.1); }
         .card-envoltura .card { flex: 1; }
-        .asesoria-enlace { display: block; padding: .55rem .9rem; font-size: .85rem;
-            font-weight: 700; text-align: center; border: 1px solid rgba(15,118,110,.35);
-            border-top: 0; border-radius: 0 0 .6rem .6rem; color: #0f766e; }
-        .asesoria-enlace:hover { background: rgba(15,118,110,.08); }
+        .asesoria-icono { display: flex; align-items: center; justify-content: center;
+            padding: .5rem; border: 1px solid rgba(15,118,110,.3); border-top: 0;
+            border-radius: 0 0 .6rem .6rem; color: #0f766e; }
+        .asesoria-icono:hover { background: rgba(15,118,110,.1); }
+        .asesoria-icono:focus-visible { outline: 2px solid #0f766e; outline-offset: -2px; }
     </style>
 @endsection

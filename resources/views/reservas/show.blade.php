@@ -63,6 +63,18 @@
                 y se reserva también su tiempo.
             </p>
         @endif
+
+        {{-- Estar habilitado no significa saberlo todo: una maquina que no se
+             toca hace meses, un material raro o un acabado nuevo se resuelven
+             antes preguntando que a base de intentos. Por eso la asesoria sigue
+             ofreciendose a quien YA puede reservar. --}}
+        @if ($veredicto->puedeReservar() && $activo->advisors_count > 0)
+            <p class="help" style="margin:.9rem 0 0">
+                ¿Dudas con este equipo? Puedes pedir una asesoría aunque ya estés
+                habilitado: alguien del laboratorio te acompaña.
+                <a href="{{ route('asesoria.show', $activo) }}">Pedir asesoría</a>
+            </p>
+        @endif
     </div>
 
     @if ($veredicto->puedeReservar())
@@ -201,24 +213,34 @@
                 nada: el hueco queda para quien lo tome primero.
             </p>
 
-            <form method="POST" action="{{ route('reservas.esperar', $activo) }}">
+            <form method="POST" action="{{ route('reservas.esperar', $activo) }}" class="agenda espera">
                 @csrf
 
-                <label for="espera-desde">Desde</label>
-                <input id="espera-desde" name="desde" type="date" required
-                       min="{{ now($tz)->format('Y-m-d') }}"
-                       value="{{ now($tz)->format('Y-m-d') }}">
+                {{-- Desde y hasta son los dos extremos de UN rango: juntos se
+                     leen como lo que son, apilados parecen dos preguntas. --}}
+                <div class="agenda-campo">
+                    <label for="espera-desde">Desde</label>
+                    <input id="espera-desde" name="desde" type="date" required
+                           min="{{ now($tz)->format('Y-m-d') }}"
+                           value="{{ now($tz)->format('Y-m-d') }}">
+                </div>
 
-                <label for="espera-hasta">Hasta</label>
-                <input id="espera-hasta" name="hasta" type="date" required
-                       min="{{ now($tz)->format('Y-m-d') }}"
-                       value="{{ now($tz)->addWeeks(2)->format('Y-m-d') }}">
+                <div class="agenda-campo">
+                    <label for="espera-hasta">Hasta</label>
+                    <input id="espera-hasta" name="hasta" type="date" required
+                           min="{{ now($tz)->format('Y-m-d') }}"
+                           value="{{ now($tz)->addWeeks(2)->format('Y-m-d') }}">
+                </div>
 
-                <label for="espera-nota">Algo que debamos saber <span style="text-transform:none;letter-spacing:0">(opcional)</span></label>
-                <input id="espera-nota" name="nota" type="text" maxlength="255"
-                       placeholder="Solo puedo en la mañana">
+                <div class="agenda-campo agenda-ancho">
+                    <label for="espera-nota">Algo que debamos saber <span style="text-transform:none;letter-spacing:0">(opcional)</span></label>
+                    <input id="espera-nota" name="nota" type="text" maxlength="255"
+                           placeholder="Solo puedo en la mañana">
+                </div>
 
-                <button type="submit">Avísenme si se libera</button>
+                <div class="agenda-campo agenda-boton">
+                    <button type="submit">Avísenme si se libera</button>
+                </div>
             </form>
         @endif
     </div>
@@ -277,6 +299,12 @@
         @media (min-width: 720px) {
             .agenda { grid-template-columns: repeat(3, 1fr); }
             .agenda-ancho { grid-column: span 2; }
+
+            /* La espera solo tiene dos fechas: tres columnas la dejarian
+               desequilibrada, con un hueco donde no falta nada. */
+            .espera { grid-template-columns: repeat(2, 1fr); }
+            .espera .agenda-ancho { grid-column: span 2; }
+            .espera .agenda-boton { grid-column: span 2; }
         }
     </style>
 @endsection
