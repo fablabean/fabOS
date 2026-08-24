@@ -118,8 +118,13 @@ class AssetForm
                             ->visible(fn ($get) => $get('is_reservable')),
 
                         TextInput::make('autonomous_minutes')
-                            ->label('Autonomía con certifab (min)')
-                            ->helperText('Por encima de esto exige visto bueno del responsable.')
+                            ->label('Minutos sin visto bueno')
+                            ->helperText(
+                                'Cuánto puede reservar seguido quien tiene el certifab, sin que nadie '
+                                . 'lo apruebe. Por encima de este tiempo, la reserva pide visto bueno. '
+                                . 'Súbelo en equipos donde un trabajo largo es normal —una impresión 3D '
+                                . 'de ocho horas— y déjalo corto donde ocupar la máquina de más estorba.'
+                            )
                             ->numeric()
                             ->default(60)
                             ->visible(fn ($get) => $get('is_reservable')),

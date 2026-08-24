@@ -77,6 +77,13 @@
         @endif
     </div>
 
+    @if ($activo->photoUrl())
+        <div class="panel" style="padding:0;overflow:hidden">
+            <img src="{{ $activo->photoUrl() }}" alt="{{ $activo->name }}"
+                 style="width:100%;max-height:340px;object-fit:cover;display:block">
+        </div>
+    @endif
+
     @if ($veredicto->puedeReservar())
         <div class="panel">
             <h2 style="margin-top:0">Elegir horario</h2>
@@ -103,7 +110,16 @@
                     @foreach ([30, 60, 90, 120, 180, 240, 360, 480, 720] as $min)
                         @if ($min >= $activo->min_minutes && $min <= $activo->max_minutes)
                             <option value="{{ $min }}" @selected(old('duracion') == $min)>
-                                {{ $min < 60 ? $min . ' minutos' : intdiv($min, 60) . ' hora' . (intdiv($min, 60) > 1 ? 's' : '') }}
+                                {{-- Los minutos sueltos importan: con intdiv a secas,
+                                     90 minutos se mostraba como «1 hora» y la lista
+                                     parecia tener la misma opcion dos veces. --}}
+                                @php
+                                    $h = intdiv($min, 60);
+                                    $m = $min % 60;
+                                @endphp
+                                {{ $h === 0
+                                    ? $m . ' minutos'
+                                    : $h . ' hora' . ($h > 1 ? 's' : '') . ($m ? ' ' . $m . ' min' : '') }}
                                 @if ($veredicto->maxMinutos && $min > $veredicto->maxMinutos)
                                     — requiere visto bueno
                                 @endif

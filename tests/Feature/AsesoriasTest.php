@@ -526,4 +526,38 @@ class AsesoriasTest extends TestCase
             ->assertOk()
             ->assertSee('Pedir asesoría sobre Cortadora láser', false);
     }
+
+    // ------------------------------------------------- la ficha de reserva
+
+    /**
+     * 90 minutos se mostraba como «1 hora» —intdiv a secas— y la lista de
+     * duraciones parecia repetir la misma opcion dos veces.
+     */
+    public function test_la_duracion_de_noventa_minutos_no_se_confunde_con_una_hora(): void
+    {
+        $this->equipo->update(['min_minutes' => 30, 'max_minutes' => 240]);
+
+        $quien = $this->alguien();
+        $this->certificar($quien);
+
+        $html = $this->actingAs($quien)
+            ->get(route('reservas.show', $this->equipo))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('1 hora 30 min', $html);
+    }
+
+    public function test_la_ficha_muestra_la_foto_del_equipo(): void
+    {
+        $this->equipo->update(['photo_path' => 'activos/ejemplo.jpg']);
+
+        $quien = $this->alguien();
+        $this->certificar($quien);
+
+        $this->actingAs($quien)
+            ->get(route('reservas.show', $this->equipo))
+            ->assertOk()
+            ->assertSee('/storage/activos/ejemplo.jpg', false);
+    }
 }
