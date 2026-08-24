@@ -94,6 +94,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Certifab::class);
     }
 
+    /** Equipos sobre los que esta declarada para asesorar (§10). */
+    public function assetAdvisories(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Asset::class, 'asset_advisors')
+            ->withPivot('es_responsable')
+            ->withTimestamps();
+    }
+
     /** Patron semanal de jornada, una fila por dia (§5). */
     public function workSchedules(): HasMany
     {
