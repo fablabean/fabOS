@@ -19,7 +19,7 @@ class SpacesTable
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('name')->label('Espacio')->searchable()->weight('medium'),
-                TextColumn::make('area.name')->label('Área')->placeholder('—')->searchable(),
+                TextColumn::make('areas.name')->label('Área')->placeholder('—')->searchable(),
 
                 TextColumn::make('type')
                     ->label('Tipo')
@@ -40,7 +40,7 @@ class SpacesTable
             ])
             ->filters([
                 SelectFilter::make('type')->label('Tipo')->options(Space::TIPOS),
-                SelectFilter::make('area')->label('Área')->relationship('area', 'name')->preload(),
+                SelectFilter::make('areas')->label('Área')->relationship('areas', 'name')->preload(),
             ])
             ->recordActions([EditAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

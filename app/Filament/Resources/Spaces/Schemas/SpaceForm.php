@@ -37,8 +37,12 @@ class SpaceForm
                             ->required()
                             ->helperText('Los virtuales se reservan igual: salas, licencias, mentorías.'),
 
-                        Select::make('area_id')->label('Área')->relationship('area', 'name')->preload(),
-                        Select::make('location_id')->label('Ubicación')->relationship('location', 'name')->searchable()->preload(),
+                        Select::make('areas')
+                            ->label('Áreas que ocupa')
+                            ->relationship('areas', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->helperText('Normalmente una. Un área puede repartirse entre varios espacios, y un espacio grande albergar varias.'),
                         TextInput::make('capacity')->label('Aforo')->numeric()->placeholder('sin límite'),
                     ]),
 

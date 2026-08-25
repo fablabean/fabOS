@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Space extends Model
 {
     protected $fillable = [
-        'area_id', 'location_id', 'slug', 'name', 'type', 'capacity',
+        'slug', 'name', 'type', 'capacity',
         'is_reservable', 'is_production_space', 'setup_minutes', 'cleanup_minutes',
     ];
 
@@ -24,18 +24,21 @@ class Space extends Model
 
     public const TIPOS = ['fisico' => 'Físico', 'virtual' => 'Virtual'];
 
-    public function area(): BelongsTo
+    /**
+     * Las áreas que ocupan este espacio.
+     *
+     * Normalmente una sola —el taller de láser es el área de láser— pero un
+     * área puede repartirse entre varios espacios, y un espacio grande albergar
+     * varias. Modelarlo con una sola columna obligaba a mentir en esos casos.
+     */
+    public function areas(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsTo(Area::class);
+        return $this->belongsToMany(Area::class)->withTimestamps();
     }
 
-    public function location(): BelongsTo
+    /** Los muebles que hay dentro: racks, mesas, gabinetes (§7). */
+    public function locations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->belongsTo(Location::class);
-    }
-
-    public function reservations(): MorphMany
-    {
-        return $this->morphMany(Reservation::class, 'reservable');
+        return $this->hasMany(Location::class);
     }
 }

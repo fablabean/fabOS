@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Área del laboratorio: unidad de certificación, espacio y responsable (§7). */
@@ -28,8 +29,15 @@ class Area extends Model
         return $this->hasMany(Asset::class);
     }
 
-    public function spaces(): HasMany
+    /**
+     * Los espacios donde vive esta área (§7).
+     *
+     * Muchos a muchos y no una columna: normalmente un área ocupa un espacio,
+     * pero puede repartirse entre varios, y un espacio grande albergar varias.
+     * Con una sola columna habría que mentir en esos casos.
+     */
+    public function spaces(): BelongsToMany
     {
-        return $this->hasMany(Space::class);
+        return $this->belongsToMany(Space::class)->withTimestamps();
     }
 }
