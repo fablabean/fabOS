@@ -111,7 +111,13 @@ class ReadinessService
                 'Configurar MAIL_MAILER y el proveedor de envío');
         }
 
-        if (str_contains((string) $host, 'mailpit')) {
+        // Solo importa a donde apunta SMTP si el correo SALE por SMTP.
+        //
+        // Con un transporte por API —Postmark, Resend, SES— el MAIL_HOST queda
+        // como estaba y no lo usa nadie. Mirarlo igual daba un bloqueo falso con
+        // el correo funcionando, y un aviso que grita cuando todo esta bien
+        // ensena a ignorar los avisos.
+        if ($mailer === 'smtp' && str_contains((string) $host, 'mailpit')) {
             return $this->mal('El correo va a Mailpit',
                 'Mailpit es el buzón de pruebas local: atrapa todo y no entrega nada.',
                 'Apuntar MAIL_HOST al proveedor real, con SPF, DKIM y DMARC verificados');

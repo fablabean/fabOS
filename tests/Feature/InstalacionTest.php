@@ -239,4 +239,39 @@ class InstalacionTest extends TestCase
 
         $this->assertContains('No hay rastro del planificador', $titulos->all());
     }
+
+    // ------------------------------------------------- el correo, sin gritar
+
+    /**
+     * Con un transporte por API el MAIL_HOST queda como estaba y no lo usa
+     * nadie. Mirarlo igual daba un bloqueo falso con el correo funcionando — y
+     * un aviso que grita cuando todo esta bien ensena a ignorar los avisos.
+     */
+    public function test_un_transporte_por_api_no_se_confunde_con_mailpit(): void
+    {
+        config([
+            'mail.default' => 'postmark',
+            'mail.mailers.smtp.host' => 'mailpit',
+            'mail.from.address' => 'no-reply@ejemplo.org',
+        ]);
+
+        $titulos = app(ReadinessService::class)->revisar()->pluck('titulo');
+
+        $this->assertNotContains('El correo va a Mailpit', $titulos->all());
+    }
+
+    /** Pero por SMTP contra Mailpit sigue bloqueando, que es lo correcto. */
+    public function test_smtp_contra_mailpit_sigue_bloqueando(): void
+    {
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'mailpit',
+        ]);
+
+        $hallazgo = app(ReadinessService::class)->revisar()
+            ->firstWhere('titulo', 'El correo va a Mailpit');
+
+        $this->assertNotNull($hallazgo);
+        $this->assertSame(ReadinessService::GRAVE, $hallazgo['nivel']);
+    }
 }
