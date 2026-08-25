@@ -19,6 +19,16 @@ class LocationsTable
                 TextColumn::make('parent.name')->label('Dentro de')->placeholder('raíz')->searchable(),
                 TextColumn::make('assets_count')->label('Equipos aquí')->counts('assets')->badge()->color('gray'),
                 TextColumn::make('children_count')->label('Sub-ubicaciones')->counts('children')->badge()->color('gray'),
+
+                // El efectivo, no el declarado: lo que importa es donde esta
+                // esa gaveta, no si el dato lo puso ella o su estante.
+                TextColumn::make('espacio')
+                    ->label('Espacio')
+                    ->state(fn (\App\Models\Location $record) => $record->espacio()?->name)
+                    ->placeholder('sin asignar')
+                    ->description(fn (\App\Models\Location $record) => $record->space_id ? null : 'heredado')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'success' : 'warning'),
             ])
             ->recordActions([EditAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
