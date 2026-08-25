@@ -30,6 +30,19 @@ class ProjectTask extends Model
         ];
     }
 
+    /**
+     * Dejar el avance en blanco es decir «todavia nada», no un error. La
+     * columna es NOT NULL con default 0, y un NULL explicito se salta ese
+     * default: sin esto, borrar el campo revienta el guardado.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $tarea) {
+            $tarea->progress ??= 0;
+            $tarea->position ??= 0;
+        });
+    }
+
     /** Las columnas del tablero, en orden de lectura. */
     public const ESTADOS = [
         'por_hacer' => 'Por hacer',

@@ -140,6 +140,15 @@ class Project extends Model
         static::creating(function (self $proyecto) {
             $proyecto->code ??= static::siguienteCodigo();
         });
+
+        // Un proyecto en la etapa de idea todavia no tiene valor acordado, y el
+        // formulario manda ese campo vacio. La columna es NOT NULL con default
+        // 0, pero un NULL explicito se salta el default y revienta el insert:
+        // sin esto no se puede anotar una idea, que es justo lo primero que
+        // hace cualquiera. Vacio significa "sin acordar", y eso son 0 pesos.
+        static::saving(function (self $proyecto) {
+            $proyecto->agreed_value ??= 0;
+        });
     }
 
     /** PRY-2026-0001, consecutivo por año. */

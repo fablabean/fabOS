@@ -77,6 +77,51 @@ class BackofficeProyectosTest extends TestCase
             ->assertSee('Bienestar Universitario');
     }
 
+    /**
+     * Lo primero que hace cualquiera es anotar una idea con lo minimo: un
+     * nombre y por donde llego. El resto del formulario va vacio, y eso tiene
+     * que bastar. Antes no bastaba: «valor acordado» en blanco llegaba como
+     * NULL a una columna NOT NULL y el guardado reventaba con un error que
+     * desde la pantalla solo se veia como «Error al cargar la pagina».
+     */
+    public function test_se_crea_un_proyecto_con_lo_minimo(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $this->entra($admin);
+
+        Livewire::test(\App\Filament\Resources\Projects\Pages\CreateProject::class)
+            ->fillForm(['name' => 'Metro 1', 'source' => 'correo'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $p = Project::where('name', 'Metro 1')->firstOrFail();
+
+        $this->assertSame(0, (int) $p->agreed_value, 'Sin acordar son 0 pesos, no NULL.');
+        $this->assertNotNull($p->code, 'El codigo se genera solo.');
+        $this->assertSame('idea', $p->stage);
+    }
+
+    /** Dejar el avance en blanco es «todavia nada», no un error de guardado. */
+    public function test_una_tarea_se_guarda_sin_avance(): void
+    {
+        $p = $this->proyecto();
+
+        $tarea = $p->tasks()->create(['title' => 'Cortar piezas', 'progress' => null]);
+
+        $this->assertSame(0, $tarea->fresh()->progress);
+    }
+
+    /** Y borrar el costo por hora al corregir vuelve a la tarifa de referencia. */
+    public function test_borrar_el_costo_por_hora_al_editar_no_rompe_nada(): void
+    {
+        $p = $this->proyecto();
+        $log = $p->timeLogs()->create(['worked_on' => now()->toDateString(), 'hours' => 2, 'hourly_cost' => 90_000]);
+
+        $log->update(['hourly_cost' => null]);
+
+        $this->assertSame((int) config('fabos.money.hourly_cost'), (int) $log->fresh()->hourly_cost);
+    }
+
     public function test_avanzar_sin_la_compuerta_avisa_que_falta(): void
     {
         $admin = $this->conRol(User::ROL_ADMINISTRADOR);

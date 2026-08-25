@@ -39,7 +39,7 @@
                             {{-- Quien lee tiene derecho a saber que hubo una
                                  máquina en el origen, aunque una persona lo haya
                                  revisado y corregido antes de publicarlo. --}}
-                            <span class="marca ia">Borrador de IA, revisado por una persona</span>
+                            <span class="marca ia">Revisado por una persona, asistido por la IA</span>
                         @endif
                     </p>
                 </article>

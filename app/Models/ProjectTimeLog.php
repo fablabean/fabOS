@@ -29,7 +29,11 @@ class ProjectTimeLog extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (self $log) {
+        // En «saving» y no en «creating»: la columna es NOT NULL, asi que
+        // dejar el campo en blanco al editar reventaba el guardado. En blanco
+        // significa «la tarifa de referencia», tanto al registrar como al
+        // corregir.
+        static::saving(function (self $log) {
             $log->hourly_cost = $log->hourly_cost ?: (int) config('fabos.money.hourly_cost');
         });
     }

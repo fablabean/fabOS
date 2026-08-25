@@ -160,6 +160,30 @@ class PreguntasTest extends TestCase
         $this->assertSame(1, $p->answers()->count(), 'Se creó una respuesta nueva en vez de publicar el borrador.');
     }
 
+    /**
+     * Quien lee tiene derecho a saber que hubo una maquina en el origen. El
+     * orden de la frase importa: responde el laboratorio, la IA solo ayudo.
+     */
+    public function test_una_respuesta_asistida_por_ia_lo_dice(): void
+    {
+        $p = $this->pregunta('¿Se puede imprimir nylon?');
+
+        $this->actingAs($this->jefa())
+            ->post(route('preguntas.responder', $p), [
+                'borrador' => Answer::create([
+                    'question_id' => $p->id,
+                    'body'        => 'Borrador.',
+                    'origen'      => Answer::IA,
+                    'publicada'   => false,
+                ])->id,
+                'body' => 'Sí, pero hay que secar el filamento antes.',
+            ]);
+
+        $this->get(route('preguntas.show', $p))
+            ->assertOk()
+            ->assertSee('Revisado por una persona, asistido por la IA');
+    }
+
     // ------------------------------------------------------------ organizar
 
     /**
