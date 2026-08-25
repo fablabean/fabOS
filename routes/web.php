@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/preguntas/nueva', [PreguntaController::class, 'create'])->name('preguntas.create');
     Route::post('/preguntas', [PreguntaController::class, 'store'])->name('preguntas.store');
     Route::post('/preguntas/{question}/responder', [PreguntaController::class, 'responder'])->name('preguntas.responder');
+    Route::post('/preguntas/{question}/sugerir', [PreguntaController::class, 'sugerir'])->name('preguntas.sugerir');
 
     // Espacios: se reserva la sala y dentro se toman las herramientas (§7).
     Route::get('/espacios', [EspacioController::class, 'index'])->name('espacios.index');

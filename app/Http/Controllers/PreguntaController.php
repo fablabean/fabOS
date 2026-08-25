@@ -7,6 +7,7 @@ use App\Models\Area;
 use App\Models\Asset;
 use App\Models\Question;
 use App\Models\User;
+use App\Services\Ia\SugerenciaDeRespuesta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -55,6 +56,7 @@ class PreguntaController extends Controller
                 ? $question->answers()->where('publicada', false)->with('user')->get()
                 : collect(),
             'parecidas' => Question::parecidas($question->title, 4, $question->id),
+            'ia'         => app(SugerenciaDeRespuesta::class),
         ]);
     }
 
@@ -118,6 +120,32 @@ class PreguntaController extends Controller
         $question->update(['status' => 'respondida']);
 
         return back()->with('status', 'Respuesta publicada.');
+    }
+
+    /**
+     * Pide un borrador a la IA.
+     *
+     * A peticion y no automatico: se gasta solo en las preguntas que alguien va
+     * a responder de verdad, y quien pregunta no espera diez segundos al
+     * publicar.
+     */
+    public function sugerir(Request $request, Question $question, SugerenciaDeRespuesta $ia)
+    {
+        abort_unless($this->puedeResponder($request), 403);
+
+        if (! $ia->disponible()) {
+            return back()->with('status', 'La sugerencia automatica esta apagada.');
+        }
+
+        if ($ia->quedanHoy() < 1) {
+            return back()->with('status', 'Se agoto el cupo de sugerencias de hoy.');
+        }
+
+        $borrador = $ia->para($question);
+
+        return back()->with('status', $borrador
+            ? 'Borrador listo. Revisalo, corrigelo si hace falta, y publicalo.'
+            : 'No se pudo redactar el borrador. Quedo anotado el motivo en la bitacora.');
     }
 
     private function puedeResponder(Request $request): bool

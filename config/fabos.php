@@ -163,6 +163,29 @@ return [
     | corta a proposito: una asesoria ocupa a alguien del equipo, y bloques
     | largos vacian la agenda del laboratorio.
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Borradores de respuesta con IA
+    |--------------------------------------------------------------------------
+    | Solo BORRADORES: nada se publica sin que una persona lo apruebe (§20).
+    |
+    | La IA ve el catalogo —equipos, insumos, espacios— y nada mas. Ni personas,
+    | ni reservas, ni saldos: mandar datos personales a un servicio externo es
+    | tratamiento de datos, y para responder que resina sirve para moldes no
+    | hace falta saber quien reservo que.
+    |
+    | `max_por_dia` no es tacaneria: es el freno que evita que un fallo en bucle
+    | o una racha de spam se conviertan en una factura.
+    */
+    'ia' => [
+        'activa'      => (bool) env('IA_ACTIVA', true),
+        'clave'       => env('ANTHROPIC_API_KEY'),
+        'modelo'      => env('IA_MODELO', 'claude-sonnet-5'),
+        'max_tokens'  => (int) env('IA_MAX_TOKENS', 900),
+        'max_por_dia' => (int) env('IA_MAX_POR_DIA', 50),
+        'timeout'     => (int) env('IA_TIMEOUT', 45),
+    ],
+
     'asesorias' => [
         'minutos' => (int) env('ASESORIA_MINUTOS', 45),
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),

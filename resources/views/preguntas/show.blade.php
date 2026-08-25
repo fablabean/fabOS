@@ -58,6 +58,20 @@
                     </p>
                 @endforeach
 
+                {{-- El borrador se pide, no llega solo: se gasta unicamente en las
+                     preguntas que alguien va a responder de verdad. --}}
+                @if ($borradores->isEmpty() && $ia->disponible())
+                    <form method="POST" action="{{ route('preguntas.sugerir', $pregunta) }}"
+                          style="margin-bottom:1rem">
+                        @csrf
+                        <button type="submit" class="secundario">Sugerir un borrador con IA</button>
+                        <span class="foot" style="margin-left:.6rem">
+                            Quedan {{ $ia->quedanHoy() }} sugerencias hoy. Lo redacta una máquina;
+                            lo publicas tú.
+                        </span>
+                    </form>
+                @endif
+
                 <form method="POST" action="{{ route('preguntas.responder', $pregunta) }}">
                     @csrf
                     @if ($borradores->isNotEmpty())
