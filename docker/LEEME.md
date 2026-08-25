@@ -19,19 +19,30 @@ cp vendor/laravel/sail/runtimes/8.5/{Dockerfile,php.ini,start-container,supervis
 cp vendor/laravel/sail/database/pgsql/create-testing-database.sql docker/pgsql/
 ```
 
-## Lo que esta imagen no es
+## Qué sirve las peticiones
 
-El servidor web es `php artisan serve`, el servidor de desarrollo de PHP. Con
-`PHP_CLI_SERVER_WORKERS` atiende varias peticiones a la vez —sin eso atendería
-una sola, y Filament hace varias por pantalla—, pero no es nginx con php-fpm:
+**nginx delante de php-fpm**, no el `php artisan serve` que trae Sail.
 
-- no sirve archivos estáticos con la eficiencia de un servidor real;
-- no tiene límites de conexiones, ni *keep-alive* afinado, ni recuperación de
-  procesos caídos más allá de lo que haga supervisor;
-- reinicia el mundo en cada despliegue.
+El cambio no fue por gusto. Medido contra el servidor de desarrollo, una subida
+de 3,4 MB tardaba entre cinco y nueve segundos —unos 500 KB/s— y por el túnel
+esa lentitud se convertía **a veces** en un 502: la subida fallaba sin explicar
+por qué, y parecía culpa del archivo. Con nginx la misma subida entra en menos
+de un segundo.
 
-Para el tamaño del laboratorio funciona. Cuando el uso crezca —o cuando el
-sistema se comparta con otro fablab con más gente— el siguiente paso es una
-imagen con nginx y php-fpm. Está anotado en `docs/PLAN.md`.
+La diferencia de fondo: nginx lee el cuerpo de la petición a velocidad de disco
+y solo se lo entrega a PHP cuando está completo. El servidor de desarrollo lo va
+leyendo con el mismo proceso que después ejecuta la aplicación.
 
-[sail]: https://laravel.com/docs/sail
+Los archivos son `nginx.conf` y `php-fpm.conf`, aquí al lado. Lo que conviene
+saber de ellos:
+
+- `client_max_body_size 64m` — el techo real de lo que puede llegar.
+- `fastcgi_read_timeout 300` — una importación grande tarda más de un minuto, y
+  cortarla a mitad deja el trabajo sin acabar y sin explicación.
+- `pm = dynamic` con 20 procesos — el laboratorio tiene ráfagas: treinta
+  personas entrando a la vez al empezar una clase.
+- `request_slowlog_timeout 10s` — lo que tarde más queda anotado con su traza.
+  Sin esto, una consulta lenta solo se nota porque «el sistema va raro».
+
+Supervisor levanta los dos y reinicia el que se caiga: un proceso muerto sin
+reiniciar deja el laboratorio sin sistema hasta que alguien mire.
