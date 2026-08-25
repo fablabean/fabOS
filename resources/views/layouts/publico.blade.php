@@ -80,6 +80,7 @@
     </a>
     <nav>
         <a href="{{ route('publico.equipos') }}">Equipos</a>
+            <a href="{{ route('preguntas.index') }}">Preguntas</a>
         <a href="{{ route('formacion') }}">Formación</a>
         @auth
             <a href="{{ route('reservas.index') }}">Reservar</a>

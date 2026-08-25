@@ -8,6 +8,7 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LabelController;
+use App\Http\Controllers\PreguntaController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\ProjectBoardController;
 use App\Http\Controllers\PurchaseRequestController;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Route;
 
 // Cara publica: no exige sesion (§3, portal publico).
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
+// Preguntas del laboratorio: leer es publico, preguntar exige cuenta (§20).
+Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');
+
 Route::get('/equipos', [PublicSiteController::class, 'equipos'])->name('publico.equipos');
 Route::get('/equipos/{asset}', [PublicSiteController::class, 'equipo'])->name('publico.equipo');
 
@@ -90,6 +94,11 @@ Route::middleware('auth')->group(function () {
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');
 
+    // Preguntar y responder (§20).
+    Route::get('/preguntas/nueva', [PreguntaController::class, 'create'])->name('preguntas.create');
+    Route::post('/preguntas', [PreguntaController::class, 'store'])->name('preguntas.store');
+    Route::post('/preguntas/{question}/responder', [PreguntaController::class, 'responder'])->name('preguntas.responder');
+
     // Espacios: se reserva la sala y dentro se toman las herramientas (§7).
     Route::get('/espacios', [EspacioController::class, 'index'])->name('espacios.index');
     Route::get('/espacios/{space}', [EspacioController::class, 'show'])->name('espacios.show');
@@ -138,3 +147,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/compras/{purchaseRequest}/requisicion', [PurchaseRequestController::class, 'show'])
         ->name('compras.requisicion');
 });
+
+// La ficha de una pregunta va al final: si fuera antes, /preguntas/nueva
+// se interpretaria como el slug de una pregunta llamada «nueva».
+Route::get('/preguntas/{question:slug}', [PreguntaController::class, 'show'])->name('preguntas.show');
