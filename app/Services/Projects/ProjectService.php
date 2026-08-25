@@ -239,12 +239,10 @@ class ProjectService
     }
 
     /** PRY-2026-0001: legible por teléfono y ordenable. */
+    /** Se delega en el modelo: dos generadores acabarian dando codigos distintos. */
     public function siguienteCodigo(): string
     {
-        $ano = now(config('fabos.lab.timezone'))->year;
-        $ultimo = Project::where('code', 'like', "PRY-{$ano}-%")->max('code');
-
-        return sprintf('PRY-%d-%04d', $ano, $ultimo ? ((int) substr($ultimo, -4)) + 1 : 1);
+        return Project::siguienteCodigo();
     }
 
     /** @throws ProjectException */

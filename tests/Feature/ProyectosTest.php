@@ -296,4 +296,45 @@ class ProyectosTest extends TestCase
         $this->assertSame(1, $hito->dias());
         $this->assertSame(5, $tarea->dias());
     }
+
+    /**
+     * El codigo lo pone el modelo, no quien crea el proyecto.
+     *
+     * Lo generaba el servicio, y el formulario del backoffice creaba el
+     * proyecto directamente: se saltaba esa linea y la base rechazaba la fila.
+     * El error salia como «Error al cargar la pagina», que no dice nada.
+     */
+    public function test_crear_un_proyecto_sin_pasar_por_el_servicio_igual_tiene_codigo(): void
+    {
+        $p = \App\Models\Project::create([
+            'name'   => 'Metro 1',
+            'stage'  => 'idea',
+            'status' => 'activo',
+            'source' => 'iniciativa',
+        ]);
+
+        $this->assertNotNull($p->code);
+        $this->assertStringStartsWith('PRY-' . now(config('fabos.lab.timezone'))->year . '-', $p->code);
+    }
+
+    public function test_los_codigos_son_consecutivos(): void
+    {
+        $codigos = collect(range(1, 3))->map(fn ($i) => \App\Models\Project::create([
+            'name' => 'Proyecto ' . $i, 'stage' => 'idea', 'status' => 'activo', 'source' => 'iniciativa',
+        ])->code);
+
+        $this->assertSame($codigos->unique()->count(), $codigos->count(), 'Dos proyectos comparten codigo.');
+        $this->assertStringEndsWith('0003', $codigos->last());
+    }
+
+    /** Un codigo dado a mano se respeta: el modelo solo rellena lo que falta. */
+    public function test_un_codigo_propio_no_se_pisa(): void
+    {
+        $p = \App\Models\Project::create([
+            'code' => 'PRY-ESPECIAL', 'name' => 'Con codigo propio',
+            'stage' => 'idea', 'status' => 'activo', 'source' => 'iniciativa',
+        ]);
+
+        $this->assertSame('PRY-ESPECIAL', $p->code);
+    }
 }

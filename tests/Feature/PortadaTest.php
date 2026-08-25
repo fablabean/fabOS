@@ -49,4 +49,27 @@ class PortadaTest extends TestCase
             ->assertOk()
             ->assertSee('marca-sitio', escape: false);
     }
+
+    /**
+     * La marca es una palabra, no dos.
+     *
+     * Con `display:flex` y `gap`, «fab» y <em>OS</em> eran DOS elementos y el
+     * hueco se metia entre ellos: la marca se leia «fab OS».
+     */
+    public function test_la_marca_no_se_parte_en_dos(): void
+    {
+        foreach ([
+            'resources/views/layouts/publico.blade.php',
+            'resources/views/layouts/app.blade.php',
+            'resources/views/layouts/shell.blade.php',
+        ] as $vista) {
+            $fuente = file_get_contents(base_path($vista));
+
+            $this->assertStringContainsString(
+                '<span class="palabra">fab<em>OS</em></span>',
+                $fuente,
+                "{$vista} deja «fab» y «OS» sueltos dentro de un contenedor flex, y el gap los separa.",
+            );
+        }
+    }
 }

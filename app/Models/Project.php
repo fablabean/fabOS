@@ -123,4 +123,34 @@ class Project extends Model
             ?: $this->requestedBy?->name
             ?: 'sin identificar';
     }
+
+    /**
+     * El código lo pone el modelo, no quien crea el proyecto.
+     *
+     * Antes lo generaba el servicio, y el formulario del backoffice creaba el
+     * proyecto directamente: se saltaba esa línea y la base rechazaba la fila
+     * con «null value in column code». El error salía como «Error al cargar la
+     * página», que no dice nada.
+     *
+     * Aquí no hay forma de saltárselo: cualquiera que cree un proyecto, por la
+     * vía que sea, obtiene su código.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $proyecto) {
+            $proyecto->code ??= static::siguienteCodigo();
+        });
+    }
+
+    /** PRY-2026-0001, consecutivo por año. */
+    public static function siguienteCodigo(): string
+    {
+        $ano = now(config('fabos.lab.timezone'))->year;
+
+        // El máximo por texto funciona porque el número va con ceros delante y
+        // ancho fijo: «0010» ordena después de «0009».
+        $ultimo = static::where('code', 'like', "PRY-{$ano}-%")->max('code');
+
+        return sprintf('PRY-%d-%04d', $ano, $ultimo ? ((int) substr($ultimo, -4)) + 1 : 1);
+    }
 }

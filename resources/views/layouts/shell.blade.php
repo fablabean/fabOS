@@ -27,6 +27,10 @@
             border-radius:6px;padding:2rem;
         }
         .brand{font-weight:800;letter-spacing:-.03em;font-size:1.9rem;margin:0}
+        /* La palabra va envuelta: con `display:flex` y `gap`, «fab» y
+           <em>OS</em> son DOS elementos y el hueco se metia entre ellos,
+           partiendo la marca en «fab OS». */
+        .brand .palabra{display:inline}
         .brand em{font-style:normal;color:var(--accent)}
         .powered{
             font-family:ui-monospace,Consolas,monospace;font-size:.62rem;letter-spacing:.16em;
@@ -67,7 +71,7 @@
 </head>
 <body>
     <main class="card">
-        <p class="brand">fab<em>OS</em></p>
+        <p class="brand"><span class="palabra">fab<em>OS</em></span></p>
         <p class="powered">Powered by {{ config('fabos.lab.name') }}</p>
 
         @if (session('status'))

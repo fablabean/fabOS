@@ -34,6 +34,10 @@
             display:flex;align-items:center;gap:.55rem;font-weight:800;letter-spacing:-.03em;
             font-size:1.2rem;text-decoration:none;color:var(--ink);
         }
+        /* La palabra va envuelta: con `display:flex` y `gap`, «fab» y
+           <em>OS</em> son DOS elementos y el hueco se metia entre ellos,
+           partiendo la marca en «fab OS». */
+        .marca-sitio .palabra{display:inline}
         .marca-sitio em{font-style:normal;color:var(--accent)}
         /* Sirve igual para el SVG en línea que para un logo propio en PNG. */
         .marca-sitio svg,.marca-sitio img{
@@ -76,7 +80,7 @@
 <div class="nav">
     <a class="marca-sitio" href="{{ route('publico.home') }}">
         <x-logo/>
-        fab<em>OS</em>
+        <span class="palabra">fab<em>OS</em></span>
     </a>
     <nav>
         <a href="{{ route('publico.equipos') }}">Equipos</a>

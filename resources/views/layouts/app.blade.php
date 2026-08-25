@@ -29,6 +29,10 @@
         }
         .brand{display:flex;align-items:center;gap:.5rem;font-weight:800;letter-spacing:-.03em;
                font-size:1.25rem;text-decoration:none;color:var(--ink)}
+        /* La palabra va envuelta: con `display:flex` y `gap`, «fab» y
+           <em>OS</em> son DOS elementos y el hueco se metia entre ellos,
+           partiendo la marca en «fab OS». */
+        .brand .palabra{display:inline}
         .brand em{font-style:normal;color:var(--accent)}
         .brand svg,.brand img{width:1.7rem;height:1.7rem;display:block;color:var(--accent);flex:none}
         header.top nav{display:flex;gap:1rem;margin-left:auto;align-items:center;font-size:.9rem}
@@ -82,7 +86,7 @@
 </head>
 <body>
     <header class="top">
-        <a class="brand" href="{{ route('home') }}"><x-logo/> fab<em>OS</em></a>
+        <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">fab<em>OS</em></span></a>
         <nav>
             <a href="{{ route('reservas.index') }}">Reservar</a>
             <a href="{{ route('formacion') }}">Formación</a>
