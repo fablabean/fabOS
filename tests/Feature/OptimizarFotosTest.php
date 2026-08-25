@@ -121,5 +121,10 @@ class OptimizarFotosTest extends TestCase
 
         $this->assertStringContainsString('->maxSize(20480)', $fuente);
         $this->assertStringContainsString('saveUploadedFileUsing', $fuente);
+
+        // Y se encoge en el navegador antes de viajar: el servidor tarda entre
+        // cinco y nueve segundos en recibir tres megas, y por el tunel esa
+        // lentitud se convierte a veces en un 502 sin explicacion.
+        $this->assertStringContainsString('imageResizeTargetWidth(2000)', $fuente);
     }
 }

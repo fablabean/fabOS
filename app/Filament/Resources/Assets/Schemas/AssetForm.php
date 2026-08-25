@@ -199,6 +199,21 @@ Select::make('status')
                             // Generoso a proposito: lo pesado se encoge, no se
                             // rechaza. El tope solo evita subidas absurdas.
                             ->maxSize(20480)
+                            // El navegador la encoge ANTES de subirla.
+                            //
+                            // Una foto de telefono son tres o cuatro megas, y el
+                            // servidor de la aplicacion tarda entre cinco y nueve
+                            // segundos en recibirlos: por el tunel, esa lentitud se
+                            // convierte a veces en un 502 y la subida falla sin
+                            // explicar por que.
+                            //
+                            // Reducida en el propio telefono viaja en unos cientos
+                            // de kilobytes. El optimizador del servidor sigue
+                            // ahi como red de seguridad para lo que llegue grande.
+                            ->imageResizeMode('contain')
+                            ->imageResizeTargetWidth(2000)
+                            ->imageResizeTargetHeight(2000)
+                            ->imageResizeUpscale(false)
                             ->saveUploadedFileUsing(
                                 fn ($file) => app(OptimizadorDeImagen::class)
                                     ->guardar($file, 'activos')
