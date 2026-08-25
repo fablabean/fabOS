@@ -17,6 +17,12 @@
 
 @section('content')
     <h1>Reservar equipo</h1>
+
+    <p class="help">
+        ¿Vas a trabajar en grupo o dar una clase?
+        <a href="{{ route('espacios.index') }}">Reserva un espacio</a> y toma dentro las
+        herramientas que necesites.
+    </p>
     <p class="help">
         @if ($franjaHoy)
             Hoy el laboratorio atiende de

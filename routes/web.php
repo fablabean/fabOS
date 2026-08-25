@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AsesoriaController;
+use App\Http\Controllers\EspacioController;
 use App\Http\Controllers\Auth\CarnetLoginController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\ReservationController;
@@ -88,6 +89,11 @@ Route::middleware('auth')->group(function () {
 
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');
+
+    // Espacios: se reserva la sala y dentro se toman las herramientas (§7).
+    Route::get('/espacios', [EspacioController::class, 'index'])->name('espacios.index');
+    Route::get('/espacios/{space}', [EspacioController::class, 'show'])->name('espacios.show');
+    Route::post('/espacios/{space}', [EspacioController::class, 'store'])->name('espacios.store');
 
     // Asesoria: la salida para quien todavia no tiene el certifab (§10).
     Route::get('/asesoria/{asset}', [AsesoriaController::class, 'show'])->name('asesoria.show');

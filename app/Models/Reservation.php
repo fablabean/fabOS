@@ -17,8 +17,7 @@ class Reservation extends Model
 {
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
-        'advisory_asset_id',
-        'parent_reservation_id',
+        'advisory_asset_id', 'participants', 'parent_reservation_id',
         'status', 'mode', 'starts_at', 'ends_at',
         'checked_in_at', 'checked_out_at',
         'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
