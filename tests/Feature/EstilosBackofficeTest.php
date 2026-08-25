@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Filament\Facades\Filament;
+use Filament\Support\Enums\Width;
 use Tests\TestCase;
 
 /**
@@ -46,6 +48,20 @@ class EstilosBackofficeTest extends TestCase
                 ));
             }
         }
+    }
+
+    /**
+     * Filament limita el contenido a 80rem. En un monitor de trabajo eso deja
+     * media pantalla en blanco mientras la tabla de al lado recorta nombres y
+     * esconde columnas. Aqui se trabaja con listados anchos.
+     */
+    public function test_el_backoffice_usa_la_pantalla_entera(): void
+    {
+        $this->assertSame(
+            Width::Full,
+            Filament::getPanel('admin')->getMaxContentWidth(),
+            'El panel volvio al ancho limitado de Filament.',
+        );
     }
 
     public function test_el_tablero_trae_su_propia_rejilla(): void

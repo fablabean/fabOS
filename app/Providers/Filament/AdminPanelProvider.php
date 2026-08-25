@@ -12,6 +12,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -31,6 +32,12 @@ class AdminPanelProvider extends PanelProvider
             // Barra lateral plegable: en pantallas de trabajo el catálogo
             // de activos necesita todo el ancho disponible.
             ->sidebarCollapsibleOnDesktop()
+            // Y el contenido usa la pantalla entera. Filament la limita a 80rem
+            // por defecto, que en un monitor de trabajo deja media pantalla en
+            // blanco mientras la tabla de proyectos recorta nombres y esconde
+            // columnas. Aquí se trabaja con listados anchos —activos, reservas,
+            // movimientos—, no con artículos de lectura.
+            ->maxContentWidth(Width::Full)
             ->colors([
                 'primary' => Color::Amber,
             ])
