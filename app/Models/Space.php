@@ -41,4 +41,25 @@ class Space extends Model
     {
         return $this->hasMany(Location::class);
     }
+
+    /** Lo que se usa dentro: maquinas fijas y herramientas (§7). */
+    public function assets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Asset::class);
+    }
+
+    /**
+     * Herramientas que se pueden tomar aqui.
+     *
+     * Las de este espacio, mas las portatiles de cualquier otro: una
+     * herramienta marcada como que puede salir se lleva donde haga falta.
+     */
+    public function herramientasDisponibles(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Asset::query()
+            ->where('kind', 'herramienta')
+            ->where('is_reservable', true)
+            ->where('status', 'operativo')
+            ->where(fn ($q) => $q->where('space_id', $this->id)->orWhere('puede_salir', true));
+    }
 }

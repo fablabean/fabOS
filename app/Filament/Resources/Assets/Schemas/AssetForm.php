@@ -52,7 +52,29 @@ class AssetForm
                             ->default('fijo')
                             ->required(),
 
-                        Select::make('status')
+                        
+                        Select::make('space_id')
+
+                            ->label('Espacio donde vive')
+
+                            ->relationship('space', 'name')
+
+                            ->searchable()
+
+                            ->preload()
+
+                            ->helperText('La sala o taller donde se usa. Distinto de la ubicación, que es el mueble donde se guarda.'),
+
+
+                        Toggle::make('puede_salir')
+
+                            ->label('Puede salir de su espacio')
+
+                            ->helperText('Apagado, la herramienta solo se toma dentro de su espacio. Prestarla a otra sala deja sin ella a quien trabaja allí, y nadie se entera hasta que la busca.')
+
+                            ->visible(fn ($get) => $get('kind') === 'herramienta'),
+
+Select::make('status')
                             ->label('Estado')
                             ->options(Asset::ESTADOS)
                             ->default('operativo')

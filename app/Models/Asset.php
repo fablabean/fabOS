@@ -14,7 +14,7 @@ class Asset extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'area_id', 'risk_family_id', 'location_id', 'name', 'kind',
+        'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'name', 'kind',
         'brand', 'model', 'serial', 'asset_tag', 'qr_token', 'status',
         'is_reservable', 'booking_mode', 'allows_off_hours_requests',
         'unattended_use', 'pool_key',
@@ -135,5 +135,17 @@ class Asset extends Model
         return $this->belongsToMany(User::class, 'asset_advisors')
             ->withPivot('es_responsable')
             ->withTimestamps();
+    }
+
+    /** El espacio donde se usa; distinto del mueble donde se guarda (§7). */
+    public function space(): BelongsTo
+    {
+        return $this->belongsTo(Space::class);
+    }
+
+    /** Herramienta o kit: se toma dentro de un espacio, no se reserva suelta. */
+    public function esHerramienta(): bool
+    {
+        return $this->kind === 'herramienta';
     }
 }
