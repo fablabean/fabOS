@@ -217,4 +217,39 @@ class PreguntasTest extends TestCase
             ->assertSee('grosor de MDF')
             ->assertDontSee('nivela la Bambu');
     }
+
+    // -------------------------------------------------- la bandeja del backoffice
+
+    /**
+     * Responder se hace en el sitio, pero encontrar que hay pendiente es
+     * trabajo de backoffice: lo que no se ve no se atiende.
+     */
+    public function test_la_bandeja_lista_las_preguntas_sin_responder(): void
+    {
+        $this->pregunta('¿Cada cuánto se limpia el filtro de la láser?');
+
+        $this->actingAs($this->jefa())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['app' => true]])
+            ->get('/admin/questions')
+            ->assertOk()
+            ->assertSee('limpia el filtro');
+    }
+
+    public function test_la_bandeja_no_es_para_cualquiera(): void
+    {
+        $this->actingAs($this->alguien())
+            ->get('/admin/questions')
+            ->assertForbidden();
+    }
+
+    /** El contador del menú es lo que hace que alguien mire. */
+    public function test_el_menu_cuenta_lo_pendiente(): void
+    {
+        $this->pregunta('Una pregunta sin responder todavía');
+
+        $respondida = $this->pregunta('Otra que ya está resuelta');
+        $respondida->update(['status' => 'respondida']);
+
+        $this->assertSame('1', \App\Filament\Resources\Questions\QuestionResource::getNavigationBadge());
+    }
 }
