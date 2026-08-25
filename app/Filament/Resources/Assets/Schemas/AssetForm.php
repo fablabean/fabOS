@@ -10,6 +10,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -66,6 +67,11 @@ class AssetForm
 
                             ->helperText('La sala o taller donde se usa. Distinto de la ubicación, que es el mueble donde se guarda.'),
 
+
+                        Toggle::make('reserva_con_espacio')
+                            ->label('Reservarlo ocupa también su espacio')
+                            ->helperText('Para lo que no sirve fuera de su sala: unas gafas de realidad virtual sin la sala donde están no sirven de nada.')
+                            ->visible(fn ($get) => filled($get('space_id'))),
 
                         Toggle::make('puede_salir')
 
@@ -243,12 +249,36 @@ Select::make('status')
                     ->description('Equipos que deben estar operativos para poder usar este. Si uno falla, este deja de ser reservable.')
                     ->collapsed()
                     ->schema([
-                        Select::make('dependencies')
-                            ->label('Requiere que estén operativos')
-                            ->relationship('dependencies', 'name')
-                            ->multiple()
-                            ->preload()
-                            ->searchable(),
+                        // Tres relaciones distintas, y tratarlas igual obliga a
+                        // mentir en dos: el compresor tiene que estar sano pero
+                        // no se reserva; la sala de las gafas se ocupa siempre;
+                        // el computador de esas gafas lo decide quien reserva.
+                        Repeater::make('dependenciasConModo')
+                            ->label('Cómo se relaciona cada uno')
+                            ->relationship('dependenciasConModo')
+                            ->schema([
+                                Select::make('depends_on_asset_id')
+                                    ->label('Equipo')
+                                    ->options(fn () => Asset::orderBy('name')->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->required()
+                                    ->distinct(),
+
+                                Select::make('modo')
+                                    ->label('Relación')
+                                    ->options(Asset::MODOS_DEPENDENCIA)
+                                    ->default('operativo')
+                                    ->required()
+                                    ->helperText('«Operativo»: hace falta que funcione. «Junto»: se reserva con este. «Opcional»: se pregunta al reservar.'),
+
+                                TextInput::make('note')
+                                    ->label('Nota')
+                                    ->maxLength(255),
+                            ])
+                            ->columns(3)
+                            ->addActionLabel('Añadir relación')
+                            ->collapsed()
+                            ->itemLabel(fn (array $state) => Asset::find($state['depends_on_asset_id'] ?? null)?->name),
                     ]),
             ]);
     }

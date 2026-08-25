@@ -14,7 +14,7 @@ class Asset extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'name', 'kind',
+        'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'reserva_con_espacio', 'name', 'kind',
         'brand', 'model', 'serial', 'asset_tag', 'qr_token', 'status',
         'is_reservable', 'booking_mode', 'allows_off_hours_requests',
         'unattended_use', 'pool_key',
@@ -54,6 +54,13 @@ class Asset extends Model
      * no exige certifab —usar un computador no es operar una máquina de riesgo—
      * y su valor está en la hora de uso, no en el material que consume.
      */
+    /** Que significa que este equipo dependa de otro (§7). */
+    public const MODOS_DEPENDENCIA = [
+        'operativo' => 'Tiene que estar operativo',
+        'junto'     => 'Se reserva junto con este',
+        'opcional'  => 'Se ofrece al reservar',
+    ];
+
     public const TIPOS = [
         'fijo'        => 'Activo fijo',
         'herramienta' => 'Herramienta',
@@ -112,7 +119,7 @@ class Asset extends Model
     public function dependencies(): BelongsToMany
     {
         return $this->belongsToMany(Asset::class, 'asset_dependencies', 'asset_id', 'depends_on_asset_id')
-            ->withPivot('note')
+            ->withPivot('note', 'modo')
             ->withTimestamps();
     }
 
@@ -147,5 +154,34 @@ class Asset extends Model
     public function esHerramienta(): bool
     {
         return $this->kind === 'herramienta';
+    }
+
+    /** Lo que se reserva SIEMPRE con este equipo. */
+    public function seReservanJunto()
+    {
+        return $this->dependencies()->wherePivot('modo', 'junto');
+    }
+
+    /** Lo que se OFRECE al reservar, y decide quien reserva. */
+    public function complementosOpcionales()
+    {
+        return $this->dependencies()->wherePivot('modo', 'opcional');
+    }
+
+    /**
+     * Reservar este equipo reserva tambien su espacio.
+     *
+     * Unas gafas de realidad virtual sin la sala donde estan no sirven de
+     * nada: quien las reserva ocupa el sitio, aunque no lo pida.
+     */
+    public function arrastraSuEspacio(): bool
+    {
+        return $this->reserva_con_espacio && $this->space_id !== null;
+    }
+
+    /** Las relaciones con su modo, para poder editarlas con su dato. */
+    public function dependenciasConModo(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AssetDependency::class, 'asset_id');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Booking;
 
 use App\Models\Asset;
 use App\Models\Reservation;
+use App\Models\Space;
 use App\Models\User;
 use App\Services\Ledger\LedgerException;
 use App\Services\Money\ChargeService;
@@ -52,6 +53,7 @@ class BookingService
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?string $proposito = null,
+        array $complementos = [],
     ): Reservation {
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -127,7 +129,7 @@ class BookingService
         $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null);
 
         try {
-            return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo) {
+            return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo, $complementos) {
                 $reserva = Reservation::create([
                     'reservable_type' => Asset::class,
                     'reservable_id'   => $asset->id,
@@ -141,6 +143,14 @@ class BookingService
                     'status_reason'   => $motivo,
                     'estimated_cost_minor' => $cotizacion->totalMenor,
                 ]);
+
+                // Lo que no sirve por separado se reserva con ello.
+                //
+                // Unas gafas de realidad virtual sin la sala donde estan no
+                // sirven de nada: quien las reserva ocupa el sitio, lo pida o
+                // no. Y lo opcional —un computador con las gafas— solo si lo
+                // marco al reservar.
+                $this->reservarLoQueVaJunto($reserva, $asset, $user, $desde, $hasta, $complementos);
 
                 // Una reserva solicitada no bloquea nada todavía: cobrarle el
                 // compromiso sería retener saldo por algo que quizá se rechace.
@@ -354,5 +364,55 @@ class BookingService
     private function esTraslape(QueryException $e): bool
     {
         return str_contains($e->getMessage(), 'reservations_sin_traslape');
+    }
+
+    /**
+     * Reserva el espacio y los equipos que no sirven por separado.
+     *
+     * Todo cuelga de la reserva principal: al cancelarla se sueltan juntos, y
+     * ninguno queda ocupado para una sesion que ya no existe.
+     *
+     * @param  list<int>  $complementos  ids que la persona marco al reservar
+     */
+    private function reservarLoQueVaJunto(
+        Reservation $reserva,
+        Asset $asset,
+        User $user,
+        CarbonInterface $desde,
+        CarbonInterface $hasta,
+        array $complementos,
+    ): void {
+        $hijas = collect();
+
+        if ($asset->arrastraSuEspacio()) {
+            $hijas->push([Space::class, $asset->space_id, 'Con ' . $asset->name]);
+        }
+
+        foreach ($asset->seReservanJunto as $junto) {
+            $hijas->push([Asset::class, $junto->id, 'Va con ' . $asset->name]);
+        }
+
+        // Solo lo declarado como opcional PARA ESTE equipo: el formulario se
+        // puede manipular, y aceptar cualquier id convertiria una casilla en
+        // una forma de reservar lo que sea.
+        if ($complementos !== []) {
+            foreach ($asset->complementosOpcionales()->whereIn('assets.id', $complementos)->get() as $extra) {
+                $hijas->push([Asset::class, $extra->id, 'Pedido con ' . $asset->name]);
+            }
+        }
+
+        foreach ($hijas as [$tipo, $id, $motivo]) {
+            Reservation::create([
+                'parent_reservation_id' => $reserva->id,
+                'reservable_type'       => $tipo,
+                'reservable_id'         => $id,
+                'user_id'               => $user->id,
+                'status'                => $reserva->status,
+                'mode'                  => $reserva->mode,
+                'starts_at'             => $desde,
+                'ends_at'               => $hasta,
+                'purpose'               => $motivo,
+            ]);
+        }
     }
 }
