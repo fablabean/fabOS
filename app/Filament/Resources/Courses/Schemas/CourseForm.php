@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Courses\Schemas;
 
 use App\Models\Course;
+use App\Services\Media\OptimizadorDeImagen;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -92,7 +93,13 @@ class CourseForm
                             ->visibility('public')
                             ->image()
                             ->directory('cursos')
-                            ->maxSize(4096)
+                            // Generoso a proposito: lo pesado se encoge, no se
+                            // rechaza. El tope solo evita subidas absurdas.
+                            ->maxSize(20480)
+                            ->saveUploadedFileUsing(
+                                fn ($file) => app(OptimizadorDeImagen::class)
+                                    ->guardar($file, 'cursos')
+                            )
                             ->columnSpanFull(),
 
                         Toggle::make('is_active')->label('Activo')->default(true),

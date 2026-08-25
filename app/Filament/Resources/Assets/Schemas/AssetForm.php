@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Assets\Schemas;
 use App\Models\Asset;
 use App\Models\RiskFamily;
 use Filament\Forms\Components\DatePicker;
+use App\Services\Media\OptimizadorDeImagen;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
@@ -195,8 +196,14 @@ Select::make('status')
                             ->image()
                             ->imageEditor()
                             ->directory('activos')
-                            ->maxSize(4096)
-                            ->helperText('Horizontal se ve mejor en el catálogo.')
+                            // Generoso a proposito: lo pesado se encoge, no se
+                            // rechaza. El tope solo evita subidas absurdas.
+                            ->maxSize(20480)
+                            ->saveUploadedFileUsing(
+                                fn ($file) => app(OptimizadorDeImagen::class)
+                                    ->guardar($file, 'activos')
+                            )
+                            ->helperText('Horizontal se ve mejor. Sube la foto tal cual: el sistema la endereza y la comprime.')
                             ->columnSpanFull(),
 
                         TextInput::make('video_url')
