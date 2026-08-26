@@ -335,6 +335,24 @@ Ver `docs/ASESORIAS.md`.
 - **A quien ya entró no se le pregunta quién es.** El formulario se precarga y
   no vuelve a pedir el correo: pedirlo abriría la puerta a que escriba uno
   distinto y el proyecto acabe colgando de una cuenta que no es la suya.
+- **El trámite sale de la categoría** (`user_categories.client_kind`). A quien
+  ya entró no se le pregunta su rol: su categoría lo dice, y preguntárselo
+  sería dejar que se equivoque en una respuesta que el sistema ya tiene —el
+  formulario puede mandar otra cosa; manda la categoría—. Sin cuenta sí se
+  pregunta. Vive en la categoría y no en código porque cada laboratorio arma
+  las suyas: el día que aparezca «egresado», quien coordina decide su trámite
+  sin desplegar nada. Cada rol ve **sus propias condiciones** en el formulario.
+- **La propuesta se ve mientras se escribe.** El modal trae una vista previa de
+  lo que va a leer quien pidió el proyecto, y avisa de lo que falta —una lista
+  de entregables vacía sale diciendo que se acuerda después, que es lo mismo
+  que no proponer nada—. Sin ella la propuesta se manda a ciegas: quien redacta
+  ve un formulario y la otra persona recibe una página.
+- **Se puede responder sin aceptar** (`project_comments`). «Casi, pero cambia
+  la fecha» es la respuesta más común a una propuesta, y sin un sitio donde
+  decirla la única salida sería aceptar o callarse —y esa frase acabaría en un
+  chat donde nadie la vuelve a encontrar—. El botón aparece al escribir algo.
+  Quien lleva el proyecto recibe aviso; el laboratorio responde en el mismo
+  hilo desde la ficha, y no se avisa a sí mismo.
 - **Quién pide cambia el trámite, no el trabajo** (`projects.client_kind`:
   interno · estudiante · externo). Un **área de la propia institución** no
   paga: mueve presupuesto por la *venta interna*, un circuito de cuatro manos

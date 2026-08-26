@@ -29,7 +29,15 @@ class SolicitudDeProyectoController extends Controller
 
     public function create(Request $request)
     {
-        return view('proyectos.solicitar', ['usuario' => $request->user()]);
+        $usuario = $request->user();
+
+        return view('proyectos.solicitar', [
+            'usuario' => $usuario,
+            // A quien ya entró no se le pregunta: su categoría ya lo dice, y
+            // preguntárselo sería dejar que se equivoque en una respuesta que
+            // el sistema ya tiene.
+            'tramite' => $usuario?->category?->tramiteDeCliente(),
+        ]);
     }
 
     public function store(Request $request)
@@ -47,7 +55,7 @@ class SolicitudDeProyectoController extends Controller
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
             'telefono'     => ['nullable', 'string', 'max:40'],
             'organizacion' => ['nullable', 'string', 'max:160'],
-            'cliente'      => ['required', Rule::in(array_keys(Project::CLIENTES))],
+            'cliente'      => [Rule::requiredIf(! $request->user()?->category), Rule::in(array_keys(Project::CLIENTES))],
             'para_cuando'  => ['nullable', 'date', 'after:today'],
 
             'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
@@ -68,6 +76,14 @@ class SolicitudDeProyectoController extends Controller
             'soportes.*.max'       => 'Cada archivo puede pesar hasta 10 MB.',
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
         ]);
+
+        // La categoría manda sobre lo que diga el formulario: quien ya entró no
+        // elige su propio trámite.
+        if ($tramite = $identificado?->category?->tramiteDeCliente()) {
+            $datos['cliente'] = $tramite;
+        }
+
+        $datos['cliente'] ??= 'externo';
 
         // Un encargo de un área de la propia institución no se paga: se mueve
         // por la venta interna, un circuito de cuatro manos -formulario, líder
@@ -127,7 +143,7 @@ class SolicitudDeProyectoController extends Controller
         $firmado = $request->hasValidSignature();
 
         return view('proyectos.propuesta', [
-            'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents', 'evidence']),
+            'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents', 'evidence', 'comments.user']),
             'firmado'  => $firmado,
 
             // El backoffice mira, no acepta en nombre de nadie.
@@ -172,6 +188,31 @@ class SolicitudDeProyectoController extends Controller
         }
 
         return back()->with('aceptada', true);
+    }
+
+    /**
+     * Un comentario sobre la propuesta, sin aceptarla.
+     *
+     * «Casi, pero cambia la fecha» es la respuesta más común a una propuesta, y
+     * sin un sitio donde decirla acaba en un chat donde nadie la vuelve a
+     * encontrar.
+     */
+    public function comentar(Request $request, Project $project)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+
+        $datos = $request->validate([
+            'body' => ['required', 'string', 'min:3', 'max:2000'],
+        ]);
+
+        $this->proyectos->comentar(
+            $project,
+            $datos['body'],
+            $request->user(),
+            $project->contact_name,
+        );
+
+        return back()->with('comentado', true);
     }
 
     private function puedeVerla(Request $request, Project $project): bool

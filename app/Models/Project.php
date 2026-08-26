@@ -174,6 +174,17 @@ class Project extends Model
         return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
     }
 
+    /**
+     * Lo que se dijo sobre la propuesta, de los dos lados.
+     *
+     * Sin esto, «casi, pero cambia la fecha» acaba en un chat donde nadie lo
+     * vuelve a encontrar.
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProjectComment::class)->orderBy('created_at');
+    }
+
     /** Lo que se gastó por fuera del laboratorio. */
     public function costs(): HasMany
     {

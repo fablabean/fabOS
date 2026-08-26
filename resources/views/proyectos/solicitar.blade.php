@@ -81,18 +81,29 @@
             </span>
         </label>
 
-        <label>
-            ¿Para quién es?
-            <select name="cliente" id="cliente" required>
-                @foreach (\App\Models\Project::CLIENTES as $clave => $nombre)
-                    <option value="{{ $clave }}" @selected(old('cliente') === $clave)>{{ $nombre }}</option>
-                @endforeach
-            </select>
-            <span class="foot">
-                Cambia el trámite, no el trabajo: un área de la Universidad no paga, mueve
-                presupuesto, y eso pasa por varias manos.
-            </span>
-        </label>
+        @if ($tramite)
+            {{-- A quien ya entró no se le pregunta: su categoría lo dice, y
+                 preguntárselo sería dejar que se equivoque en una respuesta que
+                 el sistema ya tiene. --}}
+            <input type="hidden" name="cliente" value="{{ $tramite }}">
+            <p class="help">
+                Como <strong>{{ $usuario->category?->name }}</strong>, tu encargo se
+                tramita como <strong>{{ mb_strtolower(\App\Models\Project::CLIENTES[$tramite]) }}</strong>.
+            </p>
+        @else
+            <label>
+                ¿Cuál es tu rol?
+                <select name="cliente" id="cliente" required>
+                    @foreach (\App\Models\Project::CLIENTES as $clave => $nombre)
+                        <option value="{{ $clave }}" @selected(old('cliente') === $clave)>{{ $nombre }}</option>
+                    @endforeach
+                </select>
+                <span class="foot">
+                    Cambia el trámite, no el trabajo. Si ya tienes cuenta,
+                    <a href="{{ route('login') }}">entra</a> y lo tomamos de tu categoría.
+                </span>
+            </label>
+        @endif
 
         <label>
             ¿Para cuándo lo necesitas?
@@ -103,10 +114,32 @@
             </span>
         </label>
 
+        {{-- Las condiciones de cada rol. Enseñarle a un estudiante el circuito
+             presupuestal le haría pensar que su encargo también depende de
+             Planeación; esconderle a un área ese circuito la dejaría esperando
+             algo que nadie pidió. --}}
+        <div class="panel condiciones" data-rol="estudiante" hidden>
+            <h3>Cómo funciona para un estudiante</h3>
+            <ul>
+                <li>Se cotiza el tiempo de máquina y el material; el trabajo del equipo no se cobra.</li>
+                <li>No hay trámite presupuestal: se acuerda contigo y se arranca.</li>
+                <li>El plazo depende de la agenda de las máquinas, no de un procedimiento.</li>
+            </ul>
+        </div>
+
+        <div class="panel condiciones" data-rol="externo" hidden>
+            <h3>Cómo funciona para una organización de fuera</h3>
+            <ul>
+                <li>Se cotiza con la tarifa de externo y se factura contra la propuesta aceptada.</li>
+                <li>La fabricación arranca con la aceptación por escrito.</li>
+                <li>Sin trámite presupuestal interno: el plazo lo marca el trabajo.</li>
+            </ul>
+        </div>
+
         {{-- El circuito de la venta interna, para que quien lo pide sepa por
              qué se le piden dos semanas. Un plazo sin explicación se lee como
              burocracia; explicado, se entiende y se planea con tiempo. --}}
-        <div class="panel flujo" id="flujo-interno" hidden>
+        <div class="panel flujo condiciones" data-rol="interno" id="flujo-interno" hidden>
             <h3>Cómo se paga un encargo interno</h3>
             <p class="help" style="margin-top:0">
                 No hay factura: hay un traslado de presupuesto entre áreas. Pasa por
@@ -237,6 +270,10 @@
         form.panel .foot { display:block; font-weight:400; margin-top:.25rem; }
         form.panel .dos { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:0 1rem; }
 
+        .condiciones { margin-bottom:1.2rem; }
+        .condiciones h3 { margin:0 0 .4rem; font-size:.95rem; }
+        .condiciones ul { margin:0; padding-left:1.1rem; font-size:.88rem; }
+        .condiciones ul li { margin:.3rem 0; }
         .flujo { margin-bottom:1.2rem; }
         .flujo h3 { margin:0 0 .2rem; font-size:.95rem; }
         .flujo .pasos { list-style:none; margin:0; padding:0;
@@ -267,10 +304,10 @@
         // paso le haría pensar que su encargo también tarda dos semanas.
         (function () {
             const cliente = document.getElementById('cliente');
-            const flujo = document.getElementById('flujo-interno');
+            const fijo = document.querySelector('input[name="cliente"][type="hidden"]');
             const fecha = document.getElementById('para-cuando');
             const aviso = document.getElementById('aviso-fecha');
-            if (!cliente || !flujo) return;
+            const bloques = document.querySelectorAll('.condiciones');
 
             const dias = {{ (int) config('fabos.proyectos.dias_minimos_interno') }};
 
@@ -281,10 +318,15 @@
             }
 
             function ajustar() {
-                const interno = cliente.value === 'interno';
-                flujo.hidden = !interno;
+                const rol = cliente ? cliente.value : (fijo ? fijo.value : null);
 
-                if (interno) {
+                bloques.forEach(function (b) {
+                    b.hidden = b.dataset.rol !== rol;
+                });
+
+                if (!fecha) return;
+
+                if (rol === 'interno') {
                     fecha.min = minimo();
                     aviso.textContent = 'Al menos ' + dias + ' días calendario: el traslado presupuestal no se corre más rápido.';
                 } else {
@@ -293,7 +335,7 @@
                 }
             }
 
-            cliente.addEventListener('change', ajustar);
+            if (cliente) cliente.addEventListener('change', ajustar);
             ajustar();
         })();
 

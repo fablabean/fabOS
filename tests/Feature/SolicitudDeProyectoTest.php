@@ -548,6 +548,184 @@ class SolicitudDeProyectoTest extends TestCase
             ->assertDontSee('Líder receptor');
     }
 
+    // ------------------------------------------------------------ comentarios
+
+    /**
+     * «Casi, pero cambia la fecha» es la respuesta más común a una propuesta.
+     * Sin un sitio donde decirla, la única salida sería aceptar o callarse.
+     */
+    public function test_se_puede_comentar_sin_aceptar(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.comentar', $p), ['body' => 'Casi, pero la fecha no me sirve.'])
+            ->assertRedirect();
+
+        $p->refresh();
+
+        $this->assertCount(1, $p->comments);
+        $this->assertSame('cliente', $p->comments->first()->side);
+        $this->assertNull($p->accepted_at, 'Comentar no es aceptar.');
+    }
+
+    /** Y quien lleva el proyecto se entera: un comentario que nadie lee no existe. */
+    public function test_el_comentario_avisa_a_quien_lleva_el_proyecto(): void
+    {
+        $p = $this->conPropuesta();
+        $jefa = $this->jefa();
+        $p->update(['lead_id' => $jefa->id]);
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.comentar', $p), ['body' => 'La fecha no me sirve.']);
+
+        $this->assertDatabaseHas('notification_logs', [
+            'key'     => 'proyecto.comentario',
+            'user_id' => $jefa->id,
+            'status'  => 'enviado',
+        ]);
+    }
+
+    /** Aceptar diciendo algo deja ese algo en el hilo, no escondido en un campo. */
+    public function test_aceptar_con_nota_la_deja_en_el_hilo(): void
+    {
+        $p = $this->conPropuesta();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.aceptar', $p), ['nota' => 'Perfecto, adelante.']);
+
+        $this->assertCount(1, $p->fresh()->comments);
+        $this->assertSame('Perfecto, adelante.', $p->fresh()->comments->first()->body);
+    }
+
+    public function test_el_hilo_se_ve_en_la_propuesta(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)->post(route('proyectos.comentar', $p), ['body' => 'La fecha no me sirve.']);
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Lo que se ha dicho')
+            ->assertSee('La fecha no me sirve')
+            ->assertSee('Enviar comentarios sin aceptar');
+    }
+
+    /**
+     * La vista previa dentro del modal: lo mismo que va a leer quien pidió el
+     * proyecto, mientras se escribe. Mandar a ciegas es como se cuelan las
+     * listas a medias y los valores en cero.
+     */
+    public function test_el_modal_de_la_propuesta_ensena_como_se_vera(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->jefa();
+
+        $html = view('filament.proyectos.vista-previa-propuesta', [
+            'proyecto'     => $p,
+            'destinatario' => 'Steban Gómez',
+            'get'          => fn (string $campo) => match ($campo) {
+                'entregables' => [['title' => '20 letreros en acrílico', 'due_on' => '2026-10-30']],
+                'estimated_value' => 3_400_000,
+                'due_on'  => '2026-11-15',
+                default   => null,
+            },
+        ])->render();
+
+        $this->assertStringContainsString('Así lo va a ver', $html);
+        $this->assertStringContainsString('Steban Gómez', $html);
+        $this->assertStringContainsString('20 letreros en acrílico', $html);
+        $this->assertStringContainsString('30/10/2026', $html);
+        $this->assertStringContainsString('$3.400.000', $html);
+    }
+
+    /**
+     * Y avisa de lo que falta: una propuesta sin entregables sale diciendo que
+     * la lista se acuerda después, que es lo mismo que no proponer nada.
+     */
+    public function test_la_vista_previa_avisa_de_lo_que_falta(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+
+        $html = view('filament.proyectos.vista-previa-propuesta', [
+            'proyecto'     => Project::first(),
+            'destinatario' => 'Steban Gómez',
+            'get'          => fn (string $campo) => null,
+        ])->render();
+
+        $this->assertStringContainsString('Todavía no hay entregables', $html);
+        $this->assertStringContainsString('por definir', $html);
+    }
+
+    /** El laboratorio responde en el mismo hilo, y no se avisa a sí mismo. */
+    public function test_el_laboratorio_responde_en_el_hilo(): void
+    {
+        $p = $this->conPropuesta();
+        $jefa = $this->jefa();
+        $p->update(['lead_id' => $jefa->id]);
+
+        app(\App\Services\Projects\ProjectService::class)
+            ->comentar($p, 'Movemos la entrega una semana.', $jefa);
+
+        $this->assertSame('laboratorio', $p->fresh()->comments->first()->side);
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'proyecto.comentario']);
+    }
+
+    // --------------------------------------------- el rol sale de la categoría
+
+    /**
+     * A quien ya entró no se le pregunta su rol: su categoría lo dice, y
+     * preguntárselo sería dejar que se equivoque en una respuesta que el
+     * sistema ya tiene.
+     */
+    public function test_el_tramite_sale_de_la_categoria_de_quien_entro(): void
+    {
+        $profesor = UserCategory::create([
+            'slug' => 'profesor-' . uniqid(), 'name' => 'Profesor',
+            'can_reserve' => true, 'rate_factor' => 0.5,
+            'is_institutional' => true, 'client_kind' => 'interno',
+        ]);
+
+        $persona = User::create([
+            'name' => 'Ana Docente', 'email' => 'ana@ejemplo.edu.co',
+            'status' => 'activo', 'user_category_id' => $profesor->id,
+        ]);
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('Profesor')
+            ->assertSee('name="cliente" value="interno"', false)
+            ->assertDontSee('¿Cuál es tu rol?');
+
+        // Y aunque el formulario mande otra cosa, manda la categoría.
+        $this->actingAs($persona)
+            ->post(route('proyectos.solicitar.store'), [
+                'titulo'  => 'Maqueta para la clase',
+                'resumen' => 'Una maqueta del campus para la clase de urbanismo.',
+                'cliente' => 'externo',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('interno', Project::first()->client_kind);
+    }
+
+    /** Sin cuenta sí se pregunta, y cada rol ve sus propias condiciones. */
+    public function test_sin_cuenta_se_pregunta_el_rol_y_hay_condiciones_de_cada_uno(): void
+    {
+        $this->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('¿Cuál es tu rol?')
+            ->assertSee('Cómo funciona para un estudiante')
+            ->assertSee('Cómo funciona para una organización de fuera')
+            ->assertSee('Cómo se paga un encargo interno');
+    }
+
     // ------------------------------------------------------------ la respuesta
 
     public function test_la_propuesta_se_manda_con_su_enlace(): void

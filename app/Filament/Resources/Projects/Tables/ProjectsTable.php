@@ -13,6 +13,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -136,6 +137,10 @@ class ProjectsTable
                     ->schema([
                         Repeater::make('entregables')
                             ->label('Qué entregaríamos')
+                            // Vivos para que la vista previa siga lo que se
+                            // escribe: mandar a ciegas es como se cuelan las
+                            // listas a medias y los valores en cero.
+                            ->live(onBlur: true)
                             ->addActionLabel('Añadir un entregable')
                             ->reorderable()
                             ->collapsible()
@@ -156,18 +161,31 @@ class ProjectsTable
                         TextInput::make('estimated_value')
                             ->label('Valor estimado')
                             ->numeric()
+                            ->live(onBlur: true)
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
                             ->helperText('En pesos. Si queda en cero, la propuesta dirá «por definir».'),
 
-                        DatePicker::make('starts_on')->label('Arranca'),
-                        DatePicker::make('due_on')->label('Se entrega'),
+                        DatePicker::make('starts_on')->label('Arranca')->live(onBlur: true),
+                        DatePicker::make('due_on')->label('Se entrega')->live(onBlur: true),
 
                         Textarea::make('mensaje')
                             ->label('Algo que quieras añadir')
                             ->rows(3)
+                            ->live(onBlur: true)
                             ->columnSpanFull()
                             ->helperText('Va dentro del correo, antes del cierre. Opcional.'),
+
+                        ViewField::make('vista_previa')
+                            ->label('Así se va a ver')
+                            ->columnSpanFull()
+                            ->view('filament.proyectos.vista-previa-propuesta')
+                            ->viewData(fn (Project $record) => [
+                                'proyecto'     => $record,
+                                'destinatario' => $record->requestedBy?->name
+                                    ?: $record->contact_name
+                                    ?: $record->contact_email,
+                            ]),
                     ])
                     ->action(function (Project $record, array $data) {
                         try {

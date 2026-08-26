@@ -57,6 +57,9 @@ Route::get('/proyectos/{project}/propuesta', [SolicitudDeProyectoController::cla
     ->name('proyectos.propuesta');
 Route::post('/proyectos/{project}/aceptar', [SolicitudDeProyectoController::class, 'aceptar'])
     ->name('proyectos.aceptar');
+Route::post('/proyectos/{project}/comentar', [SolicitudDeProyectoController::class, 'comentar'])
+    ->middleware('throttle:20,60')
+    ->name('proyectos.comentar');
 
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
 Route::get('/verificar/{codigo}', [VerificationController::class, 'show'])->name('publico.verificar');

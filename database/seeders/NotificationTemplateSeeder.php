@@ -79,6 +79,24 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'proyecto.comentario',
+                'name'         => 'Comentario sobre una propuesta',
+                'description'  => 'A quien lleva el proyecto, cuando quien lo pidió deja dicho algo.',
+                'is_essential' => false,
+                'subject'      => 'Comentario en {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {quien} dejó un comentario en «{proyecto}»:
+
+                    {comentario}
+
+                    Puedes verlo con el resto del proyecto aquí:
+
+                    {enlace}
+                    TXT,
+            ],
+            [
                 'key'          => 'proyecto.aceptada',
                 'name'         => 'Propuesta aceptada',
                 'description'  => 'A quien acepta una propuesta, cuando no hay traslado presupuestal de por medio.',

@@ -3,6 +3,7 @@
 namespace App\Services\Projects;
 
 use App\Models\Project;
+use App\Models\ProjectComment;
 use App\Models\ProjectMember;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -389,6 +390,42 @@ class ProjectService
     }
 
     /**
+     * Deja dicho algo sobre la propuesta, y avisa a quien la lleva.
+     *
+     * El aviso es la mitad del asunto: un comentario que nadie lee es igual que
+     * no haberlo escrito, y quien lo escribió se queda esperando.
+     */
+    public function comentar(
+        Project $proyecto,
+        string $texto,
+        ?User $quien = null,
+        ?string $nombreSuelto = null,
+    ): ProjectComment {
+        $delLaboratorio = $quien?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
+
+        $comentario = $proyecto->comments()->create([
+            'user_id'     => $quien?->id,
+            'author_name' => $quien?->name ?: $nombreSuelto,
+            'side'        => $delLaboratorio ? 'laboratorio' : 'cliente',
+            'body'        => $texto,
+        ]);
+
+        // Al laboratorio solo se le avisa de lo que dice el cliente: avisarle
+        // de lo que escribió él mismo es ruido.
+        if (! $delLaboratorio && $proyecto->lead) {
+            $this->avisos->enviar('proyecto.comentario', $proyecto->lead, [
+                'proyecto'    => $proyecto->name,
+                'codigo'      => $proyecto->code,
+                'quien'       => $comentario->quien(),
+                'comentario'  => $texto,
+                'enlace'      => route('proyectos.tablero', $proyecto),
+            ], $proyecto);
+        }
+
+        return $comentario;
+    }
+
+    /**
      * Quien pidió el proyecto acepta la propuesta.
      *
      * Es el momento en que un intercambio de correos se vuelve un acuerdo. Sin
@@ -419,6 +456,17 @@ class ProjectService
                 'accepted_by'     => $quien?->id,
                 'acceptance_note' => $nota,
             ]);
+
+            // Si aceptó diciendo algo, eso también es parte de la conversación:
+            // guardarlo solo en `acceptance_note` lo escondería del hilo.
+            if (filled($nota)) {
+                $proyecto->comments()->create([
+                    'user_id'     => $quien?->id,
+                    'author_name' => $quien?->name ?: $proyecto->contact_name,
+                    'side'        => 'cliente',
+                    'body'        => $nota,
+                ]);
+            }
 
             $variables = [
                 'proyecto'          => $proyecto->name,

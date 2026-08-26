@@ -22,15 +22,15 @@ class CatalogSeeder extends Seeder
     private function categories(): void
     {
         $rows = [
-            // slug, nombre, factor, dotacion (FBC), institucional, reserva
-            ['estudiante',   'Estudiante',   0.5, 500, true,  true],
-            ['profesor',     'Profesor',     0.5, 800, true,  true],
-            ['colaborador',  'Colaborador',  0.0, 0,   true,  true],
-            ['externo',      'Externo',      2.0, 0,   false, true],
-            ['invitado',     'Invitado',     1.0, 0,   false, false],
+            // slug, nombre, factor, dotacion (FBC), institucional, reserva, tramite
+            ['estudiante',   'Estudiante',   0.5, 500, true,  true,  'estudiante'],
+            ['profesor',     'Profesor',     0.5, 800, true,  true,  'interno'],
+            ['colaborador',  'Colaborador',  0.0, 0,   true,  true,  'interno'],
+            ['externo',      'Externo',      2.0, 0,   false, true,  'externo'],
+            ['invitado',     'Invitado',     1.0, 0,   false, false, 'externo'],
         ];
 
-        foreach ($rows as $i => [$slug, $name, $factor, $allowance, $institutional, $canReserve]) {
+        foreach ($rows as $i => [$slug, $name, $factor, $allowance, $institutional, $canReserve, $tramite]) {
             UserCategory::updateOrCreate(['slug' => $slug], [
                 'name'             => $name,
                 'position'         => $i,
@@ -39,6 +39,10 @@ class CatalogSeeder extends Seeder
                 'is_institutional' => $institutional,
                 'can_reserve'      => $canReserve,
                 'max_days_ahead'   => $institutional ? 30 : 14,
+                // Qué trámite le toca a un encargo suyo: un profesor y un
+                // colaborador son institución y pagan por traslado; un
+                // estudiante no pasa por nada de eso.
+                'client_kind'      => $tramite,
             ]);
         }
     }

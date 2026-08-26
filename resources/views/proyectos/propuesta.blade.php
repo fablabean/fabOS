@@ -166,6 +166,31 @@
 
     @error('aceptar') <p class="msg error">{{ $message }}</p> @enderror
 
+    @if (session('comentado'))
+        <div class="msg ok">
+            <strong>Anotado.</strong> Lo lee quien lleva el proyecto y te responde.
+        </div>
+    @endif
+
+    {{-- La conversación, si la hubo. Una propuesta que solo se puede aceptar o
+         ignorar obliga a salir del sistema para decir «casi, pero cambia la
+         fecha», y esa frase acaba donde nadie la vuelve a encontrar. --}}
+    @if ($proyecto->comments->isNotEmpty())
+        <div class="panel">
+            <h2 style="margin-top:0">Lo que se ha dicho</h2>
+
+            @foreach ($proyecto->comments as $comentario)
+                <div class="comentario {{ $comentario->side }}">
+                    <div class="quien">
+                        {{ $comentario->quien() }} ·
+                        {{ $comentario->created_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                    </div>
+                    <div>{!! nl2br(e($comentario->body)) !!}</div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Aceptar desde la misma página donde se lee. Obligar a responder el
          correo para decir que sí dejaría la aceptación fuera del sistema, que
          es donde no sirve de nada. --}}
@@ -174,14 +199,28 @@
             <h2 style="margin-top:0">¿Seguimos?</h2>
             <p class="help" style="margin-top:0">
                 Si esto es lo que necesitas, acéptalo y arrancamos. Si algo no encaja
-                —el alcance, la fecha o el valor—, escríbenos antes: se ajusta.
+                —el alcance, la fecha o el valor—, déjalo dicho aquí: se ajusta y te
+                mandamos la propuesta corregida.
             </p>
 
-            <form method="POST" action="{{ $firmado ? $urlAceptar : route('proyectos.aceptar', $proyecto) }}">
+            <form method="POST" id="respuesta"
+                  action="{{ $firmado ? $urlAceptar : route('proyectos.aceptar', $proyecto) }}">
                 @csrf
-                <textarea name="nota" rows="2"
-                          placeholder="Algo que quieras dejar dicho al aceptar. Opcional."></textarea>
-                <button type="submit">Acepto la propuesta</button>
+                <textarea name="nota" id="nota" rows="3"
+                          placeholder="Algo que quieras dejar dicho. Opcional si vas a aceptar."></textarea>
+
+                <div class="botones">
+                    <button type="submit">Acepto la propuesta</button>
+
+                    {{-- Aparece cuando hay algo escrito: pedir cambios sin
+                         aceptar es una respuesta legítima, y sin este botón la
+                         única salida sería aceptar o callarse. --}}
+                    <button type="submit" id="solo-comentar" class="secundario" hidden
+                            formaction="{{ route('proyectos.comentar', $proyecto) }}"
+                            formnovalidate>
+                        Enviar comentarios sin aceptar
+                    </button>
+                </div>
             </form>
         </div>
     @elseif ($proyecto->estaAceptado())
@@ -275,9 +314,42 @@
         {{ config('fabos.lab.name') }} · {{ config('fabos.lab.institution') }}
     </p>
 
+    <script>
+        // El botón de comentar aparece solo si hay algo escrito. Enseñarlo
+        // vacío invita a mandar un comentario en blanco, y esconderlo del todo
+        // deja como única salida aceptar o callarse.
+        (function () {
+            const nota = document.getElementById('nota');
+            const boton = document.getElementById('solo-comentar');
+            const formulario = document.getElementById('respuesta');
+            if (!nota || !boton) return;
+
+            nota.addEventListener('input', function () {
+                boton.hidden = nota.value.trim().length < 3;
+            });
+
+            // Los dos destinos esperan el texto con otro nombre: «nota» al
+            // aceptar, «body» al comentar. Se renombra al vuelo en vez de
+            // duplicar el campo, que acabaría desincronizado.
+            boton.addEventListener('click', function () {
+                nota.name = 'body';
+                formulario.dataset.comentando = '1';
+            });
+
+            formulario.addEventListener('submit', function () {
+                if (formulario.dataset.comentando !== '1') nota.name = 'nota';
+            });
+        })();
+    </script>
+
     {{-- Rejilla propia: las utilidades responsivas de Tailwind no están compiladas. --}}
     <style>
         .aceptar textarea { width:100%; margin-bottom:.7rem; }
+        .aceptar .botones { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+        .aceptar .botones button { margin:0; }
+        .comentario { border-left:3px solid var(--rule); padding-left:.9rem; margin-bottom:1rem; }
+        .comentario.laboratorio { border-left-color:var(--accent); }
+        .comentario .quien { margin-bottom:.15rem; }
         .flujo .pasos { list-style:none; margin:0; padding:0;
                         display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.6rem; }
         .flujo .pasos li { border:1px solid var(--rule); border-left:3px solid var(--accent);
