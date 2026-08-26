@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Una tarea del proyecto (§11).
@@ -66,9 +66,9 @@ class ProjectTask extends Model
      * La prueba de que se hizo. «Se hizo» es una afirmación; una foto es una
      * comprobación, y dentro de dos años es todo lo que queda.
      */
-    public function evidence(): HasMany
+    public function evidence(): MorphMany
     {
-        return $this->hasMany(ProjectTaskEvidence::class, 'task_id')->orderBy('id');
+        return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
     }
 
     /** Vencida es la que ya pasó su fecha y sigue sin hacerse. */

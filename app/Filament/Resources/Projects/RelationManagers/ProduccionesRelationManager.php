@@ -2,13 +2,17 @@
 
 namespace App\Filament\Resources\Projects\RelationManagers;
 
+use App\Filament\Componentes\CampoDeEvidencia;
 use App\Models\Asset;
 use App\Models\Reservation;
+use App\Models\Supply;
 use App\Services\Projects\ProduccionService;
 use App\Services\Projects\ProjectException;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -120,11 +124,11 @@ class ProduccionesRelationManager extends RelationManager
                     ->using(function (array $data): Reservation {
                         try {
                             return app(ProduccionService::class)->programar(
-                                $this->getOwnerRecord(),
                                 Asset::findOrFail($data['reservable_id']),
                                 auth()->user(),
                                 \Illuminate\Support\Carbon::parse($data['starts_at'], config('fabos.lab.timezone')),
                                 \Illuminate\Support\Carbon::parse($data['ends_at'], config('fabos.lab.timezone')),
+                                $this->getOwnerRecord(),
                                 $data['purpose'] ?? null,
                             );
                         } catch (ProjectException $e) {
@@ -135,15 +139,70 @@ class ProduccionesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                // Los archivos definitivos: el .stl y el .gcode que salieron de
+                // la maquina. Son lo unico que permite repetir el trabajo
+                // dentro de seis meses sin volver a empezar.
+                EditAction::make()
+                    ->label('Archivos')
+                    ->icon('heroicon-o-paper-clip')
+                    ->modalHeading('Archivos y evidencia de la producción')
+                    ->schema([CampoDeEvidencia::repetidor(
+                        'Archivos y evidencia',
+                        'El .stl, el .gcode, la foto de la pieza. Es lo que permite repetir el trabajo dentro de seis meses sin volver a empezar.',
+                        'producciones',
+                    )]),
+
                 Action::make('terminar')
                     ->label('Terminar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (Reservation $r) => in_array($r->status, ['confirmada', 'en_curso'], true))
-                    ->requiresConfirmation()
-                    ->modalDescription('Se cierra y el equipo queda libre. El costo se ajusta a lo que realmente duró.')
-                    ->action(function (Reservation $r) {
-                        app(ProduccionService::class)->terminar($r);
+                    ->modalHeading('Cerrar la producción')
+                    ->modalDescription('El equipo queda libre. El costo se ajusta a lo que realmente duró, y se le suma el material que de verdad se gastó.')
+                    ->modalSubmitActionLabel('Cerrar')
+                    ->schema([
+                        // El material se anota al cerrar y no al programar: se
+                        // consume cuando la maquina corre. Descontarlo por
+                        // adelantado dejaria el inventario mintiendo durante
+                        // las seis horas que dura la impresion.
+                        Repeater::make('materiales')
+                            ->label('Material gastado')
+                            ->addActionLabel('Añadir material')
+                            ->defaultItems(0)
+                            ->columns(2)
+                            ->helperText('Los gramos de filamento, los mililitros de resina. Sale del inventario y entra al costo.')
+                            ->schema([
+                                Select::make('supply_id')
+                                    ->label('Qué')
+                                    ->required()
+                                    ->searchable()
+                                    ->options(fn () => Supply::where('is_active', true)
+                                        ->orderBy('name')
+                                        ->get()
+                                        ->mapWithKeys(fn (Supply $i) => [
+                                            $i->id => $i->name . ($i->unit ? " ({$i->unit})" : ''),
+                                        ])),
+
+                                TextInput::make('cantidad')
+                                    ->label('Cuánto')
+                                    ->numeric()
+                                    ->required()
+                                    ->minValue(0.001),
+                            ]),
+                    ])
+                    ->action(function (Reservation $r, array $data) {
+                        $materiales = collect($data['materiales'] ?? [])
+                            ->filter(fn ($m) => filled($m['supply_id'] ?? null))
+                            ->mapWithKeys(fn ($m) => [(int) $m['supply_id'] => (float) $m['cantidad']])
+                            ->all();
+
+                        try {
+                            app(ProduccionService::class)->terminar($r, null, $materiales);
+                        } catch (ProjectException $e) {
+                            Notification::make()->danger()->title('No se pudo cerrar')->body($e->getMessage())->send();
+
+                            throw new \Filament\Support\Exceptions\Halt;
+                        }
 
                         Notification::make()->success()->title('Producción cerrada')->send();
                     }),

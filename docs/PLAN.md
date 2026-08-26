@@ -314,7 +314,27 @@ Ver `docs/ASESORIAS.md`.
   se promete, mucho antes de que alguien planifique cómo hacerlo. Traerlos dos
   veces no duplica el tablero. Cerrar la tarea da por cumplido su entregable,
   para que las dos vistas no se contradigan.
+- **El cotizador** (`/admin/cotizador`): máquina, minutos, gramos, y para
+  quién. Es la conversación de todos los días —alguien llega con una pieza y
+  hay que decir un número—, y el número a ojo es el problema: cada quien dice
+  uno distinto y ninguno coincide con el que luego cobra el sistema. Sale de
+  **la misma tarifa** que aplicará la reserva: mismo redondeo al bloque, mismo
+  factor de categoría, mismo mínimo, material a costo. No compromete nada.
+- **La evidencia es polimórfica** (`evidencias`). Cuelga de una tarea, de un
+  entregable o de una producción. Nació colgando de las tareas porque ahí hizo
+  falta primero; tres tablas casi idénticas se habrían separado a la primera
+  diferencia —una guardando en el disco público, otra sin optimizar la foto—.
+  El formulario también es uno solo (`CampoDeEvidencia`).
 - **Producir con una máquina es reservarla** (`reservations.is_production`).
+  **El proyecto es opcional**: el caso más común no lo tiene —un estudiante
+  llega con un archivo, el asesor mira que se puede imprimir y programa las
+  seis horas—. La pieza queda a nombre del estudiante y la opera el asesor
+  (`supervisor_id`), por eso no pide certifab. Exigir un proyecto habría
+  obligado a inventar uno por cada pieza, y los proyectos inventados ensucian
+  el único sitio donde se mira si el laboratorio entrega. El material se anota
+  **al cerrar**, no al programar: se consume cuando la máquina corre, y
+  descontarlo por adelantado dejaría el inventario mintiendo durante las seis
+  horas de la impresión.
   Podría parecer que merece tabla propia —tiene otro sentido: el laboratorio
   operando su equipo para un encargo, no alguien practicando—, pero fabricar lo
   ocupa exactamente igual. Con dos calendarios, tarde o temprano alguien

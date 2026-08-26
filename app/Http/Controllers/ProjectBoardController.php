@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\ProjectTaskEvidence;
+use App\Models\Evidencia;
 use App\Models\User;
 use App\Services\Projects\CostingService;
 use App\Services\Projects\ProjectException;
@@ -86,7 +86,7 @@ class ProjectBoardController extends Controller
      * haber iniciado sesión. Este rodeo es el precio de que no las vea quien no
      * debe, y es barato.
      */
-    public function evidencia(Request $request, ProjectTaskEvidence $evidencia)
+    public function evidencia(Request $request, Evidencia $evidencia)
     {
         abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
         abort_unless(filled($evidencia->file_path), 404);

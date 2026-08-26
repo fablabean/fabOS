@@ -2,25 +2,21 @@
 
 namespace App\Filament\Resources\Projects\RelationManagers;
 
+use App\Filament\Componentes\CampoDeEvidencia;
 use App\Models\ProjectTask;
-use App\Models\ProjectTaskEvidence;
 use App\Models\User;
-use App\Services\Media\OptimizadorDeImagen;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -82,58 +78,7 @@ class TasksRelationManager extends RelationManager
 
                 Textarea::make('description')->label('Detalle')->columnSpanFull(),
 
-                Repeater::make('evidence')
-                    ->relationship()
-                    ->label('Evidencia')
-                    ->columnSpanFull()
-                    ->addActionLabel('Añadir evidencia')
-                    ->defaultItems(0)
-                    ->collapsible()
-                    ->itemLabel(fn (array $state) => $state['caption'] ?? null)
-                    ->helperText('«Se hizo» es una afirmación; una foto es una comprobación. Dentro de dos años es todo lo que queda, y es lo que se le enseña a quien encargó el trabajo.')
-                    ->columns(2)
-                    ->schema([
-                        Select::make('kind')
-                            ->label('Qué es')
-                            ->options(ProjectTaskEvidence::TIPOS)
-                            ->default('foto')
-                            ->live()
-                            ->required(),
-
-                        TextInput::make('caption')->label('Qué se ve'),
-
-                        FileUpload::make('file_path')
-                            ->label('Foto')
-                            ->visible(fn (Get $get) => $get('kind') === 'foto')
-                            ->columnSpanFull()
-                            ->image()
-                            // Disco privado A PROPOSITO: son fotos del trabajo
-                            // de un cliente. En el disco publico quedarian en
-                            // una URL que cualquiera puede pedir sin sesion. Se
-                            // sirven por una ruta que comprueba quien pide.
-                            ->directory('proyectos/evidencia')
-                            // Generoso: lo pesado se encoge, no se rechaza.
-                            ->maxSize(20480)
-                            // El navegador la encoge ANTES de subirla: una foto
-                            // de telefono son tres o cuatro megas, y por el tunel
-                            // esa lentitud se vuelve un 502 sin explicacion.
-                            ->imageResizeMode('contain')
-                            ->imageResizeTargetWidth(2000)
-                            ->imageResizeTargetHeight(2000)
-                            ->imageResizeUpscale(false)
-                            ->saveUploadedFileUsing(
-                                fn ($file) => app(OptimizadorDeImagen::class)
-                                    ->guardar($file, 'proyectos/evidencia', 'local')
-                            )
-                            ->helperText('Súbela tal cual: el sistema la endereza y la comprime.'),
-
-                        TextInput::make('url')
-                            ->label('Enlace')
-                            ->visible(fn (Get $get) => $get('kind') !== 'foto')
-                            ->url()
-                            ->columnSpanFull()
-                            ->helperText('A YouTube, Drive o donde ya viva. Un video de dos minutos no tiene por qué pasar por aquí.'),
-                    ]),
+                CampoDeEvidencia::repetidor(),
             ]);
     }
 

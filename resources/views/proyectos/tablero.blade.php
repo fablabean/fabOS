@@ -373,7 +373,7 @@
                                             @else
                                                 <span class="chapa">
                                                     {{ $prueba->kind === 'video' ? '▶' : '↗' }}
-                                                    {{ $prueba->caption ?: \App\Models\ProjectTaskEvidence::TIPOS[$prueba->kind] }}
+                                                    {{ $prueba->caption ?: \App\Models\Evidencia::TIPOS[$prueba->kind] }}
                                                 </span>
                                             @endif
                                         </a>

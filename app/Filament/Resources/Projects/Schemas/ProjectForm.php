@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Schemas;
 
+use App\Filament\Componentes\CampoDeEvidencia;
 use App\Models\Project;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
@@ -123,6 +124,14 @@ class ProjectForm
                                     ->label('Detalle')
                                     ->rows(2)
                                     ->columnSpanFull(),
+
+                                // Un entregable marcado como cumplido sin nada
+                                // que ensenar es una casilla, no una entrega.
+                                CampoDeEvidencia::repetidor(
+                                    'Lo que se entregó',
+                                    'El archivo definitivo, la foto de la pieza, el enlace a lo publicado. Es lo que convierte «cumplido» en algo que se puede mostrar.',
+                                    'proyectos/entregables',
+                                ),
                             ])
                             ->columns(3),
 

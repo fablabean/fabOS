@@ -6,7 +6,12 @@ use App\Models\Asset;
 use App\Models\Project;
 use App\Models\Reservation;
 use Filament\Actions\Action;
+use App\Services\Projects\ProduccionService;
+use App\Services\Projects\ProjectException;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -84,6 +89,87 @@ class ReservationsTable
                     ->default(),
             ])
             ->recordActions([
+                // Producir lo que se acordó en la asesoría.
+                //
+                // Es el caso más común del laboratorio y el que no tenía sitio:
+                // un estudiante llega con un archivo, el asesor mira que se
+                // puede imprimir, y alguien tiene que apartar las seis horas de
+                // máquina. La pieza es del estudiante —la reserva queda a su
+                // nombre— pero la opera el asesor, así que no hace falta
+                // certifab ni que la franja esté atendida.
+                Action::make('producir')
+                    ->label('Programar producción')
+                    ->icon('heroicon-o-cube')
+                    ->color('gray')
+                    ->visible(fn (Reservation $record) => $record->advisory_asset_id !== null
+                        && ! $record->is_production)
+                    ->modalHeading('Programar producción')
+                    ->modalDescription('La pieza queda a nombre de quien pidió la asesoría. Mientras dure, el equipo no aparecerá libre para nadie más.')
+                    ->modalSubmitActionLabel('Programar')
+                    ->fillForm(fn (Reservation $record) => [
+                        'asset_id'  => $record->advisory_asset_id,
+                        'starts_at' => $record->ends_at->timezone(config('fabos.lab.timezone')),
+                    ])
+                    ->schema([
+                        Select::make('asset_id')
+                            ->label('Con qué equipo')
+                            ->required()
+                            ->searchable()
+                            ->options(fn () => Asset::where('status', '!=', 'baja')
+                                ->orderBy('name')
+                                ->pluck('name', 'id')),
+
+                        DateTimePicker::make('starts_at')->label('Empieza')->seconds(false)->required(),
+
+                        DateTimePicker::make('ends_at')
+                            ->label('Termina')
+                            ->seconds(false)
+                            ->required()
+                            ->helperText('Una pieza de seis horas ocupa seis horas, aunque nadie esté delante. Puede terminar de madrugada.'),
+
+                        TextInput::make('purpose')
+                            ->label('Qué se produce')
+                            ->helperText('«Carcasa v3, 4 piezas». Dentro de un mes es lo único que explica por qué la máquina estuvo ocupada.'),
+
+                        Select::make('project_id')
+                            ->label('¿Es de algún proyecto?')
+                            ->searchable()
+                            ->placeholder('No, es la pieza de quien pidió la asesoría')
+                            ->options(fn () => Project::where('status', 'activo')
+                                ->orderByDesc('id')
+                                ->get()
+                                ->mapWithKeys(fn (Project $p) => [$p->id => $p->code . ' · ' . $p->name])),
+                    ])
+                    ->action(function (Reservation $record, array $data) {
+                        $tz = config('fabos.lab.timezone');
+
+                        try {
+                            $produccion = app(ProduccionService::class)->programar(
+                                Asset::findOrFail($data['asset_id']),
+                                // De quien pidió la asesoría: la pieza es suya.
+                                $record->user,
+                                Carbon::parse($data['starts_at'], $tz),
+                                Carbon::parse($data['ends_at'], $tz),
+                                $data['project_id'] ? Project::find($data['project_id']) : null,
+                                $data['purpose'] ?? null,
+                                // Y la opera quien asesoró.
+                                auth()->user(),
+                            );
+                        } catch (ProjectException $e) {
+                            Notification::make()->danger()->title('No se pudo programar')->body($e->getMessage())->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->success()
+                            ->title('Producción programada')
+                            ->body('El equipo queda ocupado del '
+                                . $produccion->starts_at->timezone($tz)->format('d/m H:i')
+                                . ' al ' . $produccion->ends_at->timezone($tz)->format('d/m H:i') . '.')
+                            ->send();
+                    }),
+
                 // Cargar una sesión a un proyecto: es lo que hace que el
                 // costeo del proyecto incluya ese tiempo de máquina y su
                 // material. Se hace después de la sesión, que es cuando se

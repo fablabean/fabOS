@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Un compromiso concreto del proyecto (§11).
@@ -47,6 +48,15 @@ class ProjectDeliverable extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(ProjectTask::class, 'task_id');
+    }
+
+    /**
+     * El archivo definitivo que se entregó. Un entregable marcado como
+     * cumplido sin nada que enseñar es una casilla, no una entrega.
+     */
+    public function evidence(): MorphMany
+    {
+        return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
     }
 
     /**

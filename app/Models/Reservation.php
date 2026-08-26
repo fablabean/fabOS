@@ -65,6 +65,16 @@ class Reservation extends Model
         return (bool) $this->is_production;
     }
 
+    /**
+     * Lo que salio de aqui: el .stl, el .gcode, la foto de la pieza. En una
+     * produccion son los archivos definitivos, y son lo unico que permite
+     * repetir el trabajo dentro de seis meses sin volver a empezar.
+     */
+    public function evidence(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
+    }
+
     /** Un proyecto al que se carga esta reserva, si lo hay (§11). */
     public function project(): BelongsTo
     {

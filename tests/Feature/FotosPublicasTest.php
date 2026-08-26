@@ -37,9 +37,29 @@ class FotosPublicasTest extends TestCase
     private const NO_SE_PUBLICAN = [
         'app/Filament/Resources/Projects/RelationManagers/DocumentsRelationManager.php',
         'app/Filament/Resources/WorkOrders/Schemas/WorkOrderForm.php',
-        // Fotos del trabajo de un cliente: se sirven por una ruta con sesión.
-        'app/Filament/Resources/Projects/RelationManagers/TasksRelationManager.php',
+        // Evidencia de tareas, entregables y producciones: es el trabajo de
+        // alguien, y se sirve por una ruta que comprueba quién pide.
+        'app/Filament/Componentes/CampoDeEvidencia.php',
     ];
+
+    /**
+     * Y que el archivo siga estando: si el formulario se mueve de sitio, la
+     * lista de arriba pasaria a vigilar un archivo que ya no sube nada, y la
+     * guardia quedaria en verde sin guardar nada.
+     */
+    public function test_los_formularios_vigilados_existen_y_suben_archivos(): void
+    {
+        foreach ([...self::SE_PUBLICAN, ...self::NO_SE_PUBLICAN] as $ruta) {
+            $this->assertFileExists(base_path($ruta));
+
+            $this->assertStringContainsString(
+                'FileUpload::make',
+                file_get_contents(base_path($ruta)),
+                "{$ruta} ya no sube ningún archivo: o se movió el formulario y hay que "
+                . 'actualizar esta lista, o la guardia está vigilando el sitio equivocado.',
+            );
+        }
+    }
 
     public function test_lo_que_se_muestra_en_publico_declara_el_disco_publico(): void
     {
