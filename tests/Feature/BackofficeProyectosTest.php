@@ -101,6 +101,20 @@ class BackofficeProyectosTest extends TestCase
         $this->assertSame('idea', $p->stage);
     }
 
+    /** Gerencia manda proyectos, y no es ni correo ni iniciativa propia. */
+    public function test_gerencia_es_un_origen_valido(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $this->entra($admin);
+
+        Livewire::test(\App\Filament\Resources\Projects\Pages\CreateProject::class)
+            ->fillForm(['name' => 'Encargo de gerencia', 'source' => 'gerencia'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('projects', ['name' => 'Encargo de gerencia', 'source' => 'gerencia']);
+    }
+
     /** Dejar el avance en blanco es «todavia nada», no un error de guardado. */
     public function test_una_tarea_se_guarda_sin_avance(): void
     {
@@ -223,6 +237,163 @@ class BackofficeProyectosTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertSame($p->id, $reserva->fresh()->project_id);
+    }
+
+    /**
+     * Los costos que no pasan por el laboratorio se anotan junto al resto del
+     * proyecto, no en una pantalla aparte: se registran cuando llega la factura,
+     * que es cuando alguien ya está mirando el proyecto.
+     */
+    public function test_se_anota_un_costo_asociado_desde_la_ficha(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $p = $this->proyecto($admin);
+
+        $this->entra($admin);
+
+        Livewire::test(\App\Filament\Resources\Projects\RelationManagers\CostsRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => \App\Filament\Resources\Projects\Pages\EditProject::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), [
+                'concept'  => 'Pintura electrostática',
+                'kind'     => 'servicio',
+                'supplier' => 'Taller externo',
+                'amount'   => 800_000,
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('project_costs', [
+            'project_id' => $p->id,
+            'concept'    => 'Pintura electrostática',
+            'amount'     => 800_000,
+        ]);
+
+        // Queda constancia de quién lo anotó: una cifra sin dueño no se audita.
+        $this->assertSame($admin->id, $p->costs()->first()->registered_by);
+    }
+
+    // ------------------------------------------- la evidencia de cada etapa
+
+    /**
+     * Cada etapa deja algo escrito y ese algo se sostiene solo. La pantalla
+     * tiene que decir, de un vistazo, qué hay y qué falta: si hay que deducirlo
+     * de la etapa actual, nadie lo deduce.
+     */
+    public function test_el_tablero_muestra_la_evidencia_de_cada_etapa(): void
+    {
+        $p = $this->proyecto();
+        $p->update(['summary' => 'Señalizar los seis edificios del campus.']);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertSee('Etapas y su evidencia')
+            ->assertSee('La idea en dos frases')
+            ->assertSee('Señalizar los seis edificios')
+            ->assertSee('El respaldo: contrato u orden de servicio')
+            ->assertSee('Sin evidencia todavía');
+    }
+
+    public function test_la_evidencia_se_marca_lista_cuando_esta(): void
+    {
+        $p = $this->proyecto();
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+
+        $porEtapa = collect($servicio->evidencias($p))->keyBy('etapa');
+        $this->assertFalse($porEtapa['contrato']['listo']);
+
+        $p->documents()->create(['kind' => 'contrato', 'title' => 'Orden de servicio 118']);
+
+        $porEtapa = collect($servicio->evidencias($p->fresh()))->keyBy('etapa');
+        $this->assertTrue($porEtapa['contrato']['listo']);
+        $this->assertStringContainsString('Orden de servicio 118', $porEtapa['contrato']['detalle']);
+    }
+
+    /**
+     * Las compuertas salen de la misma tabla que la evidencia. Si fueran dos
+     * listas acabarían diciendo cosas distintas, y la pantalla prometería algo
+     * que el servicio no exige.
+     */
+    public function test_la_compuerta_pide_el_documento_que_declara_la_evidencia(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $p = $this->proyecto($admin);
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+
+        $servicio->moverA($p, 'propuesta');
+
+        $documento = \App\Services\Projects\ProjectService::EVIDENCIAS['propuesta']['documento'];
+        $this->assertStringContainsString(
+            \App\Models\ProjectDocument::TIPOS[$documento],
+            (string) $servicio->queFalta($p->fresh()),
+        );
+    }
+
+    // --------------------------------------------------- cronograma general
+
+    public function test_el_cronograma_general_junta_los_proyectos_con_fechas(): void
+    {
+        $conFechas = $this->proyecto();
+        $conFechas->update([
+            'name'      => 'Señalética del campus',
+            'starts_on' => '2026-09-01',
+            'due_on'    => '2026-10-15',
+        ]);
+
+        $sinFechas = app(\App\Services\Projects\ProjectService::class)
+            ->registrarIdea(['name' => 'Idea sin fechas todavía']);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.cronograma'))
+            ->assertOk()
+            ->assertSee('Cronograma de proyectos')
+            ->assertSee('Señalética del campus')
+            ->assertSee('Sin fechas')
+            ->assertSee('Idea sin fechas todavía');
+
+        $this->assertNotNull($sinFechas->id);
+    }
+
+    /** Por defecto solo lo vivo: un cronograma con lo descartado no se lee. */
+    public function test_el_cronograma_general_deja_fuera_lo_descartado(): void
+    {
+        $muerto = $this->proyecto();
+        $muerto->update(['name' => 'Proyecto descartado', 'starts_on' => '2026-09-01', 'due_on' => '2026-09-30']);
+        app(\App\Services\Projects\ProjectService::class)->descartar($muerto, 'No hubo presupuesto.');
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.cronograma'))
+            ->assertOk()
+            ->assertDontSee('Proyecto descartado');
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.cronograma', ['todos' => 1]))
+            ->assertOk()
+            ->assertSee('Proyecto descartado');
+    }
+
+    public function test_el_cronograma_general_es_solo_del_backoffice(): void
+    {
+        $this->actingAs($this->conRol())
+            ->get(route('proyectos.cronograma'))
+            ->assertForbidden();
+    }
+
+    /** Se arrastra como en un tablero de verdad, y los botones se quedan. */
+    public function test_las_tarjetas_del_tablero_se_pueden_arrastrar(): void
+    {
+        $p = $this->proyecto();
+        $p->tasks()->create(['title' => 'Cortar piezas']);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertSee('draggable="true"', false)
+            ->assertSee('data-estado="hecha"', false)
+            // Arrastrar no funciona con el dedo ni con teclado: los botones
+            // son la via que sirve desde una tablet en el taller.
+            ->assertSee('Se arrastra de una columna a otra, o se usan los botones');
     }
 
     public function test_el_tablero_es_solo_del_backoffice(): void

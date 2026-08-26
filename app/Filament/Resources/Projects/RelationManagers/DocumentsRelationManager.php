@@ -28,6 +28,11 @@ class DocumentsRelationManager extends RelationManager
 
     protected static ?string $title = 'Documentos';
 
+    // Sin esto, el estado vacio de Filament dice «Cree un project member».
+    protected static ?string $modelLabel = 'documento';
+
+    protected static ?string $pluralModelLabel = 'documentos';
+
     public function form(Schema $schema): Schema
     {
         return $schema

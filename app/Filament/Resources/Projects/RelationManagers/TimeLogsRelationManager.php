@@ -27,6 +27,11 @@ class TimeLogsRelationManager extends RelationManager
 
     protected static ?string $title = 'Horas';
 
+    // Sin esto, el estado vacio de Filament dice «Cree un project member».
+    protected static ?string $modelLabel = 'registro de horas';
+
+    protected static ?string $pluralModelLabel = 'registros de horas';
+
     public function form(Schema $schema): Schema
     {
         return $schema

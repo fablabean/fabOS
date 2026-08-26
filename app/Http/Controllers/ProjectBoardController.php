@@ -35,6 +35,41 @@ class ProjectBoardController extends Controller
             'falta'      => $this->proyectos->queFalta($project),
             'siguiente'  => $this->proyectos->siguienteEtapa($project),
             'costeo'     => $this->costeo->costear($project),
+            'evidencias' => $this->proyectos->evidencias($project),
+        ]);
+    }
+
+    /**
+     * El cronograma de todos los proyectos a la vez.
+     *
+     * El Gantt de un proyecto responde «¿vamos a tiempo?». Este responde la
+     * otra pregunta, la que decide si se acepta el siguiente encargo: «¿qué se
+     * nos junta en marzo?». Sin verlos superpuestos, cada proyecto parece
+     * holgado por separado y el laboratorio se compromete de más.
+     */
+    public function cronogramaGeneral(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+
+        $todos = $request->boolean('todos');
+
+        $proyectos = Project::query()
+            ->with('lead')
+            ->when(! $todos, fn ($q) => $q->whereIn('status', ['activo', 'ganado']))
+            ->orderByRaw('starts_on is null, starts_on')
+            ->orderBy('code')
+            ->get();
+
+        [$conFechas, $sinFechas] = $proyectos->partition(
+            fn (Project $p) => $p->starts_on || $p->due_on,
+        );
+
+        return view('proyectos.cronograma', [
+            'conFechas'  => $conFechas->values(),
+            'sinFechas'  => $sinFechas->values(),
+            'desde'      => $conFechas->min(fn (Project $p) => $p->starts_on ?? $p->due_on),
+            'hasta'      => $conFechas->max(fn (Project $p) => $p->due_on ?? $p->starts_on),
+            'todos'      => $todos,
         ]);
     }
 

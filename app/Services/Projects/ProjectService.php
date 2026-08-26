@@ -25,32 +25,178 @@ use Illuminate\Support\Facades\DB;
 class ProjectService
 {
     /**
-     * Qué hace falta para entrar a cada etapa.
+     * La evidencia propia de cada etapa.
      *
-     * @var array<string,array{documento:?string,explicacion:string}>
+     * Cada etapa deja algo escrito, y ese algo se sostiene solo: la idea en dos
+     * frases, la propuesta que se mandó, el contrato firmado, el brief que fija
+     * el alcance, el trabajo hecho, el informe de cierre. Se pueden ir llenando
+     * en el orden que la realidad imponga —a veces el soporte del contrato
+     * llega días después de la firma—; lo que no se puede es **avanzar** sin
+     * ellas, y de eso se encargan las compuertas de abajo.
+     *
+     * Esta tabla es la única fuente: el documento que exige cada compuerta se
+     * deriva de ella, así que cambiar aquí qué sostiene una etapa cambia
+     * también qué se pide para pasarla. Antes eran dos listas, y dos listas
+     * acaban diciendo cosas distintas.
+     *
+     * @var array<string,array{documento:?string,campo:?string,que:string,porque:string,como:string}>
+     */
+    public const EVIDENCIAS = [
+        'idea' => [
+            'documento' => null,
+            'campo'     => 'summary',
+            'que'       => 'La idea en dos frases',
+            'porque'    => 'Lo primero es que quede anotada. Una idea que solo existe en una conversación se pierde.',
+            'como'      => 'Se escribe en la ficha del proyecto.',
+        ],
+        'propuesta' => [
+            'documento' => 'propuesta',
+            'campo'     => 'objective',
+            'que'       => 'A qué nos comprometemos, y la propuesta que se mandó',
+            'porque'    => 'Es lo que la otra parte va a aceptar o rechazar. Sin ella escrita, cada quien recuerda una cosa distinta.',
+            'como'      => 'El compromiso va en la ficha; la propuesta se sube en Documentos.',
+        ],
+        'contrato' => [
+            'documento' => 'contrato',
+            'campo'     => null,
+            'que'       => 'El respaldo: contrato u orden de servicio',
+            'porque'    => 'Es lo que convierte un acuerdo verbal en algo exigible por las dos partes.',
+            'como'      => 'Se sube en Documentos, con su fecha de firma.',
+        ],
+        'brief' => [
+            'documento' => 'brief',
+            'campo'     => null,
+            'que'       => 'El brief: el contrato traducido a trabajo',
+            'porque'    => 'Es el insumo de la ejecución. Fija qué se entrega, y es lo que se mira cuando alguien pide «un cambio pequeño».',
+            'como'      => 'Se sube en Documentos.',
+        ],
+        'ejecucion' => [
+            'documento' => null,
+            'campo'     => null,
+            'que'       => 'El trabajo, repartido en tareas',
+            'porque'    => 'Las tareas son las que dan el avance y el cronograma. Sin ellas el proyecto avanza a ojo.',
+            'como'      => 'Se crean en Tareas y se mueven en el tablero.',
+        ],
+        'cierre' => [
+            'documento' => 'informe',
+            'campo'     => 'closing_notes',
+            'que'       => 'El informe de cierre y qué quedó aprendido',
+            'porque'    => 'Cerrar sin informe deja el proyecto sin memoria: dentro de un año nadie sabrá qué se entregó.',
+            'como'      => 'El informe se sube en Documentos; las notas van en la ficha.',
+        ],
+    ];
+
+    /**
+     * Qué hace falta para entrar a cada etapa. El documento que se exige sale
+     * de EVIDENCIAS; aquí solo vive el porqué, que es lo que se le dice a quien
+     * se topa con la compuerta.
+     *
+     * @var array<string,array{explicacion:string}>
      */
     private const COMPUERTAS = [
         'propuesta' => [
-            'documento'   => null,
             'explicacion' => 'Hace falta asignar el responsable antes de hacer una propuesta.',
         ],
         'contrato' => [
-            'documento'   => 'propuesta',
             'explicacion' => 'No se firma un contrato sin una propuesta escrita: es lo que se está aceptando.',
         ],
         'brief' => [
-            'documento'   => 'contrato',
             'explicacion' => 'Sin contrato u orden de servicio no debería empezar el detalle del trabajo.',
         ],
         'ejecucion' => [
-            'documento'   => 'brief',
             'explicacion' => 'El brief es lo que fija qué se entrega. Fabricar sin él es fabricar a ciegas.',
         ],
         'cierre' => [
-            'documento'   => 'informe',
             'explicacion' => 'Cerrar sin informe deja el proyecto sin memoria: dentro de un año nadie sabrá qué se entregó.',
         ],
     ];
+
+    /**
+     * El documento que exige entrar a una etapa: el de la evidencia de la
+     * etapa anterior. El cierre es la excepción —pide el informe, que es
+     * evidencia del cierre mismo y no de lo que vino antes—.
+     */
+    private function documentoQueExige(string $etapa): ?string
+    {
+        if ($etapa === 'cierre') {
+            return self::EVIDENCIAS['cierre']['documento'];
+        }
+
+        $orden = array_keys(Project::ETAPAS);
+        $anterior = $orden[array_search($etapa, $orden, true) - 1] ?? null;
+
+        return $anterior ? self::EVIDENCIAS[$anterior]['documento'] : null;
+    }
+
+    /**
+     * El estado de la evidencia de cada etapa, para poder verlas juntas.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function evidencias(Project $proyecto): array
+    {
+        $orden = array_keys(Project::ETAPAS);
+        $actual = array_search($proyecto->stage, $orden, true);
+        $filas = [];
+
+        foreach (self::EVIDENCIAS as $etapa => $e) {
+            $piezas = [];
+
+            if ($e['documento']) {
+                $piezas[] = $proyecto->tieneDocumento($e['documento']);
+            }
+
+            if ($e['campo']) {
+                $piezas[] = filled($proyecto->{$e['campo']});
+            }
+
+            // La ejecución no deja documento: su evidencia son las tareas.
+            if ($etapa === 'ejecucion') {
+                $piezas[] = $proyecto->tasks()->exists();
+            }
+
+            $filas[] = [
+                'etapa'     => $etapa,
+                'nombre'    => Project::ETAPAS[$etapa],
+                'que'       => $e['que'],
+                'porque'    => $e['porque'],
+                'como'      => $e['como'],
+                'documento' => $e['documento'],
+                'listo'     => $piezas !== [] && ! in_array(false, $piezas, true),
+                'detalle'   => $this->detalleDeEvidencia($proyecto, $etapa, $e),
+                'actual'    => $etapa === $proyecto->stage,
+                'pasada'    => array_search($etapa, $orden, true) < $actual,
+            ];
+        }
+
+        return $filas;
+    }
+
+    private function detalleDeEvidencia(Project $proyecto, string $etapa, array $e): ?string
+    {
+        if ($etapa === 'ejecucion') {
+            $n = $proyecto->tasks()->count();
+
+            return $n ? sprintf('%d tarea%s · %d%% de avance', $n, $n === 1 ? '' : 's', $proyecto->avance()) : null;
+        }
+
+        $partes = [];
+
+        if ($e['documento']) {
+            $doc = $proyecto->documents->firstWhere('kind', $e['documento']);
+
+            if ($doc) {
+                $partes[] = $doc->title
+                    . ($doc->signed_on ? ' · firmado el ' . $doc->signed_on->format('d/m/Y') : '');
+            }
+        }
+
+        if ($e['campo'] && filled($proyecto->{$e['campo']})) {
+            $partes[] = str($proyecto->{$e['campo']})->limit(120)->value();
+        }
+
+        return $partes ? implode(' — ', $partes) : null;
+    }
 
     /** Anota una idea. Es el paso más importante y el que más se pierde. */
     public function registrarIdea(array $datos, ?User $quienRegistra = null): Project
@@ -259,10 +405,12 @@ class ProjectService
             throw new ProjectException(self::COMPUERTAS['propuesta']['explicacion']);
         }
 
-        if ($compuerta['documento'] && ! $proyecto->tieneDocumento($compuerta['documento'])) {
+        $documento = $this->documentoQueExige($etapa);
+
+        if ($documento && ! $proyecto->tieneDocumento($documento)) {
             throw new ProjectException(sprintf(
                 'Falta el documento «%s» para pasar a %s. %s',
-                \App\Models\ProjectDocument::TIPOS[$compuerta['documento']] ?? $compuerta['documento'],
+                \App\Models\ProjectDocument::TIPOS[$documento] ?? $documento,
                 mb_strtolower(Project::ETAPAS[$etapa]),
                 $compuerta['explicacion'],
             ));

@@ -48,6 +48,7 @@ class ProjectResource extends Resource
             RelationManagers\DocumentsRelationManager::class,
             RelationManagers\TasksRelationManager::class,
             RelationManagers\TimeLogsRelationManager::class,
+            RelationManagers\CostsRelationManager::class,
         ];
     }
 

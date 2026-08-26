@@ -22,6 +22,11 @@ class MembersRelationManager extends RelationManager
 
     protected static ?string $title = 'Equipo';
 
+    // Sin esto, el estado vacio de Filament dice «Cree un project member».
+    protected static ?string $modelLabel = 'integrante del equipo';
+
+    protected static ?string $pluralModelLabel = 'integrantes del equipo';
+
     public function form(Schema $schema): Schema
     {
         return $schema

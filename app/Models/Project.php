@@ -14,7 +14,7 @@ class Project extends Model
         'code', 'name', 'stage', 'status', 'source',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
-        'summary', 'objective', 'notes', 'agreed_value',
+        'summary', 'objective', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes',
     ];
 
@@ -49,6 +49,7 @@ class Project extends Model
         'correo'     => 'Correo',
         'whatsapp'   => 'WhatsApp',
         'formulario' => 'Formulario del sitio',
+        'gerencia'   => 'Gerencia',
         'interno'    => 'Iniciativa del laboratorio',
     ];
 
@@ -91,6 +92,22 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** Lo que se gastó por fuera del laboratorio. */
+    public function costs(): HasMany
+    {
+        return $this->hasMany(ProjectCost::class)->orderBy('incurred_on');
+    }
+
+    /**
+     * Contra qué se mide el margen: lo firmado si ya se firmó, y si no lo
+     * cotizado. Un proyecto en propuesta todavia no tiene valor acordado, y
+     * medirlo contra cero lo pintaria en perdida desde el primer dia.
+     */
+    public function valorDeReferencia(): int
+    {
+        return (int) ($this->agreed_value ?: $this->estimated_value);
     }
 
     public function tieneDocumento(string $tipo): bool
@@ -148,6 +165,7 @@ class Project extends Model
         // hace cualquiera. Vacio significa "sin acordar", y eso son 0 pesos.
         static::saving(function (self $proyecto) {
             $proyecto->agreed_value ??= 0;
+            $proyecto->estimated_value ??= 0;
         });
     }
 

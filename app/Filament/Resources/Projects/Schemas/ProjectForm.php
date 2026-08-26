@@ -88,13 +88,22 @@ class ProjectForm
                     ]),
 
                 Section::make('Compromisos')
+                    ->description('Dos cifras, no una: lo que se cotizó y lo que se firmó. Guardarlas juntas borra la pregunta que más enseña de un laboratorio que cotiza —cuánto se mueve entre lo que ofrecemos y lo que nos aceptan—.')
                     ->columns(3)
                     ->schema([
+                        TextInput::make('estimated_value')
+                            ->label('Valor estimado')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->helperText('Lo que se puso en la propuesta. En pesos.'),
+
                         TextInput::make('agreed_value')
                             ->label('Valor acordado')
                             ->numeric()
+                            ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
-                            ->helperText('En pesos.'),
+                            ->helperText('Lo que quedó en el contrato. Mientras esté en cero, el margen se mide contra el estimado.'),
 
                         DatePicker::make('starts_on')->label('Arranca'),
                         DatePicker::make('due_on')->label('Se entrega'),

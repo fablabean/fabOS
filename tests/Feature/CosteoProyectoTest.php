@@ -50,6 +50,75 @@ class CosteoProyectoTest extends TestCase
         ]);
     }
 
+    /**
+     * Dos cifras, no una: lo que se cotizó y lo que se firmó. Con un solo
+     * numero se pierde, justo al firmar, la pregunta que mas enseña de un
+     * laboratorio que cotiza: cuanto se mueve entre lo que ofrecemos y lo que
+     * nos aceptan.
+     */
+    public function test_mientras_no_se_firme_el_margen_se_mide_contra_lo_estimado(): void
+    {
+        $p = app(ProjectService::class)->registrarIdea([
+            'name'            => 'Señalética',
+            'estimated_value' => 2_000_000,
+        ]);
+
+        $c = $this->costeo()->costear($p);
+
+        $this->assertSame('estimado', $c['contra']);
+        $this->assertSame(2_000_000, $c['referencia']);
+        $this->assertSame(2_000_000, $c['margen'], 'Sin costos, el margen es todo lo cotizado.');
+    }
+
+    /** Y en cuanto se firma, manda lo firmado. */
+    public function test_al_firmar_el_margen_se_mide_contra_lo_acordado(): void
+    {
+        $p = app(ProjectService::class)->registrarIdea([
+            'name'            => 'Señalética',
+            'estimated_value' => 2_000_000,
+            'agreed_value'    => 1_500_000,
+        ]);
+
+        $c = $this->costeo()->costear($p);
+
+        $this->assertSame('acordado', $c['contra']);
+        $this->assertSame(1_500_000, $c['referencia']);
+    }
+
+    /**
+     * Un proyecto real gasta en cosas que no pasan por el laboratorio: la
+     * factura del tercero que pintó, un flete. Sin un sitio donde anotarlas el
+     * margen sale bonito y falso, que es peor que no calcularlo.
+     */
+    public function test_los_costos_asociados_entran_en_el_total(): void
+    {
+        $p = $this->proyecto(3_000_000);
+
+        $p->costs()->create([
+            'concept' => 'Pintura electrostática', 'kind' => 'servicio',
+            'supplier' => 'Taller externo', 'amount' => 800_000,
+        ]);
+        $p->costs()->create([
+            'concept' => 'Flete al campus', 'kind' => 'flete', 'amount' => 200_000,
+        ]);
+
+        $c = $this->costeo()->costear($p->fresh());
+
+        $this->assertSame(1_000_000, $c['asociados']);
+        $this->assertSame(1_000_000, $c['total'], 'El total tiene que incluirlos.');
+        $this->assertSame(2_000_000, $c['margen']);
+    }
+
+    /** Dejar el monto en blanco no puede reventar el guardado. */
+    public function test_un_costo_sin_monto_vale_cero(): void
+    {
+        $p = $this->proyecto();
+
+        $costo = $p->costs()->create(['concept' => 'Pendiente de cotizar', 'amount' => null]);
+
+        $this->assertSame(0, (int) $costo->fresh()->amount);
+    }
+
     private function proyecto(int $valor = 5_000_000): Project
     {
         return app(ProjectService::class)->registrarIdea([

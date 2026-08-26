@@ -296,6 +296,39 @@ Ver `docs/ASESORIAS.md`.
   dicta en persona y caduca en quince minutos. Es la puerta que no depende del
   correo.
 
+### Proyectos
+
+- **Dos cifras de dinero, no una.** `estimated_value` es lo que se puso en la
+  propuesta; `agreed_value` es lo que quedó en el contrato. Guardarlas en el
+  mismo campo borra, justo al firmar, la pregunta que más enseña de un
+  laboratorio que cotiza: cuánto se mueve entre lo que ofrecemos y lo que nos
+  aceptan. El margen se mide contra lo acordado si ya se firmó, y contra lo
+  estimado si no —medir una propuesta contra cero la pintaría en pérdida desde
+  el primer día—.
+- **Costos asociados** (`project_costs`): lo que se gastó por fuera y no pasa
+  por ninguna de las cuatro fuentes propias del costeo —máquina, material,
+  compras internas y horas del equipo—. La factura del tercero que pintó, un
+  flete, el alquiler de un equipo que no tenemos. Sin un sitio donde anotarlos,
+  el margen sale bonito y falso, que es peor que no calcularlo.
+- **La evidencia de cada etapa se declara una sola vez.**
+  `ProjectService::EVIDENCIAS` dice qué sostiene cada etapa —la idea en dos
+  frases, la propuesta, el contrato firmado, el brief, las tareas, el informe—
+  y **de ahí se deriva qué documento exige cada compuerta**. Antes eran dos
+  listas separadas; dos listas acaban diciendo cosas distintas, y entonces la
+  pantalla promete algo que el servicio no exige. El tablero las muestra todas
+  juntas con lo que hay y lo que falta: se llenan en el orden que la realidad
+  imponga, pero no se avanza sin ellas.
+- **El tablero se arrastra.** Las tarjetas se mueven entre columnas como en
+  Trello, y **los botones de cada tarjeta se quedan**: arrastrar no funciona
+  con el dedo ni con teclado, y el tablero se mira sobre todo desde una tablet
+  en el taller. El guardado va contra el mismo endpoint que usa el botón, y la
+  URL sale del formulario de la propia tarjeta para que no haya dos formas de
+  construirla.
+- **Cronograma general** (`/proyectos/cronograma`): todos los proyectos
+  superpuestos sobre el mismo calendario. El Gantt de un proyecto responde
+  «¿vamos a tiempo?»; este responde la que decide si se acepta el siguiente
+  encargo, «¿qué se nos junta?». Por separado todos parecen holgados.
+
 ## Trampas que costaron caro, y ya están fijadas con pruebas
 
 | Qué pasó | Por qué no se veía |
@@ -306,3 +339,5 @@ Ver `docs/ASESORIAS.md`.
 | El reparto de asesorías se torcía | `sortBy()` con un array de funciones las trata como comparadores, no como extractores de clave |
 | «1 hora» aparecía dos veces | `intdiv(90, 60)` descarta los minutos sueltos |
 | Un envío fallido borraba un código entregado en mano | Guardar invalidaba lo anterior antes de intentar enviar |
+| No se podía crear un proyecto | «Valor acordado» en blanco llegaba como NULL a una columna `NOT NULL` **con default 0**: un NULL explícito se salta el default. En pantalla solo se veía «Error al cargar la página» |
+| El estado vacío decía «Cree un project member» | Un *relation manager* sin `$modelLabel` usa el nombre de la clase |

@@ -137,6 +137,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/etiquetas', [LabelController::class, 'index'])->name('etiquetas');
 
     // Tablero de un proyecto: Kanban y Gantt sobre la misma tabla (§11).
+    // El cronograma general: todos los proyectos superpuestos (§11).
+    Route::get('/proyectos/cronograma', [ProjectBoardController::class, 'cronogramaGeneral'])->name('proyectos.cronograma');
     Route::get('/proyectos/{project}/tablero', [ProjectBoardController::class, 'show'])->name('proyectos.tablero');
     Route::post('/proyectos/tarea/{task}/mover', [ProjectBoardController::class, 'moverTarea'])->name('proyectos.tarea.mover');
 

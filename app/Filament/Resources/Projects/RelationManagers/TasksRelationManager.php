@@ -34,6 +34,11 @@ class TasksRelationManager extends RelationManager
 
     protected static ?string $title = 'Tareas';
 
+    // Sin esto, el estado vacio de Filament dice «Cree un project member».
+    protected static ?string $modelLabel = 'tarea';
+
+    protected static ?string $pluralModelLabel = 'tareas';
+
     public function form(Schema $schema): Schema
     {
         return $schema
