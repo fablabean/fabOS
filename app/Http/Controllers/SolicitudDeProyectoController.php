@@ -9,6 +9,7 @@ use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use App\Services\Projects\SoportesDeSolicitud;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
@@ -143,7 +144,18 @@ class SolicitudDeProyectoController extends Controller
         $firmado = $request->hasValidSignature();
 
         return view('proyectos.propuesta', [
-            'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents', 'evidence', 'comments.user']),
+            'proyecto' => $project->load([
+                'deliverables', 'lead', 'area', 'documents', 'evidence', 'comments.user',
+                'proposals.evidence',
+            ]),
+
+            // Quien llega por el correo no tiene sesión: la portada también va
+            // firmada, o le llegaría rota.
+            'portada' => $project->reference_image_path
+                ? ($firmado
+                    ? URL::temporarySignedRoute('proyectos.imagen', now()->addDays(60), ['project' => $project->id])
+                    : route('proyectos.imagen', $project))
+                : null,
             'firmado'  => $firmado,
 
             // El backoffice mira, no acepta en nombre de nadie.
@@ -222,6 +234,29 @@ class SolicitudDeProyectoController extends Controller
         );
 
         return back()->with('comentado', true);
+    }
+
+    /**
+     * La imagen de referencia del proyecto.
+     *
+     * Mismas puertas que la propuesta: el enlace firmado del correo, la sesión
+     * de quien lo pidió, o el backoffice. Va por aquí y no por /storage porque
+     * es material de alguien de fuera, y una URL adivinable lo dejaría a la
+     * vista de cualquiera.
+     */
+    public function imagen(Request $request, Project $project)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+        abort_unless(filled($project->reference_image_path), 404);
+
+        $disco = Storage::disk('local');
+
+        abort_unless($disco->exists($project->reference_image_path), 404);
+
+        return $disco->response($project->reference_image_path, null, [
+            'Cache-Control'          => 'private, max-age=600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function puedeVerla(Request $request, Project $project): bool

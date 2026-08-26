@@ -40,6 +40,10 @@ class FotosPublicasTest extends TestCase
         // Evidencia de tareas, entregables y producciones: es el trabajo de
         // alguien, y se sirve por una ruta que comprueba quién pide.
         'app/Filament/Componentes/CampoDeEvidencia.php',
+        // Imagen de referencia del proyecto e imágenes de la propuesta: material
+        // de un cliente, servido por una ruta que comprueba quién pide.
+        'app/Filament/Resources/Projects/Schemas/ProjectForm.php',
+        'app/Filament/Resources/Projects/Tables/ProjectsTable.php',
     ];
 
     /**

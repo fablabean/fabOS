@@ -35,6 +35,18 @@ class ProjectProposal extends Model
         ];
     }
 
+    /**
+     * Lo que se mandó con esta versión: renders, referencias, un boceto.
+     *
+     * Cuelga de la versión y no del proyecto porque una propuesta se negocia:
+     * las imágenes de la v1 explican la v1, y seguirían explicándola aunque la
+     * v2 proponga otra cosa.
+     */
+    public function evidence(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);

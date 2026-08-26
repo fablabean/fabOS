@@ -3,18 +3,22 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Models\Project;
+use App\Services\Media\OptimizadorDeImagen;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -40,6 +44,13 @@ class ProjectsTable
                             : ($r->proposal_sent_at
                                 ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
                                 : ''))),
+
+                ImageColumn::make('reference_image_path')
+                    ->label('')
+                    ->height(38)
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
+                    // Por la ruta con permiso, no por /storage.
+                    ->getStateUsing(fn (Project $r) => $r->imagenDeReferencia()),
 
                 TextColumn::make('name')
                     ->label('Proyecto')
@@ -178,6 +189,38 @@ class ProjectsTable
 
                         DatePicker::make('starts_on')->label('Arranca')->live(onBlur: true),
                         DatePicker::make('due_on')->label('Se entrega')->live(onBlur: true),
+
+                        FileUpload::make('imagenes')
+                            ->label('Imágenes de la propuesta')
+                            ->multiple()
+                            ->reorderable()
+                            ->image()
+                            ->maxFiles(6)
+                            ->maxSize(20480)
+                            ->columnSpanFull()
+                            ->live()
+                            // Disco privado, como todo lo del trabajo de un
+                            // cliente: se sirven por la ruta que comprueba
+                            // quien pide, nunca por una URL adivinable.
+                            ->directory('proyectos/propuestas')
+                            // El navegador la encoge antes de subirla: una foto
+                            // de telefono son cuatro megas y por el tunel esa
+                            // lentitud se vuelve un 502 sin explicacion.
+                            ->imageResizeMode('contain')
+                            ->imageResizeTargetWidth(2000)
+                            ->imageResizeTargetHeight(2000)
+                            ->imageResizeUpscale(false)
+                            ->saveUploadedFileUsing(
+                                fn ($file) => app(OptimizadorDeImagen::class)
+                                    ->guardar($file, 'proyectos/propuestas', 'local')
+                            )
+                            ->helperText('Un render, una referencia, un boceto. Enseñan de qué se habla antes de que nadie lea una línea. Se quedan con esta versión de la propuesta.'),
+
+                        Toggle::make('usar_como_referencia')
+                            ->label('Usar la primera como imagen del proyecto')
+                            ->default(fn (Project $record) => blank($record->reference_image_path))
+                            ->columnSpanFull()
+                            ->helperText('Es la que sale en el listado y en la ficha. Casi siempre es la misma, y volver a subirla sería trabajo doble.'),
 
                         Textarea::make('mensaje')
                             ->label('Algo que quieras añadir')

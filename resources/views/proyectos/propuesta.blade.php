@@ -63,6 +63,35 @@
         </p>
     @endif
 
+    {{-- La imagen de la propuesta antes que nada: enseña de qué se está
+         hablando antes de que nadie lea una línea. --}}
+    @php
+        $imagenes = $version?->evidence ?? collect();
+
+        // Quien llega por el correo no tiene sesión: sus enlaces van firmados,
+        // o las imágenes le llegarían rotas y la propuesta a medias.
+        $verImagen = fn ($e) => $firmado
+            ? \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                'proyectos.evidencia', now()->addDays(60), ['evidencia' => $e->id])
+            : $e->enlace();
+    @endphp
+
+    @if ($imagenes->isNotEmpty())
+        <div class="galeria">
+            @foreach ($imagenes as $imagen)
+                <a href="{{ $verImagen($imagen) }}" target="_blank" rel="noopener">
+                    <img src="{{ $verImagen($imagen) }}" alt="{{ $imagen->comoSeLlama() }}" loading="lazy">
+                </a>
+            @endforeach
+        </div>
+    @elseif ($proyecto->reference_image_path)
+        <div class="galeria">
+            <a href="{{ $portada }}" target="_blank" rel="noopener">
+                <img src="{{ $portada }}" alt="{{ $proyecto->name }}" loading="lazy">
+            </a>
+        </div>
+    @endif
+
     @if ($proyecto->summary)
         <div class="panel">
             <h2 style="margin-top:0">Lo que nos contaste</h2>
@@ -383,6 +412,10 @@
 
     {{-- Rejilla propia: las utilidades responsivas de Tailwind no están compiladas. --}}
     <style>
+        .galeria { display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));
+                   gap:.6rem; margin-bottom:1.2rem; }
+        .galeria img { width:100%; height:11rem; object-fit:cover; display:block;
+                       border:1px solid var(--rule); border-radius:6px; }
         .estado { margin:.2rem 0 .8rem; display:flex; gap:.5rem;
                   align-items:center; flex-wrap:wrap; }
         .estado .pill { margin:0; }

@@ -376,6 +376,28 @@ class ProjectService
                 'sent_by'         => auth()->id(),
             ]);
 
+            // Las imagenes cuelgan de la version, no del proyecto: las de la v1
+            // explican la v1, y lo seguirian haciendo aunque la v2 proponga
+            // otra cosa.
+            foreach ($datos['imagenes'] ?? [] as $ruta) {
+                if (blank($ruta)) {
+                    continue;
+                }
+
+                $version->evidence()->create([
+                    'kind'          => 'foto',
+                    'file_path'     => $ruta,
+                    'original_name' => basename($ruta),
+                    'uploaded_by'   => auth()->id(),
+                ]);
+            }
+
+            // Y la primera puede quedar como la cara del proyecto: casi siempre
+            // es la misma imagen, y volver a subirla seria trabajo doble.
+            if (($datos['usar_como_referencia'] ?? false) && filled($datos['imagenes'] ?? [])) {
+                $proyecto->update(['reference_image_path' => $datos['imagenes'][0]]);
+            }
+
             $variables = [
                 'proyecto' => $proyecto->name,
                 'codigo'   => $proyecto->code,

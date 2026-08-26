@@ -774,6 +774,105 @@ class SolicitudDeProyectoTest extends TestCase
         $this->assertStringContainsString('v2', $asuntos->last());
     }
 
+    // ---------------------------------------------------------------- imágenes
+
+    /**
+     * Una imagen enseña de qué se está hablando antes de que nadie lea una
+     * línea. Cuelgan de la versión y no del proyecto: las de la v1 explican la
+     * v1, y lo seguirían haciendo aunque la v2 proponga otra cosa.
+     */
+    public function test_la_propuesta_lleva_sus_imagenes(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p, [
+            'imagenes' => ['proyectos/propuestas/render-v1.webp'],
+        ]);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p->fresh(), [
+            'imagenes' => ['proyectos/propuestas/render-v2.webp'],
+        ]);
+
+        $versiones = $p->fresh()->proposals;
+
+        $this->assertSame('proyectos/propuestas/render-v1.webp', $versiones->first()->evidence->first()->file_path);
+        $this->assertSame('proyectos/propuestas/render-v2.webp', $versiones->last()->evidence->first()->file_path);
+    }
+
+    /** La primera puede quedarse como la cara del proyecto. */
+    public function test_la_primera_imagen_puede_ser_la_del_proyecto(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->assertNull($p->reference_image_path);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p, [
+            'imagenes'             => ['proyectos/propuestas/render.webp'],
+            'usar_como_referencia' => true,
+        ]);
+
+        $this->assertSame('proyectos/propuestas/render.webp', $p->fresh()->reference_image_path);
+        $this->assertStringContainsString('/proyectos/' . $p->id . '/imagen', $p->fresh()->imagenDeReferencia());
+    }
+
+    /** Sin marcarlo, no se toca la que ya tuviera. */
+    public function test_sin_marcarlo_no_se_pisa_la_imagen_del_proyecto(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+        $p->update(['reference_image_path' => 'proyectos/referencia/la-de-siempre.webp']);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p->fresh(), [
+            'imagenes' => ['proyectos/propuestas/otra.webp'],
+        ]);
+
+        $this->assertSame('proyectos/referencia/la-de-siempre.webp', $p->fresh()->reference_image_path);
+    }
+
+    /** La imagen del proyecto no queda en una URL que cualquiera pueda pedir. */
+    public function test_la_imagen_del_proyecto_pide_permiso(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+        $p->update(['reference_image_path' => 'proyectos/referencia/render.webp']);
+        Storage::disk('local')->put('proyectos/referencia/render.webp', 'contenido');
+
+        $this->get(route('proyectos.imagen', $p))->assertForbidden();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('proyectos.imagen', $p))
+            ->assertOk();
+    }
+
+    /**
+     * Y quien llega por el correo, sin sesión, tiene que verlas: si no, la
+     * propuesta le llega a medias.
+     */
+    public function test_con_el_enlace_firmado_las_imagenes_se_ven(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p);
+
+        $imagen = $p->fresh()->propuestaVigente()->evidence()->create([
+            'kind'      => 'foto',
+            'file_path' => 'proyectos/propuestas/render.webp',
+        ]);
+        Storage::disk('local')->put('proyectos/propuestas/render.webp', 'contenido');
+
+        $firmado = URL::temporarySignedRoute('proyectos.evidencia', now()->addDay(), ['evidencia' => $imagen->id]);
+
+        $this->get($firmado)->assertOk();
+        $this->get(route('proyectos.evidencia', $imagen))->assertForbidden();
+    }
+
     // ------------------------------------------------------------ comentarios
 
     /**

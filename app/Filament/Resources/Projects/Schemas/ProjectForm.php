@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Projects\Schemas;
 
 use App\Filament\Componentes\CampoDeEvidencia;
 use App\Models\Project;
+use App\Services\Media\OptimizadorDeImagen;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -50,6 +52,25 @@ class ProjectForm
                             ->label('La idea en dos frases')
                             ->rows(2)
                             ->columnSpanFull(),
+
+                        FileUpload::make('reference_image_path')
+                            ->label('Imagen de referencia')
+                            ->image()
+                            ->maxSize(20480)
+                            ->columnSpanFull()
+                            // Disco privado: es material del cliente, y se
+                            // sirve por la ruta que comprueba quién pide.
+                            ->directory('proyectos/referencia')
+                            ->imageResizeMode('contain')
+                            ->imageResizeTargetWidth(2000)
+                            ->imageResizeTargetHeight(2000)
+                            ->imageResizeUpscale(false)
+                            ->saveUploadedFileUsing(
+                                fn ($file) => app(OptimizadorDeImagen::class)
+                                    ->guardar($file, 'proyectos/referencia', 'local')
+                            )
+                            ->helperText('La que resume de qué va. Sale en el listado y en la propuesta; se puede tomar de las que se mandaron con ella.'),
+
 
                     ]),
 

@@ -15,7 +15,7 @@ class Project extends Model
         'code', 'name', 'stage', 'status', 'source', 'is_internal', 'client_kind',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
-        'summary', 'notes', 'agreed_value', 'estimated_value',
+        'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
     ];
@@ -223,6 +223,19 @@ class Project extends Model
     public function evidence(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
         return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
+    }
+
+    /**
+     * La imagen que resume de qué va, si la hay.
+     *
+     * Va por una ruta con permiso y no por /storage: es material de alguien de
+     * fuera, y una URL adivinable la dejaría a la vista de cualquiera.
+     */
+    public function imagenDeReferencia(): ?string
+    {
+        return $this->reference_image_path
+            ? route('proyectos.imagen', $this)
+            : null;
     }
 
     /** Cada propuesta que se mandó, en orden. */

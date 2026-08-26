@@ -88,7 +88,13 @@ class ProjectBoardController extends Controller
      */
     public function evidencia(Request $request, Evidencia $evidencia)
     {
-        abort_unless($this->puedeVerla($request->user(), $evidencia), 403);
+        // El enlace firmado del correo también abre: quien llega a la propuesta
+        // sin haber entrado tiene que poder ver las imágenes que la explican,
+        // o la propuesta le llega a medias.
+        abort_unless(
+            $request->hasValidSignature() || $this->puedeVerla($request->user(), $evidencia),
+            403,
+        );
         abort_unless(filled($evidencia->file_path), 404);
 
         $disco = Storage::disk('local');
@@ -125,7 +131,15 @@ class ProjectBoardController extends Controller
 
         $duenio = $evidencia->evidenciable;
 
-        return $duenio instanceof Project && $duenio->requested_by === $quien->id;
+        // Cuelga del proyecto, o de una de sus propuestas: en los dos casos,
+        // de quien lo pidió.
+        $proyecto = match (true) {
+            $duenio instanceof Project => $duenio,
+            $duenio instanceof \App\Models\ProjectProposal => $duenio->project,
+            default => null,
+        };
+
+        return $proyecto?->requested_by === $quien->id;
     }
 
     /** Mover una tarjeta de columna. Un clic, sin salir del tablero. */

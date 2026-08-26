@@ -57,6 +57,15 @@ Route::get('/proyectos/{project}/propuesta', [SolicitudDeProyectoController::cla
     ->name('proyectos.propuesta');
 Route::post('/proyectos/{project}/aceptar', [SolicitudDeProyectoController::class, 'aceptar'])
     ->name('proyectos.aceptar');
+Route::get('/proyectos/{project}/imagen', [SolicitudDeProyectoController::class, 'imagen'])
+    ->name('proyectos.imagen');
+
+// La evidencia vive en el disco privado y comprueba ella misma quien pide: la
+// sesion del backoffice, la de quien lo pidio, o el enlace firmado del correo.
+// Fuera del grupo con sesion a proposito, o el enlace del correo redirigiria al
+// ingreso y la propuesta llegaria con las imagenes rotas.
+Route::get('/proyectos/evidencia/{evidencia}', [ProjectBoardController::class, 'evidencia'])
+    ->name('proyectos.evidencia');
 Route::post('/proyectos/{project}/comentar', [SolicitudDeProyectoController::class, 'comentar'])
     ->middleware('throttle:20,60')
     ->name('proyectos.comentar');
@@ -161,8 +170,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/proyectos/cronograma', [ProjectBoardController::class, 'cronogramaGeneral'])->name('proyectos.cronograma');
     Route::get('/proyectos/{project}/tablero', [ProjectBoardController::class, 'show'])->name('proyectos.tablero');
     Route::post('/proyectos/tarea/{task}/mover', [ProjectBoardController::class, 'moverTarea'])->name('proyectos.tarea.mover');
-    // La evidencia vive en el disco privado y se sirve comprobando quien pide.
-    Route::get('/proyectos/evidencia/{evidencia}', [ProjectBoardController::class, 'evidencia'])->name('proyectos.evidencia');
 
     // El informe de cierre que se le entrega a la Universidad (§17).
     Route::get('/informes/cierre', [ReportController::class, 'cierre'])->name('informes.cierre');

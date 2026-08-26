@@ -371,6 +371,14 @@ Ver `docs/ASESORIAS.md`.
   que es peor que cualquier compuerta saltada—. Solo avanza: retroceder sigue
   siendo decisión de quien coordina, y un proyecto descartado no avanza por
   inercia.
+- **La propuesta lleva imágenes**, y cuelgan de la **versión**: las de la v1
+  explican la v1, y lo seguirían haciendo aunque la v2 proponga otra cosa. El
+  proyecto tiene además su **imagen de referencia**
+  (`projects.reference_image_path`) —la que sale en el listado y encabeza la
+  propuesta—, que puede tomarse de las que se mandaron con ella en vez de
+  volver a subirla. Todo en el **disco privado**, servido por rutas que
+  comprueban quién pide; quien llega por el correo las abre con **enlaces
+  firmados**, o la propuesta le llegaría con las imágenes rotas.
 - **Cada propuesta que se manda queda guardada** (`project_proposals`). Una
   propuesta se negocia: se manda, el cliente pide bajar el alcance, se manda
   otra. Sin versiones, a la tercera nadie sabe qué se ofreció la primera vez
