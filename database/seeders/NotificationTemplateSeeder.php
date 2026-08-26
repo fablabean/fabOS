@@ -33,6 +33,52 @@ class NotificationTemplateSeeder extends Seeder
     {
         return [
             [
+                'key'          => 'proyecto.recibido',
+                'name'         => 'Solicitud de proyecto recibida',
+                'description'  => 'A quien propone un proyecto desde la web, en cuanto lo envía.',
+                'is_essential' => true,
+                'subject'      => 'Recibimos tu solicitud: {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Quedó anotada tu solicitud:
+
+                    Proyecto: {proyecto}
+                    Código: {codigo}
+
+                    Ahora alguien del laboratorio la va a mirar: si cabe, con qué
+                    máquinas y cuánto tomaría. Cuando tengamos una propuesta te llega
+                    por correo con el detalle.
+
+                    Con este mismo correo ya tienes cuenta en el sistema: puedes entrar
+                    sin contraseña y seguir el proyecto desde ahí.
+
+                    Si algo cambia o se te ocurre algo más, responde este correo.
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.propuesta',
+                'name'         => 'Propuesta lista',
+                'description'  => 'A quien pidió un proyecto, cuando el laboratorio le responde con una propuesta.',
+                'is_essential' => true,
+                'subject'      => 'Tenemos una propuesta para {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Miramos tu solicitud «{proyecto}» y preparamos una propuesta.
+
+                    Puedes verla completa aquí —qué entregaríamos, en cuánto tiempo y
+                    por cuánto—:
+
+                    {enlace}
+
+                    {mensaje}
+
+                    Si algo no encaja —el alcance, la fecha o el valor—, respóndenos y
+                    lo ajustamos. Nada está cerrado hasta que estemos de acuerdo.
+                    TXT,
+            ],
+            [
                 'key'          => 'asesoria.confirmada',
                 'name'         => 'Asesoría confirmada',
                 'description'  => 'A quien pide una asesoría, cuando queda agendada.',

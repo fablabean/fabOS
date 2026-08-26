@@ -16,7 +16,7 @@ class Project extends Model
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'notes', 'agreed_value', 'estimated_value',
-        'starts_on', 'due_on', 'closed_at', 'closing_notes',
+        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
     ];
 
     protected function casts(): array
@@ -25,7 +25,8 @@ class Project extends Model
             'is_internal' => 'boolean',
             'starts_on' => 'date',
             'due_on'    => 'date',
-            'closed_at' => UtcDateTime::class,
+            'closed_at'        => UtcDateTime::class,
+            'proposal_sent_at' => UtcDateTime::class,
         ];
     }
 

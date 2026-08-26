@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Models\UserCategory;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -233,6 +234,85 @@ class ProjectService
         ], $datos, [
             'requested_by' => $datos['requested_by'] ?? $quienRegistra?->id,
         ]));
+    }
+
+    /**
+     * Una solicitud que llegó por la web.
+     *
+     * Aquí sí se crea cuenta, y es una diferencia deliberada con el proyecto
+     * que anota el laboratorio: quien escribe por la web va a querer **seguir**
+     * su proyecto, y sin cuenta no hay dónde seguirlo. Quien llama por teléfono
+     * sigue sin necesitarla —esa puerta se queda abierta—.
+     *
+     * La cuenta nace como invitada, sin permiso de reservar. Rellenar un
+     * formulario público no puede ser la forma de conseguir acceso a las
+     * máquinas; para eso está el certifab. Si la persona resulta ser
+     * estudiante, la categoría se le cambia desde el backoffice.
+     *
+     * Y el proyecto queda en **idea**: es una solicitud, no un compromiso. Lo
+     * que sigue —mirar si cabe, cotizarlo, mandar propuesta— lo decide alguien.
+     *
+     * @param  array{nombre:string,correo:string,telefono?:?string,organizacion?:?string,titulo:string,resumen:string,entregables?:?string,para_cuando?:?string}  $datos
+     */
+    public function solicitarDesdeLaWeb(array $datos): Project
+    {
+        return DB::transaction(function () use ($datos) {
+            $correo = mb_strtolower(trim($datos['correo']));
+
+            // Si ya tiene cuenta se reutiliza: dos cuentas con el mismo correo
+            // partirían su historial en dos y ninguna de las dos lo tendría
+            // completo. No se le toca nada de lo que ya tenía.
+            $persona = User::where('email', $correo)->first();
+
+            if (! $persona) {
+                $persona = User::create([
+                    'name'             => trim($datos['nombre']),
+                    'email'            => $correo,
+                    'phone'            => $datos['telefono'] ?? null,
+                    'status'           => 'activo',
+                    'user_category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+                ]);
+            }
+
+            $proyecto = Project::create([
+                'name'            => trim($datos['titulo']),
+                'stage'           => 'idea',
+                'status'          => 'activo',
+                'source'          => 'formulario',
+                'summary'         => $datos['resumen'],
+                'organization'    => $datos['organizacion'] ?? null,
+                'contact_name'    => trim($datos['nombre']),
+                'contact_email'   => $correo,
+                'contact_phone'   => $datos['telefono'] ?? null,
+                'requested_by'    => $persona->id,
+                'due_on'          => $datos['para_cuando'] ?? null,
+            ]);
+
+            // Lo que la persona escribió como lista se guarda como lista: es lo
+            // que después se compara con lo que se entregó.
+            foreach ($this->enLineas($datos['entregables'] ?? null) as $posicion => $titulo) {
+                $proyecto->deliverables()->create([
+                    'title'    => mb_substr($titulo, 0, 255),
+                    'position' => $posicion,
+                ]);
+            }
+
+            return $proyecto->refresh();
+        });
+    }
+
+    /** Un texto de varias líneas, limpio de viñetas escritas a mano. */
+    private function enLineas(?string $texto): array
+    {
+        if (blank($texto)) {
+            return [];
+        }
+
+        return collect(preg_split('/\r\n|\r|\n/', $texto))
+            ->map(fn (string $l) => trim(preg_replace('/^\s*[-*•·]\s*/u', '', $l)))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**

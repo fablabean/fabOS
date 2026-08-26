@@ -31,6 +31,35 @@ class ProjectResource extends Resource
         return 'Proyectos';
     }
 
+    /**
+     * Lo que llegó por la web y todavía no tiene respuesta.
+     *
+     * El contador es lo que hace que alguien mire. Una solicitud sin responder
+     * envejece mal: quien escribió deja de contar con el laboratorio y no
+     * vuelve a escribir.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $sinResponder = Project::query()
+            ->where('source', 'formulario')
+            ->whereNull('proposal_sent_at')
+            ->where('stage', 'idea')
+            ->whereNotIn('status', ['descartado', 'perdido', 'cerrado'])
+            ->count();
+
+        return $sinResponder ?: null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Solicitudes de la web sin propuesta';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return ProjectForm::configure($schema);

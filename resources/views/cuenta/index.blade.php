@@ -174,6 +174,46 @@
         </div>
     @endif
 
+    {{-- --------------------------------------------------- proyectos --}}
+    @if ($proyectos->isNotEmpty())
+        <h2>Mis proyectos</h2>
+
+        <div class="panel">
+            <table>
+                <thead><tr><th>Código</th><th>Proyecto</th><th>En qué va</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($proyectos as $proyecto)
+                    <tr>
+                        <td class="quien">{{ $proyecto->code }}</td>
+                        <td>
+                            {{ $proyecto->name }}
+                            @if ($proyecto->organization)
+                                <div class="quien">{{ $proyecto->organization }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            {{ \App\Models\Project::ETAPAS[$proyecto->stage] ?? $proyecto->stage }}
+                            @if ($proyecto->proposal_sent_at)
+                                <div class="quien">
+                                    propuesta enviada el
+                                    {{ $proyecto->proposal_sent_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}
+                                </div>
+                            @elseif ($proyecto->stage === 'idea')
+                                <div class="quien">en revisión</div>
+                            @endif
+                        </td>
+                        <td>
+                            @if ($proyecto->proposal_sent_at)
+                                <a href="{{ route('proyectos.propuesta', $proyecto) }}">Ver la propuesta →</a>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- --------------------------------------------------- asesorías --}}
     @if ($asesorias->isNotEmpty())
         <h2>Mis próximas asesorías</h2>

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Models\Project;
+use App\Services\Notifications\NotificationService;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
@@ -11,8 +12,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\URL;
 
 class ProjectsTable
 {
@@ -79,11 +82,63 @@ class ProjectsTable
                     ->toggleable(),
             ])
             ->filters([
+                Filter::make('sin_responder')
+                    ->label('Solicitudes de la web sin responder')
+                    ->query(fn ($query) => $query
+                        ->where('source', 'formulario')
+                        ->whereNull('proposal_sent_at')
+                        ->where('stage', 'idea')),
+
                 SelectFilter::make('stage')->label('Etapa')->options(Project::ETAPAS),
                 SelectFilter::make('status')->label('Estado')->options(Project::ESTADOS)->default('activo'),
                 SelectFilter::make('lead_id')->label('Responsable')->relationship('lead', 'name'),
             ])
             ->recordActions([
+                // Responder la solicitud con una propuesta.
+                //
+                // El enlace del correo va firmado y caduca: sirve de inmediato,
+                // sin obligar a entrar, que es lo que hace que un correo se
+                // lea. La misma pagina queda accesible con la sesion de quien
+                // pidio el proyecto, para cuando el correo se pierda.
+                Action::make('propuesta')
+                    ->label('Enviar propuesta')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('gray')
+                    ->visible(fn (Project $record) => $record->requestedBy?->email !== null)
+                    ->modalHeading('Enviar la propuesta')
+                    ->modalDescription(fn (Project $record) => 'Le llega a '
+                        . ($record->requestedBy?->name ?? 'quien lo pidió')
+                        . ' con un enlace donde ve qué entregaríamos, en cuánto tiempo y por cuánto.')
+                    ->modalSubmitActionLabel('Enviar')
+                    ->schema([
+                        Textarea::make('mensaje')
+                            ->label('Algo que quieras añadir')
+                            ->rows(3)
+                            ->helperText('Va dentro del correo, antes del cierre. Opcional.'),
+                    ])
+                    ->action(function (Project $record, array $data) {
+                        $enlace = URL::temporarySignedRoute(
+                            'proyectos.propuesta',
+                            now()->addDays(60),
+                            ['project' => $record->id],
+                        );
+
+                        app(NotificationService::class)->enviar('proyecto.propuesta', $record->requestedBy, [
+                            'proyecto' => $record->name,
+                            'codigo'   => $record->code,
+                            'enlace'   => $enlace,
+                            'mensaje'  => $data['mensaje'] ?? '',
+                        ], $record);
+
+                        $record->update(['proposal_sent_at' => now()]);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Propuesta enviada')
+                            ->body('A ' . $record->requestedBy->email . '. El enlace vale 60 días.')
+                            ->send();
+                    }),
+
                 self::tablero(),
                 self::avanzar(),
                 self::mover(),

@@ -38,6 +38,16 @@ class AccountController extends Controller
 
         return view('cuenta.index', [
             'usuario'   => $user,
+
+            // Los proyectos que pidió. Es la razón de que se le haya creado
+            // cuenta al solicitar por la web: sin un sitio donde seguirlos, la
+            // cuenta sobra y la persona vuelve a preguntar por otro canal.
+            'proyectos' => \App\Models\Project::query()
+                ->where('requested_by', $user->id)
+                ->whereNotIn('status', ['descartado'])
+                ->latest('id')
+                ->get(),
+
             'certifabs' => $certifabs,
             'saldo'     => $this->libro->saldoDe($user),
             'cursos'    => Enrollment::with('edition.course')

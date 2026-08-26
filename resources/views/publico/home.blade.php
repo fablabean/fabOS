@@ -169,6 +169,7 @@
 
         <div class="acciones" style="margin-top:1.6rem">
             <a class="btn claro" href="{{ route('publico.equipos') }}">Ver los equipos</a>
+            <a class="btn borde" href="{{ route('proyectos.solicitar') }}">Proponer un proyecto</a>
             @guest
                 <a class="btn borde" href="{{ route('login') }}">Ingresar y reservar</a>
             @endguest

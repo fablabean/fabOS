@@ -17,6 +17,7 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\SolicitudDeProyectoController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,20 @@ Route::prefix('badges')->name('badges.')->group(function () {
     Route::get('/{tipo}/{clave}/clase', [BadgeController::class, 'clase'])->name('clase');
     Route::get('/{tipo}/{clave}', [BadgeController::class, 'asercion'])->name('asercion');
 });
+
+// Pedir un proyecto desde la web (§11). Sin sesion: lo que se pierde hoy son
+// las ideas que llegan un domingo y nunca se anotan. El limite de intentos es
+// lo unico que separa un formulario abierto de un buzon de spam.
+Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'create'])->name('proyectos.solicitar');
+Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
+    ->middleware('throttle:6,60')
+    ->name('proyectos.solicitar.store');
+
+// La propuesta con que se responde. Se entra por el enlace firmado del correo o
+// con la sesion de quien la pidio: la comprobacion vive en el controlador
+// porque las dos puertas tienen que valer.
+Route::get('/proyectos/{project}/propuesta', [SolicitudDeProyectoController::class, 'propuesta'])
+    ->name('proyectos.propuesta');
 
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
 Route::get('/verificar/{codigo}', [VerificationController::class, 'show'])->name('publico.verificar');

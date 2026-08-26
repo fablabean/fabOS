@@ -314,6 +314,22 @@ Ver `docs/ASESORIAS.md`.
   se promete, mucho antes de que alguien planifique cómo hacerlo. Traerlos dos
   veces no duplica el tablero. Cerrar la tarea da por cumplido su entregable,
   para que las dos vistas no se contradigan.
+- **Pedir un proyecto desde la web** (`/proyectos/solicitar`). Lo que se pierde
+  hoy no son los proyectos grandes: son las ideas que llegan un domingo y nunca
+  se anotan. **Aquí sí se crea cuenta**, y es una diferencia deliberada con el
+  proyecto que anota el laboratorio —quien escribe por la web va a querer
+  seguirlo, y sin cuenta no hay dónde—. Nace como **invitada, sin permiso de
+  reservar**: rellenar un formulario público no puede ser la forma de conseguir
+  acceso a las máquinas. El proyecto queda en **idea**: es una solicitud, no un
+  compromiso. Un campo trampa y un límite de intentos son lo único que separa
+  un formulario abierto de un buzón de spam.
+- **Responder con una propuesta.** Desde el listado, «Enviar propuesta» manda
+  un correo con un **enlace firmado de 60 días**: funciona sin haber entrado,
+  porque obligar a iniciar sesión antes de leer una propuesta es la forma más
+  segura de que no se lea. La misma página queda accesible con la sesión de
+  quien la pidió, para cuando el correo se pierda. `proposal_sent_at` es lo que
+  permite ver a quién se dejó esperando —y alimenta el contador naranja del
+  menú—.
 - **El cotizador** (`/admin/cotizador`): máquina, minutos, gramos, y para
   quién. Es la conversación de todos los días —alguien llega con una pieza y
   hay que decir un número—, y el número a ojo es el problema: cada quien dice
