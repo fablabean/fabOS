@@ -273,6 +273,127 @@ class BackofficeProyectosTest extends TestCase
         $this->assertSame($admin->id, $p->costs()->first()->registered_by);
     }
 
+    // ---------------------------------------------------------- entregables
+
+    /**
+     * Un párrafo no se puede marcar como cumplido. En lista, cada compromiso
+     * tiene estado propio, y al cerrar se puede decir cuál se entregó y cuál no.
+     */
+    public function test_los_entregables_se_escriben_uno_por_renglon(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $this->entra($admin);
+
+        Livewire::test(\App\Filament\Resources\Projects\Pages\CreateProject::class)
+            ->fillForm([
+                'name'         => 'CapiDog',
+                'source'       => 'interno',
+                'deliverables' => [
+                    ['title' => 'Piel del perro robot en función de chigüiro'],
+                    ['title' => 'Animatrónico de rostro', 'due_on' => '2026-10-30'],
+                ],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $p = Project::where('name', 'CapiDog')->firstOrFail();
+
+        $this->assertCount(2, $p->deliverables);
+        $this->assertSame('Piel del perro robot en función de chigüiro', $p->deliverables->first()->title);
+        $this->assertFalse($p->deliverables->first()->estaEntregado());
+    }
+
+    /**
+     * Un entregable es un compromiso con fecha: en el tablero es un hito, no
+     * una barra larga.
+     */
+    public function test_los_entregables_se_llevan_al_tablero_como_hitos(): void
+    {
+        $p = $this->proyecto();
+        $p->update(['due_on' => '2026-11-30']);
+
+        $p->deliverables()->createMany([
+            ['title' => 'Piel del perro robot', 'position' => 0],
+            ['title' => 'Animatrónico de rostro', 'due_on' => '2026-10-30', 'position' => 1],
+        ]);
+
+        $cuantas = app(\App\Services\Projects\ProjectService::class)
+            ->llevarEntregablesAlTablero($p);
+
+        $this->assertSame(2, $cuantas);
+        $this->assertCount(2, $p->tasks()->get());
+
+        $hito = $p->tasks()->where('title', 'Animatrónico de rostro')->firstOrFail();
+        $this->assertTrue($hito->is_milestone);
+        $this->assertSame('2026-10-30', $hito->due_on->toDateString());
+
+        // Sin fecha propia hereda la del proyecto: un hito sin fecha no sale en
+        // el cronograma, que es donde se mira si da tiempo.
+        $otro = $p->tasks()->where('title', 'Piel del perro robot')->firstOrFail();
+        $this->assertSame('2026-11-30', $otro->due_on->toDateString());
+
+        $this->assertSame($otro->id, $p->deliverables()->where('title', 'Piel del perro robot')->first()->task_id);
+    }
+
+    /** Pulsarlo dos veces no duplica el tablero, que es lo que uno teme. */
+    public function test_traer_los_entregables_dos_veces_no_duplica_nada(): void
+    {
+        $p = $this->proyecto();
+        $p->deliverables()->create(['title' => 'Piel del perro robot']);
+
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+
+        $this->assertSame(1, $servicio->llevarEntregablesAlTablero($p));
+        $this->assertSame(0, $servicio->llevarEntregablesAlTablero($p->fresh()));
+        $this->assertSame(1, $p->tasks()->count());
+    }
+
+    /** Cerrar la tarea en el tablero da por cumplido su entregable. */
+    public function test_cerrar_la_tarea_cumple_el_entregable(): void
+    {
+        $p = $this->proyecto();
+        $entregable = $p->deliverables()->create(['title' => 'Animatrónico de rostro']);
+
+        app(\App\Services\Projects\ProjectService::class)->llevarEntregablesAlTablero($p);
+        $entregable->refresh();
+
+        $this->assertFalse($entregable->estaEntregado());
+
+        app(\App\Services\Projects\ProjectService::class)->moverTarea($entregable->task, 'hecha');
+
+        $this->assertTrue($entregable->fresh()->load('task')->estaEntregado());
+    }
+
+    public function test_el_tablero_lista_los_entregables_y_su_estado(): void
+    {
+        $p = $this->proyecto();
+        $p->deliverables()->create(['title' => 'Piel del perro robot']);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertSee('Entregables')
+            ->assertSee('Piel del perro robot')
+            ->assertSee('todavía no es tarea');
+    }
+
+    /** La propuesta se sostiene en sus entregables, no en un párrafo. */
+    public function test_sin_entregables_la_propuesta_no_tiene_evidencia(): void
+    {
+        $p = $this->proyecto();
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+
+        $porEtapa = collect($servicio->evidencias($p))->keyBy('etapa');
+        $this->assertFalse($porEtapa['propuesta']['listo']);
+
+        $p->deliverables()->create(['title' => 'Piel del perro robot']);
+        $p->documents()->create(['kind' => 'propuesta', 'title' => 'Propuesta 2026-14']);
+
+        $porEtapa = collect($servicio->evidencias($p->fresh()))->keyBy('etapa');
+        $this->assertTrue($porEtapa['propuesta']['listo']);
+        $this->assertStringContainsString('Piel del perro robot', $porEtapa['propuesta']['detalle']);
+    }
+
     // ------------------------------------------- la evidencia de cada etapa
 
     /**

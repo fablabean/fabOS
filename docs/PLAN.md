@@ -305,6 +305,15 @@ Ver `docs/ASESORIAS.md`.
   aceptan. El margen se mide contra lo acordado si ya se firmó, y contra lo
   estimado si no —medir una propuesta contra cero la pintaría en pérdida desde
   el primer día—.
+- **Los entregables son una lista, no un párrafo** (`project_deliverables`).
+  «Qué se compromete a entregar» era texto libre, y un párrafo no se puede
+  marcar como cumplido: al cerrar, nadie sabía si se entregó lo prometido,
+  sabía que se había trabajado mucho. Cada entregable tiene estado propio y se
+  lleva al tablero **como hito** —un entregable es exactamente eso, un
+  compromiso con fecha—. La tarea es opcional: un entregable existe desde que
+  se promete, mucho antes de que alguien planifique cómo hacerlo. Traerlos dos
+  veces no duplica el tablero. Cerrar la tarea da por cumplido su entregable,
+  para que las dos vistas no se contradigan.
 - **Costos asociados** (`project_costs`): lo que se gastó por fuera y no pasa
   por ninguna de las cuatro fuentes propias del costeo —máquina, material,
   compras internas y horas del equipo—. La factura del tercero que pintó, un
@@ -313,7 +322,9 @@ Ver `docs/ASESORIAS.md`.
 - **La evidencia de cada etapa se declara una sola vez.**
   `ProjectService::EVIDENCIAS` dice qué sostiene cada etapa —la idea en dos
   frases, la propuesta, el contrato firmado, el brief, las tareas, el informe—
-  y **de ahí se deriva qué documento exige cada compuerta**. Antes eran dos
+  y **de ahí se deriva qué documento exige cada compuerta**. La propuesta se
+  sostiene en sus entregables y la ejecución en sus tareas: hay evidencia que
+  no es ni documento ni campo de la ficha. Antes eran dos
   listas separadas; dos listas acaban diciendo cosas distintas, y entonces la
   pantalla promete algo que el servicio no exige. El tablero las muestra todas
   juntas con lo que hay y lo que falta: se llenan en el orden que la realidad

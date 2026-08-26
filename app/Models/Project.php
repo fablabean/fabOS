@@ -14,7 +14,7 @@ class Project extends Model
         'code', 'name', 'stage', 'status', 'source',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
-        'summary', 'objective', 'notes', 'agreed_value', 'estimated_value',
+        'summary', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes',
     ];
 
@@ -92,6 +92,18 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * A qué se comprometió el laboratorio, un renglón por compromiso.
+     *
+     * Era un párrafo, y un párrafo no se puede marcar como cumplido: al final
+     * del proyecto nadie sabía si se entregó lo prometido, sabía que se había
+     * trabajado mucho.
+     */
+    public function deliverables(): HasMany
+    {
+        return $this->hasMany(ProjectDeliverable::class)->orderBy('position')->orderBy('id');
     }
 
     /** Lo que se gastó por fuera del laboratorio. */

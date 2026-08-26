@@ -100,6 +100,61 @@
         </div>
     </div>
 
+    {{-- ------------------------------------------------------ entregables --}}
+    @if ($proyecto->deliverables->isNotEmpty())
+        @php
+            $cumplidos = $proyecto->deliverables->filter->estaEntregado()->count();
+        @endphp
+
+        <h2>Entregables</h2>
+        <div class="panel">
+            <p class="help" style="margin:0 0 .9rem">
+                {{ $cumplidos }} de {{ $proyecto->deliverables->count() }} cumplidos.
+                Esto es a lo que se comprometió el laboratorio: al cerrar hay que poder
+                decir cuál se entregó y cuál no.
+            </p>
+
+            <table>
+                <thead>
+                    <tr><th></th><th>Entregable</th><th>Para cuándo</th><th>En el tablero</th></tr>
+                </thead>
+                <tbody>
+                @foreach ($proyecto->deliverables as $entregable)
+                    <tr>
+                        <td style="width:1.5rem;color:{{ $entregable->estaEntregado() ? 'var(--ok)' : 'var(--muted)' }};font-weight:700">
+                            {{ $entregable->estaEntregado() ? '✓' : '·' }}
+                        </td>
+                        <td>
+                            {{ $entregable->title }}
+                            @if ($entregable->detail)
+                                <div class="quien">{{ $entregable->detail }}</div>
+                            @endif
+                        </td>
+                        <td style="white-space:nowrap">
+                            {{ $entregable->due_on?->format('d/m/Y') ?? '—' }}
+                        </td>
+                        <td>
+                            @if ($entregable->task)
+                                {{ $entregable->estado() }}
+                            @else
+                                <span class="quien">todavía no es tarea</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+
+            @if ($proyecto->deliverables->whereNull('task_id')->isNotEmpty())
+                <p class="foot" style="margin-top:.9rem">
+                    Hay entregables que aún no están en el tablero. Se llevan de una vez
+                    desde <strong>Tareas → Traer los entregables</strong>, en la ficha del
+                    proyecto: se crean como hitos, que es lo que son.
+                </p>
+            @endif
+        </div>
+    @endif
+
     {{-- ---------------------------------------------------------- costeo --}}
     @php
         $hayCosto = $costeo['total'] > 0 || $costeo['referencia'] > 0;

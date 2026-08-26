@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projects\Schemas;
 use App\Models\Project;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -40,11 +41,36 @@ class ProjectForm
                             ->rows(2)
                             ->columnSpanFull(),
 
-                        Textarea::make('objective')
+                        Repeater::make('deliverables')
+                            ->relationship()
                             ->label('Qué se compromete a entregar')
-                            ->rows(3)
                             ->columnSpanFull()
-                            ->helperText('Se afina en el brief, pero conviene escribirlo desde el principio.'),
+                            ->addActionLabel('Añadir un entregable')
+                            ->reorderable()
+                            ->orderColumn('position')
+                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
+                            ->collapsible()
+                            // Ninguno de entrada: anotar una idea con lo minimo
+                            // -un nombre y por donde llego- tiene que seguir
+                            // bastando, y un renglon vacio obligatorio lo impide.
+                            ->defaultItems(0)
+                            ->helperText('Uno por renglón. En lista y no en párrafo, porque al cerrar hay que poder decir cuál se cumplió y cuál no; y porque desde aquí se llevan al tablero como hitos.')
+                            ->schema([
+                                TextInput::make('title')
+                                    ->label('Entregable')
+                                    ->required()
+                                    ->columnSpan(2),
+
+                                DatePicker::make('due_on')
+                                    ->label('Para cuándo')
+                                    ->helperText('Opcional.'),
+
+                                Textarea::make('detail')
+                                    ->label('Detalle')
+                                    ->rows(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(3),
                     ]),
 
                 Section::make('Quién pide')

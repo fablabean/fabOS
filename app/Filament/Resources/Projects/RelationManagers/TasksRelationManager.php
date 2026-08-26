@@ -120,7 +120,32 @@ class TasksRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(ProjectTask::ESTADOS),
             ])
-            ->headerActions([CreateAction::make()->label('Añadir tarea')])
+            ->headerActions([
+                // Los entregables ya son la lista de compromisos. Volver a
+                // teclearlos como tareas es trabajo doble y una invitacion a
+                // que las dos listas dejen de coincidir.
+                Action::make('traerEntregables')
+                    ->label('Traer los entregables')
+                    ->icon('heroicon-o-flag')
+                    ->color('gray')
+                    ->visible(fn () => $this->getOwnerRecord()->deliverables()->whereNull('task_id')->exists())
+                    ->requiresConfirmation()
+                    ->modalHeading('Llevar los entregables al tablero')
+                    ->modalDescription('Se crea un hito por cada entregable que todavía no sea tarea. Los que ya lo son se quedan como están.')
+                    ->modalSubmitActionLabel('Crearlos')
+                    ->action(function () {
+                        $cuantas = app(ProjectService::class)
+                            ->llevarEntregablesAlTablero($this->getOwnerRecord());
+
+                        Notification::make()
+                            ->success()
+                            ->title($cuantas === 1 ? 'Se creó un hito' : "Se crearon {$cuantas} hitos")
+                            ->body('Están en «por hacer», con la fecha del entregable o la del proyecto.')
+                            ->send();
+                    }),
+
+                CreateAction::make()->label('Añadir tarea'),
+            ])
             ->recordActions([
                 Action::make('mover')
                     ->label('Mover')

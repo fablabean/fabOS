@@ -51,10 +51,11 @@ class ProjectService
         ],
         'propuesta' => [
             'documento' => 'propuesta',
-            'campo'     => 'objective',
-            'que'       => 'A qué nos comprometemos, y la propuesta que se mandó',
-            'porque'    => 'Es lo que la otra parte va a aceptar o rechazar. Sin ella escrita, cada quien recuerda una cosa distinta.',
-            'como'      => 'El compromiso va en la ficha; la propuesta se sube en Documentos.',
+            'campo'     => null,
+            'propio'    => 'entregables',
+            'que'       => 'A qué nos comprometemos, entregable por entregable, y la propuesta que se mandó',
+            'porque'    => 'Es lo que la otra parte va a aceptar o rechazar. En lista y no en párrafo, porque al cerrar hay que poder decir cuál se cumplió y cuál no.',
+            'como'      => 'Los entregables van en la ficha; la propuesta se sube en Documentos.',
         ],
         'contrato' => [
             'documento' => 'contrato',
@@ -73,6 +74,7 @@ class ProjectService
         'ejecucion' => [
             'documento' => null,
             'campo'     => null,
+            'propio'    => 'tareas',
             'que'       => 'El trabajo, repartido en tareas',
             'porque'    => 'Las tareas son las que dan el avance y el cronograma. Sin ellas el proyecto avanza a ojo.',
             'como'      => 'Se crean en Tareas y se mueven en el tablero.',
@@ -150,10 +152,16 @@ class ProjectService
                 $piezas[] = filled($proyecto->{$e['campo']});
             }
 
-            // La ejecución no deja documento: su evidencia son las tareas.
-            if ($etapa === 'ejecucion') {
-                $piezas[] = $proyecto->tasks()->exists();
-            }
+            // Hay evidencia que no es ni documento ni campo de la ficha: la
+            // propuesta se sostiene en sus entregables y la ejecución en sus
+            // tareas.
+            $piezas[] = match ($e['propio'] ?? null) {
+                'entregables' => $proyecto->deliverables()->exists(),
+                'tareas'      => $proyecto->tasks()->exists(),
+                default       => null,
+            };
+
+            $piezas = array_filter($piezas, fn ($v) => $v !== null);
 
             $filas[] = [
                 'etapa'     => $etapa,
@@ -181,6 +189,22 @@ class ProjectService
         }
 
         $partes = [];
+
+        if (($e['propio'] ?? null) === 'entregables') {
+            $entregables = $proyecto->deliverables;
+
+            if ($entregables->isNotEmpty()) {
+                $cumplidos = $entregables->filter->estaEntregado()->count();
+                $partes[] = sprintf(
+                    '%d entregable%s, %d cumplido%s: %s',
+                    $entregables->count(),
+                    $entregables->count() === 1 ? '' : 's',
+                    $cumplidos,
+                    $cumplidos === 1 ? '' : 's',
+                    $entregables->pluck('title')->implode(' · '),
+                );
+            }
+        }
 
         if ($e['documento']) {
             $doc = $proyecto->documents->firstWhere('kind', $e['documento']);
@@ -328,6 +352,48 @@ class ProjectService
         }
 
         return $miembro;
+    }
+
+    /**
+     * Lleva al tablero los entregables que todavía no son tarea.
+     *
+     * Se crean como **hitos**: un entregable es un compromiso con fecha, no una
+     * actividad, y en el Gantt tiene que leerse como una marca y no como una
+     * barra larga. Los que ya tienen tarea se saltan —correr esto dos veces no
+     * duplica el tablero, que es justo lo que uno teme al pulsar un botón así—.
+     *
+     * @return int cuántas tareas se crearon
+     */
+    public function llevarEntregablesAlTablero(Project $proyecto): int
+    {
+        $pendientes = $proyecto->deliverables()->whereNull('task_id')->get();
+
+        if ($pendientes->isEmpty()) {
+            return 0;
+        }
+
+        $posicion = (int) $proyecto->tasks()->max('position');
+
+        return DB::transaction(function () use ($proyecto, $pendientes, $posicion) {
+            foreach ($pendientes as $entregable) {
+                $tarea = $proyecto->tasks()->create([
+                    'title'        => $entregable->title,
+                    'description'  => $entregable->detail,
+                    'status'       => 'por_hacer',
+                    'is_milestone' => true,
+                    // Si el entregable no trae fecha, hereda la del proyecto:
+                    // un hito sin fecha no aparece en el cronograma, y ese es
+                    // el sitio donde se mira si da tiempo.
+                    'due_on'       => $entregable->due_on ?? $proyecto->due_on,
+                    'starts_on'    => $entregable->due_on ?? $proyecto->due_on,
+                    'position'     => ++$posicion,
+                ]);
+
+                $entregable->update(['task_id' => $tarea->id]);
+            }
+
+            return $pendientes->count();
+        });
     }
 
     /** Mueve una tarea de columna en el tablero. */
