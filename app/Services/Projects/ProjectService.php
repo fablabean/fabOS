@@ -360,6 +360,22 @@ class ProjectService
 
             $proyecto->refresh()->load('deliverables');
 
+            // Una version por envio: a la tercera, nadie recuerda que se
+            // ofrecio la primera vez, y esa es justo la pregunta que llega
+            // cuando alguien dice «pero ustedes habian dicho...».
+            $version = $proyecto->proposals()->create([
+                'version'         => (int) $proyecto->proposals()->max('version') + 1,
+                'estimated_value' => (int) $proyecto->estimated_value,
+                'starts_on'       => $proyecto->starts_on,
+                'due_on'          => $proyecto->due_on,
+                'message'         => $datos['mensaje'] ?? null,
+                'deliverables'    => $proyecto->deliverables
+                    ->map(fn ($e) => ['title' => $e->title, 'due_on' => $e->due_on?->toDateString()])
+                    ->all(),
+                'sent_at'         => now(),
+                'sent_by'         => auth()->id(),
+            ]);
+
             $variables = [
                 'proyecto' => $proyecto->name,
                 'codigo'   => $proyecto->code,
@@ -369,6 +385,9 @@ class ProjectService
                     ['project' => $proyecto->id],
                 ),
                 'mensaje'  => $datos['mensaje'] ?? '',
+                // En el asunto, para que dos correos seguidos no parezcan el
+                // mismo: «Propuesta v2 para...».
+                'version'  => $version->etiqueta(),
             ];
 
             if ($proyecto->requestedBy) {
@@ -385,20 +404,9 @@ class ProjectService
 
             $proyecto->update(['proposal_sent_at' => now()]);
 
-            // Mandar la propuesta ES estar en la etapa de propuesta. Dejar el
-            // embudo en «idea» después de haberla mandado hace que el listado
-            // diga una cosa y los hechos otra.
-            //
-            // Se intenta y no se exige: la compuerta pide responsable, y no
-            // tener responsable no puede impedir responderle a alguien. Quien
-            // coordina lo verá pendiente en el listado, que es donde toca.
-            if ($proyecto->stage === 'idea') {
-                try {
-                    $this->moverA($proyecto, 'propuesta');
-                } catch (ProjectException) {
-                    // Se queda en idea, a la vista.
-                }
-            }
+            // Mandar la propuesta ES estar en la etapa de propuesta. No hace
+            // falta pedirle además la compuerta: el hecho es la evidencia.
+            $this->avanzarPorEvento($proyecto, 'propuesta');
 
             return $proyecto->refresh();
         });
@@ -494,6 +502,10 @@ class ProjectService
                 'enlace_formulario' => (string) config('fabos.proyectos.formulario_venta_interna'),
             ];
 
+            // Una propuesta aceptada es un acuerdo: lo que sigue es dejarlo
+            // por escrito, y eso es la etapa de contrato.
+            $this->avanzarPorEvento($proyecto, 'contrato');
+
             $clave = $proyecto->esClienteInterno()
                 ? 'proyecto.venta_interna'
                 : 'proyecto.aceptada';
@@ -581,7 +593,7 @@ class ProjectService
      *
      * @throws ProjectException
      */
-    public function moverA(Project $proyecto, string $etapa): Project
+    public function moverA(Project $proyecto, string $etapa, bool $exigirCompuertas = true): Project
     {
         if (! isset(Project::ETAPAS[$etapa])) {
             throw new ProjectException('Esa etapa no existe.');
@@ -599,8 +611,10 @@ class ProjectService
             return $proyecto->refresh();
         }
 
-        foreach (array_slice($orden, $desde + 1, $hasta - $desde) as $paso) {
-            $this->exigirCompuerta($proyecto, $paso);
+        if ($exigirCompuertas) {
+            foreach (array_slice($orden, $desde + 1, $hasta - $desde) as $paso) {
+                $this->exigirCompuerta($proyecto, $paso);
+            }
         }
 
         $datos = ['stage' => $etapa];
@@ -618,6 +632,51 @@ class ProjectService
 
         return $proyecto->refresh();
     }
+
+    /**
+     * Mueve la etapa porque **pasó algo**, no porque alguien lo pidió.
+     *
+     * Mandar la propuesta, aceptarla, registrar el contrato: cada uno de esos
+     * hechos *es* la evidencia de la etapa a la que lleva, así que exigirle
+     * además la compuerta sería pedir dos veces lo mismo. Y dejar el embudo
+     * atrás mientras los hechos avanzan hace que el listado mienta, que es peor
+     * que cualquier compuerta saltada.
+     *
+     * Solo avanza: un hecho posterior no puede devolver un proyecto a una etapa
+     * anterior. Retroceder sigue siendo una decisión de quien coordina.
+     */
+    public function avanzarPorEvento(Project $proyecto, string $etapa): Project
+    {
+        $orden = array_keys(Project::ETAPAS);
+        $ahora = array_search($proyecto->stage, $orden, true);
+        $destino = array_search($etapa, $orden, true);
+
+        if ($destino === false || $ahora === false || $destino <= $ahora) {
+            return $proyecto;
+        }
+
+        // Un proyecto descartado o perdido no avanza por inercia.
+        if (in_array($proyecto->status, ['descartado', 'perdido'], true)) {
+            return $proyecto;
+        }
+
+        return $this->moverA($proyecto, $etapa, exigirCompuertas: false);
+    }
+
+    /**
+     * Qué etapa abre cada documento cuando se registra.
+     *
+     * Registrar el contrato firmado es aceptar el contrato, y lo que sigue a un
+     * contrato aceptado es el brief. Igual con el brief y la ejecución, y con
+     * el informe y el cierre. Antes había que acordarse de mover la etapa a
+     * mano después de subir el papel, y nadie se acuerda.
+     */
+    public const ETAPA_QUE_ABRE_EL_DOCUMENTO = [
+        'propuesta' => 'propuesta',
+        'contrato'  => 'brief',
+        'brief'     => 'ejecucion',
+        'informe'   => 'cierre',
+    ];
 
     /** Qué falta para avanzar. Devuelve null si se puede. */
     public function queFalta(Project $proyecto): ?string

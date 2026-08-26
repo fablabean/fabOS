@@ -27,6 +27,26 @@ class ProjectDocument extends Model
         'otro'      => 'Otro',
     ];
 
+    /**
+     * Registrar el papel mueve la etapa.
+     *
+     * Subir el contrato firmado *es* aceptar el contrato, y lo que sigue a un
+     * contrato aceptado es el brief. Antes había que acordarse de mover la
+     * etapa a mano después de subirlo, y nadie se acuerda: el embudo acababa
+     * diciendo «idea» sobre proyectos que llevaban semanas fabricándose.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $documento) {
+            $etapa = \App\Services\Projects\ProjectService::ETAPA_QUE_ABRE_EL_DOCUMENTO[$documento->kind] ?? null;
+
+            if ($etapa && $documento->project) {
+                app(\App\Services\Projects\ProjectService::class)
+                    ->avanzarPorEvento($documento->project, $etapa);
+            }
+        });
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);

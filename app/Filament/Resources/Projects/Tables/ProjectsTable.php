@@ -35,7 +35,11 @@ class ProjectsTable
                         . ' · ' . (Project::CLIENTES[$r->client_kind] ?? $r->client_kind)
                         // Aceptada es el momento en que deja de ser una
                         // conversacion y pasa a ser un compromiso.
-                        . ($r->accepted_at ? ' · aceptada' : ($r->proposal_sent_at ? ' · propuesta enviada' : ''))),
+                        . ($r->accepted_at
+                            ? ' · aceptada'
+                            : ($r->proposal_sent_at
+                                ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
+                                : ''))),
 
                 TextColumn::make('name')
                     ->label('Proyecto')

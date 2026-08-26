@@ -201,6 +201,15 @@ class SolicitudDeProyectoController extends Controller
     {
         abort_unless($this->puedeVerla($request, $project), 403);
 
+        // Aceptada ya no se discute por aquí. Quitar el formulario de la
+        // pantalla no basta: el enlace seguiría aceptando el envío, y lo que
+        // se ajuste después del sí tiene que quedar en el contrato.
+        if ($project->estaAceptado() && ! $request->user()?->hasAnyRole(User::ROLES_BACKOFFICE)) {
+            return back()->withErrors([
+                'aceptar' => 'La propuesta ya está aceptada. Si algo cambió, escríbele a quien lleva el proyecto.',
+            ]);
+        }
+
         $datos = $request->validate([
             'body' => ['required', 'string', 'min:3', 'max:2000'],
         ]);

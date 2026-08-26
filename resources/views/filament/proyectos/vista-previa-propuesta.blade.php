@@ -24,8 +24,10 @@
 --}}
 <div class="vp">
     <div class="cabeza">
+        @php $siguiente = 'v' . ((int) $proyecto->proposals()->max('version') + 1); @endphp
+
         <span class="rotulo">
-            {{ config('fabos.lab.name') }} · Propuesta {{ $proyecto->code }}
+            {{ config('fabos.lab.name') }} · Propuesta {{ $proyecto->code }} · {{ $siguiente }}
         </span>
         <span class="para">Así lo va a ver {{ $destinatario }}</span>
     </div>
@@ -81,6 +83,17 @@
         <div class="bloque">
             <span class="titulo">En el correo, antes del cierre</span>
             <p>{{ $mensaje }}</p>
+        </div>
+    @endif
+
+    @if ($proyecto->proposals()->exists())
+        <div class="bloque aviso">
+            <span class="titulo">Ya se le mandaron {{ $proyecto->proposals()->count() }}</span>
+            <p>
+                Esta saldrá como <strong>{{ $siguiente }}</strong>, y el asunto del correo
+                la nombra: dos correos con el mismo asunto parecen el mismo, y el segundo
+                se queda sin abrir justo cuando trae el precio corregido.
+            </p>
         </div>
     @endif
 

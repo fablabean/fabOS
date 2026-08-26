@@ -635,8 +635,12 @@ class SolicitudDeProyectoTest extends TestCase
         $this->assertSame('propuesta', $p->fresh()->stage);
     }
 
-    /** Pero no tener responsable no puede impedir responderle a alguien. */
-    public function test_sin_responsable_la_propuesta_sale_igual(): void
+    /**
+     * También sin responsable: el hecho de haberla mandado es la evidencia de
+     * la etapa, y exigirle además la compuerta sería pedir dos veces lo mismo.
+     * Que falte responsable se ve en el listado, que es donde toca.
+     */
+    public function test_sin_responsable_la_propuesta_igual_mueve_la_etapa(): void
     {
         $this->post(route('proyectos.solicitar.store'), $this->solicitud());
         $p = Project::first();
@@ -644,10 +648,156 @@ class SolicitudDeProyectoTest extends TestCase
         app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p);
 
         $this->assertNotNull($p->fresh()->proposal_sent_at);
-        $this->assertSame('idea', $p->fresh()->stage, 'Se queda en idea, a la vista de quien coordina.');
+        $this->assertSame('propuesta', $p->fresh()->stage);
+    }
+
+    /** Y volver a mandarla no la devuelve ni la adelanta: sigue en propuesta. */
+    public function test_reenviar_la_propuesta_no_mueve_la_etapa_otra_vez(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+        $servicio->enviarPropuesta($p);
+        $servicio->enviarPropuesta($p->fresh());
+
+        $this->assertSame('propuesta', $p->fresh()->stage);
+    }
+
+    // ----------------------------------------------- el embudo por los hechos
+
+    /** Aceptar es un acuerdo: lo que sigue es dejarlo por escrito. */
+    public function test_aceptar_lleva_el_proyecto_a_contrato(): void
+    {
+        $p = $this->conPropuesta();
+        $p->update(['stage' => 'propuesta']);
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.aceptar', $p));
+
+        $this->assertSame('contrato', $p->fresh()->stage);
+    }
+
+    /**
+     * Registrar el papel mueve la etapa: subir el contrato firmado ES aceptar
+     * el contrato, y lo que sigue es el brief. Antes había que acordarse de
+     * moverla a mano, y nadie se acuerda.
+     */
+    public function test_el_documento_registrado_mueve_la_etapa(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $p->documents()->create(['kind' => 'contrato', 'title' => 'Orden de servicio 118']);
+        $this->assertSame('brief', $p->fresh()->stage);
+
+        $p->documents()->create(['kind' => 'brief', 'title' => 'Brief v1']);
+        $this->assertSame('ejecucion', $p->fresh()->stage);
+
+        $p->documents()->create(['kind' => 'informe', 'title' => 'Informe de cierre']);
+        $this->assertSame('cierre', $p->fresh()->stage);
+        $this->assertSame('cerrado', $p->fresh()->status);
+    }
+
+    /** Un proyecto descartado no avanza por inercia. */
+    public function test_un_proyecto_descartado_no_avanza_solo(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        app(\App\Services\Projects\ProjectService::class)->descartar($p, 'No hubo presupuesto.');
+
+        $p->documents()->create(['kind' => 'contrato', 'title' => 'Un papel suelto']);
+
+        $this->assertSame('idea', $p->fresh()->stage);
+    }
+
+    // ---------------------------------------------- versiones de la propuesta
+
+    /**
+     * Una propuesta se negocia. Sin versiones, a la tercera nadie sabe qué se
+     * ofreció la primera vez, que es justo la pregunta que llega cuando alguien
+     * dice «pero ustedes habían dicho…».
+     */
+    public function test_cada_envio_guarda_su_version(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+
+        $servicio->enviarPropuesta($p, ['estimated_value' => 3_000_000]);
+        $servicio->enviarPropuesta($p->fresh(), ['estimated_value' => 2_400_000]);
+
+        $versiones = $p->fresh()->proposals;
+
+        $this->assertCount(2, $versiones);
+        $this->assertSame([1, 2], $versiones->pluck('version')->all());
+        $this->assertSame(3_000_000, (int) $versiones->first()->estimated_value);
+        $this->assertSame(2_400_000, (int) $versiones->last()->estimated_value);
+    }
+
+    /** La versión guarda el contenido, no una referencia a lo que ya cambió. */
+    public function test_la_version_congela_los_entregables(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p);
+
+        // Se reescribe la lista para la siguiente versión.
+        $p->deliverables()->delete();
+        $p->deliverables()->create(['title' => 'Solo diez letreros']);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p->fresh());
+
+        $v1 = $p->fresh()->proposals->first();
+        $v2 = $p->fresh()->proposals->last();
+
+        $this->assertSame('20 letreros en acrílico', $v1->deliverables[0]['title']);
+        $this->assertSame('Solo diez letreros', $v2->deliverables[0]['title']);
+    }
+
+    /** Y el asunto del correo la nombra, para que dos correos no parezcan uno. */
+    public function test_el_asunto_lleva_la_version(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $servicio = app(\App\Services\Projects\ProjectService::class);
+        $servicio->enviarPropuesta($p);
+        $servicio->enviarPropuesta($p->fresh());
+
+        $asuntos = NotificationLog::where('key', 'proyecto.propuesta')->pluck('subject');
+
+        $this->assertStringContainsString('v1', $asuntos->first());
+        $this->assertStringContainsString('v2', $asuntos->last());
     }
 
     // ------------------------------------------------------------ comentarios
+
+    /**
+     * Aceptada ya no se discute ahí. Ofrecer un campo de comentarios después
+     * del sí invita a renegociar por la puerta de atrás, y lo que cambie a
+     * partir de ahora tiene que quedar en el contrato.
+     */
+    public function test_aceptada_ya_no_se_comenta(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)->post(route('proyectos.aceptar', $p));
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertDontSee('¿Algo que decir?');
+
+        // Y el enlace tampoco lo acepta: quitar el formulario no basta.
+        $this->actingAs($persona)
+            ->post(route('proyectos.comentar', $p), ['body' => 'Cambio de idea.'])
+            ->assertSessionHasErrors('aceptar');
+    }
 
     /**
      * «Casi, pero cambia la fecha» es la respuesta más común a una propuesta.

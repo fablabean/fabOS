@@ -61,7 +61,7 @@ class NotificationTemplateSeeder extends Seeder
                 'name'         => 'Propuesta lista',
                 'description'  => 'A quien pidió un proyecto, cuando el laboratorio le responde con una propuesta.',
                 'is_essential' => true,
-                'subject'      => 'Tenemos una propuesta para {proyecto} ({codigo})',
+                'subject'      => 'Propuesta {version} para {proyecto} ({codigo})',
                 'body'         => <<<'TXT'
                     Hola {nombre_pila},
 

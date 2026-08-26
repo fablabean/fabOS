@@ -362,6 +362,23 @@ Ver `docs/ASESORIAS.md`.
   y solo a él: prometer una fecha más cercana sería prometer lo que el trámite
   no puede cumplir. El circuito se dibuja en el formulario y en la propuesta,
   para que el plazo no se lea como burocracia.
+- **El embudo lo mueven los hechos.** Mandar la propuesta lleva a *propuesta*;
+  que el cliente la acepte, a *contrato*; registrar el contrato firmado, a
+  *brief*; registrar el brief, a *ejecución*; y el informe de cierre, a
+  *cerrado*. Cada uno de esos hechos **es** la evidencia de la etapa a la que
+  lleva, así que exigirle además la compuerta sería pedir dos veces lo mismo —y
+  dejar el embudo atrás mientras los hechos avanzan hace que el listado mienta,
+  que es peor que cualquier compuerta saltada—. Solo avanza: retroceder sigue
+  siendo decisión de quien coordina, y un proyecto descartado no avanza por
+  inercia.
+- **Cada propuesta que se manda queda guardada** (`project_proposals`). Una
+  propuesta se negocia: se manda, el cliente pide bajar el alcance, se manda
+  otra. Sin versiones, a la tercera nadie sabe qué se ofreció la primera vez
+  —que es justo la pregunta que llega cuando alguien dice «pero ustedes habían
+  dicho…»—. Se guarda el **contenido**, no una referencia: los entregables de
+  la v1 pueden haberse borrado al redactar la v2. El asunto del correo la
+  nombra: dos correos con el mismo asunto parecen el mismo, y el segundo se
+  queda sin abrir justo cuando trae el precio corregido.
 - **En qué va se lee de los hechos, no de la etapa.** El embudo —idea,
   propuesta, contrato— es vocabulario interno y avanza con sus compuertas
   documentales; decirle «Idea» a quien ya aceptó la propuesta es mentirle con

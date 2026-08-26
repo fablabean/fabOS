@@ -225,6 +225,18 @@ class Project extends Model
         return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
     }
 
+    /** Cada propuesta que se mandó, en orden. */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ProjectProposal::class)->orderBy('version');
+    }
+
+    /** La última que se mandó, que es la que el cliente tiene delante. */
+    public function propuestaVigente(): ?ProjectProposal
+    {
+        return $this->proposals()->orderByDesc('version')->first();
+    }
+
     /**
      * Lo que se dijo sobre la propuesta, de los dos lados.
      *

@@ -11,9 +11,14 @@
 @section('content')
 @php $respondida = $proyecto->proposal_sent_at !== null; @endphp
 
+    @php $version = $proyecto->propuestaVigente(); @endphp
+
     <p class="rotulo">
         {{ config('fabos.lab.name') }} ·
         {{ $respondida ? 'Propuesta' : 'Solicitud' }} {{ $proyecto->code }}
+        @if ($version && $version->version > 1)
+            · {{ $version->etiqueta() }}
+        @endif
     </p>
 
     <h1 style="margin-top:.4rem">{{ $proyecto->name }}</h1>
@@ -26,6 +31,14 @@
             <span class="quien">{{ $estado['detalle'] }}</span>
         @endif
     </p>
+
+    @if ($respondida && $version && $version->version > 1)
+        <p class="help">
+            Esta es la <strong>versión {{ $version->version }}</strong>, del
+            {{ $version->sent_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}.
+            Sustituye a las anteriores.
+        </p>
+    @endif
 
     @if ($respondida)
         <p class="help">
@@ -229,23 +242,10 @@
             </form>
         </div>
     @elseif ($proyecto->estaAceptado())
-        @if ($puedeAceptar)
-            <div class="panel aceptar">
-                <h2 style="margin-top:0">¿Algo que decir?</h2>
-                <p class="help" style="margin-top:0">
-                    Mientras no esté fabricado todavía se puede ajustar. Lo lee quien lleva
-                    el proyecto.
-                </p>
-
-                <form method="POST" action="{{ route('proyectos.comentar', $proyecto) }}">
-                    @csrf
-                    <textarea name="body" rows="3" required
-                              placeholder="Un cambio, una duda, un dato que se te olvidó."></textarea>
-                    <button type="submit" class="secundario">Enviar comentario</button>
-                </form>
-            </div>
-        @endif
-
+        {{-- Aceptada ya no se discute aquí. Ofrecer un campo de comentarios
+             después del sí invita a renegociar por la puerta de atrás, y lo que
+             cambie a partir de ahora tiene que quedar en el contrato, no en un
+             recuadro. Para hablar está el correo de quien lleva el proyecto. --}}
         <div class="panel" style="border-left:4px solid var(--ok)">
             <h2 style="margin-top:0">Propuesta aceptada</h2>
             <p style="margin:0">
@@ -328,8 +328,8 @@
         <h2 style="margin-top:0">Qué sigue</h2>
         <p style="margin:0">
             @if ($proyecto->estaAceptado())
-                Cualquier cosa que se te ocurra por el camino, déjala dicha aquí mismo o
-                escríbenos: mientras no esté fabricado, todavía se puede ajustar.
+                Si algo cambia por el camino, escríbele a quien lleva el proyecto: lo que
+                se ajuste después del sí tiene que quedar por escrito.
             @elseif ($respondida)
                 Respóndenos si algo no encaja: el alcance, la fecha o el valor. Cuando
                 estemos de acuerdo lo dejamos por escrito y arrancamos.
