@@ -9,9 +9,7 @@
 @endphp
 
 @section('content')
-@php
-    $respondida = $proyecto->proposal_sent_at !== null;
-@endphp
+@php $respondida = $proyecto->proposal_sent_at !== null; @endphp
 
     <p class="rotulo">
         {{ config('fabos.lab.name') }} ·
@@ -19,6 +17,15 @@
     </p>
 
     <h1 style="margin-top:.4rem">{{ $proyecto->name }}</h1>
+
+    @php $estado = $proyecto->estadoParaElCliente(); @endphp
+
+    <p class="estado">
+        <span class="pill ok">{{ $estado['titulo'] }}</span>
+        @if ($estado['detalle'])
+            <span class="quien">{{ $estado['detalle'] }}</span>
+        @endif
+    </p>
 
     @if ($respondida)
         <p class="help">
@@ -144,9 +151,7 @@
         </div>
     @endif
 
-    @php
-        $propuesta = $proyecto->documents->firstWhere('kind', 'propuesta');
-    @endphp
+    @php $propuesta = $proyecto->documents->firstWhere('kind', 'propuesta'); @endphp
 
     @if ($propuesta && $propuesta->url)
         <div class="panel">
@@ -224,12 +229,43 @@
             </form>
         </div>
     @elseif ($proyecto->estaAceptado())
+        @if ($puedeAceptar)
+            <div class="panel aceptar">
+                <h2 style="margin-top:0">¿Algo que decir?</h2>
+                <p class="help" style="margin-top:0">
+                    Mientras no esté fabricado todavía se puede ajustar. Lo lee quien lleva
+                    el proyecto.
+                </p>
+
+                <form method="POST" action="{{ route('proyectos.comentar', $proyecto) }}">
+                    @csrf
+                    <textarea name="body" rows="3" required
+                              placeholder="Un cambio, una duda, un dato que se te olvidó."></textarea>
+                    <button type="submit" class="secundario">Enviar comentario</button>
+                </form>
+            </div>
+        @endif
+
         <div class="panel" style="border-left:4px solid var(--ok)">
             <h2 style="margin-top:0">Propuesta aceptada</h2>
             <p style="margin:0">
                 El {{ $proyecto->accepted_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}.
                 @if ($proyecto->acceptance_note)
                     «{{ $proyecto->acceptance_note }}»
+                @endif
+            </p>
+
+            {{-- Y qué pasa ahora. Aceptar y que la página no diga nada más deja
+                 a quien aceptó sin saber si tiene que hacer algo, que es cuando
+                 vuelve a escribir por otro canal. --}}
+            <p class="help" style="margin:.9rem 0 0">
+                @if ($proyecto->esClienteInterno())
+                    <strong>Falta un paso tuyo:</strong> el formulario de pedido que arranca
+                    el traslado presupuestal. Nada se fabrica hasta que Planeación confirme.
+                    Te lo explicamos abajo, y va también en el correo que te mandamos.
+                @else
+                    <strong>No tienes que hacer nada más.</strong> Ya lo estamos preparando;
+                    te escribimos cuando arranque la fabricación o si hace falta algo.
                 @endif
             </p>
         </div>
@@ -291,7 +327,10 @@
     <div class="panel">
         <h2 style="margin-top:0">Qué sigue</h2>
         <p style="margin:0">
-            @if ($respondida)
+            @if ($proyecto->estaAceptado())
+                Cualquier cosa que se te ocurra por el camino, déjala dicha aquí mismo o
+                escríbenos: mientras no esté fabricado, todavía se puede ajustar.
+            @elseif ($respondida)
                 Respóndenos si algo no encaja: el alcance, la fecha o el valor. Cuando
                 estemos de acuerdo lo dejamos por escrito y arrancamos.
             @else
@@ -344,6 +383,9 @@
 
     {{-- Rejilla propia: las utilidades responsivas de Tailwind no están compiladas. --}}
     <style>
+        .estado { margin:.2rem 0 .8rem; display:flex; gap:.5rem;
+                  align-items:center; flex-wrap:wrap; }
+        .estado .pill { margin:0; }
         .aceptar textarea { width:100%; margin-bottom:.7rem; }
         .aceptar .botones { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
         .aceptar .botones button { margin:0; }

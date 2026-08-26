@@ -385,6 +385,21 @@ class ProjectService
 
             $proyecto->update(['proposal_sent_at' => now()]);
 
+            // Mandar la propuesta ES estar en la etapa de propuesta. Dejar el
+            // embudo en «idea» después de haberla mandado hace que el listado
+            // diga una cosa y los hechos otra.
+            //
+            // Se intenta y no se exige: la compuerta pide responsable, y no
+            // tener responsable no puede impedir responderle a alguien. Quien
+            // coordina lo verá pendiente en el listado, que es donde toca.
+            if ($proyecto->stage === 'idea') {
+                try {
+                    $this->moverA($proyecto, 'propuesta');
+                } catch (ProjectException) {
+                    // Se queda en idea, a la vista.
+                }
+            }
+
             return $proyecto->refresh();
         });
     }

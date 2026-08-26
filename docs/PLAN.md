@@ -362,6 +362,13 @@ Ver `docs/ASESORIAS.md`.
   y solo a él: prometer una fecha más cercana sería prometer lo que el trámite
   no puede cumplir. El circuito se dibuja en el formulario y en la propuesta,
   para que el plazo no se lea como burocracia.
+- **En qué va se lee de los hechos, no de la etapa.** El embudo —idea,
+  propuesta, contrato— es vocabulario interno y avanza con sus compuertas
+  documentales; decirle «Idea» a quien ya aceptó la propuesta es mentirle con
+  una palabra que además no le dice nada. `estadoParaElCliente()` sale de
+  `accepted_at`, `proposal_sent_at` y la etapa, en ese orden. Mandar la
+  propuesta **sí mueve el embudo** a «propuesta» cuando puede; si falta
+  responsable no se exige, porque eso no puede impedir responderle a alguien.
 - **La aceptación cierra el acuerdo** (`accepted_at`, `accepted_by`,
   `acceptance_note`). Se acepta desde la misma página donde se lee la
   propuesta, con el enlace del correo o con la sesión —obligar a responder el
@@ -469,4 +476,6 @@ Ver `docs/ASESORIAS.md`.
 | «1 hora» aparecía dos veces | `intdiv(90, 60)` descarta los minutos sueltos |
 | Un envío fallido borraba un código entregado en mano | Guardar invalidaba lo anterior antes de intentar enviar |
 | No se podía crear un proyecto | «Valor acordado» en blanco llegaba como NULL a una columna `NOT NULL` **con default 0**: un NULL explícito se salta el default. En pantalla solo se veía «Error al cargar la página» |
+| La propuesta aceptada seguía diciendo «Idea» | El estado se leía del embudo, que avanza con compuertas documentales, en vez de los hechos (`accepted_at`) |
+| «Undefined variable» en una línea que no existía | Blade **no compila un bloque `@php…@endphp` si en la misma vista hay un `@php(...)` en línea**: deja el `@php` como texto y convierte el `@endphp` en `?>` |
 | El estado vacío decía «Cree un project member» | Un *relation manager* sin `$modelLabel` usa el nombre de la clase |

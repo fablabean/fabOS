@@ -64,6 +64,44 @@ class EstilosBackofficeTest extends TestCase
         );
     }
 
+    /**
+     * Trampa de Blade: **no se pueden mezclar `@php(...)` y `@php ... @endphp`
+     * en la misma vista**.
+     *
+     * Cuando conviven, Blade deja el bloque sin compilar —el `@php` queda como
+     * texto y el `@endphp` se convierte en `?>`— y la página revienta con un
+     * «Undefined variable» en una línea del archivo compilado que no
+     * corresponde a nada del original. Pasó de verdad en la página de la
+     * propuesta, y costó encontrarlo justo porque el error señalaba a otro
+     * sitio.
+     */
+    public function test_ninguna_vista_mezcla_las_dos_formas_de_php(): void
+    {
+        $vistas = array_merge(
+            glob(resource_path('views/**/*.blade.php')),
+            glob(resource_path('views/*.blade.php')),
+        );
+
+        $this->assertNotEmpty($vistas);
+
+        foreach ($vistas as $vista) {
+            $contenido = file_get_contents($vista);
+
+            $enLinea = preg_match('/@php\s*\(/', $contenido);
+            $enBloque = preg_match('/@php\s*$/m', $contenido);
+
+            $this->assertFalse(
+                $enLinea && $enBloque,
+                sprintf(
+                    '%s mezcla @php(...) con @php...@endphp. Blade deja el bloque sin compilar y '
+                    . 'la página revienta con «Undefined variable» apuntando a otro sitio. '
+                    . 'Usa una sola de las dos formas.',
+                    str_replace(resource_path('views/'), '', $vista),
+                ),
+            );
+        }
+    }
+
     public function test_el_tablero_trae_su_propia_rejilla(): void
     {
         $vista = file_get_contents(resource_path('views/filament/pages/tablero.blade.php'));

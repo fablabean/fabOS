@@ -74,6 +74,57 @@ class Project extends Model
         return $this->accepted_at !== null;
     }
 
+    /**
+     * En qué va, dicho para quien lo pidió.
+     *
+     * **Sale de los hechos, no de la etapa.** El embudo —idea, propuesta,
+     * contrato— es vocabulario interno y avanza con sus compuertas
+     * documentales; decirle «Idea» a alguien que ya aceptó la propuesta es
+     * mentirle con una palabra que además no significa nada para él.
+     *
+     * @return array{titulo:string,detalle:?string}
+     */
+    public function estadoParaElCliente(): array
+    {
+        if (in_array($this->status, ['descartado', 'perdido'], true)) {
+            return ['titulo' => 'No siguió adelante', 'detalle' => $this->closing_notes];
+        }
+
+        if ($this->stage === 'cierre' || $this->status === 'cerrado') {
+            return ['titulo' => 'Cerrado', 'detalle' => 'El trabajo se entregó.'];
+        }
+
+        if ($this->stage === 'ejecucion') {
+            return ['titulo' => 'En ejecución', 'detalle' => 'Se está fabricando.'];
+        }
+
+        if ($this->estaAceptado()) {
+            $cuando = $this->accepted_at
+                ->timezone(config('fabos.lab.timezone'))
+                ->format('d/m/Y');
+
+            return [
+                'titulo'  => 'Aceptada',
+                'detalle' => $this->esClienteInterno()
+                    ? "aceptada el {$cuando} · falta el traslado presupuestal"
+                    : "aceptada el {$cuando} · preparando el arranque",
+            ];
+        }
+
+        if ($this->proposal_sent_at) {
+            $cuando = $this->proposal_sent_at
+                ->timezone(config('fabos.lab.timezone'))
+                ->format('d/m/Y');
+
+            return [
+                'titulo'  => 'Propuesta enviada',
+                'detalle' => "el {$cuando} · esperando tu respuesta",
+            ];
+        }
+
+        return ['titulo' => 'En revisión', 'detalle' => 'estamos mirando si cabe y cuánto tomaría'];
+    }
+
     public const ORIGENES = [
         'correo'     => 'Correo',
         'whatsapp'   => 'WhatsApp',

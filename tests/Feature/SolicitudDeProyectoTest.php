@@ -548,6 +548,105 @@ class SolicitudDeProyectoTest extends TestCase
             ->assertDontSee('Líder receptor');
     }
 
+    // ----------------------------------------------------- en qué va, de verdad
+
+    /**
+     * El estado sale de los hechos, no de la etapa. El embudo —idea, propuesta,
+     * contrato— es vocabulario interno; decirle «Idea» a alguien que ya aceptó
+     * la propuesta es mentirle con una palabra que además no le dice nada.
+     */
+    public function test_el_estado_que_ve_el_cliente_sigue_a_los_hechos(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->assertSame('En revisión', $p->estadoParaElCliente()['titulo']);
+
+        $p->update(['proposal_sent_at' => now()]);
+        $this->assertSame('Propuesta enviada', $p->fresh()->estadoParaElCliente()['titulo']);
+
+        $p->update(['accepted_at' => now()]);
+        $this->assertSame('Aceptada', $p->fresh()->estadoParaElCliente()['titulo']);
+
+        $p->update(['stage' => 'ejecucion']);
+        $this->assertSame('En ejecución', $p->fresh()->estadoParaElCliente()['titulo']);
+    }
+
+    public function test_mi_cuenta_dice_que_la_propuesta_esta_aceptada(): void
+    {
+        $p = $this->conPropuesta();
+        $p->update(['accepted_at' => now()]);
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('Aceptada')
+            ->assertDontSee('propuesta enviada el');
+    }
+
+    /**
+     * Y aceptar sin ser cliente interno tiene que decir algo: una página que no
+     * dice nada más deja a quien aceptó sin saber si le toca hacer algo, que es
+     * cuando vuelve a escribir por otro canal.
+     */
+    public function test_al_aceptar_la_pagina_dice_que_sigue(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)->post(route('proyectos.aceptar', $p));
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Propuesta aceptada')
+            ->assertSee('No tienes que hacer nada más')
+            ->assertSee('Aceptada');
+    }
+
+    public function test_al_cliente_interno_la_pagina_le_recuerda_el_formulario(): void
+    {
+        $p = $this->conPropuesta([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(30)->toDateString(),
+        ]);
+
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+        $this->actingAs($persona)->post(route('proyectos.aceptar', $p));
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Falta un paso tuyo')
+            ->assertSee('Líder receptor');
+    }
+
+    /** Mandar la propuesta es estar en la etapa de propuesta. */
+    public function test_mandar_la_propuesta_mueve_la_etapa(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $jefa = $this->jefa();
+        $p->update(['lead_id' => $jefa->id]);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p->fresh());
+
+        $this->assertSame('propuesta', $p->fresh()->stage);
+    }
+
+    /** Pero no tener responsable no puede impedir responderle a alguien. */
+    public function test_sin_responsable_la_propuesta_sale_igual(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p);
+
+        $this->assertNotNull($p->fresh()->proposal_sent_at);
+        $this->assertSame('idea', $p->fresh()->stage, 'Se queda en idea, a la vista de quien coordina.');
+    }
+
     // ------------------------------------------------------------ comentarios
 
     /**

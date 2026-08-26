@@ -192,14 +192,12 @@
                             @endif
                         </td>
                         <td>
-                            {{ \App\Models\Project::ETAPAS[$proyecto->stage] ?? $proyecto->stage }}
-                            @if ($proyecto->proposal_sent_at)
-                                <div class="quien">
-                                    propuesta enviada el
-                                    {{ $proyecto->proposal_sent_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}
-                                </div>
-                            @elseif ($proyecto->stage === 'idea')
-                                <div class="quien">en revisión</div>
+                            {{-- De los hechos y no de la etapa: «Idea» no
+                                 significa nada para quien ya aceptó. --}}
+                            @php $estado = $proyecto->estadoParaElCliente(); @endphp
+                            {{ $estado['titulo'] }}
+                            @if ($estado['detalle'])
+                                <div class="quien">{{ $estado['detalle'] }}</div>
                             @endif
                         </td>
                         <td>
