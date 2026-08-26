@@ -100,6 +100,12 @@ class Asset extends Model
         return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
     }
 
+    /** Proyectos que declararon usar este equipo (§11). */
+    public function projects(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_assets')->withTimestamps();
+    }
+
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);

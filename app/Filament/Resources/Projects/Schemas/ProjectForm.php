@@ -43,12 +43,6 @@ class ProjectForm
                             ->rows(2)
                             ->columnSpanFull(),
 
-                        Toggle::make('is_internal')
-                            ->label('Es un compromiso interno')
-                            ->live()
-                            ->columnSpanFull()
-                            ->helperText('Se costea y se valora igual —ocupa máquina, material y gente—, pero no entra dinero por él. Sin la marca solo caben dos salidas, y las dos mienten: dejarlo en cero y que aparezca siempre en pérdida, o ponerle valor y que parezca facturado.'),
-
                     ]),
 
                 Section::make('Quién pide')
@@ -95,6 +89,12 @@ class ProjectForm
                     ->description('A qué nos comprometemos y por cuánto. Dos cifras, no una: lo que se cotizó y lo que se firmó. Guardarlas juntas borra la pregunta que más enseña de un laboratorio que cotiza —cuánto se mueve entre lo que ofrecemos y lo que nos aceptan—.')
                     ->columns(3)
                     ->schema([
+                        Toggle::make('is_internal')
+                            ->label('Es un compromiso interno')
+                            ->live()
+                            ->columnSpanFull()
+                            ->helperText('Se costea y se valora igual —ocupa máquina, material y gente—, pero no entra dinero por él. Sin la marca solo caben dos salidas, y las dos mienten: dejarlo en cero y que aparezca siempre en pérdida, o ponerle valor y que parezca facturado.'),
+
                         Repeater::make('deliverables')
                             ->relationship()
                             ->label('En qué nos comprometemos')

@@ -31,7 +31,10 @@ class ProjectBoardController extends Controller
         abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
 
         return view('proyectos.tablero', [
-            'proyecto'   => $project->load(['lead', 'members.user', 'documents', 'deliverables.task']),
+            'proyecto'   => $project->load([
+                'lead', 'members.user', 'documents', 'deliverables.task',
+                'assets', 'producciones.reservable',
+            ]),
             'tablero'    => $this->proyectos->tablero($project),
             'cronograma' => $this->proyectos->cronograma($project),
             'falta'      => $this->proyectos->queFalta($project),

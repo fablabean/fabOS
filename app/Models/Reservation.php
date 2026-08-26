@@ -18,7 +18,7 @@ class Reservation extends Model
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
         'advisory_asset_id', 'participants', 'parent_reservation_id',
-        'status', 'mode', 'starts_at', 'ends_at',
+        'status', 'mode', 'is_production', 'starts_at', 'ends_at',
         'checked_in_at', 'checked_out_at',
         'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
     ];
@@ -26,6 +26,7 @@ class Reservation extends Model
     protected function casts(): array
     {
         return [
+            'is_production'  => 'boolean',
             'starts_at'      => UtcDateTime::class,
             'ends_at'        => UtcDateTime::class,
             'checked_in_at'  => UtcDateTime::class,
@@ -52,6 +53,17 @@ class Reservation extends Model
 
     /** Estados en los que la reserva ocupa el recurso de verdad. */
     public const BLOQUEANTES = ['confirmada', 'en_curso'];
+
+    /**
+     * Producir no es reservar, aunque ocupe igual. Una produccion es el
+     * laboratorio operando su propia maquina para un encargo: no se le cobra a
+     * nadie, no pide certifab, y puede correr de madrugada. Pero bloquea el
+     * equipo exactamente lo mismo, y por eso vive en esta tabla.
+     */
+    public function esProduccion(): bool
+    {
+        return (bool) $this->is_production;
+    }
 
     /** Un proyecto al que se carga esta reserva, si lo hay (§11). */
     public function project(): BelongsTo

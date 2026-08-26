@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Un proyecto, de la idea al acta de cierre (§11). */
@@ -105,6 +106,32 @@ class Project extends Model
     public function deliverables(): HasMany
     {
         return $this->hasMany(ProjectDeliverable::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * Los equipos que usa el proyecto. Se declaran para saber con qué se
+     * cuenta antes de programar nada; programar producción con uno lo añade
+     * solo, porque eso es la prueba más clara de que el proyecto lo usa.
+     */
+    public function assets(): BelongsToMany
+    {
+        return $this->belongsToMany(Asset::class, 'project_assets')
+            ->withPivot('note')
+            ->withTimestamps()
+            ->orderBy('assets.name');
+    }
+
+    /**
+     * Los bloques en que una máquina fabrica para este proyecto.
+     *
+     * Son reservas: ocupan el equipo igual que cualquier otra, y por eso salen
+     * de la lista de horarios disponibles sin que haya que hacer nada más.
+     */
+    public function producciones(): HasMany
+    {
+        return $this->hasMany(Reservation::class)
+            ->where('is_production', true)
+            ->orderBy('starts_at');
     }
 
     /** Lo que se gastó por fuera del laboratorio. */

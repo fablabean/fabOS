@@ -314,6 +314,19 @@ Ver `docs/ASESORIAS.md`.
   se promete, mucho antes de que alguien planifique cómo hacerlo. Traerlos dos
   veces no duplica el tablero. Cerrar la tarea da por cumplido su entregable,
   para que las dos vistas no se contradigan.
+- **Producir con una máquina es reservarla** (`reservations.is_production`).
+  Podría parecer que merece tabla propia —tiene otro sentido: el laboratorio
+  operando su equipo para un encargo, no alguien practicando—, pero fabricar lo
+  ocupa exactamente igual. Con dos calendarios, tarde o temprano alguien
+  reserva la impresora para las tres mientras una pieza de seis horas sigue
+  dentro. Como reserva hereda gratis la restricción `EXCLUDE` que impide el
+  traslape, desaparece de la lista de horarios libres, y el costeo la cuenta
+  como tiempo de máquina. Lo que **no** hereda, a propósito: no pide certifab
+  —no hay nadie aprendiendo—, no exige jornada atendida —una impresión larga
+  corre de madrugada— y no cobra a nadie: el costo va al proyecto, que es donde
+  se lee. `project_assets` declara con qué cuenta el proyecto; declarar no
+  bloquea nada, porque apartar una máquina los tres meses que dura un proyecto
+  dejaría al laboratorio sin laboratorio.
 - **Compromiso interno** (`projects.is_internal`). Un proyecto para la propia
   Universidad se costea y se valora igual —ocupa máquina, material y gente—,
   pero no entra dinero por él. Sin distinguirlo solo caben dos salidas y las

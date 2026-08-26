@@ -162,6 +162,59 @@
         </div>
     @endif
 
+    {{-- ------------------------------------------------------- produccion --}}
+    @if ($proyecto->producciones->isNotEmpty() || $proyecto->assets->isNotEmpty())
+        @php
+            $vivas = $proyecto->producciones->whereIn('status', ['confirmada', 'en_curso']);
+            $horas = $proyecto->producciones
+                ->whereIn('status', ['confirmada', 'en_curso', 'completada'])
+                ->sum(fn ($p) => $p->starts_at->diffInMinutes($p->ends_at)) / 60;
+        @endphp
+
+        <h2>Máquina</h2>
+        <div class="panel">
+            @if ($proyecto->assets->isNotEmpty())
+                <p class="help" style="margin:0 0 .9rem">
+                    Usa {{ $proyecto->assets->pluck('name')->implode(', ') }}.
+                    @if ($horas > 0)
+                        Lleva <strong>{{ number_format($horas, 1, ',', '.') }} h</strong> de producción.
+                    @endif
+                </p>
+            @endif
+
+            @if ($proyecto->producciones->isNotEmpty())
+                <table>
+                    <thead>
+                        <tr><th>Equipo</th><th>Cuándo</th><th>Dura</th><th>Qué se produce</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($proyecto->producciones->sortByDesc('starts_at') as $p)
+                        <tr>
+                            <td>{{ $p->reservable?->name ?? 'Equipo eliminado' }}</td>
+                            <td style="white-space:nowrap">
+                                {{ $p->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                            </td>
+                            <td style="white-space:nowrap">
+                                {{ number_format($p->starts_at->diffInMinutes($p->ends_at) / 60, 1, ',', '.') }} h
+                            </td>
+                            <td>{{ $p->purpose ?? '—' }}</td>
+                            <td>{{ \App\Models\Reservation::ESTADOS[$p->status] ?? $p->status }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            @endif
+
+            <p class="foot" style="margin-top:.9rem">
+                Producir es reservar: mientras dure, el equipo
+                @if ($vivas->isNotEmpty()) <strong>no aparece libre para nadie más</strong>
+                @else no aparece libre para nadie más @endif.
+                Es la misma tabla y la misma regla que impide que dos reservas choquen —un
+                calendario aparte sería un calendario que miente—.
+            </p>
+        </div>
+    @endif
+
     {{-- ---------------------------------------------------------- costeo --}}
     @php
         $hayCosto = $costeo['total'] > 0 || $costeo['referencia'] > 0;

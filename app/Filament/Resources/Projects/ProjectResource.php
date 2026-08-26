@@ -45,6 +45,8 @@ class ProjectResource extends Resource
     {
         return [
             RelationManagers\MembersRelationManager::class,
+            RelationManagers\AssetsRelationManager::class,
+            RelationManagers\ProduccionesRelationManager::class,
             RelationManagers\DocumentsRelationManager::class,
             RelationManagers\TasksRelationManager::class,
             RelationManagers\TimeLogsRelationManager::class,
