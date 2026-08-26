@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Models\Project;
+use App\Models\Reservation;
+use App\Models\User;
 use App\Services\Media\OptimizadorDeImagen;
+use App\Services\Projects\EliminarProyecto;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
@@ -12,6 +15,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,6 +27,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class ProjectsTable
 {
@@ -262,6 +267,7 @@ class ProjectsTable
                 self::avanzar(),
                 self::mover(),
                 self::descartar(),
+                self::borrar(),
                 EditAction::make()->iconButton()->tooltip('Editar'),
             ]);
     }
@@ -376,5 +382,100 @@ class ProjectsTable
 
                 Notification::make()->title('Registrado')->success()->send();
             });
+    }
+
+    /**
+     * Borrar de verdad un proyecto descartado.
+     *
+     * El histórico enseña, pero después de unas cuantas pruebas la lista se
+     * llena de ruido que nadie va a volver a mirar —y una lista con ruido se
+     * deja de mirar entera—.
+     *
+     * Solo superadmin, y hay que **escribir el código** para confirmarlo. No es
+     * ceremonia: un borrado irreversible detrás de un botón junto a «Editar» se
+     * pulsa por error tarde o temprano.
+     */
+    private static function borrar(): Action
+    {
+        return Action::make('borrar')
+            ->label('Borrar definitivamente')
+            ->iconButton()
+            ->tooltip('Borrar definitivamente')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->visible(fn (Project $r) => in_array($r->status, ['descartado', 'perdido'], true)
+                && (auth()->user()?->hasRole(User::ROL_SUPERADMIN) ?? false))
+            ->modalHeading(fn (Project $r) => 'Borrar ' . $r->code)
+            ->modalDescription('Esto no se deshace.')
+            ->modalSubmitActionLabel('Borrar para siempre')
+            ->schema([
+                Placeholder::make('que_pasa')
+                    ->label('')
+                    ->content(fn (Project $r) => new HtmlString(self::loQueSeVa($r))),
+
+                TextInput::make('confirmacion')
+                    ->label('Escribe el código del proyecto para confirmar')
+                    ->required()
+                    ->placeholder(fn (Project $r) => $r->code)
+                    ->rule(fn (Project $r) => function (string $atributo, $valor, $falla) use ($r) {
+                        if (trim((string) $valor) !== $r->code) {
+                            $falla('Ese no es el código. Es ' . $r->code . '.');
+                        }
+                    }),
+            ])
+            ->action(function (Project $record) {
+                try {
+                    $resumen = app(EliminarProyecto::class)($record);
+                } catch (ProjectException $e) {
+                    Notification::make()->danger()->title('No se puede borrar')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title('Proyecto borrado')
+                    ->body(sprintf(
+                        'Se fueron %d archivos. %d reservas quedaron en el histórico, sin proyecto.',
+                        $resumen['archivos'],
+                        $resumen['desligadas'],
+                    ))
+                    ->send();
+            });
+    }
+
+    /** Qué se lleva por delante y qué sobrevive, antes de pulsar. */
+    private static function loQueSeVa(Project $proyecto): string
+    {
+        $se_va = array_filter([
+            $proyecto->deliverables()->count() . ' entregables',
+            $proyecto->tasks()->count() . ' tareas',
+            $proyecto->documents()->count() . ' documentos',
+            $proyecto->proposals()->count() . ' versiones de la propuesta',
+            $proyecto->comments()->count() . ' comentarios',
+            $proyecto->costs()->count() . ' costos anotados',
+            $proyecto->timeLogs()->count() . ' registros de horas',
+        ], fn (string $linea) => ! str_starts_with($linea, '0 '));
+
+        $reservas = Reservation::where('project_id', $proyecto->id)->count();
+        $material = $proyecto->contenido()->count();
+
+        $sobrevive = array_filter([
+            $reservas ? "{$reservas} reservas de máquina, que quedan en el histórico sin proyecto" : null,
+            $material ? "{$material} piezas de material grabado, que se quedan en el banco" : null,
+        ]);
+
+        $html = '<p><strong>Se borra:</strong> '
+            . ($se_va ? e(implode(', ', $se_va)) : 'nada más que la ficha')
+            . ', y sus archivos del disco.</p>';
+
+        if ($sobrevive) {
+            $html .= '<p style="margin-top:.6rem"><strong>Se queda:</strong> '
+                . e(implode('; ', $sobrevive))
+                . '. Ocurrió de verdad, y borrarlo dejaría el inventario y el libro contable '
+                . 'diciendo cosas que no cuadran.</p>';
+        }
+
+        return $html;
     }
 }

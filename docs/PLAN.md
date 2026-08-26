@@ -521,6 +521,27 @@ que descargarlo, pasarlo a un computador y subirlo a una carpeta, no ocurre;
   final, sin decir por qué. 90 MB, con nginx en 96 y php-fpm en 128, para que
   el «no» lo dé el validador con su mensaje y no un 413 mudo.
 
+### Borrar un proyecto descartado
+
+El histórico enseña, pero después de unas pruebas y un par de encargos que
+nunca fueron, la lista se llena de ruido —y una lista con ruido se deja de
+mirar entera—. Se puede borrar de verdad, con condiciones:
+
+- **Solo lo descartado o perdido**, y **solo superadmin**. Hay que escribir el
+  código del proyecto: un borrado irreversible detrás de un botón junto a
+  «Editar» se pulsa por error tarde o temprano. Antes de confirmar, el modal
+  dice exactamente qué se va y qué se queda.
+- **Lo que ocurrió de verdad no se borra con él.** Las reservas de máquina y
+  las compras se **desligan**: pasaron, y borrarlas dejaría el inventario y el
+  libro contable diciendo cosas que no cuadran. El material del banco de
+  contenido tampoco se toca: es de quien lo grabó, con su autorización.
+- **Los archivos sí, y hay que recorrerlos a mano.** La evidencia es
+  polimórfica —cuelga del proyecto, sus tareas, sus entregables y cada versión
+  de la propuesta— y ninguna restricción de la base se la lleva: sin esto
+  quedarían filas huérfanas apuntando a archivos que nadie borraría nunca.
+- Queda **en la bitácora** quién borró qué: un borrado sin rastro es
+  indistinguible de un dato que nunca existió, y alguien va a preguntar.
+
 ## Trampas que costaron caro, y ya están fijadas con pruebas
 
 | Qué pasó | Por qué no se veía |
