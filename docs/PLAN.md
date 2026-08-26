@@ -323,6 +323,18 @@ Ver `docs/ASESORIAS.md`.
   acceso a las máquinas. El proyecto queda en **idea**: es una solicitud, no un
   compromiso. Un campo trampa y un límite de intentos son lo único que separa
   un formulario abierto de un buzón de spam.
+- **Soportes en la solicitud**: hasta 5 archivos de 10 MB —fotos, PDF, planos,
+  `.stl`, documentos de oficina— y un **lienzo para dibujar** en la propia
+  página, que viaja como PNG solo si de verdad se dibujó algo. Una idea contada
+  solo con palabras se entiende de tantas formas como personas la lean. Es una
+  subida **pública**, así que: disco privado, lista corta de extensiones (sin
+  SVG, que es imagen para el navegador y documento con scripts para todo lo
+  demás), y nada se abre dentro del navegador salvo las imágenes —un archivo
+  de un desconocido servido en línea es una página que se ejecuta en nuestro
+  dominio—. Quien lo subió puede volver a abrirlo; un tercero no.
+- **A quien ya entró no se le pregunta quién es.** El formulario se precarga y
+  no vuelve a pedir el correo: pedirlo abriría la puerta a que escriba uno
+  distinto y el proyecto acabe colgando de una cuenta que no es la suya.
 - **Responder con una propuesta.** Desde el listado, «Enviar propuesta» manda
   un correo con un **enlace firmado de 60 días**: funciona sin haber entrado,
   porque obligar a iniciar sesión antes de leer una propuesta es la forma más

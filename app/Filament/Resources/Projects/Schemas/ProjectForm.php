@@ -46,6 +46,17 @@ class ProjectForm
 
                     ]),
 
+                Section::make('Soportes')
+                    ->description('Lo que adjuntó quien lo pidió, y lo que se vaya sumando. Una foto de la pieza rota o un plano ahorran tres correos de ida y vuelta.')
+                    ->collapsed(fn (?Project $record) => $record?->evidence()->doesntExist() ?? true)
+                    ->schema([
+                        CampoDeEvidencia::repetidor(
+                            'Soportes',
+                            'Fotos, planos, el PDF del brief, el dibujo que hizo al pedirlo.',
+                            'proyectos/soportes',
+                        ),
+                    ]),
+
                 Section::make('Quién pide')
                     ->description('Puede no tener cuenta: una empresa que escribe por WhatsApp no debería registrarse para que le anoten la idea.')
                     ->columns(2)

@@ -88,16 +88,44 @@ class ProjectBoardController extends Controller
      */
     public function evidencia(Request $request, Evidencia $evidencia)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless($this->puedeVerla($request->user(), $evidencia), 403);
         abort_unless(filled($evidencia->file_path), 404);
 
         $disco = Storage::disk('local');
 
         abort_unless($disco->exists($evidencia->file_path), 404);
 
-        return $disco->response($evidencia->file_path, null, [
+        return $disco->response($evidencia->file_path, $evidencia->original_name, [
             'Cache-Control' => 'private, max-age=600',
+            // Nada se abre dentro del navegador salvo las imagenes. Un archivo
+            // subido por cualquiera desde un formulario publico, servido en
+            // linea, es una pagina que se ejecuta en nuestro dominio.
+            'Content-Disposition' => $evidencia->esImagen()
+                ? 'inline'
+                : 'attachment; filename="' . addslashes($evidencia->original_name ?: 'archivo') . '"',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * Quien la subió también tiene derecho a verla.
+     *
+     * El backoffice, siempre. Y quien pidió el proyecto, la suya: adjuntó esos
+     * archivos, y no poder abrirlos después sería absurdo.
+     */
+    private function puedeVerla(?User $quien, Evidencia $evidencia): bool
+    {
+        if (! $quien) {
+            return false;
+        }
+
+        if ($quien->hasAnyRole(User::ROLES_BACKOFFICE)) {
+            return true;
+        }
+
+        $duenio = $evidencia->evidenciable;
+
+        return $duenio instanceof Project && $duenio->requested_by === $quien->id;
     }
 
     /** Mover una tarjeta de columna. Un clic, sin salir del tablero. */

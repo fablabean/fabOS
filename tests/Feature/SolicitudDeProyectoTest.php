@@ -12,7 +12,9 @@ use App\Support\FactoresDeSesion;
 use Database\Seeders\NotificationTemplateSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
@@ -156,6 +158,149 @@ class SolicitudDeProyectoTest extends TestCase
             'key'    => 'proyecto.recibido',
             'status' => 'enviado',
         ]);
+    }
+
+    // -------------------------------------------------------------- soportes
+
+    /**
+     * Una idea contada solo con palabras se entiende de tantas formas como
+     * personas la lean. Una foto de la pieza rota ahorra tres correos.
+     */
+    public function test_se_pueden_adjuntar_fotos_y_documentos(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [
+                UploadedFile::fake()->image('pieza-rota.jpg', 800, 600),
+                UploadedFile::fake()->create('plano.pdf', 120, 'application/pdf'),
+            ],
+        ]))->assertRedirect();
+
+        $p = Project::first();
+
+        $this->assertCount(2, $p->evidence);
+
+        $foto = $p->evidence->firstWhere('kind', 'foto');
+        $documento = $p->evidence->firstWhere('kind', 'archivo');
+
+        $this->assertNotNull($foto);
+        $this->assertNotNull($documento);
+        $this->assertSame('plano.pdf', $documento->original_name);
+
+        // Disco privado: nada de lo que suba un desconocido queda en una URL
+        // adivinable.
+        Storage::disk('local')->assertExists($documento->file_path);
+        $this->assertStringNotContainsString('/storage/', $documento->enlace());
+    }
+
+    /** Un ejecutable no es un soporte de proyecto. */
+    public function test_un_tipo_de_archivo_que_no_toca_se_rechaza(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [UploadedFile::fake()->create('cosa.exe', 10)],
+        ]))->assertSessionHasErrors('soportes.0');
+
+        $this->assertDatabaseCount('projects', 0);
+    }
+
+    /** El dibujo hecho en la propia página llega como PNG y se guarda. */
+    public function test_el_dibujo_se_guarda_como_imagen(): void
+    {
+        Storage::fake('local');
+
+        // Un PNG mínimo, de verdad: la validación comprueba la firma.
+        $png = base64_encode(base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        ));
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'dibujo' => 'data:image/png;base64,' . $png,
+        ]))->assertRedirect();
+
+        $dibujo = Project::first()->evidence->firstWhere('caption', 'Dibujo hecho al pedirlo');
+
+        $this->assertNotNull($dibujo);
+        Storage::disk('local')->assertExists($dibujo->file_path);
+    }
+
+    /** Lo que no sea un PNG de verdad no se guarda, venga como venga. */
+    public function test_un_dibujo_falso_no_se_guarda(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'dibujo' => 'data:image/png;base64,' . base64_encode('<script>alert(1)</script>'),
+        ]))->assertRedirect();
+
+        $this->assertCount(0, Project::first()->evidence);
+    }
+
+    /** Quien lo subió puede volver a abrirlo; un tercero no. */
+    public function test_quien_pidio_puede_abrir_su_soporte(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [UploadedFile::fake()->create('plano.pdf', 20, 'application/pdf')],
+        ]));
+
+        $soporte = Project::first()->evidence->first();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('proyectos.evidencia', $soporte))
+            ->assertOk();
+
+        $otro = User::create(['name' => 'Otro', 'email' => 'otro@x.co', 'status' => 'activo']);
+
+        $this->actingAs($otro)
+            ->get(route('proyectos.evidencia', $soporte))
+            ->assertForbidden();
+    }
+
+    // --------------------------------------------------- ya entró al sistema
+
+    /** A quien ya entró no se le vuelve a preguntar quién es. */
+    public function test_si_ya_entro_no_se_le_pregunta_quien_es(): void
+    {
+        $persona = User::create([
+            'name' => 'Erick Hansen', 'email' => 'erick@ejemplo.co',
+            'status' => 'activo', 'phone' => '3009999999',
+        ]);
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('Lo pides como')
+            ->assertSee('erick@ejemplo.co')
+            ->assertDontSee('Con este correo se crea tu cuenta');
+    }
+
+    /**
+     * Y el proyecto cuelga de su cuenta, no de una nueva. Pedirle otra vez el
+     * correo abriría la puerta a que escriba uno distinto y el proyecto acabe
+     * en una cuenta que no es la suya.
+     */
+    public function test_quien_ya_entro_no_necesita_escribir_su_correo(): void
+    {
+        $persona = User::create([
+            'name' => 'Erick Hansen', 'email' => 'erick@ejemplo.co', 'status' => 'activo',
+        ]);
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.solicitar.store'), [
+                'titulo'  => 'Prototipo de sensor',
+                'resumen' => 'Necesitamos una carcasa impresa para un sensor de calidad del aire.',
+            ])
+            ->assertRedirect();
+
+        $p = Project::firstOrFail();
+
+        $this->assertSame($persona->id, $p->requested_by);
+        $this->assertSame('erick@ejemplo.co', $p->contact_email);
+        $this->assertSame(1, User::where('email', 'erick@ejemplo.co')->count());
     }
 
     // ---------------------------------------------------------------- frenos

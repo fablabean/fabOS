@@ -135,6 +135,19 @@ class Project extends Model
             ->orderBy('starts_at');
     }
 
+    /**
+     * Los soportes que adjuntó quien lo pidió: fotos, planos, el PDF con el
+     * brief que ya tenía escrito, un dibujo hecho a mano alzada.
+     *
+     * Una idea explicada solo con palabras se entiende de tantas formas como
+     * personas la lean. Una foto de la pieza rota, o un garabato con medidas,
+     * ahorra tres correos de ida y vuelta.
+     */
+    public function evidence(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
+    }
+
     /** Lo que se gastó por fuera del laboratorio. */
     public function costs(): HasMany
     {
