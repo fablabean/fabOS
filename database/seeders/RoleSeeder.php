@@ -21,5 +21,9 @@ class RoleSeeder extends Seeder
         foreach (User::ROLES_BACKOFFICE as $role) {
             Role::findOrCreate($role, 'web');
         }
+
+        // Comunicaciones entra al panel pero solo al banco de contenido: viene
+        // a buscar material para divulgacion, no a mirar reservas ni saldos.
+        Role::findOrCreate(User::ROL_COMUNICACIONES, 'web');
     }
 }

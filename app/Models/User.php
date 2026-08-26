@@ -32,6 +32,14 @@ class User extends Authenticatable implements FilamentUser
     public const ROL_ADMINISTRADOR = 'administrador';
     public const ROL_SUPERADMIN    = 'superadmin';
 
+    /**
+     * Comunicaciones de la Universidad. Entra al panel, pero **solo al banco de
+     * contenido**: viene a buscar material para divulgación, no a mirar
+     * reservas ni saldos. Por eso no está en ROLES_BACKOFFICE —que es la lista
+     * de quien administra el laboratorio— y cada recurso sigue exigiendo esa.
+     */
+    public const ROL_COMUNICACIONES = 'comunicaciones';
+
     public const ROLES_BACKOFFICE = [
         self::ROL_CONSULTOR,
         self::ROL_ADMINISTRADOR,
@@ -46,7 +54,13 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->status === 'activo'
-            && $this->hasAnyRole(self::ROLES_BACKOFFICE);
+            && $this->hasAnyRole([...self::ROLES_BACKOFFICE, self::ROL_COMUNICACIONES]);
+    }
+
+    /** Quien puede mirar el banco de contenido: el laboratorio y Comunicaciones. */
+    public function puedeVerElContenido(): bool
+    {
+        return $this->hasAnyRole([...self::ROLES_BACKOFFICE, self::ROL_COMUNICACIONES]);
     }
 
     protected function casts(): array

@@ -92,6 +92,7 @@
             <a href="{{ route('formacion') }}">Formación</a>
             <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
             @auth
+                <a href="{{ route('contenido.index') }}">Grabar</a>
                 <a href="{{ route('tienda') }}">Tienda</a>
                 <a href="{{ route('home') }}">Mi cuenta</a>
                 @if (auth()->user()->hasAnyRole(\App\Models\User::ROLES_BACKOFFICE))

@@ -47,6 +47,14 @@ class Tablero extends Page
             . 'proceso nocturno mostraría el laboratorio de ayer.';
     }
 
+    /**
+     * Comunicaciones entra al panel, pero no a esto: ver las cifras del
+     * laboratorio no es asunto de quien viene a buscar una foto.
+     *
+     * Al no estar en su menú, la puerta del panel les manda sola al banco de
+     * contenido —Filament redirige a la primera entrada visible—, así que no se
+     * topan con un 403 ni tienen que saberse la dirección de memoria.
+     */
     public static function canAccess(): bool
     {
         return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;

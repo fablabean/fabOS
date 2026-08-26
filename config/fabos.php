@@ -211,6 +211,40 @@ return [
         'formulario_venta_interna' => env('PROYECTO_FORMULARIO_VENTA_INTERNA'),
     ],
 
+    /**
+     * Banco de contenido (§21).
+     *
+     * El texto de la autorización vive aquí y **se versiona**: lo que alguien
+     * aceptó en marzo tiene que seguir siendo consultable en diciembre, aunque
+     * el texto haya cambiado. Cada pieza guarda la versión que aceptó su autor.
+     *
+     * Al cambiar el texto se sube la versión. Nunca se edita una versión ya
+     * publicada: eso reescribiría lo que la gente aceptó.
+     */
+    'contenido' => [
+        'terminos_version' => env('CONTENIDO_TERMINOS_VERSION', '2026-08'),
+
+        'terminos' => env('CONTENIDO_TERMINOS', 'Declaro que este material es de mi autoría o que cuento con los '
+            . 'permisos necesarios, que está libre de derechos de terceros, y que las personas que aparecen en él '
+            . 'conocen y aceptan su uso. Autorizo al laboratorio y a la Universidad a usarlo, publicarlo y '
+            . 'adaptarlo con fines de divulgación, comunicación institucional y memoria del laboratorio, sin '
+            . 'límite de tiempo y sin contraprestación económica.'),
+
+        /*
+         * El tope por archivo.
+         *
+         * No lo decide el gusto: el sitio sale por un tunel de Cloudflare, y el
+         * plan gratuito **corta cualquier peticion de mas de 100 MB**. Poner
+         * 200 aqui no daria videos de 200 MB: daria subidas que fallan al
+         * final, despues de tres minutos esperando, sin decir por que.
+         *
+         * 90 deja margen para la cabecera y el resto del formulario. Un video
+         * de un minuto grabado con el telefono suele caber; uno de cinco, no
+         * -y para eso esta el enlace a donde ya vive-.
+         */
+        'max_mb' => (int) env('CONTENIDO_MAX_MB', 90),
+    ],
+
     'otp' => [
         // Redis, no el almacen por defecto: en produccion la cache va a la
         // base de datos, y un codigo en claro acabaria dentro del respaldo

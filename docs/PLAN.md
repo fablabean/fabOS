@@ -490,6 +490,37 @@ Ver `docs/ASESORIAS.md`.
   «¿vamos a tiempo?»; este responde la que decide si se acepta el siguiente
   encargo, «¿qué se nos junta?». Por separado todos parecen holgados.
 
+### Banco de contenido (§21)
+
+Lo que pasa en un fablab se documenta con el teléfono o no se documenta. Si hay
+que descargarlo, pasarlo a un computador y subirlo a una carpeta, no ocurre;
+`/contenido` existe para que ocurra en el mismo minuto, desde la cámara.
+
+- **Se abre la cámara, no el explorador de archivos.** `capture="environment"`
+  en el `input`: en el teléfono es la diferencia entre documentar en diez
+  segundos y no documentar.
+- **La autorización se guarda, no se supone.** El banco se comparte con
+  Comunicaciones de la Universidad, y compartir material del que no se tienen
+  derechos es un problema de la institución, no del archivo. Se anota quién
+  autorizó, cuándo, y **qué texto exacto** (`rights_version`): los términos
+  cambian, y una autorización que apunta a un texto que ya no existe no prueba
+  nada. Sin aceptarla no se guarda nada.
+- **Si hay proyecto propio, el material queda con él** —y solo los propios: la
+  lista completa del laboratorio invitaría a que acabe en el proyecto de otro—.
+  Se ve en la ficha, en la pestaña *Material*.
+- **Rol `comunicaciones`**: entra al panel pero **solo al banco**. No está en
+  `ROLES_BACKOFFICE`, así que todos los demás recursos le siguen diciendo que
+  no; y como el Tablero no aparece en su menú, la puerta del panel le manda
+  sola a lo suyo en vez de darle un 403.
+- **Se retira, no se borra.** Lo que se quita es la disponibilidad para
+  divulgación —«sale alguien que no quiere aparecer»—, que es una decisión
+  distinta de tirar el material: quien lo grabó lo sigue teniendo.
+- **El tope de subida no lo decide el gusto**: el sitio sale por un túnel de
+  Cloudflare, que en el plan gratuito corta cualquier petición de más de
+  100 MB. Poner 200 no daría videos de 200 MB: daría subidas que fallan al
+  final, sin decir por qué. 90 MB, con nginx en 96 y php-fpm en 128, para que
+  el «no» lo dé el validador con su mensaje y no un 413 mudo.
+
 ## Trampas que costaron caro, y ya están fijadas con pruebas
 
 | Qué pasó | Por qué no se veía |

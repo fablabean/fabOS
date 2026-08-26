@@ -17,6 +17,7 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\SolicitudDeProyectoController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\TwoFactorController;
@@ -161,6 +162,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/tienda/encargar', [ShopController::class, 'encargar'])->name('tienda.encargar');
     Route::post('/tienda/encargo/{job}/aceptar', [ShopController::class, 'aceptarEncargo'])->name('tienda.encargo.aceptar');
     Route::post('/tienda/encargo/{job}/cancelar', [ShopController::class, 'cancelarEncargo'])->name('tienda.encargo.cancelar');
+
+    // Banco de contenido (§21): se graba con el telefono y se sube en el mismo
+    // minuto. Exige cuenta -el material queda atribuido a quien lo grabo- pero
+    // no rol de backoffice: documentar lo hace quien esta delante de la maquina.
+    Route::get('/contenido', [ContenidoController::class, 'index'])->name('contenido.index');
+    Route::post('/contenido', [ContenidoController::class, 'store'])
+        ->middleware('throttle:30,60')
+        ->name('contenido.store');
+    Route::get('/contenido/{contenido}/archivo', [ContenidoController::class, 'archivo'])->name('contenido.archivo');
 
     // Hoja de etiquetas QR para imprimir (§7).
     Route::get('/etiquetas', [LabelController::class, 'index'])->name('etiquetas');

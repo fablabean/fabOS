@@ -238,6 +238,17 @@ class Project extends Model
             : null;
     }
 
+    /**
+     * Lo que se grabó durante el proyecto: fotos y videos del banco.
+     *
+     * Se sube desde el teléfono, delante de la máquina, que es cuando existe.
+     * Aquí queda para el informe de cierre y para enseñar lo que se hizo.
+     */
+    public function contenido(): HasMany
+    {
+        return $this->hasMany(Contenido::class)->latest('id');
+    }
+
     /** Cada propuesta que se mandó, en orden. */
     public function proposals(): HasMany
     {
