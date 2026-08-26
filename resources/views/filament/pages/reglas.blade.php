@@ -522,41 +522,6 @@
                 puede ensayar el mostrador completo antes de que el dinero sea real, sin que la
                 existencia quede mintiendo.
             </div>
-
-            <h3 style="margin-top:1.2rem">Encargos: la cola de producción</h3>
-            <p class="text-sm">
-                <strong>solicitado → cotizado → aceptado → en cola → en producción → listo →
-                entregado.</strong>
-            </p>
-
-            <div class="porque">
-                <b>No hace falta saber operar la máquina.</b> Un profesor que necesita cuarenta
-                piezas para una clase no se va a certificar en corte láser: entrega el archivo y
-                recoge las piezas. Sin un sitio donde vivan, esos encargos se acumulan en el
-                WhatsApp de quien coordina hasta que alguno se pierde.
-            </div>
-            <div class="porque">
-                <b>Se cotiza antes de producir.</b> Quien pide acepta un precio y un plazo, y hasta
-                que no acepta no se gasta material. La cotización queda congelada: cambiar el precio
-                a mitad del trabajo es exactamente lo que hace que nadie vuelva a encargar nada.
-            </div>
-            <div class="porque">
-                <b>El material se descuenta del inventario pero no se vuelve a cobrar</b>, porque la
-                cotización ya lo incluía. Cobrarlo otra vez como línea de venta sería cobrar dos
-                veces el mismo acrílico, y quien encarga lo notaría en la primera factura.
-            </div>
-            <div class="porque">
-                <b>La cola se ordena por trabajo, no por llegada:</b> primero lo vencido, luego lo
-                urgente, luego lo más próximo a entregar. Ordenar por fecha de pedido a secas
-                dejaría lo prometido para ayer detrás de algo que nadie espera.
-            </div>
-
-            <dl>
-                <dt>En la cola ahora</dt>
-                <dd>{{ $tienda['encargos'] }}</dd>
-                <dt>Encargos entregados</dt>
-                <dd>{{ $tienda['entregados'] }}</dd>
-            </dl>
         </x-filament::section>
 
         {{-- ------------------------------------------------ comunicaciones --}}

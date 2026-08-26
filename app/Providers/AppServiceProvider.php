@@ -14,7 +14,6 @@ use App\Models\LedgerTransaction;
 use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\NotificationTemplate;
-use App\Models\ProductionJob;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\PurchaseRequest;
@@ -44,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         Enrollment::class,
         LedgerAccount::class, LedgerTransaction::class,
         Location::class, NotificationLog::class, NotificationTemplate::class,
-        ProductionJob::class, Project::class, ProjectTask::class, PurchaseRequest::class, RateCard::class,
+        Project::class, ProjectTask::class, PurchaseRequest::class, RateCard::class,
         Reservation::class, RiskFamily::class, Sale::class, ScheduleException::class,
         Setting::class, ShiftAssignment::class, Space::class, Supply::class,
         User::class, UserCategory::class, WorkSchedule::class,

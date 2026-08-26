@@ -4,7 +4,6 @@ namespace App\Services\Reports;
 
 use App\Models\Asset;
 use App\Models\Budget;
-use App\Models\ProductionJob;
 use App\Models\Project;
 use App\Models\PurchaseRequest;
 use App\Models\Reservation;
@@ -117,31 +116,6 @@ class DashboardService
             ]);
         }
 
-        $encargosVencidos = ProductionJob::whereIn('status', ProductionJob::EN_COLA)
-            ->whereNotNull('due_on')
-            ->whereDate('due_on', '<', now(config('fabos.lab.timezone'))->toDateString())
-            ->count();
-        if ($encargosVencidos) {
-            $alertas->push([
-                'titulo'  => 'Encargos pasados de fecha',
-                'detalle' => 'Se prometió una entrega que ya venció.',
-                'cuantos' => $encargosVencidos,
-                'url'     => '/admin/production-jobs',
-                'tono'    => 'danger',
-            ]);
-        }
-
-        $porCotizar = ProductionJob::where('status', 'solicitado')->count();
-        if ($porCotizar) {
-            $alertas->push([
-                'titulo'  => 'Encargos sin cotizar',
-                'detalle' => 'Nadie puede aceptar lo que no tiene precio.',
-                'cuantos' => $porCotizar,
-                'url'     => '/admin/production-jobs',
-                'tono'    => 'info',
-            ]);
-        }
-
         $solicitudes = Reservation::where('status', 'solicitada')->count();
         if ($solicitudes) {
             $alertas->push([
@@ -211,7 +185,6 @@ class DashboardService
             'comprometido' => (int) $presupuestos->sum(fn (Budget $b) => $b->comprometido()),
             'ejecutado'    => (int) $presupuestos->sum(fn (Budget $b) => $b->ejecutado()),
             'disponible'   => (int) $presupuestos->sum(fn (Budget $b) => $b->disponible()),
-            'encargos'     => ProductionJob::whereIn('status', ProductionJob::EN_COLA)->count(),
             'proyectos'    => Project::where('status', 'activo')->count(),
         ];
     }

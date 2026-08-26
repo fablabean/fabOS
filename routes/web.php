@@ -159,9 +159,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/tienda', [ShopController::class, 'index'])->name('tienda');
 
     // Encargos: pedir un trabajo hecho por el equipo y aceptar su cotizacion (§14).
-    Route::post('/tienda/encargar', [ShopController::class, 'encargar'])->name('tienda.encargar');
-    Route::post('/tienda/encargo/{job}/aceptar', [ShopController::class, 'aceptarEncargo'])->name('tienda.encargo.aceptar');
-    Route::post('/tienda/encargo/{job}/cancelar', [ShopController::class, 'cancelarEncargo'])->name('tienda.encargo.cancelar');
 
     // Banco de contenido (§21): se graba con el telefono y se sube en el mismo
     // minuto. Exige cuenta -el material queda atribuido a quien lo grabo- pero

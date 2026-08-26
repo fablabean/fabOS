@@ -17,7 +17,6 @@ use App\Services\Booking\BookingService;
 use App\Services\Maintenance\MaintenanceService;
 use App\Services\Projects\ProjectService;
 use App\Services\Reports\DashboardService;
-use App\Services\Shop\ProductionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use PragmaRX\Google2FA\Google2FA;
@@ -128,23 +127,6 @@ class TableroTest extends TestCase
         $alerta = $this->tablero()->alertas()->firstWhere('titulo', 'Insumos bajo mínimos');
 
         $this->assertSame(1, $alerta['cuantos']);
-    }
-
-    public function test_avisa_de_encargos_sin_cotizar_y_vencidos(): void
-    {
-        $cliente = $this->persona();
-        $produccion = app(ProductionService::class);
-
-        $produccion->pedir($cliente, ['title' => 'Sin cotizar']);
-
-        $vencido = $produccion->pedir($cliente, ['title' => 'Prometido para ayer']);
-        $produccion->cotizar($vencido, 1000, null, now()->subDays(2)->toDateString());
-        $produccion->aceptar($vencido->refresh());
-
-        $alertas = $this->tablero()->alertas();
-
-        $this->assertSame(1, $alertas->firstWhere('titulo', 'Encargos sin cotizar')['cuantos']);
-        $this->assertSame(1, $alertas->firstWhere('titulo', 'Encargos pasados de fecha')['cuantos']);
     }
 
     public function test_avisa_de_proyectos_sin_responsable(): void

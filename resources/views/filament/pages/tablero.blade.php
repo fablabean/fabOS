@@ -155,8 +155,8 @@
                     <span>disponible</span>
                 </div>
                 <div class="cifra">
-                    <b>{{ $finanzas['proyectos'] }} · {{ $finanzas['encargos'] }}</b>
-                    <span>proyectos activos · encargos en cola</span>
+                    <b>{{ $finanzas['proyectos'] }}</b>
+                    <span>proyectos activos</span>
                 </div>
             </div>
 

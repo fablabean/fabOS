@@ -11,7 +11,6 @@ use App\Models\Enrollment;
 use App\Models\LedgerAccount;
 use App\Models\NotificationLog;
 use App\Models\NotificationTemplate;
-use App\Models\ProductionJob;
 use App\Models\Project;
 use App\Models\PurchaseRequest;
 use App\Models\RateCard;
@@ -105,8 +104,6 @@ class Reglas extends Page
                 'catalogo'  => app(ShopService::class)->catalogo(),
                 'ventas'    => Sale::where('status', 'pagada')->count(),
                 'vendido'   => (int) Sale::where('status', 'pagada')->sum('total_minor'),
-                'encargos'  => ProductionJob::whereIn('status', ProductionJob::EN_COLA)->count(),
-                'entregados'=> ProductionJob::where('status', 'entregado')->count(),
                 'tasa'      => (int) config('fabos.currency.peso_rate'),
                 'margen'    => (float) config('fabos.currency.retail_margin'),
             ],
