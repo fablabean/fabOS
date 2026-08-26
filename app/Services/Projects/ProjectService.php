@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\User;
 use App\Models\UserCategory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 /**
  * El embudo de proyectos (§11).
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ProjectService
 {
+    public function __construct(private \App\Services\Notifications\NotificationService $avisos) {}
+
     /**
      * La evidencia propia de cada etapa.
      *
@@ -313,6 +316,118 @@ class ProjectService
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * Redacta y manda la propuesta.
+     *
+     * La propuesta **es el proyecto**: sus entregables, su valor y sus fechas.
+     * No hay un documento aparte que redactar porque un documento aparte se
+     * separaría de la ficha a la primera corrección, y entonces habría dos
+     * versiones de lo que se prometió. Lo que se escribe aquí queda guardado en
+     * el proyecto, y el correo solo lleva el enlace para verlo.
+     *
+     * Se manda a la cuenta de quien lo pidió si la hay, y si no al correo de
+     * contacto: el laboratorio anota proyectos de quien no tiene cuenta, y
+     * responderle es igual de necesario.
+     *
+     * @param  array{mensaje?:?string,estimated_value?:?int,starts_on?:?string,due_on?:?string,entregables?:array}  $datos
+     *
+     * @throws ProjectException si no hay a quién mandársela
+     */
+    public function enviarPropuesta(Project $proyecto, array $datos = []): Project
+    {
+        $correo = $proyecto->requestedBy?->email ?: $proyecto->contact_email;
+
+        if (blank($correo)) {
+            throw new ProjectException(
+                'Este proyecto no tiene correo de contacto ni cuenta asociada: no hay a quién mandarle la propuesta.',
+            );
+        }
+
+        return DB::transaction(function () use ($proyecto, $datos, $correo) {
+            $proyecto->fill(array_filter([
+                'estimated_value' => $datos['estimated_value'] ?? null,
+                'starts_on'       => $datos['starts_on'] ?? null,
+                'due_on'          => $datos['due_on'] ?? null,
+            ], fn ($v) => $v !== null && $v !== ''))->save();
+
+            if (array_key_exists('entregables', $datos)) {
+                $this->sincronizarEntregables($proyecto, $datos['entregables'] ?? []);
+            }
+
+            $proyecto->refresh()->load('deliverables');
+
+            $variables = [
+                'proyecto' => $proyecto->name,
+                'codigo'   => $proyecto->code,
+                'enlace'   => URL::temporarySignedRoute(
+                    'proyectos.propuesta',
+                    now()->addDays(60),
+                    ['project' => $proyecto->id],
+                ),
+                'mensaje'  => $datos['mensaje'] ?? '',
+            ];
+
+            if ($proyecto->requestedBy) {
+                $this->avisos->enviar('proyecto.propuesta', $proyecto->requestedBy, $variables, $proyecto);
+            } else {
+                $this->avisos->enviarSinCuenta(
+                    'proyecto.propuesta',
+                    $correo,
+                    $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                    $variables,
+                    $proyecto,
+                );
+            }
+
+            $proyecto->update(['proposal_sent_at' => now()]);
+
+            return $proyecto->refresh();
+        });
+    }
+
+    /**
+     * Deja la lista de entregables igual a la que se acaba de escribir.
+     *
+     * Los que ya existían se actualizan en vez de recrearse: si se borraran y
+     * volvieran a crear, cada uno perdería su tarea en el tablero y lo que ya
+     * se hubiera entregado volvería a aparecer pendiente.
+     *
+     * @param  array<int,array{id?:?int,title?:?string,due_on?:?string}>  $lineas
+     */
+    private function sincronizarEntregables(Project $proyecto, array $lineas): void
+    {
+        $vistos = [];
+        $posicion = 0;
+
+        foreach ($lineas as $linea) {
+            $titulo = trim((string) ($linea['title'] ?? ''));
+
+            if ($titulo === '') {
+                continue;
+            }
+
+            $entregable = filled($linea['id'] ?? null)
+                ? $proyecto->deliverables()->find($linea['id'])
+                : null;
+
+            $atributos = [
+                'title'    => mb_substr($titulo, 0, 255),
+                'due_on'   => $linea['due_on'] ?? null,
+                'position' => $posicion++,
+            ];
+
+            $entregable
+                ? $entregable->update($atributos)
+                : $entregable = $proyecto->deliverables()->create($atributos);
+
+            $vistos[] = $entregable->id;
+        }
+
+        // Lo que se quitó de la lista se quita de verdad: dejarlo colgando
+        // haría que la propuesta enseñe una cosa y la ficha otra.
+        $proyecto->deliverables()->whereNotIn('id', $vistos ?: [0])->delete();
     }
 
     /**

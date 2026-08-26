@@ -3,19 +3,21 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Models\Project;
-use App\Services\Notifications\NotificationService;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\URL;
 
 class ProjectsTable
 {
@@ -104,38 +106,80 @@ class ProjectsTable
                     ->label('Enviar propuesta')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('gray')
-                    ->visible(fn (Project $record) => $record->requestedBy?->email !== null)
-                    ->modalHeading('Enviar la propuesta')
-                    ->modalDescription(fn (Project $record) => 'Le llega a '
-                        . ($record->requestedBy?->name ?? 'quien lo pidió')
-                        . ' con un enlace donde ve qué entregaríamos, en cuánto tiempo y por cuánto.')
-                    ->modalSubmitActionLabel('Enviar')
+                    // Con que haya a quién mandársela. El laboratorio anota
+                    // proyectos de quien no tiene cuenta -una empresa que
+                    // escribió por WhatsApp- y responderle es igual de
+                    // necesario.
+                    ->visible(fn (Project $record) => filled($record->requestedBy?->email ?: $record->contact_email))
+                    ->modalHeading('La propuesta')
+                    ->modalDescription(fn (Project $record) => 'Esto es lo que va a ver '
+                        . ($record->requestedBy?->name ?: $record->contact_name ?: $record->contact_email)
+                        . '. Lo que escribas aquí queda guardado en el proyecto: la propuesta es el proyecto, no un documento aparte que se separaría a la primera corrección.')
+                    ->modalSubmitActionLabel('Guardar y enviar')
+                    ->modalWidth('3xl')
+                    ->fillForm(fn (Project $record) => [
+                        'estimated_value' => $record->estimated_value ?: null,
+                        'starts_on'       => $record->starts_on?->toDateString(),
+                        'due_on'          => $record->due_on?->toDateString(),
+                        'entregables'     => $record->deliverables
+                            ->map(fn ($e) => [
+                                'id'     => $e->id,
+                                'title'  => $e->title,
+                                'due_on' => $e->due_on?->toDateString(),
+                            ])
+                            ->all(),
+                    ])
                     ->schema([
+                        Repeater::make('entregables')
+                            ->label('Qué entregaríamos')
+                            ->addActionLabel('Añadir un entregable')
+                            ->reorderable()
+                            ->collapsible()
+                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
+                            ->helperText('Es el corazón de la propuesta: lo que la otra parte va a aceptar o rechazar. Se guarda en el proyecto, y al cerrarlo es lo que dice si se entregó lo prometido.')
+                            ->columns(3)
+                            ->schema([
+                                Hidden::make('id'),
+
+                                TextInput::make('title')
+                                    ->label('Entregable')
+                                    ->required()
+                                    ->columnSpan(2),
+
+                                DatePicker::make('due_on')->label('Para cuándo'),
+                            ]),
+
+                        TextInput::make('estimated_value')
+                            ->label('Valor estimado')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->helperText('En pesos. Si queda en cero, la propuesta dirá «por definir».'),
+
+                        DatePicker::make('starts_on')->label('Arranca'),
+                        DatePicker::make('due_on')->label('Se entrega'),
+
                         Textarea::make('mensaje')
                             ->label('Algo que quieras añadir')
                             ->rows(3)
+                            ->columnSpanFull()
                             ->helperText('Va dentro del correo, antes del cierre. Opcional.'),
                     ])
                     ->action(function (Project $record, array $data) {
-                        $enlace = URL::temporarySignedRoute(
-                            'proyectos.propuesta',
-                            now()->addDays(60),
-                            ['project' => $record->id],
-                        );
+                        try {
+                            app(ProjectService::class)->enviarPropuesta($record, $data);
+                        } catch (ProjectException $e) {
+                            Notification::make()->danger()->title('No se pudo enviar')->body($e->getMessage())->send();
 
-                        app(NotificationService::class)->enviar('proyecto.propuesta', $record->requestedBy, [
-                            'proyecto' => $record->name,
-                            'codigo'   => $record->code,
-                            'enlace'   => $enlace,
-                            'mensaje'  => $data['mensaje'] ?? '',
-                        ], $record);
+                            return;
+                        }
 
-                        $record->update(['proposal_sent_at' => now()]);
+                        $a = $record->requestedBy?->email ?: $record->contact_email;
 
                         Notification::make()
                             ->success()
                             ->title('Propuesta enviada')
-                            ->body('A ' . $record->requestedBy->email . '. El enlace vale 60 días.')
+                            ->body('A ' . $a . '. El enlace vale 60 días.')
                             ->send();
                     }),
 

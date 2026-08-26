@@ -69,6 +69,74 @@ class NotificationService
     }
 
     /**
+     * Manda un aviso a un correo suelto, sin cuenta detrás.
+     *
+     * Existe porque el laboratorio anota proyectos de quien no tiene cuenta —una
+     * empresa que escribió por WhatsApp— y responderle es exactamente igual de
+     * necesario. Queda en la bitácora con `user_id` en nulo, que es la verdad:
+     * se le escribió a una dirección, no a una persona del sistema.
+     *
+     * No pasa por las preferencias de aviso porque no hay dónde guardarlas. Por
+     * eso solo se usa para lo que se manda una vez y a propósito, nunca para
+     * recordatorios en serie.
+     */
+    public function enviarSinCuenta(
+        string $clave,
+        string $correo,
+        string $nombre,
+        array $datos = [],
+        ?Model $referencia = null,
+    ): NotificationLog {
+        $plantilla = NotificationTemplate::where('key', $clave)->first();
+
+        if (! $plantilla || ! $plantilla->is_active) {
+            return $this->anotarSuelto($clave, $correo, $plantilla, 'omitido', 'La plantilla no existe o está apagada', $referencia);
+        }
+
+        $datos = array_merge([
+            'nombre'      => $nombre,
+            'nombre_pila' => str($nombre)->trim()->explode(' ')->first(),
+            'laboratorio' => config('fabos.lab.name'),
+        ], $datos);
+
+        $asunto = $plantilla->render('subject', $datos);
+        $cuerpo = $plantilla->render('body', $datos);
+
+        try {
+            Mail::to($correo)->send(new PlantillaMail($asunto, $cuerpo));
+        } catch (\Throwable $e) {
+            return $this->anotarSuelto($clave, $correo, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
+        }
+
+        return $this->anotarSuelto($clave, $correo, $plantilla, 'enviado', null, $referencia, $asunto, $cuerpo);
+    }
+
+    private function anotarSuelto(
+        string $clave,
+        string $correo,
+        ?NotificationTemplate $plantilla,
+        string $estado,
+        ?string $razon = null,
+        ?Model $referencia = null,
+        ?string $asunto = null,
+        ?string $cuerpo = null,
+    ): NotificationLog {
+        return NotificationLog::create([
+            'user_id'        => null,
+            'key'            => $clave,
+            'channel'        => $plantilla?->channel ?? 'email',
+            'to'             => $correo,
+            'subject'        => $asunto,
+            'body'           => $cuerpo,
+            'status'         => $estado,
+            'reason'         => $razon,
+            'reference_type' => $referencia ? $referencia::class : null,
+            'reference_id'   => $referencia?->getKey(),
+            'sent_at'        => $estado === 'enviado' ? now() : null,
+        ]);
+    }
+
+    /**
      * Envía solo si no se envió ya lo mismo para la misma referencia.
      *
      * Es lo que permite que el proceso de recordatorios corra cada hora sin

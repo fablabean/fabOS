@@ -203,9 +203,9 @@
                             @endif
                         </td>
                         <td>
-                            @if ($proyecto->proposal_sent_at)
-                                <a href="{{ route('proyectos.propuesta', $proyecto) }}">Ver la propuesta →</a>
-                            @endif
+                            <a href="{{ route('proyectos.propuesta', $proyecto) }}">
+                                {{ $proyecto->proposal_sent_at ? 'Ver la propuesta' : 'Ver el proyecto' }} →
+                            </a>
                         </td>
                     </tr>
                 @endforeach

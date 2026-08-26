@@ -377,6 +377,125 @@ class SolicitudDeProyectoTest extends TestCase
     }
 
     /**
+     * Dónde se redacta la propuesta: en el mismo sitio desde el que se manda.
+     *
+     * La propuesta **es el proyecto** —sus entregables, su valor, sus fechas—.
+     * Un documento aparte se separaría de la ficha a la primera corrección, y
+     * entonces habría dos versiones de lo que se prometió.
+     */
+    public function test_la_propuesta_se_redacta_al_mandarla(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->jefa();
+
+        Livewire::test(ListProjects::class)
+            ->callAction(TestAction::make('propuesta')->table($p), [
+                'entregables' => [
+                    ['id' => $p->deliverables->first()->id, 'title' => '20 letreros en acrílico de 3 mm'],
+                    ['id' => null, 'title' => 'Instalación en sitio', 'due_on' => '2026-10-30'],
+                ],
+                'estimated_value' => 3_400_000,
+                'due_on'          => '2026-11-15',
+                'mensaje'         => 'Lo vimos con el equipo.',
+            ])
+            ->assertHasNoActionErrors();
+
+        $p->refresh()->load('deliverables');
+
+        $this->assertSame(3_400_000, (int) $p->estimated_value);
+        $this->assertSame('2026-11-15', $p->due_on->toDateString());
+
+        // El que ya existía se actualiza en vez de recrearse: si se borrara y
+        // volviera a crear, perdería su tarea en el tablero.
+        $this->assertCount(2, $p->deliverables);
+        $this->assertSame('20 letreros en acrílico de 3 mm', $p->deliverables->first()->title);
+        $this->assertSame('Instalación en sitio', $p->deliverables->last()->title);
+        $this->assertSame('2026-10-30', $p->deliverables->last()->due_on->toDateString());
+    }
+
+    /** Lo que se quita de la lista se quita de verdad. */
+    public function test_quitar_un_entregable_al_redactar_lo_borra(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->assertCount(2, $p->deliverables);
+
+        $this->jefa();
+
+        Livewire::test(ListProjects::class)
+            ->callAction(TestAction::make('propuesta')->table($p), [
+                'entregables' => [
+                    ['id' => $p->deliverables->first()->id, 'title' => '20 letreros en acrílico'],
+                ],
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertCount(1, $p->fresh()->deliverables);
+    }
+
+    /**
+     * El laboratorio anota proyectos de quien no tiene cuenta —una empresa que
+     * escribió por WhatsApp— y responderle es igual de necesario.
+     */
+    public function test_se_responde_a_quien_no_tiene_cuenta(): void
+    {
+        $p = app(\App\Services\Projects\ProjectService::class)->registrarIdea([
+            'name'          => 'Trofeos para la premiación',
+            'contact_name'  => 'Marcela Ruiz',
+            'contact_email' => 'marcela@empresa.co',
+        ]);
+
+        $this->assertNull($p->requested_by);
+
+        $this->jefa();
+
+        Livewire::test(ListProjects::class)
+            ->callAction(TestAction::make('propuesta')->table($p), [
+                'entregables'     => [['id' => null, 'title' => '30 trofeos en acrílico']],
+                'estimated_value' => 1_200_000,
+            ])
+            ->assertHasNoActionErrors();
+
+        $aviso = NotificationLog::where('key', 'proyecto.propuesta')->firstOrFail();
+
+        $this->assertSame('enviado', $aviso->status);
+        $this->assertSame('marcela@empresa.co', $aviso->to);
+        $this->assertNull($aviso->user_id, 'No hay persona del sistema detrás: se escribió a una dirección.');
+        $this->assertNotNull($p->fresh()->proposal_sent_at);
+    }
+
+    public function test_sin_correo_de_contacto_no_se_puede_responder(): void
+    {
+        $p = app(\App\Services\Projects\ProjectService::class)->registrarIdea([
+            'name' => 'Idea suelta anotada en una reunión',
+        ]);
+
+        $this->expectException(\App\Services\Projects\ProjectException::class);
+
+        app(\App\Services\Projects\ProjectService::class)->enviarPropuesta($p);
+    }
+
+    /**
+     * Antes de responder, la página sigue sirviendo: quien pidió tiene derecho
+     * a ver lo que mandó y en qué va, sin tener que preguntar.
+     */
+    public function test_quien_pidio_ve_su_proyecto_antes_de_la_propuesta(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('en revisión')
+            ->assertSee('Qué pediste')
+            ->assertDontSee('Qué entregaríamos');
+    }
+
+    /**
      * El enlace del correo tiene que funcionar sin haber entrado: obligar a
      * iniciar sesión antes de leer la propuesta es la forma más segura de que
      * no se lea.

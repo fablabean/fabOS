@@ -105,7 +105,7 @@ class SolicitudDeProyectoController extends Controller
         abort_unless($this->puedeVerla($request, $project), 403);
 
         return view('proyectos.propuesta', [
-            'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents']),
+            'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents', 'evidence']),
             'firmado'  => $request->hasValidSignature(),
         ]);
     }

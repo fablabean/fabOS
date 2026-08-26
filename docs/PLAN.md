@@ -335,8 +335,16 @@ Ver `docs/ASESORIAS.md`.
 - **A quien ya entró no se le pregunta quién es.** El formulario se precarga y
   no vuelve a pedir el correo: pedirlo abriría la puerta a que escriba uno
   distinto y el proyecto acabe colgando de una cuenta que no es la suya.
-- **Responder con una propuesta.** Desde el listado, «Enviar propuesta» manda
-  un correo con un **enlace firmado de 60 días**: funciona sin haber entrado,
+- **La propuesta se redacta donde se manda, y es el proyecto.** «Enviar
+  propuesta» abre el formulario con los entregables, el valor estimado y las
+  fechas: lo que se escribe ahí queda guardado en la ficha. Un documento aparte
+  se separaría a la primera corrección, y entonces habría dos versiones de lo
+  que se prometió. Los entregables que ya existían se **actualizan** en vez de
+  recrearse —recrearlos les haría perder su tarea en el tablero—, y lo que se
+  quita de la lista se borra. Se manda a la cuenta de quien lo pidió si la hay,
+  y si no al correo de contacto: el laboratorio anota proyectos de quien no
+  tiene cuenta, y responderle es igual de necesario. El correo lleva un
+  **enlace firmado de 60 días**: funciona sin haber entrado,
   porque obligar a iniciar sesión antes de leer una propuesta es la forma más
   segura de que no se lea. La misma página queda accesible con la sesión de
   quien la pidió, para cuando el correo se pierda. `proposal_sent_at` es lo que
