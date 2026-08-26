@@ -9,6 +9,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -41,36 +43,12 @@ class ProjectForm
                             ->rows(2)
                             ->columnSpanFull(),
 
-                        Repeater::make('deliverables')
-                            ->relationship()
-                            ->label('Qué se compromete a entregar')
+                        Toggle::make('is_internal')
+                            ->label('Es un compromiso interno')
+                            ->live()
                             ->columnSpanFull()
-                            ->addActionLabel('Añadir un entregable')
-                            ->reorderable()
-                            ->orderColumn('position')
-                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
-                            ->collapsible()
-                            // Ninguno de entrada: anotar una idea con lo minimo
-                            // -un nombre y por donde llego- tiene que seguir
-                            // bastando, y un renglon vacio obligatorio lo impide.
-                            ->defaultItems(0)
-                            ->helperText('Uno por renglón. En lista y no en párrafo, porque al cerrar hay que poder decir cuál se cumplió y cuál no; y porque desde aquí se llevan al tablero como hitos.')
-                            ->schema([
-                                TextInput::make('title')
-                                    ->label('Entregable')
-                                    ->required()
-                                    ->columnSpan(2),
+                            ->helperText('Se costea y se valora igual —ocupa máquina, material y gente—, pero no entra dinero por él. Sin la marca solo caben dos salidas, y las dos mienten: dejarlo en cero y que aparezca siempre en pérdida, o ponerle valor y que parezca facturado.'),
 
-                                DatePicker::make('due_on')
-                                    ->label('Para cuándo')
-                                    ->helperText('Opcional.'),
-
-                                Textarea::make('detail')
-                                    ->label('Detalle')
-                                    ->rows(2)
-                                    ->columnSpanFull(),
-                            ])
-                            ->columns(3),
                     ]),
 
                 Section::make('Quién pide')
@@ -114,18 +92,54 @@ class ProjectForm
                     ]),
 
                 Section::make('Compromisos')
-                    ->description('Dos cifras, no una: lo que se cotizó y lo que se firmó. Guardarlas juntas borra la pregunta que más enseña de un laboratorio que cotiza —cuánto se mueve entre lo que ofrecemos y lo que nos aceptan—.')
+                    ->description('A qué nos comprometemos y por cuánto. Dos cifras, no una: lo que se cotizó y lo que se firmó. Guardarlas juntas borra la pregunta que más enseña de un laboratorio que cotiza —cuánto se mueve entre lo que ofrecemos y lo que nos aceptan—.')
                     ->columns(3)
                     ->schema([
+                        Repeater::make('deliverables')
+                            ->relationship()
+                            ->label('En qué nos comprometemos')
+                            ->columnSpanFull()
+                            ->addActionLabel('Añadir un entregable')
+                            ->reorderable()
+                            ->orderColumn('position')
+                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
+                            ->collapsible()
+                            // Ninguno de entrada: anotar una idea con lo minimo
+                            // -un nombre y por donde llego- tiene que seguir
+                            // bastando, y un renglon vacio obligatorio lo impide.
+                            ->defaultItems(0)
+                            ->helperText('Uno por renglón. En lista y no en párrafo, porque al cerrar hay que poder decir cuál se cumplió y cuál no; y porque desde aquí se llevan al tablero como hitos.')
+                            ->schema([
+                                TextInput::make('title')
+                                    ->label('Entregable')
+                                    ->required()
+                                    ->columnSpan(2),
+
+                                DatePicker::make('due_on')
+                                    ->label('Para cuándo')
+                                    ->helperText('Opcional.'),
+
+                                Textarea::make('detail')
+                                    ->label('Detalle')
+                                    ->rows(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(3),
+
                         TextInput::make('estimated_value')
-                            ->label('Valor estimado')
+                            ->label(fn (Get $get) => $get('is_internal') ? 'Valor estimado del beneficio' : 'Valor estimado')
                             ->numeric()
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
-                            ->helperText('Lo que se puso en la propuesta. En pesos.'),
+                            ->helperText(fn (Get $get) => $get('is_internal')
+                                ? 'En cuánto se valora lo que obtiene la institución. No es plata que entra.'
+                                : 'Lo que se puso en la propuesta. En pesos.'),
 
                         TextInput::make('agreed_value')
                             ->label('Valor acordado')
+                            // En un compromiso interno no hay contrato que
+                            // acordar: el campo solo confundiria.
+                            ->hidden(fn (Get $get) => (bool) $get('is_internal'))
                             ->numeric()
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))

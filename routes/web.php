@@ -141,6 +141,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/proyectos/cronograma', [ProjectBoardController::class, 'cronogramaGeneral'])->name('proyectos.cronograma');
     Route::get('/proyectos/{project}/tablero', [ProjectBoardController::class, 'show'])->name('proyectos.tablero');
     Route::post('/proyectos/tarea/{task}/mover', [ProjectBoardController::class, 'moverTarea'])->name('proyectos.tarea.mover');
+    // La evidencia vive en el disco privado y se sirve comprobando quien pide.
+    Route::get('/proyectos/evidencia/{evidencia}', [ProjectBoardController::class, 'evidencia'])->name('proyectos.evidencia');
 
     // El informe de cierre que se le entrega a la Universidad (§17).
     Route::get('/informes/cierre', [ReportController::class, 'cierre'])->name('informes.cierre');

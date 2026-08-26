@@ -37,6 +37,8 @@ class FotosPublicasTest extends TestCase
     private const NO_SE_PUBLICAN = [
         'app/Filament/Resources/Projects/RelationManagers/DocumentsRelationManager.php',
         'app/Filament/Resources/WorkOrders/Schemas/WorkOrderForm.php',
+        // Fotos del trabajo de un cliente: se sirven por una ruta con sesión.
+        'app/Filament/Resources/Projects/RelationManagers/TasksRelationManager.php',
     ];
 
     public function test_lo_que_se_muestra_en_publico_declara_el_disco_publico(): void

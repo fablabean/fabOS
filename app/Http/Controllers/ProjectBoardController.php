@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\ProjectTaskEvidence;
 use App\Models\User;
 use App\Services\Projects\CostingService;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * El tablero de un proyecto: Kanban y Gantt (§11).
@@ -70,6 +72,28 @@ class ProjectBoardController extends Controller
             'desde'      => $conFechas->min(fn (Project $p) => $p->starts_on ?? $p->due_on),
             'hasta'      => $conFechas->max(fn (Project $p) => $p->due_on ?? $p->starts_on),
             'todos'      => $todos,
+        ]);
+    }
+
+    /**
+     * Sirve una foto de evidencia comprobando quién la pide.
+     *
+     * Las fotos del trabajo de un cliente viven en el disco **privado**: en el
+     * público quedarían en una URL adivinable que cualquiera puede pedir sin
+     * haber iniciado sesión. Este rodeo es el precio de que no las vea quien no
+     * debe, y es barato.
+     */
+    public function evidencia(Request $request, ProjectTaskEvidence $evidencia)
+    {
+        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless(filled($evidencia->file_path), 404);
+
+        $disco = Storage::disk('local');
+
+        abort_unless($disco->exists($evidencia->file_path), 404);
+
+        return $disco->response($evidencia->file_path, null, [
+            'Cache-Control' => 'private, max-age=600',
         ]);
     }
 

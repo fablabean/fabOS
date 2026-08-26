@@ -314,6 +314,20 @@ Ver `docs/ASESORIAS.md`.
   se promete, mucho antes de que alguien planifique cómo hacerlo. Traerlos dos
   veces no duplica el tablero. Cerrar la tarea da por cumplido su entregable,
   para que las dos vistas no se contradigan.
+- **Compromiso interno** (`projects.is_internal`). Un proyecto para la propia
+  Universidad se costea y se valora igual —ocupa máquina, material y gente—,
+  pero no entra dinero por él. Sin distinguirlo solo caben dos salidas y las
+  dos mienten: dejar el valor en cero y que el proyecto aparezca siempre en
+  pérdida, o ponerle valor y que el laboratorio parezca haber facturado algo
+  que nadie pagó. Marcado, el número es el **valor del beneficio** y el margen
+  se llama **beneficio neto**. Marcarlo pone el valor acordado en cero: no hay
+  contrato que acordar, y dos cifras contradiciéndose en silencio son peores
+  que una equivocada a la vista.
+- **Evidencia gráfica de cada tarea** (`project_task_evidence`): fotos subidas
+  o enlaces a video. «Se hizo» es una afirmación; una foto es una comprobación,
+  y dentro de dos años es todo lo que queda. Se ven en la propia tarjeta del
+  tablero. Los archivos van al **disco privado** —son fotos del trabajo de un
+  cliente— y se sirven por una ruta que comprueba quién pide.
 - **Costos asociados** (`project_costs`): lo que se gastó por fuera y no pasa
   por ninguna de las cuatro fuentes propias del costeo —máquina, material,
   compras internas y horas del equipo—. La factura del tercero que pintó, un

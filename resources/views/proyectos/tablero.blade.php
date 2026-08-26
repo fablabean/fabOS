@@ -50,6 +50,13 @@
             </p>
         @endif
 
+        @if ($proyecto->is_internal)
+            <p class="help" style="margin:.9rem 0 0">
+                <strong>Compromiso interno.</strong> Se costea y se valora igual —ocupa
+                máquina, material y gente—, pero no entra dinero por él.
+            </p>
+        @endif
+
         <p class="help" style="margin:.6rem 0 0">
             Avance: <strong>{{ $proyecto->avance() }}%</strong>
             · {{ $proyecto->tasks->count() }} tareas
@@ -208,25 +215,36 @@
                             {{ $pesos($costeo['total']) }}
                         </td>
                     </tr>
-                    <tr>
-                        <th style="font-weight:500">
-                            Valor estimado
-                            <div class="quien">lo que se puso en la propuesta</div>
-                        </th>
-                        <td style="text-align:right;white-space:nowrap">{{ $pesos($costeo['estimado']) }}</td>
-                    </tr>
-                    <tr>
-                        <th style="font-weight:500">
-                            Valor acordado
-                            <div class="quien">lo que quedó en el contrato</div>
-                        </th>
-                        <td style="text-align:right;white-space:nowrap">{{ $pesos($costeo['acordado']) }}</td>
-                    </tr>
+                    @if ($costeo['interno'])
+                        <tr>
+                            <th style="font-weight:500">
+                                Valor del beneficio
+                                <div class="quien">en cuánto se valora lo que obtuvo la institución</div>
+                            </th>
+                            <td style="text-align:right;white-space:nowrap">{{ $pesos($costeo['estimado']) }}</td>
+                        </tr>
+                    @else
+                        <tr>
+                            <th style="font-weight:500">
+                                Valor estimado
+                                <div class="quien">lo que se puso en la propuesta</div>
+                            </th>
+                            <td style="text-align:right;white-space:nowrap">{{ $pesos($costeo['estimado']) }}</td>
+                        </tr>
+                        <tr>
+                            <th style="font-weight:500">
+                                Valor acordado
+                                <div class="quien">lo que quedó en el contrato</div>
+                            </th>
+                            <td style="text-align:right;white-space:nowrap">{{ $pesos($costeo['acordado']) }}</td>
+                        </tr>
+                    @endif
                     <tr>
                         <th>
-                            Margen
+                            {{ $costeo['interno'] ? 'Beneficio neto' : 'Margen' }}
                             <div class="quien">
-                                @if ($costeo['contra'] === 'acordado') contra lo acordado
+                                @if ($costeo['interno']) valor obtenido menos lo que costó; no es plata que entró
+                                @elseif ($costeo['contra'] === 'acordado') contra lo acordado
                                 @elseif ($costeo['contra'] === 'estimado') contra lo estimado, que aún no se firma
                                 @else sin valor con qué compararlo
                                 @endif
@@ -288,6 +306,27 @@
                                     · {{ $tarea->progress }}%
                                 @endif
                             </div>
+
+                            @if ($tarea->evidence->isNotEmpty())
+                                {{-- «Se hizo» es una afirmación; una foto es una
+                                     comprobación. En la tarjeta, porque es donde se
+                                     mira cuando alguien pregunta cómo va. --}}
+                                <div class="pruebas">
+                                    @foreach ($tarea->evidence as $prueba)
+                                        <a href="{{ $prueba->enlace() }}" target="_blank"
+                                           title="{{ $prueba->comoSeLlama() }}">
+                                            @if ($prueba->esImagen())
+                                                <img src="{{ $prueba->enlace() }}" alt="{{ $prueba->comoSeLlama() }}" loading="lazy">
+                                            @else
+                                                <span class="chapa">
+                                                    {{ $prueba->kind === 'video' ? '▶' : '↗' }}
+                                                    {{ $prueba->caption ?: \App\Models\ProjectTaskEvidence::TIPOS[$prueba->kind] }}
+                                                </span>
+                                            @endif
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @endif
 
                             {{-- Los botones se quedan. Arrastrar no funciona en una
                                  tablet ni con teclado, y el tablero se mira sobre
@@ -471,6 +510,12 @@
         .kb .tarjeta:active { cursor:grabbing; }
         .kb .tarjeta.viajando { opacity:.4; }
         .kb .tarjeta .t { font-size:.92rem; font-weight:600; }
+        .kb .pruebas { margin-top:.45rem; display:flex; gap:.3rem; flex-wrap:wrap; align-items:center; }
+        .kb .pruebas img { width:3rem; height:3rem; object-fit:cover; border-radius:4px;
+                           border:1px solid var(--rule); display:block; }
+        .kb .pruebas .chapa { font-size:.68rem; font-weight:600; color:var(--muted);
+                              border:1px solid var(--rule); border-radius:3px;
+                              padding:.15rem .35rem; display:inline-block; }
         .kb .mover { margin-top:.5rem; display:flex; gap:.3rem; flex-wrap:wrap; }
         .kb .mover button { margin:0; padding:.2rem .45rem; font-size:.68rem; font-weight:600;
                             background:transparent; color:var(--muted);

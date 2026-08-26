@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Project extends Model
 {
     protected $fillable = [
-        'code', 'name', 'stage', 'status', 'source',
+        'code', 'name', 'stage', 'status', 'source', 'is_internal',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'notes', 'agreed_value', 'estimated_value',
@@ -21,6 +21,7 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'is_internal' => 'boolean',
             'starts_on' => 'date',
             'due_on'    => 'date',
             'closed_at' => UtcDateTime::class,
@@ -178,6 +179,14 @@ class Project extends Model
         static::saving(function (self $proyecto) {
             $proyecto->agreed_value ??= 0;
             $proyecto->estimated_value ??= 0;
+
+            // En un compromiso interno no hay contrato que acordar. Sin esto,
+            // marcar como interno un proyecto que ya tenia valor acordado
+            // dejaria las dos cifras contradiciendose: el formulario esconde
+            // el campo y el costeo seguiria midiendo contra el.
+            if ($proyecto->is_internal) {
+                $proyecto->agreed_value = 0;
+            }
         });
     }
 

@@ -273,6 +273,85 @@ class BackofficeProyectosTest extends TestCase
         $this->assertSame($admin->id, $p->costs()->first()->registered_by);
     }
 
+    // ------------------------------------------------------------- evidencia
+
+    /**
+     * «Se hizo» es una afirmación; una foto es una comprobación. En la tarjeta
+     * del tablero, que es donde se mira cuando alguien pregunta cómo va.
+     */
+    public function test_la_evidencia_de_una_tarea_se_ve_en_el_tablero(): void
+    {
+        $p = $this->proyecto();
+        $tarea = $p->tasks()->create(['title' => 'Cortar piezas']);
+
+        $tarea->evidence()->create([
+            'kind'    => 'video',
+            'url'     => 'https://www.youtube.com/watch?v=ejemplo',
+            'caption' => 'Primer corte',
+        ]);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertSee('Primer corte')
+            ->assertSee('youtube.com/watch?v=ejemplo', false);
+    }
+
+    /**
+     * Las fotos del trabajo de un cliente viven en el disco privado: en el
+     * público quedarían en una URL adivinable, sin sesión.
+     */
+    public function test_una_foto_de_evidencia_no_se_sirve_a_cualquiera(): void
+    {
+        $p = $this->proyecto();
+        $tarea = $p->tasks()->create(['title' => 'Cortar piezas']);
+
+        $prueba = $tarea->evidence()->create([
+            'kind'      => 'foto',
+            'file_path' => 'proyectos/evidencia/ejemplo.webp',
+        ]);
+
+        // La URL que se publica es la ruta con sesión, no /storage.
+        $this->assertStringContainsString('/proyectos/evidencia/' . $prueba->id, $prueba->enlace());
+        $this->assertStringNotContainsString('/storage/', $prueba->enlace());
+
+        $this->actingAs($this->conRol())
+            ->get(route('proyectos.evidencia', $prueba))
+            ->assertForbidden();
+    }
+
+    public function test_una_foto_que_no_esta_no_revienta(): void
+    {
+        $p = $this->proyecto();
+        $tarea = $p->tasks()->create(['title' => 'Cortar piezas']);
+
+        $prueba = $tarea->evidence()->create([
+            'kind'      => 'foto',
+            'file_path' => 'proyectos/evidencia/no-existe.webp',
+        ]);
+
+        $this->actingAs($this->conRol(User::ROL_ADMINISTRADOR))
+            ->get(route('proyectos.evidencia', $prueba))
+            ->assertNotFound();
+    }
+
+    // ----------------------------------------------------- compromiso interno
+
+    public function test_el_tablero_avisa_cuando_el_compromiso_es_interno(): void
+    {
+        $p = $this->proyecto();
+        $p->update(['is_internal' => true, 'estimated_value' => 4_000_000]);
+
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertSee('Compromiso interno')
+            ->assertSee('no entra dinero por él')
+            ->assertSee('Valor del beneficio')
+            ->assertSee('Beneficio neto')
+            ->assertDontSee('Valor acordado');
+    }
+
     // ---------------------------------------------------------- entregables
 
     /**

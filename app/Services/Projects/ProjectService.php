@@ -419,7 +419,7 @@ class ProjectService
      */
     public function tablero(Project $proyecto): array
     {
-        $tareas = $proyecto->tasks()->with('assignedTo')->get();
+        $tareas = $proyecto->tasks()->with(['assignedTo', 'evidence'])->get();
 
         $columnas = [];
 

@@ -38,7 +38,7 @@ class CostingService
     /**
      * @return array{
      *   maquina:int, material:int, compras:int, gente:int, asociados:int, total:int,
-     *   acordado:int, estimado:int, referencia:int, contra:string,
+     *   acordado:int, estimado:int, referencia:int, contra:string, interno:bool,
      *   margen:int, margen_pct:?float,
      *   detalle:array<string,Collection>
      * }
@@ -77,6 +77,10 @@ class CostingService
             'estimado'   => $estimado,
             'referencia' => $referencia,
             'contra'     => $acordado > 0 ? 'acordado' : ($estimado > 0 ? 'estimado' : 'nada'),
+            // Un compromiso interno se costea y se valora igual, pero no entra
+            // dinero por él: el numero es el valor de lo que se obtuvo, no un
+            // ingreso, y quien lea el informe tiene derecho a saberlo.
+            'interno'    => (bool) $proyecto->is_internal,
             'margen'     => $referencia - $total,
             'margen_pct' => $referencia > 0 ? round(($referencia - $total) / $referencia * 100, 1) : null,
             'detalle'    => [

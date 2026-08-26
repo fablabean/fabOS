@@ -119,6 +119,51 @@ class CosteoProyectoTest extends TestCase
         $this->assertSame(0, (int) $costo->fresh()->amount);
     }
 
+    /**
+     * Interno no es gratis. Un proyecto para la propia Universidad ocupa
+     * maquina, material y gente igual que uno de fuera; lo que no hace es
+     * traer dinero. Sin la marca solo caben dos salidas y las dos mienten:
+     * dejarlo en cero -y que aparezca siempre en perdida- o ponerle valor y
+     * que parezca facturado.
+     */
+    public function test_un_compromiso_interno_se_valora_pero_no_se_cobra(): void
+    {
+        $p = app(ProjectService::class)->registrarIdea([
+            'name'            => 'Señalética de Bienestar',
+            'is_internal'     => true,
+            'estimated_value' => 4_000_000,
+        ]);
+
+        $c = $this->costeo()->costear($p);
+
+        $this->assertTrue($c['interno']);
+        $this->assertSame(4_000_000, $c['referencia'], 'El valor sigue contando: es el beneficio obtenido.');
+        $this->assertSame(0, $c['acordado'], 'No hay contrato que acordar.');
+    }
+
+    /**
+     * Y si se marca interno algo que ya tenia valor acordado, ese valor se
+     * borra: el formulario esconde el campo, y dos cifras que se contradicen
+     * en silencio son peores que una equivocada a la vista.
+     */
+    public function test_marcar_interno_borra_el_valor_acordado(): void
+    {
+        $p = $this->proyecto(5_000_000);
+        $this->assertSame(5_000_000, (int) $p->agreed_value);
+
+        $p->update(['is_internal' => true, 'estimated_value' => 4_000_000]);
+
+        $c = $this->costeo()->costear($p->fresh());
+
+        $this->assertSame(0, $c['acordado']);
+        $this->assertSame(4_000_000, $c['referencia']);
+    }
+
+    public function test_por_defecto_un_proyecto_no_es_interno(): void
+    {
+        $this->assertFalse($this->costeo()->costear($this->proyecto())['interno']);
+    }
+
     private function proyecto(int $valor = 5_000_000): Project
     {
         return app(ProjectService::class)->registrarIdea([
