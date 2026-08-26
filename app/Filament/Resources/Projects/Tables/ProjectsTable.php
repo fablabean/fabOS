@@ -109,6 +109,12 @@ class ProjectsTable
                 // pidio el proyecto, para cuando el correo se pierda.
                 Action::make('propuesta')
                     ->label('Enviar propuesta')
+                    // Solo el icono: cinco acciones con texto en cada fila
+                    // empujan fuera de pantalla lo que se vino a leer. El
+                    // tooltip conserva el nombre para quien lo necesite, y el
+                    // label sigue ahi para los lectores de pantalla.
+                    ->iconButton()
+                    ->tooltip('Enviar propuesta')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('gray')
                     // Con que haya a quién mandársela. El laboratorio anota
@@ -209,7 +215,7 @@ class ProjectsTable
                 self::avanzar(),
                 self::mover(),
                 self::descartar(),
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Editar'),
             ]);
     }
 
@@ -217,6 +223,8 @@ class ProjectsTable
     {
         return Action::make('tablero')
             ->label('Tablero')
+            ->iconButton()
+            ->tooltip('Abrir el tablero')
             ->icon('heroicon-o-view-columns')
             ->color('gray')
             ->url(fn (Project $r) => route('proyectos.tablero', $r))
@@ -233,6 +241,10 @@ class ProjectsTable
     {
         return Action::make('avanzar')
             ->label(fn (Project $r) => 'Pasar a ' . mb_strtolower(
+                Project::ETAPAS[app(ProjectService::class)->siguienteEtapa($r) ?? ''] ?? 'la siguiente etapa'
+            ))
+            ->iconButton()
+            ->tooltip(fn (Project $r) => 'Pasar a ' . mb_strtolower(
                 Project::ETAPAS[app(ProjectService::class)->siguienteEtapa($r) ?? ''] ?? 'la siguiente etapa'
             ))
             ->icon('heroicon-o-arrow-right-circle')
@@ -267,6 +279,8 @@ class ProjectsTable
     {
         return Action::make('mover')
             ->label('Mover de etapa')
+            ->iconButton()
+            ->tooltip('Mover de etapa')
             ->icon('heroicon-o-arrows-right-left')
             ->color('gray')
             ->schema([
@@ -293,6 +307,8 @@ class ProjectsTable
     {
         return Action::make('descartar')
             ->label('Descartar')
+            ->iconButton()
+            ->tooltip('Descartar')
             ->icon('heroicon-o-archive-box-x-mark')
             ->color('danger')
             ->visible(fn (Project $r) => $r->status === 'activo')

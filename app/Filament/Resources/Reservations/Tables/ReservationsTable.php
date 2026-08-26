@@ -99,6 +99,10 @@ class ReservationsTable
                 // certifab ni que la franja esté atendida.
                 Action::make('producir')
                     ->label('Programar producción')
+                    // Solo el icono: con cinco acciones por fila, el texto
+                    // empuja fuera de pantalla lo que se vino a leer.
+                    ->iconButton()
+                    ->tooltip('Programar producción')
                     ->icon('heroicon-o-cube')
                     ->color('gray')
                     ->visible(fn (Reservation $record) => $record->advisory_asset_id !== null
@@ -176,6 +180,8 @@ class ReservationsTable
                 // sabe a qué trabajo correspondió.
                 Action::make('proyecto')
                     ->label('Cargar a proyecto')
+                    ->iconButton()
+                    ->tooltip('Cargar a un proyecto')
                     ->icon('heroicon-o-rocket-launch')
                     ->color('gray')
                     ->schema([
@@ -200,6 +206,8 @@ class ReservationsTable
 
                 Action::make('aprobar')
                     ->label('Aprobar')
+                    ->iconButton()
+                    ->tooltip('Aprobar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
@@ -209,6 +217,8 @@ class ReservationsTable
 
                 Action::make('rechazar')
                     ->label('Rechazar')
+                    ->iconButton()
+                    ->tooltip('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -218,7 +228,7 @@ class ReservationsTable
                         'status_reason' => 'Rechazada desde el backoffice',
                     ])),
 
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Editar'),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
