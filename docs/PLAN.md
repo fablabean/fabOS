@@ -335,6 +335,23 @@ Ver `docs/ASESORIAS.md`.
 - **A quien ya entró no se le pregunta quién es.** El formulario se precarga y
   no vuelve a pedir el correo: pedirlo abriría la puerta a que escriba uno
   distinto y el proyecto acabe colgando de una cuenta que no es la suya.
+- **Quién pide cambia el trámite, no el trabajo** (`projects.client_kind`:
+  interno · estudiante · externo). Un **área de la propia institución** no
+  paga: mueve presupuesto por la *venta interna*, un circuito de cuatro manos
+  —formulario de pedido, líder que paga, líder que recibe, traslado de
+  Planeación— que no se corre en tres días. Por eso a un encargo interno se le
+  exigen **15 días calendario** de anticipación (`PROYECTO_DIAS_MINIMOS_INTERNO`),
+  y solo a él: prometer una fecha más cercana sería prometer lo que el trámite
+  no puede cumplir. El circuito se dibuja en el formulario y en la propuesta,
+  para que el plazo no se lea como burocracia.
+- **La aceptación cierra el acuerdo** (`accepted_at`, `accepted_by`,
+  `acceptance_note`). Se acepta desde la misma página donde se lee la
+  propuesta, con el enlace del correo o con la sesión —obligar a responder el
+  correo dejaría la aceptación fuera del sistema, que es donde no sirve—. El
+  backoffice mira; no acepta en nombre de nadie. Al aceptar, a un cliente
+  interno se le manda el instructivo del traslado con el enlace del formulario
+  (`PROYECTO_FORMULARIO_VENTA_INTERNA`, propio de cada institución); a un
+  estudiante o a alguien de fuera, ese correo solo enturbiaría el mensaje.
 - **La propuesta se redacta donde se manda, y es el proyecto.** «Enviar
   propuesta» abre el formulario con los entregables, el valor estimado y las
   fechas: lo que se escribe ahí queda guardado en la ficha. Un documento aparte

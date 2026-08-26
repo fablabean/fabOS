@@ -157,6 +157,98 @@
         </div>
     @endif
 
+    @if (session('aceptada'))
+        <div class="msg ok">
+            <strong>Recibimos tu aceptación.</strong>
+            Te mandamos un correo con lo que sigue.
+        </div>
+    @endif
+
+    @error('aceptar') <p class="msg error">{{ $message }}</p> @enderror
+
+    {{-- Aceptar desde la misma página donde se lee. Obligar a responder el
+         correo para decir que sí dejaría la aceptación fuera del sistema, que
+         es donde no sirve de nada. --}}
+    @if ($respondida && ! $proyecto->estaAceptado() && $puedeAceptar)
+        <div class="panel aceptar">
+            <h2 style="margin-top:0">¿Seguimos?</h2>
+            <p class="help" style="margin-top:0">
+                Si esto es lo que necesitas, acéptalo y arrancamos. Si algo no encaja
+                —el alcance, la fecha o el valor—, escríbenos antes: se ajusta.
+            </p>
+
+            <form method="POST" action="{{ $firmado ? $urlAceptar : route('proyectos.aceptar', $proyecto) }}">
+                @csrf
+                <textarea name="nota" rows="2"
+                          placeholder="Algo que quieras dejar dicho al aceptar. Opcional."></textarea>
+                <button type="submit">Acepto la propuesta</button>
+            </form>
+        </div>
+    @elseif ($proyecto->estaAceptado())
+        <div class="panel" style="border-left:4px solid var(--ok)">
+            <h2 style="margin-top:0">Propuesta aceptada</h2>
+            <p style="margin:0">
+                El {{ $proyecto->accepted_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}.
+                @if ($proyecto->acceptance_note)
+                    «{{ $proyecto->acceptance_note }}»
+                @endif
+            </p>
+        </div>
+    @endif
+
+    {{-- El circuito de la venta interna. Solo a quien le toca: a un estudiante
+         o a una empresa de fuera le sobra, y le haría pensar que su encargo
+         también depende de Planeación. --}}
+    @if ($proyecto->esClienteInterno())
+        <div class="panel flujo">
+            <h2 style="margin-top:0">Cómo se paga</h2>
+            <p class="help" style="margin-top:0">
+                No hay factura: hay un traslado de presupuesto entre áreas.
+                @if ($proyecto->estaAceptado())
+                    <strong>Es el paso que falta:</strong> nada se fabrica hasta que
+                    Planeación confirme.
+                @endif
+            </p>
+
+            <ol class="pasos">
+                <li>
+                    <span class="quien">Quien compra</span>
+                    <strong>Formulario de pedido</strong>
+                    <span class="detalle">Lo llena el área solicitante, con la cotización adjunta.</span>
+                </li>
+                <li>
+                    <span class="quien">Quien compra</span>
+                    <strong>Líder emisor</strong>
+                    <span class="detalle">Da su visto bueno el líder del área que pone los recursos.</span>
+                </li>
+                <li>
+                    <span class="quien">Quien vende</span>
+                    <strong>Líder receptor</strong>
+                    <span class="detalle">Avala y dice en qué cuentas presupuestales entran.</span>
+                </li>
+                <li>
+                    <span class="quien">Planeación</span>
+                    <strong>Traslado</strong>
+                    <span class="detalle">Se hace la transacción presupuestal del cupo.</span>
+                </li>
+                <li class="fin">
+                    <strong>Fabricación</strong>
+                    <span class="detalle">Arranca con la confirmación de Planeación.</span>
+                </li>
+            </ol>
+
+            @if ($proyecto->estaAceptado() && filled(config('fabos.proyectos.formulario_venta_interna')))
+                <p style="margin:1rem 0 0">
+                    <a class="btn" href="{{ config('fabos.proyectos.formulario_venta_interna') }}"
+                       target="_blank" rel="noopener">Abrir el formulario de pedido →</a>
+                </p>
+                <p class="foot" style="margin-top:.6rem">
+                    Cuanto antes se diligencie, antes empieza la fabricación.
+                </p>
+            @endif
+        </div>
+    @endif
+
     <div class="panel">
         <h2 style="margin-top:0">Qué sigue</h2>
         <p style="margin:0">
@@ -182,4 +274,19 @@
     <p class="foot">
         {{ config('fabos.lab.name') }} · {{ config('fabos.lab.institution') }}
     </p>
+
+    {{-- Rejilla propia: las utilidades responsivas de Tailwind no están compiladas. --}}
+    <style>
+        .aceptar textarea { width:100%; margin-bottom:.7rem; }
+        .flujo .pasos { list-style:none; margin:0; padding:0;
+                        display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.6rem; }
+        .flujo .pasos li { border:1px solid var(--rule); border-left:3px solid var(--accent);
+                           border-radius:5px; padding:.6rem .7rem; background:var(--ground); }
+        .flujo .pasos li.fin { border-left-color:var(--ok); }
+        .flujo .pasos .quien { display:block; font-size:.65rem; letter-spacing:.1em;
+                               text-transform:uppercase; color:var(--muted);
+                               font-family:ui-monospace,Consolas,monospace; }
+        .flujo .pasos strong { display:block; font-size:.9rem; margin:.15rem 0; }
+        .flujo .pasos .detalle { font-size:.8rem; color:var(--ink-soft); }
+    </style>
 @endsection

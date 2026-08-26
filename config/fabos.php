@@ -191,6 +191,26 @@ return [
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),
     ],
 
+    /**
+     * Proyectos por encargo.
+     *
+     * La «venta interna» es el circuito con que la Universidad mueve
+     * presupuesto de un área a otra: formulario, visto bueno del líder que
+     * paga, visto bueno del que recibe, y traslado presupuestal de Planeación.
+     * Son cuatro manos antes de que llegue un peso, y por eso a un área no se
+     * le puede prometer una fecha cercana.
+     *
+     * Esto es propio de la Universidad Ean: otro laboratorio pondrá su enlace
+     * y sus días, o dejará el enlace vacío y el aviso saldrá sin él.
+     */
+    'proyectos' => [
+        // Días calendario de anticipación que necesita un encargo interno.
+        'dias_minimos_interno' => (int) env('PROYECTO_DIAS_MINIMOS_INTERNO', 15),
+
+        // El formulario de pedido con que arranca el traslado presupuestal.
+        'formulario_venta_interna' => env('PROYECTO_FORMULARIO_VENTA_INTERNA'),
+    ],
+
     'otp' => [
         // Redis, no el almacen por defecto: en produccion la cache va a la
         // base de datos, y un codigo en claro acabaria dentro del respaldo

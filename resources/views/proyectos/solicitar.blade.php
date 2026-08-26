@@ -82,10 +82,65 @@
         </label>
 
         <label>
-            ¿Para cuándo lo necesitas?
-            <input type="date" name="para_cuando" value="{{ old('para_cuando') }}">
-            <span class="foot">Opcional, pero cambia mucho lo que se puede proponer.</span>
+            ¿Para quién es?
+            <select name="cliente" id="cliente" required>
+                @foreach (\App\Models\Project::CLIENTES as $clave => $nombre)
+                    <option value="{{ $clave }}" @selected(old('cliente') === $clave)>{{ $nombre }}</option>
+                @endforeach
+            </select>
+            <span class="foot">
+                Cambia el trámite, no el trabajo: un área de la Universidad no paga, mueve
+                presupuesto, y eso pasa por varias manos.
+            </span>
         </label>
+
+        <label>
+            ¿Para cuándo lo necesitas?
+            <input type="date" name="para_cuando" value="{{ old('para_cuando') }}"
+                   id="para-cuando">
+            <span class="foot" id="aviso-fecha">
+                Opcional, pero cambia mucho lo que se puede proponer.
+            </span>
+        </label>
+
+        {{-- El circuito de la venta interna, para que quien lo pide sepa por
+             qué se le piden dos semanas. Un plazo sin explicación se lee como
+             burocracia; explicado, se entiende y se planea con tiempo. --}}
+        <div class="panel flujo" id="flujo-interno" hidden>
+            <h3>Cómo se paga un encargo interno</h3>
+            <p class="help" style="margin-top:0">
+                No hay factura: hay un traslado de presupuesto entre áreas. Pasa por
+                cuatro manos antes de que llegue un peso, y por eso pedimos al menos
+                {{ (int) config('fabos.proyectos.dias_minimos_interno') }} días calendario.
+            </p>
+
+            <ol class="pasos">
+                <li>
+                    <span class="quien">Quien compra</span>
+                    <strong>Formulario de pedido</strong>
+                    <span class="detalle">Lo llena el área solicitante, con la cotización adjunta.</span>
+                </li>
+                <li>
+                    <span class="quien">Quien compra</span>
+                    <strong>Líder emisor</strong>
+                    <span class="detalle">Da su visto bueno el líder del área que pone los recursos.</span>
+                </li>
+                <li>
+                    <span class="quien">Quien vende</span>
+                    <strong>Líder receptor</strong>
+                    <span class="detalle">Avala y dice en qué cuentas presupuestales entran.</span>
+                </li>
+                <li>
+                    <span class="quien">Planeación</span>
+                    <strong>Traslado</strong>
+                    <span class="detalle">Se hace la transacción presupuestal del cupo.</span>
+                </li>
+                <li class="fin">
+                    <strong>Y ahí arranca la fabricación</strong>
+                    <span class="detalle">Antes de la confirmación de Planeación no se compra material.</span>
+                </li>
+            </ol>
+        </div>
 
         <h2>Enséñanoslo</h2>
 
@@ -177,10 +232,23 @@
     {{-- Rejilla propia: las utilidades responsivas de Tailwind no están compiladas. --}}
     <style>
         form.panel label { display:block; margin-bottom:1rem; font-size:.9rem; font-weight:600; }
-        form.panel input, form.panel textarea { width:100%; margin-top:.3rem; font-weight:400; }
+        form.panel input, form.panel textarea, form.panel select { width:100%; margin-top:.3rem; font-weight:400; }
         form.panel input[type=file] { padding:.5rem; }
         form.panel .foot { display:block; font-weight:400; margin-top:.25rem; }
         form.panel .dos { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:0 1rem; }
+
+        .flujo { margin-bottom:1.2rem; }
+        .flujo h3 { margin:0 0 .2rem; font-size:.95rem; }
+        .flujo .pasos { list-style:none; margin:0; padding:0;
+                        display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.6rem; }
+        .flujo .pasos li { border:1px solid var(--rule); border-left:3px solid var(--accent);
+                           border-radius:5px; padding:.6rem .7rem; background:var(--ground); }
+        .flujo .pasos li.fin { border-left-color:var(--ok); }
+        .flujo .pasos .quien { display:block; font-size:.65rem; letter-spacing:.1em;
+                               text-transform:uppercase; color:var(--muted);
+                               font-family:ui-monospace,Consolas,monospace; }
+        .flujo .pasos strong { display:block; font-size:.9rem; margin:.15rem 0; }
+        .flujo .pasos .detalle { font-size:.8rem; color:var(--ink-soft); }
 
         .dibujo { margin-bottom:1.2rem; }
         .dibujo .rotulo-campo { display:block; font-size:.9rem; font-weight:600; margin-bottom:.3rem; }
@@ -194,6 +262,41 @@
     </style>
 
     <script>
+        // El circuito de la venta interna solo se enseña a quien le toca. A un
+        // estudiante o a una empresa de fuera esa explicación le sobra, y de
+        // paso le haría pensar que su encargo también tarda dos semanas.
+        (function () {
+            const cliente = document.getElementById('cliente');
+            const flujo = document.getElementById('flujo-interno');
+            const fecha = document.getElementById('para-cuando');
+            const aviso = document.getElementById('aviso-fecha');
+            if (!cliente || !flujo) return;
+
+            const dias = {{ (int) config('fabos.proyectos.dias_minimos_interno') }};
+
+            function minimo() {
+                const d = new Date();
+                d.setDate(d.getDate() + dias);
+                return d.toISOString().slice(0, 10);
+            }
+
+            function ajustar() {
+                const interno = cliente.value === 'interno';
+                flujo.hidden = !interno;
+
+                if (interno) {
+                    fecha.min = minimo();
+                    aviso.textContent = 'Al menos ' + dias + ' días calendario: el traslado presupuestal no se corre más rápido.';
+                } else {
+                    fecha.removeAttribute('min');
+                    aviso.textContent = 'Opcional, pero cambia mucho lo que se puede proponer.';
+                }
+            }
+
+            cliente.addEventListener('change', ajustar);
+            ajustar();
+        })();
+
         // Un lienzo a mano alzada, sin librerías: un garabato con dos medidas
         // explica en un segundo lo que un párrafo no consigue.
         //

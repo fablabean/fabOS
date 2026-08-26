@@ -282,6 +282,7 @@ class ProjectService
                 'stage'           => 'idea',
                 'status'          => 'activo',
                 'source'          => 'formulario',
+                'client_kind'     => $datos['cliente'] ?? 'externo',
                 'summary'         => $datos['resumen'],
                 'organization'    => $datos['organizacion'] ?? null,
                 'contact_name'    => trim($datos['nombre']),
@@ -382,6 +383,71 @@ class ProjectService
             }
 
             $proyecto->update(['proposal_sent_at' => now()]);
+
+            return $proyecto->refresh();
+        });
+    }
+
+    /**
+     * Quien pidió el proyecto acepta la propuesta.
+     *
+     * Es el momento en que un intercambio de correos se vuelve un acuerdo. Sin
+     * una fecha de «sí» el proyecto avanza sobre un acuerdo verbal, que es
+     * justo lo que las compuertas documentales existen para evitar.
+     *
+     * Y aquí se bifurca el trámite. A un **área de la propia institución** hay
+     * que explicarle el circuito de la venta interna —formulario, líder que
+     * paga, líder que recibe, traslado de Planeación—, porque nada se fabrica
+     * hasta que Planeación confirme. A un estudiante o a alguien de fuera esa
+     * explicación le sobra y solo enturbia el mensaje.
+     *
+     * @throws ProjectException si ya estaba aceptado
+     */
+    public function aceptarPropuesta(Project $proyecto, ?User $quien = null, ?string $nota = null): Project
+    {
+        if ($proyecto->estaAceptado()) {
+            throw new ProjectException('Esta propuesta ya estaba aceptada.');
+        }
+
+        if (! $proyecto->proposal_sent_at) {
+            throw new ProjectException('Todavía no hay una propuesta que aceptar.');
+        }
+
+        return DB::transaction(function () use ($proyecto, $quien, $nota) {
+            $proyecto->update([
+                'accepted_at'     => now(),
+                'accepted_by'     => $quien?->id,
+                'acceptance_note' => $nota,
+            ]);
+
+            $variables = [
+                'proyecto'          => $proyecto->name,
+                'codigo'            => $proyecto->code,
+                'enlace'            => URL::temporarySignedRoute(
+                    'proyectos.propuesta',
+                    now()->addDays(60),
+                    ['project' => $proyecto->id],
+                ),
+                'enlace_formulario' => (string) config('fabos.proyectos.formulario_venta_interna'),
+            ];
+
+            $clave = $proyecto->esClienteInterno()
+                ? 'proyecto.venta_interna'
+                : 'proyecto.aceptada';
+
+            $correo = $proyecto->requestedBy?->email ?: $proyecto->contact_email;
+
+            if ($proyecto->requestedBy) {
+                $this->avisos->enviar($clave, $proyecto->requestedBy, $variables, $proyecto);
+            } elseif (filled($correo)) {
+                $this->avisos->enviarSinCuenta(
+                    $clave,
+                    $correo,
+                    $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                    $variables,
+                    $proyecto,
+                );
+            }
 
             return $proyecto->refresh();
         });

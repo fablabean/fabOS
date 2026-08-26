@@ -55,6 +55,8 @@ Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'stor
 // porque las dos puertas tienen que valer.
 Route::get('/proyectos/{project}/propuesta', [SolicitudDeProyectoController::class, 'propuesta'])
     ->name('proyectos.propuesta');
+Route::post('/proyectos/{project}/aceptar', [SolicitudDeProyectoController::class, 'aceptar'])
+    ->name('proyectos.aceptar');
 
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
 Route::get('/verificar/{codigo}', [VerificationController::class, 'show'])->name('publico.verificar');

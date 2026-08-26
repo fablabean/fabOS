@@ -53,6 +53,7 @@ class SolicitudDeProyectoTest extends TestCase
             'titulo'       => 'Señalética para el edificio de Bienestar',
             'resumen'      => 'Necesitamos veinte letreros en acrílico para señalizar el edificio.',
             'entregables'  => "20 letreros en acrílico\nLos archivos de corte",
+            'cliente'      => 'externo',
             'nombre'       => 'Steban Gómez',
             'correo'       => 'steban@ejemplo.co',
             'telefono'     => '3001234567',
@@ -293,6 +294,7 @@ class SolicitudDeProyectoTest extends TestCase
             ->post(route('proyectos.solicitar.store'), [
                 'titulo'  => 'Prototipo de sensor',
                 'resumen' => 'Necesitamos una carcasa impresa para un sensor de calidad del aire.',
+                'cliente' => 'estudiante',
             ])
             ->assertRedirect();
 
@@ -355,6 +357,195 @@ class SolicitudDeProyectoTest extends TestCase
             ->assertSee('Mis proyectos')
             ->assertSee($p->code)
             ->assertSee('Ver la propuesta');
+    }
+
+    // ---------------------------------------------------- de quién es el encargo
+
+    /**
+     * Un área de la propia institución no paga: mueve presupuesto por la venta
+     * interna, un circuito de cuatro manos que no se corre en tres días.
+     * Prometer una fecha más cercana sería prometer lo que el trámite no puede
+     * cumplir, y el «no» llegaría tarde y peor.
+     */
+    public function test_un_encargo_interno_necesita_quince_dias(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(5)->toDateString(),
+        ]))->assertSessionHasErrors('para_cuando');
+
+        $this->assertDatabaseCount('projects', 0);
+    }
+
+    public function test_con_los_quince_dias_el_encargo_interno_pasa(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(20)->toDateString(),
+        ]))->assertRedirect();
+
+        $this->assertSame('interno', Project::first()->client_kind);
+    }
+
+    /** A un estudiante o a alguien de fuera ese plazo no le aplica. */
+    public function test_a_un_estudiante_no_se_le_pide_ese_plazo(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'estudiante',
+            'para_cuando' => now()->addDays(3)->toDateString(),
+        ]))->assertRedirect();
+
+        $this->assertSame('estudiante', Project::first()->client_kind);
+    }
+
+    public function test_el_formulario_explica_el_circuito_interno(): void
+    {
+        $this->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('Cómo se paga un encargo interno')
+            ->assertSee('Líder emisor')
+            ->assertSee('Traslado');
+    }
+
+    // -------------------------------------------------------- la aceptación
+
+    private function conPropuesta(array $cambios = []): Project
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud($cambios));
+
+        $p = Project::first();
+        $p->update(['proposal_sent_at' => now(), 'estimated_value' => 2_000_000]);
+
+        return $p->fresh();
+    }
+
+    /**
+     * Sin una fecha de «sí», el proyecto avanza sobre un acuerdo verbal, que es
+     * justo lo que las compuertas documentales existen para evitar.
+     */
+    public function test_quien_pidio_acepta_la_propuesta(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.aceptar', $p), ['nota' => 'Todo bien.'])
+            ->assertRedirect();
+
+        $p->refresh();
+
+        $this->assertNotNull($p->accepted_at);
+        $this->assertSame($persona->id, $p->accepted_by);
+        $this->assertSame('Todo bien.', $p->acceptance_note);
+    }
+
+    /** Y al área institucional se le explica el traslado, sin el cual no se fabrica. */
+    public function test_al_cliente_interno_se_le_explica_la_venta_interna(): void
+    {
+        config(['fabos.proyectos.formulario_venta_interna' => 'https://forms.ejemplo/pedido']);
+
+        $p = $this->conPropuesta([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(30)->toDateString(),
+        ]);
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.aceptar', $p));
+
+        $aviso = NotificationLog::where('key', 'proyecto.venta_interna')->firstOrFail();
+
+        $this->assertSame('enviado', $aviso->status);
+        $this->assertStringContainsString('https://forms.ejemplo/pedido', $aviso->body);
+        $this->assertStringContainsString('planeación', mb_strtolower($aviso->body));
+    }
+
+    /** A quien no pasa por ese trámite, ese correo solo le enturbiaría el mensaje. */
+    public function test_a_un_externo_no_se_le_manda_lo_de_la_venta_interna(): void
+    {
+        $p = $this->conPropuesta();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.aceptar', $p));
+
+        $this->assertDatabaseHas('notification_logs', ['key' => 'proyecto.aceptada']);
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'proyecto.venta_interna']);
+    }
+
+    public function test_no_se_acepta_dos_veces(): void
+    {
+        $p = $this->conPropuesta();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)->post(route('proyectos.aceptar', $p));
+        $primera = $p->fresh()->accepted_at;
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.aceptar', $p))
+            ->assertSessionHasErrors('aceptar');
+
+        $this->assertEquals($primera, $p->fresh()->accepted_at);
+    }
+
+    /** No se acepta lo que todavía no se ha propuesto. */
+    public function test_no_se_acepta_una_propuesta_que_no_se_ha_mandado(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->post(route('proyectos.aceptar', $p))
+            ->assertSessionHasErrors('aceptar');
+    }
+
+    /** El backoffice mira, no acepta en nombre de nadie. */
+    public function test_el_backoffice_no_acepta_por_el_cliente(): void
+    {
+        $p = $this->conPropuesta();
+
+        $this->jefa();
+
+        $this->post(route('proyectos.aceptar', $p))->assertForbidden();
+
+        $this->assertNull($p->fresh()->accepted_at);
+    }
+
+    /** Con el enlace del correo también se puede aceptar, sin haber entrado. */
+    public function test_se_acepta_desde_el_enlace_del_correo(): void
+    {
+        $p = $this->conPropuesta();
+
+        $enlace = URL::temporarySignedRoute('proyectos.aceptar', now()->addDays(60), ['project' => $p->id]);
+
+        $this->post($enlace)->assertRedirect();
+
+        $this->assertNotNull($p->fresh()->accepted_at);
+    }
+
+    public function test_la_pagina_ofrece_aceptar_y_explica_el_circuito(): void
+    {
+        $p = $this->conPropuesta([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(30)->toDateString(),
+        ]);
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Acepto la propuesta')
+            ->assertSee('Cómo se paga')
+            ->assertSee('Líder receptor');
+    }
+
+    /** A quien no pasa por el traslado, ese circuito no se le enseña. */
+    public function test_a_un_externo_no_se_le_ensena_el_circuito(): void
+    {
+        $p = $this->conPropuesta();
+
+        $this->actingAs(User::where('email', 'steban@ejemplo.co')->firstOrFail())
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Acepto la propuesta')
+            ->assertDontSee('Líder receptor');
     }
 
     // ------------------------------------------------------------ la respuesta

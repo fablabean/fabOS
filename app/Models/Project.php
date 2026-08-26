@@ -12,11 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Project extends Model
 {
     protected $fillable = [
-        'code', 'name', 'stage', 'status', 'source', 'is_internal',
+        'code', 'name', 'stage', 'status', 'source', 'is_internal', 'client_kind',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
+        'accepted_at', 'accepted_by', 'acceptance_note',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class Project extends Model
             'due_on'    => 'date',
             'closed_at'        => UtcDateTime::class,
             'proposal_sent_at' => UtcDateTime::class,
+            'accepted_at'      => UtcDateTime::class,
         ];
     }
 
@@ -47,6 +49,30 @@ class Project extends Model
         'descartado' => 'Descartado',
         'cerrado'    => 'Cerrado',
     ];
+
+    /**
+     * De quién es el encargo. Cambia el trámite, no el trabajo.
+     *
+     * Un área de la propia institución no paga: mueve presupuesto por la venta
+     * interna, un circuito de cuatro manos que no se corre en tres días. Un
+     * estudiante no pasa por nada de eso, y una empresa de fuera tampoco.
+     */
+    public const CLIENTES = [
+        'interno'    => 'Área o facultad de la Universidad',
+        'estudiante' => 'Estudiante',
+        'externo'    => 'Empresa u organización de fuera',
+    ];
+
+    /** Solo el área institucional pasa por el traslado presupuestal. */
+    public function esClienteInterno(): bool
+    {
+        return $this->client_kind === 'interno';
+    }
+
+    public function estaAceptado(): bool
+    {
+        return $this->accepted_at !== null;
+    }
 
     public const ORIGENES = [
         'correo'     => 'Correo',

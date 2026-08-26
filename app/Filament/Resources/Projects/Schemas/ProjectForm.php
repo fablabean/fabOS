@@ -33,6 +33,13 @@ class ProjectForm
                             ->default('correo')
                             ->required(),
 
+                        Select::make('client_kind')
+                            ->label('Para quién es')
+                            ->options(Project::CLIENTES)
+                            ->default('externo')
+                            ->required()
+                            ->helperText('Cambia el trámite, no el trabajo: a un área de la Universidad hay que explicarle el traslado presupuestal, y a nadie más.'),
+
                         TextInput::make('code')
                             ->label('Código')
                             ->disabled()

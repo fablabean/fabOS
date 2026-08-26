@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Notifications\NotificationService;
+use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use App\Services\Projects\SoportesDeSolicitud;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
 /**
@@ -45,6 +47,7 @@ class SolicitudDeProyectoController extends Controller
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
             'telefono'     => ['nullable', 'string', 'max:40'],
             'organizacion' => ['nullable', 'string', 'max:160'],
+            'cliente'      => ['required', Rule::in(array_keys(Project::CLIENTES))],
             'para_cuando'  => ['nullable', 'date', 'after:today'],
 
             'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
@@ -65,6 +68,23 @@ class SolicitudDeProyectoController extends Controller
             'soportes.*.max'       => 'Cada archivo puede pesar hasta 10 MB.',
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
         ]);
+
+        // Un encargo de un área de la propia institución no se paga: se mueve
+        // por la venta interna, un circuito de cuatro manos -formulario, líder
+        // que paga, líder que recibe, traslado de Planeación- que no se corre
+        // en tres días. Prometer una fecha más cercana sería prometer algo que
+        // el trámite no puede cumplir, y el «no» llegaría tarde y peor.
+        $dias = (int) config('fabos.proyectos.dias_minimos_interno');
+
+        if ($datos['cliente'] === 'interno'
+            && filled($datos['para_cuando'] ?? null)
+            && \Illuminate\Support\Carbon::parse($datos['para_cuando'])->lt(now()->addDays($dias)->startOfDay())) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'para_cuando' => "Un encargo de un área de la Universidad necesita al menos {$dias} días "
+                    . 'calendario: su traslado presupuestal pasa por el formulario de pedido, el visto bueno '
+                    . 'de dos líderes y Planeación. Si es urgente, escríbenos y lo miramos.',
+            ]);
+        }
 
         if ($identificado) {
             $datos['nombre'] = $identificado->name;
@@ -104,10 +124,54 @@ class SolicitudDeProyectoController extends Controller
     {
         abort_unless($this->puedeVerla($request, $project), 403);
 
+        $firmado = $request->hasValidSignature();
+
         return view('proyectos.propuesta', [
             'proyecto' => $project->load(['deliverables', 'lead', 'area', 'documents', 'evidence']),
-            'firmado'  => $request->hasValidSignature(),
+            'firmado'  => $firmado,
+
+            // El backoffice mira, no acepta en nombre de nadie.
+            'puedeAceptar' => $firmado || $request->user()?->id === $project->requested_by,
+
+            // Quien llega por el correo acepta con un enlace firmado también:
+            // sin sesión, el POST no tendría cómo demostrar quién es.
+            'urlAceptar' => URL::temporarySignedRoute(
+                'proyectos.aceptar',
+                now()->addDays(60),
+                ['project' => $project->id],
+            ),
         ]);
+    }
+
+    /**
+     * Quien pidió el proyecto acepta la propuesta.
+     *
+     * Se acepta desde la misma página donde se lee, con el enlace del correo o
+     * con la sesión. Obligar a responder el correo para decir que sí dejaría la
+     * aceptación fuera del sistema, que es donde no sirve.
+     */
+    public function aceptar(Request $request, Project $project)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+
+        // El backoffice mira, no acepta en nombre de nadie.
+        abort_if(
+            ! $request->hasValidSignature() && $request->user()?->id !== $project->requested_by,
+            403,
+            'La propuesta la acepta quien la pidió.',
+        );
+
+        $datos = $request->validate([
+            'nota' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->proyectos->aceptarPropuesta($project, $request->user(), $datos['nota'] ?? null);
+        } catch (ProjectException $e) {
+            return back()->withErrors(['aceptar' => $e->getMessage()]);
+        }
+
+        return back()->with('aceptada', true);
     }
 
     private function puedeVerla(Request $request, Project $project): bool

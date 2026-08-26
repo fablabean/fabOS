@@ -79,6 +79,67 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'proyecto.aceptada',
+                'name'         => 'Propuesta aceptada',
+                'description'  => 'A quien acepta una propuesta, cuando no hay traslado presupuestal de por medio.',
+                'is_essential' => true,
+                'subject'      => 'Recibimos tu aceptación de {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Cordial saludo, {nombre_pila}:
+
+                    Con total satisfacción hemos recibido la aceptación de la propuesta
+                    {proyecto} ({codigo}).
+
+                    Con esto arrancamos. Te iremos contando cómo avanza, y puedes
+                    seguirlo tú mismo aquí:
+
+                    {enlace}
+
+                    Quedamos a tu disposición para cualquier consulta adicional.
+
+                    Cordialmente,
+                    EQUIPO FABLAB
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.venta_interna',
+                'name'         => 'Propuesta aceptada — venta interna',
+                'description'  => 'A un área de la Universidad que acepta una propuesta: explica el traslado presupuestal, sin el cual no se fabrica nada.',
+                'is_essential' => true,
+                'subject'      => 'Aceptación recibida: siguiente paso para {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Cordial saludo, {nombre_pila}:
+
+                    Con total satisfacción hemos recibido la aceptación de la propuesta
+                    {proyecto} ({codigo}). Para proceder con la compra de los elementos
+                    necesarios, por favor siga los pasos mencionados a continuación:
+
+                    1. Acceda al siguiente enlace para completar el formulario de pedido:
+                       {enlace_formulario}
+
+                    2. Complete el formulario con la información requerida para el traslado.
+
+                    3. Una vez completado el formulario, debemos recibir la confirmación de
+                       planeación para comenzar el proceso de fabricación de los productos.
+
+                    Recomendamos encarecidamente diligenciar el formulario lo más rápido
+                    posible, ya que la fabricación de los productos dependerá de la
+                    confirmación de éste por parte de planeación.
+
+                    Puede consultar el detalle de la propuesta cuando quiera aquí:
+
+                    {enlace}
+
+                    Por favor, no dude en comunicarse con nosotros si necesita asistencia
+                    durante este proceso. Estamos aquí para ayudarle en cada paso del camino.
+
+                    Quedamos a su disposición para cualquier consulta adicional.
+
+                    Cordialmente,
+                    EQUIPO FABLAB
+                    TXT,
+            ],
+            [
                 'key'          => 'asesoria.confirmada',
                 'name'         => 'Asesoría confirmada',
                 'description'  => 'A quien pide una asesoría, cuando queda agendada.',
