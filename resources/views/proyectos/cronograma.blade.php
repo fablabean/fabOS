@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Cronograma de proyectos · ' . config('fabos.lab.name'))
+{{-- Un año de barras no cabe en la columna de lectura: estrujarlo ahi obliga a
+     desplazarse en horizontal para ver de septiembre en adelante. --}}
+@section('ancho', 'completo')
 
 @php
     use App\Models\Project;

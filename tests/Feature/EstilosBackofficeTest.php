@@ -102,6 +102,47 @@ class EstilosBackofficeTest extends TestCase
         }
     }
 
+    /**
+     * Blade no sabe de comentarios CSS.
+     *
+     * Una directiva escrita dentro de un `/* ... *\/` se ejecuta igual. Pasó
+     * con un `@ section('ancho','completo')` puesto para explicar cómo pedir el
+     * ancho completo: se aplicó a todas las páginas del sitio. El fallo no se
+     * ve donde está escrito, que es lo que lo hace caro de encontrar.
+     */
+    public function test_ninguna_vista_esconde_una_directiva_en_un_comentario_css(): void
+    {
+        $vistas = array_merge(
+            glob(resource_path('views/**/*.blade.php')),
+            glob(resource_path('views/**/**/*.blade.php')),
+            glob(resource_path('views/*.blade.php')),
+        );
+
+        $this->assertNotEmpty($vistas);
+
+        // Las que de verdad hacen algo si se ejecutan por accidente.
+        $directivas = 'section|yield|php|extends|include|if|foreach|endsection|endphp';
+
+        foreach ($vistas as $vista) {
+            $contenido = file_get_contents($vista);
+
+            preg_match_all('#/\*.*?\*/#s', $contenido, $comentarios);
+
+            foreach ($comentarios[0] as $comentario) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/@(' . $directivas . ')/',
+                    $comentario,
+                    sprintf(
+                        '%s tiene una directiva de Blade dentro de un comentario CSS. Blade la '
+                        . 'ejecuta igual, y el efecto aparece en otra página. Descríbela en '
+                        . 'palabras o escápala con @@.',
+                        str_replace(resource_path('views/'), '', $vista),
+                    ),
+                );
+            }
+        }
+    }
+
     public function test_el_tablero_trae_su_propia_rejilla(): void
     {
         $vista = file_get_contents(resource_path('views/filament/pages/tablero.blade.php'));

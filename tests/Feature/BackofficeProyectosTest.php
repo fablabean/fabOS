@@ -573,6 +573,31 @@ class BackofficeProyectosTest extends TestCase
             ->assertSee('Proyecto descartado');
     }
 
+    /**
+     * El cronograma pide toda la pantalla.
+     *
+     * 62rem es la medida de una línea de texto cómoda de leer, y por eso es el
+     * ancho por defecto de las páginas. Un año de barras no es texto: en esa
+     * columna hay que desplazarse en horizontal para ver de septiembre en
+     * adelante, que es justo lo que un cronograma existe para evitar.
+     */
+    public function test_el_cronograma_ocupa_todo_el_ancho(): void
+    {
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get(route('proyectos.cronograma'))
+            ->assertOk()
+            ->assertSee('<main class="completo">', false);
+    }
+
+    /** Y el resto de páginas se quedan en la columna de lectura. */
+    public function test_las_demas_paginas_siguen_en_la_columna_de_lectura(): void
+    {
+        $this->actingAs($this->conRol(User::ROL_CONSULTOR))
+            ->get('/tienda')
+            ->assertOk()
+            ->assertSee('<main class="">', false);
+    }
+
     public function test_el_cronograma_general_es_solo_del_backoffice(): void
     {
         $this->actingAs($this->conRol())

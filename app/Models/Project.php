@@ -42,6 +42,60 @@ class Project extends Model
         'cierre'    => 'Cerrado',
     ];
 
+    /**
+     * El embudo de un vistazo: cuantos proyectos hay en cada etapa.
+     *
+     * Las cinco primeras cuentan lo **activo**, que es trabajo por delante. La
+     * de cierre cuenta lo **cerrado este año**: el total historico crece para
+     * siempre y a los dos años deja de decir nada, mientras que «cuantos
+     * entregamos este año» se lee de un golpe.
+     *
+     * Cada etapa lleva ademas la plata que mueve —lo acordado, o lo estimado
+     * mientras no haya acuerdo—. Un embudo con solo el conteo dice que hay
+     * cuatro cosas en propuesta; con el valor dice si vale la pena empujarlas.
+     *
+     * @return array<int, array{etapa: string, nombre: string, cuantos: int, valor: int, cerrada: bool}>
+     */
+    public static function resumenDelEmbudo(?int $ano = null): array
+    {
+        $ano ??= (int) now(config('fabos.lab.timezone'))->year;
+
+        // Lo acordado manda; si todavia no hay acuerdo, lo estimado. Un
+        // compromiso interno vale cero acordado a proposito, y ahi el estimado
+        // es justo lo que se quiere ver: lo que costaria si se cobrara.
+        $valor = 'coalesce(nullif(agreed_value, 0), estimated_value, 0)';
+
+        $activos = static::query()
+            ->where('status', 'activo')
+            ->selectRaw("stage, count(*) as cuantos, sum($valor) as valor")
+            ->groupBy('stage')
+            ->get()
+            ->keyBy('stage');
+
+        $cerrados = static::query()
+            ->where('status', 'cerrado')
+            ->whereYear('closed_at', $ano)
+            ->selectRaw("count(*) as cuantos, sum($valor) as valor")
+            ->first();
+
+        $tarjetas = [];
+
+        foreach (self::ETAPAS as $etapa => $nombre) {
+            $esCierre = $etapa === 'cierre';
+            $fila = $esCierre ? $cerrados : $activos->get($etapa);
+
+            $tarjetas[] = [
+                'etapa'   => $etapa,
+                'nombre'  => $nombre,
+                'cuantos' => (int) ($fila->cuantos ?? 0),
+                'valor'   => (int) ($fila->valor ?? 0),
+                'cerrada' => $esCierre,
+            ];
+        }
+
+        return $tarjetas;
+    }
+
     public const ESTADOS = [
         'activo'     => 'Activo',
         'ganado'     => 'Ganado',

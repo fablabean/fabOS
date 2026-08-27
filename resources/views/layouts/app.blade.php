@@ -40,6 +40,16 @@
         header.top a:hover{color:var(--accent)}
         .quien{font-family:ui-monospace,Consolas,monospace;font-size:.72rem;color:var(--muted)}
         main{max-width:62rem;margin:0 auto;padding:1.8rem 1.4rem 4rem}
+        /* Una pagina pide todo el ancho definiendo la seccion «ancho» con el
+           valor «completo». Ojo: escribir esa directiva aqui, aunque sea dentro
+           de un comentario, la EJECUTA —Blade no sabe de comentarios CSS— y
+           entonces se ensanchan todas las paginas. Por eso se describe en
+           palabras y el ejemplo esta en cronograma.blade.php.
+
+           62rem es la medida de una linea de texto comoda de leer, y por eso es
+           el defecto; un cronograma no es texto, y estrujarlo en esa columna
+           obliga a desplazarse en horizontal para ver el año. */
+        main.completo{max-width:none}
         h1{font-size:1.5rem;letter-spacing:-.02em;margin:0 0 .3rem}
         h2{font-size:1rem;margin:2rem 0 .7rem;color:var(--muted);
            font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
@@ -107,7 +117,7 @@
         </nav>
     </header>
 
-    <main>
+    <main class="@yield('ancho')">
         @if (session('status'))
             <div class="msg">{{ session('status') }}</div>
         @endif
