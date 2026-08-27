@@ -27,7 +27,18 @@ class PurchaseRequestForm
                 Section::make('Para qué es')
                     ->columns(2)
                     ->schema([
-                        Select::make('budget_id')
+                        Select::make('tax_rate')
+                    ->label('Impuesto')
+                    ->options([
+                        ''     => 'El del laboratorio (' . round((float) config('fabos.money.tax_rate') * 100) . '%)',
+                        '0'    => 'Sin impuesto',
+                        '0.05' => '5%',
+                        '0.19' => '19%',
+                    ])
+                    ->default('')
+                    ->helperText('No todo lleva IVA: unos honorarios o un servicio exento, no. Si no se dice, se usa el del laboratorio.'),
+
+                Select::make('budget_id')
                             ->label('Presupuesto')
                             ->options(fn () => Budget::where('status', 'vigente')
                                 ->orderByDesc('year')

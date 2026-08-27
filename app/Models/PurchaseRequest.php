@@ -19,11 +19,12 @@ class PurchaseRequest extends Model
         'code', 'budget_id', 'project_id', 'area_id', 'requested_by', 'approved_by',
         'status', 'justification', 'notes',
         'submitted_at', 'decided_at', 'decision_reason', 'closed_at',
-    ];
+     'tax_rate',];
 
     protected function casts(): array
     {
         return [
+            'tax_rate' => 'decimal:4',
             'submitted_at' => UtcDateTime::class,
             'decided_at'   => UtcDateTime::class,
             'closed_at'    => UtcDateTime::class,
@@ -84,6 +85,27 @@ class PurchaseRequest extends Model
     }
 
     /**
+     * La tasa de impuesto de ESTA solicitud.
+     *
+     * Nulo significa «la del laboratorio»: así, cambiar la tasa general el día
+     * que cambie la ley arrastra a todo lo que no dijo otra cosa. Pero no todo
+     * lo que se pide lleva IVA —unos honorarios, un servicio exento, un régimen
+     * simplificado— y sin poder decirlo, quien escribe un valor ve otro más
+     * alto y deja de fiarse de la cifra.
+     */
+    public function tasaDeImpuesto(): float
+    {
+        return $this->tax_rate === null
+            ? (float) config('fabos.money.tax_rate')
+            : (float) $this->tax_rate;
+    }
+
+    public function impuesto(): int
+    {
+        return $this->totalEstimado() - $this->subtotal();
+    }
+
+    /**
      * Total estimado con impuesto.
      *
      * Compras trabaja con el valor con IVA; presentar el subtotal a secas hace
@@ -91,7 +113,7 @@ class PurchaseRequest extends Model
      */
     public function totalEstimado(): int
     {
-        return (int) round($this->subtotal() * (1 + config('fabos.money.tax_rate')));
+        return (int) round($this->subtotal() * (1 + $this->tasaDeImpuesto()));
     }
 
     /** Lo que ya llegó, valorado al precio con el que se pidió. */
@@ -99,7 +121,7 @@ class PurchaseRequest extends Model
     {
         return (int) round(
             $this->items->sum(fn (PurchaseRequestItem $i) => $i->received_quantity * $i->unit_price)
-            * (1 + config('fabos.money.tax_rate'))
+            * (1 + $this->tasaDeImpuesto())
         );
     }
 

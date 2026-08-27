@@ -59,7 +59,12 @@ class PurchaseRequestsTable
                     ->alignEnd()
                     ->weight('medium')
                     ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing('items')->totalEstimado()))
-                    ->description('con impuesto'),
+                    // De donde sale: quien escribe 1.989.000 y ve 2.366.910 sin
+                    // explicacion deja de fiarse de la cifra, y una cifra en la
+                    // que no se confia no se usa para decidir.
+                    ->description(fn (PurchaseRequest $r) => $r->impuesto() > 0
+                        ? self::pesos($r->subtotal()) . ' + ' . round($r->tasaDeImpuesto() * 100) . '% de impuesto'
+                        : 'sin impuesto'),
 
                 TextColumn::make('recibido')
                     ->label('Recibido')
@@ -117,8 +122,20 @@ class PurchaseRequestsTable
             ->label('Aprobar')
             ->icon('heroicon-o-check-circle')
             ->color('success')
-            ->visible(fn (PurchaseRequest $r) => $r->status === 'enviada'
+            // Tambien desde borrador. El servicio siempre lo permitio; la
+            // pantalla no, y eso obligaba a quien aprueba a "enviarse" a si
+            // mismo una solicitud para poder aprobarla. En un laboratorio donde
+            // quien pide y quien aprueba son la misma persona, ese paso no
+            // controla nada: solo hace que la plata no quede comprometida
+            // porque alguien no adivino que faltaba un clic.
+            ->visible(fn (PurchaseRequest $r) => in_array($r->status, ['enviada', 'borrador'], true)
                 && auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+            ->modalHeading('Aprobar la solicitud')
+            ->modalDescription(fn (PurchaseRequest $r) => sprintf(
+                'Quedan comprometidos %s contra el presupuesto. %s',
+                self::pesos($r->totalEstimado()),
+                $r->status === 'borrador' ? 'Es un borrador: se aprueba sin pasar por enviada.' : '',
+            ))
             ->schema([
                 Select::make('budget_id')
                     ->label('Contra qué presupuesto')

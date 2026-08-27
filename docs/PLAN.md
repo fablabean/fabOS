@@ -504,6 +504,19 @@ Ver `docs/ASESORIAS.md`.
   una plata que ya no está. Va **aparte** de lo derivado y con explicación
   obligatoria, para no confundir nunca lo que el sistema sabe con lo que
   alguien afirmó. De ahí en adelante manda la solicitud de compra.
+- **El impuesto se dice por solicitud** (`purchase_requests.tax_rate`). Sumarle
+  IVA a todo es correcto para material —compras trabaja con el valor con IVA, y
+  el subtotal a secas hace que el presupuesto parezca alcanzar para más—, pero
+  unos honorarios o un servicio exento no lo llevan. El efecto de no poder
+  decirlo era peor que el de no calcularlo: quien escribe 1.989.000 y ve
+  2.366.910 sin explicación deja de fiarse de la cifra, y una cifra en la que no
+  se confía no se usa para decidir. Nulo = la tasa del laboratorio, para que
+  cambiarla el día que cambie la ley arrastre a todo lo que no dijo otra cosa.
+- **Se aprueba también desde borrador.** El servicio siempre lo permitió; la
+  pantalla no, y eso obligaba a quien aprueba a «enviarse» una solicitud a sí
+  mismo. En un laboratorio donde quien pide y quien aprueba son la misma
+  persona, ese paso no controla nada: solo hace que la plata no quede
+  comprometida porque alguien no adivinó que faltaba un clic.
 - **De dónde salen las cifras, dicho en la pantalla.** Comprometido y ejecutado
   no se escriben: salen de las solicitudes de compra —aprobada compromete,
   recibida ejecuta—. Cada fila lleva atajo a sus solicitudes y a crear una

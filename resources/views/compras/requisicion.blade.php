@@ -1,7 +1,8 @@
 @php
     $lab = config('fabos.lab.name');
     $simbolo = config('fabos.money.symbol');
-    $iva = config('fabos.money.tax_rate');
+    // La de esta solicitud: no todo lleva el IVA general.
+    $iva = $solicitud->tasaDeImpuesto();
     $tz = config('fabos.lab.timezone');
     $pesos = fn ($v) => $simbolo . number_format((float) $v, 0, ',', '.');
     $cantidad = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, ',', '.'), '0'), ',');
@@ -128,10 +129,12 @@
             <td colspan="5" class="num">Subtotal</td>
             <td class="num">{{ $pesos($solicitud->subtotal()) }}</td>
         </tr>
-        <tr>
-            <td colspan="5" class="num">Impuesto estimado ({{ (int) round($iva * 100) }}%)</td>
-            <td class="num">{{ $pesos($solicitud->totalEstimado() - $solicitud->subtotal()) }}</td>
-        </tr>
+        @if ($iva > 0)
+            <tr>
+                <td colspan="5" class="num">Impuesto estimado ({{ (int) round($iva * 100) }}%)</td>
+                <td class="num">{{ $pesos($solicitud->totalEstimado() - $solicitud->subtotal()) }}</td>
+            </tr>
+        @endif
         <tr>
             <td colspan="5" class="num">Total estimado</td>
             <td class="num">{{ $pesos($solicitud->totalEstimado()) }}</td>
