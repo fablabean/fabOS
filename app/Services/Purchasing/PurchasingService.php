@@ -202,10 +202,14 @@ class PurchasingService
     }
 
     /**
-     * Recibe mercancía, entera o por partes.
+     * Recibe lo pedido, entero o por partes.
      *
-     * Lo que llega y está enlazado a un insumo entra al inventario en el mismo
-     * acto: si la entrada al stock fuera un segundo paso manual, la existencia
+     * **No siempre es mercancía.** Por aquí pasan también unos honorarios o un
+     * curso contratado: se reciben igual —se dan por cumplidos y ejecutan el
+     * presupuesto— pero no tienen insumo detrás y no tocan inventario.
+     *
+     * Lo que sí está enlazado a un insumo entra al inventario en el mismo acto:
+     * si la entrada al stock fuera un segundo paso manual, la existencia
      * quedaría desfasada justo cuando más se consulta.
      *
      * @param  array<int,float>  $recibido  id de la línea => cantidad que llegó ahora
@@ -215,7 +219,7 @@ class PurchasingService
     public function recibir(PurchaseRequest $solicitud, array $recibido, User $quien, ?string $memo = null): PurchaseRequest
     {
         if (! in_array($solicitud->status, ['aprobada', 'en_compra', 'recibida_parcial'], true)) {
-            throw new PurchasingException('Esta solicitud no está en condición de recibir mercancía.');
+            throw new PurchasingException('Esta solicitud no está en condición de recibir nada todavía.');
         }
 
         return DB::transaction(function () use ($solicitud, $recibido, $quien, $memo) {

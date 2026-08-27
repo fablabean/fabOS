@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Budget;
 use App\Models\PurchaseRequest;
-use App\Models\Supply;
 use App\Models\User;
 use App\Services\Purchasing\PurchasingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,8 +46,8 @@ class ImpuestoPorSolicitudTest extends TestCase
             $solicitud->update(['tax_rate' => $tasa]);
         }
 
-        $insumo = Supply::create(['name' => 'Honorarios', 'unit' => 'unidad']);
-        $compras->agregar($solicitud, $insumo, 1, $valor);
+        // Sin insumo detras: unos honorarios no reponen nada del catalogo.
+        $compras->agregar($solicitud, 'Honorarios de los cursos', 1, $valor);
 
         return $solicitud->fresh()->load('items');
     }
@@ -139,6 +138,37 @@ class ImpuestoPorSolicitudTest extends TestCase
         $this->assertSame('aprobada', $s->fresh()->status);
         $this->assertSame(1_989_000, $p->fresh()->comprometido());
         $this->assertSame(30_000_000 - 1_989_000, $p->fresh()->disponible());
+    }
+
+    /**
+     * Lo que se recibe no siempre es mercancia.
+     *
+     * Unos honorarios o un curso contratado se reciben igual —se dan por
+     * cumplidos y ejecutan el presupuesto— pero no reponen nada del catalogo:
+     * no pueden mover la existencia de un insumo que no tienen detras.
+     */
+    public function test_un_servicio_se_recibe_sin_tocar_el_inventario(): void
+    {
+        $p = Budget::create([
+            'name' => 'Honorarios', 'year' => 2026, 'amount' => 30_000_000,
+            'status' => 'vigente',
+        ]);
+
+        $s = $this->solicitudDe(1_989_000, 0);
+        $jefa = $this->quien();
+
+        $compras = app(PurchasingService::class);
+        $compras->aprobar($s, $jefa, $p);
+
+        $linea = $s->fresh()->items->first();
+
+        $this->assertNull($linea->supply_id);
+
+        $compras->recibir($s->fresh(), [$linea->id => 1], $jefa);
+
+        $this->assertSame('recibida', $s->fresh()->status);
+        $this->assertSame(1_989_000, $p->fresh()->ejecutado());
+        $this->assertDatabaseCount('supply_movements', 0);
     }
 
     /** Y al recibirla pasa de comprometido a ejecutado. */

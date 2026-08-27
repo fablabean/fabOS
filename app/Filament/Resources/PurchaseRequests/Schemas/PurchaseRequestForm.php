@@ -87,8 +87,10 @@ class PurchaseRequestForm
                                     ->options(fn () => Supply::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
                                     ->searchable()
                                     ->columnSpan(3)
-                                    ->placeholder('Algo nuevo')
-                                    ->helperText('Si repone un insumo, al recibir entra solo al inventario.')
+                                    // Por aqui tambien pasan servicios y honorarios,
+                                    // que no reponen nada y no tienen ficha.
+                                    ->placeholder('Nada: un servicio o algo nuevo')
+                                    ->helperText('Si repone un insumo, al recibir entra solo al inventario. Un servicio no repone nada.')
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         $insumo = $state ? Supply::find($state) : null;

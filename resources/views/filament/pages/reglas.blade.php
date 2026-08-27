@@ -413,6 +413,14 @@
                 exactamente lo que hace que a mitad de año nadie sepa cuánto queda de verdad.
             </div>
             <div class="porque">
+                <b>No todo lo que se recibe es mercancía.</b> Por compras pasan también unos
+                honorarios, un curso contratado o un servicio: se reciben igual —se dan por
+                cumplidos y ejecutan el presupuesto— pero no reponen nada del catálogo y no
+                mueven existencias. Por eso el impuesto <b>se dice por solicitud</b>: cobrarle
+                IVA a unos honorarios hace que quien escribe un valor vea otro más alto, no
+                entienda de dónde salió, y deje de fiarse de la cifra.
+            </div>
+            <div class="porque">
                 <b>Recibir es parcial por naturaleza.</b> Casi nunca llega todo junto. Un modelo que
                 exigiera recibir de una vez obligaría a mentir para poder cerrar la solicitud.
                 Recibir más de lo pedido se rechaza: si de verdad llegó de más, se corrige la línea

@@ -188,11 +188,18 @@ class PurchaseRequestsTable
             ));
     }
 
-    /** Recibir, entero o por partes: casi nunca llega todo junto. */
+    /**
+     * Recibir, entero o por partes: casi nunca llega todo junto.
+     *
+     * Y no siempre es mercancía. Por aquí pasan también unos honorarios, un
+     * curso contratado o un servicio: cosas que se reciben igual —se dan por
+     * cumplidas y ejecutan el presupuesto— pero que nadie llama mercancía.
+     * Llamarlas así hace dudar de si el botón es el correcto.
+     */
     private static function recibir(): Action
     {
         return Action::make('recibir')
-            ->label('Recibir mercancía')
+            ->label('Recibir lo pedido')
             ->icon('heroicon-o-inbox-arrow-down')
             ->color('success')
             ->visible(fn (PurchaseRequest $r) => in_array($r->status, ['aprobada', 'en_compra', 'recibida_parcial'], true))
@@ -204,7 +211,11 @@ class PurchaseRequestsTable
                         rtrim(rtrim(number_format($linea->pendiente(), 3, ',', '.'), '0'), ','),
                         rtrim(rtrim(number_format((float) $linea->quantity, 3, ',', '.'), '0'), ','),
                         $linea->unit,
-                        $linea->supply ? ' · entra al inventario' : '',
+                        // Lo que no repone un insumo del catalogo no mueve
+                        // existencias: puede ser un servicio, unos honorarios o
+                        // algo fisico que todavia no tiene ficha. Decirlo evita
+                        // buscar despues por que el stock no se movio.
+                        $linea->supply ? ' · entra al inventario' : ' · no entra al inventario',
                     ))
                     ->numeric()
                     ->default(fn () => $linea->pendiente() ?: null)
@@ -212,7 +223,7 @@ class PurchaseRequestsTable
 
                 Textarea::make('memo')
                     ->label('Observaciones de la recepción')
-                    ->placeholder('Llegaron 6 de 10 rollos; el resto queda pendiente con el proveedor'),
+                    ->placeholder('Llegaron 6 de 10 rollos; el resto queda pendiente con el proveedor. O: se dictaron 3 de los 5 cursos.'),
             ])
             ->action(function (PurchaseRequest $r, array $data) {
                 $recibido = [];
