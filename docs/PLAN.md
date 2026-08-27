@@ -490,6 +490,27 @@ Ver `docs/ASESORIAS.md`.
   «¿vamos a tiempo?»; este responde la que decide si se acepta el siguiente
   encargo, «¿qué se nos junta?». Por separado todos parecen holgados.
 
+### El presupuesto (§13)
+
+- **Se habla en pesos, no en FabCoins.** Es plata que asigna la Universidad y
+  se conversa con su área de compras; los FabCoins reparten capacidad dentro
+  del laboratorio. El listado lleva la equivalencia delante —«1 FBC = $1.000»—
+  porque sin ella hay que ir a buscarla para entender cualquiera de las dos.
+- **Ejecutado de arranque** (`opening_executed` + `opening_note`). Lo ejecutado
+  se deriva de las solicitudes de compra, y así debe seguir: un «disponible»
+  editable a mano es lo que hace que a mitad de año nadie sepa cuánto queda.
+  Pero el año arrancó antes que fabOS, y lo gastado en enero no tiene solicitud
+  que lo respalde; sin poder anotarlo, el presupuesto enseña como disponible
+  una plata que ya no está. Va **aparte** de lo derivado y con explicación
+  obligatoria, para no confundir nunca lo que el sistema sabe con lo que
+  alguien afirmó. De ahí en adelante manda la solicitud de compra.
+- **Presupuesto de venta** (`kind`). No todo presupuesto es para gastar: el
+  laboratorio también tiene una meta de ingresos, y lo que se factura suma
+  contra ella **solo** —sin que nadie lo anote a mano—. Es la misma idea leída
+  al revés, y por eso comparte tabla en vez de tener pantalla propia. Las
+  ventas viven en FabCoins y el presupuesto en pesos: la conversión usa la tasa
+  configurada, así que es una **equivalencia**, no un extracto bancario.
+
 ### La tienda pública (§14)
 
 Se mira **sin entrar**: obligar a identificarse para ver precios es la forma
@@ -607,4 +628,5 @@ mirar entera—. Se puede borrar de verdad, con condiciones:
 | No se podía crear un proyecto | «Valor acordado» en blanco llegaba como NULL a una columna `NOT NULL` **con default 0**: un NULL explícito se salta el default. En pantalla solo se veía «Error al cargar la página» |
 | La propuesta aceptada seguía diciendo «Idea» | El estado se leía del embudo, que avanza con compuertas documentales, en vez de los hechos (`accepted_at`) |
 | «Undefined variable» en una línea que no existía | Blade **no compila un bloque `@php…@endphp` si en la misma vista hay un `@php(...)` en línea**: deja el `@php` como texto y convierte el `@endphp` en `?>` |
+| El presupuesto salía en `þ` en vez de `$` | El símbolo de dinero no venía del `.env` sino de un **ajuste guardado en la base** (`lab.money_symbol`), que `LabSettings` aplica sobre la config al arrancar. Buscarlo en el entorno no lo encontraba nunca |
 | El estado vacío decía «Cree un project member» | Un *relation manager* sin `$modelLabel` usa el nombre de la clase |
