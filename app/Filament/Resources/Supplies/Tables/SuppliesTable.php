@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Supplies\Tables;
 use App\Models\Supply;
 use App\Services\Inventory\StockException;
 use App\Services\Inventory\StockService;
+use App\Services\Money\PricingService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -53,6 +54,34 @@ class SuppliesTable
                     ->formatStateUsing(fn (?int $state) => $state
                         ? config('fabos.money.symbol') . number_format($state, 0, ',', '.')
                         : '—'),
+
+                /*
+                 * El precio, al lado del costo.
+                 *
+                 * Ver uno sin el otro es lo que hace que se venda al costo sin
+                 * darse cuenta. Cuando nadie lo decidio, se dice que es un
+                 * estimado en vez de enseñar una raya: una raya se lee como
+                 * "no se vende".
+                 */
+                TextColumn::make('precio_venta')
+                    ->label('Venta al público')
+                    ->alignEnd()
+                    // Lo que se cobraria hoy, venga de una decision o del
+                    // calculo: enseñar una raya donde si hay cobro es peor que
+                    // enseñar la cifra y decir de donde sale.
+                    ->state(function (Supply $r) {
+                        $precios = app(PricingService::class);
+
+                        return $precios->precioEnPesosDe($r)
+                            ?: ($precios->aPesos($precios->precioDe($r)) ?: null);
+                    })
+                    ->formatStateUsing(fn (?int $state) => $state
+                        ? config('fabos.money.symbol') . number_format($state, 0, ',', '.')
+                        : '—')
+                    ->description(fn (Supply $r) => app(PricingService::class)->esDerivado($r)
+                        ? 'estimado del costo'
+                        : null)
+                    ->color(fn (Supply $r) => app(PricingService::class)->esDerivado($r) ? 'gray' : null),
 
                 TextColumn::make('movimientos')
                     ->label('Movimientos')

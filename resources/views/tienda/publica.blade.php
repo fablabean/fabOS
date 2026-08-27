@@ -8,6 +8,19 @@
 
     $fbc = fn (int $menor) => rtrim(rtrim(number_format($menor / $unidades, 2, ',', '.'), '0'), ',');
     $pesos = fn (int $menor) => $simbolo . number_format(round($menor / $unidades * $tasa), 0, ',', '.');
+
+    /*
+     * Cual de las dos monedas va grande depende de quien mira.
+     *
+     * Quien entra de fuera piensa en pesos: un precio en una moneda que no
+     * conoce no le dice si puede pagarlo. Quien tiene cuenta paga con
+     * FabCoins, y el numero que le importa es el que le mueve el saldo que
+     * tiene arriba. La otra moneda no se esconde, se pone al lado.
+     */
+    $conCuenta = auth()->check();
+
+    $principal = fn (int $menor) => $conCuenta ? $fbc($menor) . ' FBC' : $pesos($menor);
+    $secundario = fn (int $menor) => $conCuenta ? '≈ ' . $pesos($menor) : $fbc($menor) . ' FBC';
 @endphp
 
 @section('content')
@@ -68,7 +81,7 @@
                     <tr>
                         <td>
                             {{ $linea['nombre'] }}
-                            <div class="quien">{{ $pesos($linea['precio']) }} por {{ $linea['unidad'] }}</div>
+                            <div class="quien">{{ $principal($linea['precio']) }} por {{ $linea['unidad'] }}</div>
                         </td>
                         <td style="width:9rem">
                             <form method="POST" action="{{ route('tienda.carrito.actualizar') }}" class="cantidad">
@@ -81,16 +94,16 @@
                             </form>
                         </td>
                         <td style="text-align:right;white-space:nowrap">
-                            <strong>{{ $pesos($linea['total']) }}</strong>
-                            <div class="quien">{{ $fbc($linea['total']) }} FBC</div>
+                            <strong>{{ $principal($linea['total']) }}</strong>
+                            <div class="quien">{{ $secundario($linea['total']) }}</div>
                         </td>
                     </tr>
                 @endforeach
                 <tr>
                     <th colspan="2">Total</th>
                     <td style="text-align:right;white-space:nowrap">
-                        <strong style="font-size:1.15rem">{{ $pesos($total) }}</strong>
-                        <div class="quien">{{ $fbc($total) }} FabCoins</div>
+                        <strong style="font-size:1.15rem">{{ $principal($total) }}</strong>
+                        <div class="quien">{{ $secundario($total) }}</div>
                     </td>
                 </tr>
                 </tbody>
@@ -211,9 +224,9 @@
                         @endif
 
                         <div class="precio">
-                            {{ $pesos($fila['precio']) }}
+                            {{ $principal($fila['precio']) }}
                             <span class="quien">
-                                {{ $fbc($fila['precio']) }} FBC
+                                {{ $secundario($fila['precio']) }}
                                 @if ($fila['derivado'] ?? false)
                                     · estimado del costo
                                 @endif
@@ -257,8 +270,9 @@
         .ficha .cuerpo { padding:.8rem .9rem; display:flex; flex-direction:column; gap:.25rem;
                          flex:1; }
         .ficha .detalle { font-size:.83rem; margin:.2rem 0; color:var(--ink-soft); }
-        .ficha .precio { font-weight:700; margin-top:auto; padding-top:.4rem; }
-        .ficha .precio .quien { font-weight:400; }
+        .ficha .precio { font-weight:700; font-size:1.3rem; line-height:1.2;
+                         margin-top:auto; padding-top:.5rem; }
+        .ficha .precio .quien { font-weight:400; font-size:.8rem; display:block; }
         .ficha .anadir { display:flex; gap:.4rem; margin-top:.5rem; }
         .ficha .anadir input { width:5rem; }
         .ficha .anadir button { margin:0; flex:1; }

@@ -80,13 +80,27 @@ class ServiceOfferingResource extends Resource
                         ->required()
                         ->placeholder('hoja, pieza, hora'),
 
+                    /*
+                     * En pesos, que es como se piensa un precio de venta.
+                     *
+                     * Pedirlo en centesimas de FabCoin obligaba a traducir de
+                     * cabeza —30.000 pesos son 3.000 centesimas— y un cero de
+                     * mas ahi sale publicado en la tienda. El libro sigue
+                     * guardando unidades menores; la traduccion la hace el
+                     * formulario, que es donde no se equivoca.
+                     */
                     TextInput::make('price_minor')
-                        ->label('Precio')
+                        ->label('Precio de venta al público')
                         ->numeric()
                         ->required()
                         ->minValue(0)
-                        ->suffix('centésimas de FabCoin')
-                        ->helperText('En unidades menores, como el resto del sistema: 100 = 1 FabCoin.'),
+                        ->prefix(config('fabos.money.symbol'))
+                        ->formatStateUsing(fn (?int $state) => $state === null
+                            ? null
+                            : app(\App\Services\Money\PricingService::class)->aPesos((int) $state))
+                        ->dehydrateStateUsing(fn ($state) => app(\App\Services\Money\PricingService::class)
+                            ->aMenor((int) $state))
+                        ->helperText('Lo que paga quien lo compra. Se guarda en FabCoins a la tasa del laboratorio.'),
 
                     TextInput::make('lead_time_days')
                         ->label('Cuánto tarda')

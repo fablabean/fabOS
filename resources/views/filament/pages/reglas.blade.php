@@ -510,6 +510,23 @@
                     tarifarlos uno por uno. Estos se muestran como <em>estimados</em>.</li>
             </ol>
 
+            <div class="porque">
+                <b>El precio de venta no es el costo.</b> El costo dice lo que nos costó traerlo;
+                el precio, lo que cobramos. Un estimado sirve para un rollo de filamento, pero es
+                falso para lo que se fabrica: una pieza impresa se vendería por el precio del
+                plástico que lleva, sin el diseño, la máquina ni las horas. Por eso el precio se
+                escribe <b>en la ficha del insumo</b>, donde se decide vender, y en pesos, que es
+                como se piensa un precio. Se guarda en la tarifa —la misma que leen el carrito, la
+                venta de mostrador y el costeo— para que no haya dos números para lo mismo.
+            </div>
+
+            <div class="porque">
+                <b>Cuál moneda va grande depende de quién mira.</b> Quien entra de fuera piensa en
+                pesos: un precio en una moneda que no conoce no le dice si puede pagarlo. Quien
+                tiene cuenta paga con {{ $moneda['name'] }}s, y el número que le importa es el que
+                le mueve el saldo. La otra no se esconde: va al lado.
+            </div>
+
             <dl>
                 <dt>Tasa supuesta</dt>
                 <dd>1 {{ $moneda['name'] }} = {{ number_format($tienda['tasa'], 0, ',', '.') }}

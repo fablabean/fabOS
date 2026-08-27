@@ -79,6 +79,26 @@ class SupplyForm
                             ->label('Se ve en la tienda')
                             ->helperText('Necesita además tener precio: sin él no aparece, aunque esté marcado.'),
 
+                        /*
+                         * El precio de venta, donde se decide vender.
+                         *
+                         * No es una columna del insumo: escribe la **tarifa**,
+                         * que es lo que ya leen el carrito, la venta de
+                         * mostrador y el costeo. Un precio guardado aparte
+                         * seria un segundo numero para lo mismo.
+                         *
+                         * Y no es el costo. El costo dice lo que nos costo
+                         * traerlo; el precio, lo que cobramos. Confundirlos
+                         * hace que una pieza impresa se venda por el precio del
+                         * plastico que lleva.
+                         */
+                        TextInput::make('precio_venta')
+                            ->label('Precio de venta al público')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->helperText('Lo que paga quien compra. Si se deja vacío, la tienda estima un precio con el costo y el margen, y avisa de que lo hizo.'),
+
                         FileUpload::make('photo_path')
                             ->label('Foto')
                             ->image()

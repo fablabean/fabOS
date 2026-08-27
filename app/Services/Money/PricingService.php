@@ -34,6 +34,81 @@ class PricingService
         return $this->derivadoDelCosto($insumo);
     }
 
+    /**
+     * El precio de venta al público **en pesos**, si alguien lo decidió.
+     *
+     * Nulo significa que nadie lo ha puesto y la tienda está estimando. Se
+     * devuelve en pesos porque es en pesos como se piensa un precio de venta:
+     * pedirle a quien tarifa que traduzca a FabCoins de cabeza es pedirle que
+     * se equivoque.
+     */
+    public function precioEnPesosDe(Supply $insumo): ?int
+    {
+        $tarifa = $this->tarifaDe($insumo);
+
+        return $tarifa ? $this->aPesos((int) $tarifa->price_minor) : null;
+    }
+
+    public function aPesos(int $menor): int
+    {
+        return (int) round($menor / (int) config('fabos.currency.minor_units') * $this->tasa());
+    }
+
+    public function aMenor(int $pesos): int
+    {
+        return (int) round($pesos / $this->tasa() * (int) config('fabos.currency.minor_units'));
+    }
+
+    /**
+     * Fija —o retira— el precio de venta al público de un insumo.
+     *
+     * Escribe la **tarifa**, que es lo que ya leen el carrito, la venta de
+     * mostrador y el costeo de un proyecto. Guardar el precio en otro sitio
+     * dejaría dos números para lo mismo, y el día que difieran nadie sabría
+     * cuál cobra de verdad.
+     *
+     * Vaciarlo no borra la tarifa: la desactiva. Así queda el rastro de que
+     * hubo un precio y de cuál era, que es justo lo que se pregunta cuando un
+     * cliente reclama lo que le cobraron el mes pasado.
+     */
+    public function fijarPrecioEnPesos(Supply $insumo, ?int $pesos): ?RateCard
+    {
+        $slug = 'insumo-' . $insumo->id;
+        $tarifa = $this->tarifaDe($insumo) ?? RateCard::where('slug', $slug)->first();
+
+        if (! $pesos || $pesos <= 0) {
+            $tarifa?->update(['is_active' => false]);
+
+            return null;
+        }
+
+        $valores = [
+            'name'          => 'Venta al público · ' . $insumo->name,
+            'rateable_type' => Supply::class,
+            'rateable_id'   => $insumo->id,
+            'basis'         => 'unidad',
+            'unit'          => $insumo->unit,
+            'price_minor'   => $this->aMenor($pesos),
+            'is_active'     => true,
+            // Lo puso una persona: no es un supuesto pendiente de decidir.
+            'is_assumed'    => false,
+            'notes'         => 'Se fija desde la ficha del insumo.',
+        ];
+
+        if ($tarifa) {
+            $tarifa->update($valores);
+
+            return $tarifa;
+        }
+
+        return RateCard::create($valores + ['slug' => $slug]);
+    }
+
+    private function tasa(): int
+    {
+        return max(1, (int) config('fabos.currency.peso_rate'));
+    }
+
     /** Si el precio salió de un cálculo y no de una decisión, conviene decirlo. */
     public function esDerivado(Supply $insumo): bool
     {

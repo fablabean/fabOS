@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Supplies\Pages;
 
 use App\Filament\Resources\Supplies\SupplyResource;
 use App\Services\Inventory\StockService;
+use App\Services\Money\PricingService;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateSupply extends CreateRecord
@@ -13,11 +14,15 @@ class CreateSupply extends CreateRecord
     /** Lo que se escribió como existencia inicial, para anotarlo después. */
     private float $inicial = 0;
 
+    /** El precio de venta: no es columna del insumo, es una tarifa. */
+    private ?int $precio = null;
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->inicial = (float) ($data['existencia_inicial'] ?? 0);
+        $this->precio = filled($data['precio_venta'] ?? null) ? (int) $data['precio_venta'] : null;
 
-        unset($data['existencia_inicial']);
+        unset($data['existencia_inicial'], $data['precio_venta']);
 
         return $data;
     }
@@ -32,6 +37,8 @@ class CreateSupply extends CreateRecord
      */
     protected function afterCreate(): void
     {
+        app(PricingService::class)->fijarPrecioEnPesos($this->record, $this->precio);
+
         if ($this->inicial <= 0) {
             return;
         }
