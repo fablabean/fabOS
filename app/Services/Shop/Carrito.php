@@ -101,24 +101,33 @@ class Carrito
      */
     public function lineas(): Collection
     {
+        // Los escalones vienen de una vez: preguntarlos linea por linea son
+        // tantas consultas como cosas lleve el carrito.
         $insumos = Supply::enLaTienda()
             ->whereIn('id', collect($this->crudo())->where('tipo', 'insumo')->pluck('id'))
+            ->with('priceBreaks')
             ->get()
             ->keyBy('id');
 
         $servicios = ServiceOffering::enLaTienda()
             ->whereIn('id', collect($this->crudo())->where('tipo', 'servicio')->pluck('id'))
+            ->with('priceBreaks')
             ->get()
             ->keyBy('id');
 
         return collect($this->crudo())
             ->map(function (array $linea) use ($insumos, $servicios) {
+                // El precio se pregunta CON la cantidad: si no, el carrito
+                // enseñaria el precio de una sola y el descuento por veinte
+                // solo aparecerian al cobrar, que es cuando ya nadie lo cree.
+                $cantidad = (float) $linea['cantidad'];
+
                 if ($linea['tipo'] === 'insumo') {
                     $cosa = $insumos[$linea['id']] ?? null;
-                    $precio = $cosa ? $this->precios->precioDe($cosa) : 0;
+                    $precio = $cosa ? $this->precios->precioDe($cosa, $cantidad) : 0;
                 } else {
                     $cosa = $servicios[$linea['id']] ?? null;
-                    $precio = (int) ($cosa?->price_minor ?? 0);
+                    $precio = $cosa ? $this->precios->precioDeServicio($cosa, $cantidad) : 0;
                 }
 
                 if (! $cosa || $precio <= 0) {
@@ -131,7 +140,7 @@ class Carrito
                     'cosa'     => $cosa,
                     'nombre'   => $cosa->name,
                     'unidad'   => $cosa->unit,
-                    'cantidad' => (float) $linea['cantidad'],
+                    'cantidad' => $cantidad,
                     'precio'   => $precio,
                     'total'    => (int) round($precio * $linea['cantidad']),
                 ];

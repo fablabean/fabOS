@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Supplies\Schemas;
 
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -116,6 +117,55 @@ class SupplyForm
                                 fn ($file) => app(\App\Services\Media\OptimizadorDeImagen::class)
                                     ->guardar($file, 'tienda')
                             ),
+
+
+                        /*
+                         * Descuentos por cantidad.
+                         *
+                         * Un laboratorio cobra distinto una pieza que veinte:
+                         * el montaje se reparte, la lamina se aprovecha entera,
+                         * la maquina se para una vez y no veinte. Sin esto se
+                         * negocia por WhatsApp y se cobra a ojo, que es como
+                         * dos personas acaban pagando distinto por lo mismo.
+                         *
+                         * Se escribe el PRECIO de cada escalon, no el
+                         * descuento: un porcentaje se mueve solo cuando cambia
+                         * el precio base, y entonces se cobra algo que nadie
+                         * decidio.
+                         */
+                        Repeater::make('priceBreaks')
+                            ->label('Descuentos por cantidad')
+                            ->relationship()
+                            ->addActionLabel('Añadir un escalón')
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state) => filled($state['min_quantity'] ?? null)
+                                ? 'Desde ' . rtrim(rtrim(number_format((float) $state['min_quantity'], 3, ',', '.'), '0'), ',')
+                                : null)
+                            ->helperText('«De 10 en adelante, a $20.000 cada uno.» Se aplica solo al llegar a la cantidad.')
+                            ->schema([
+                                TextInput::make('min_quantity')
+                                    ->label('Desde cuántas')
+                                    ->numeric()
+                                    ->required()
+                                    // Un escalon que arrancara en una seria el
+                                    // precio a secas con otro nombre.
+                                    ->minValue(2)
+                                    ->helperText('En la unidad en que se vende.'),
+
+                                TextInput::make('price_minor')
+                                    ->label('Precio por unidad')
+                                    ->numeric()
+                                    ->required()
+                                    ->minValue(0)
+                                    ->prefix(config('fabos.money.symbol'))
+                                    ->formatStateUsing(fn (?int $state) => $state === null
+                                        ? null
+                                        : app(\App\Services\Money\PricingService::class)->aPesos((int) $state))
+                                    ->dehydrateStateUsing(fn ($state) => app(\App\Services\Money\PricingService::class)
+                                        ->aMenor((int) $state)),
+                            ]),
 
                         Textarea::make('public_description')
                             ->label('Cómo se explica en la tienda')

@@ -2,7 +2,9 @@
 
 namespace App\Services\Money;
 
+use App\Models\PriceBreak;
 use App\Models\RateCard;
+use App\Models\ServiceOffering;
 use App\Models\Supply;
 
 /**
@@ -22,16 +24,83 @@ use App\Models\Supply;
  */
 class PricingService
 {
-    /** Precio unitario en unidades menores de FabCoin. */
-    public function precioDe(Supply $insumo): int
+    /**
+     * Precio unitario en unidades menores de FabCoin.
+     *
+     * La cantidad importa: un laboratorio cobra distinto una pieza que veinte
+     * —el montaje se reparte, la lamina se aprovecha entera, la maquina se
+     * para una vez y no veinte—. Si el insumo tiene escalones, manda el que
+     * corresponda a lo que se lleva.
+     */
+    public function precioDe(Supply $insumo, float $cantidad = 1): int
     {
         $tarifa = $this->tarifaDe($insumo);
+        $base = $tarifa ? (int) $tarifa->price_minor : $this->derivadoDelCosto($insumo);
 
-        if ($tarifa) {
-            return (int) $tarifa->price_minor;
+        return $this->conEscalon($insumo, $base, $cantidad);
+    }
+
+    /**
+     * Lo mismo para un servicio, que lleva su precio encima.
+     *
+     * Existe para que quien cobra no tenga que acordarse de mirar los
+     * escalones a mano segun sea insumo o servicio: los dos se preguntan
+     * igual, y el que se pregunta a mano es el que se olvida.
+     */
+    public function precioDeServicio(ServiceOffering $servicio, float $cantidad = 1): int
+    {
+        return $this->conEscalon($servicio, (int) $servicio->price_minor, $cantidad);
+    }
+
+    /**
+     * El escalon que aplica: el mas alto que no pase de lo que se lleva.
+     *
+     * Por debajo de dos unidades no se consulta nada. Un escalon que arrancara
+     * en una seria el precio a secas con otro nombre, y el formulario no deja
+     * crearlo; ahorrarse la consulta en el catalogo entero —decenas de fichas,
+     * todas a cantidad uno— es lo que mantiene la tienda rapida.
+     *
+     * @param  Supply|ServiceOffering  $cosa
+     */
+    private function conEscalon($cosa, int $base, float $cantidad): int
+    {
+        if ($cantidad < 2 || $base <= 0) {
+            return $base;
         }
 
-        return $this->derivadoDelCosto($insumo);
+        $escalones = $cosa->relationLoaded('priceBreaks')
+            ? $cosa->priceBreaks
+            : $cosa->priceBreaks()->get();
+
+        $escalon = $escalones
+            ->filter(fn (PriceBreak $e) => (float) $e->min_quantity <= $cantidad)
+            ->sortByDesc(fn (PriceBreak $e) => (float) $e->min_quantity)
+            ->first();
+
+        return $escalon ? (int) $escalon->price_minor : $base;
+    }
+
+    /**
+     * Los escalones de algo, listos para enseñarlos: cantidad, precio y cuanto
+     * se ahorra frente a llevarse una sola.
+     *
+     * @param  Supply|ServiceOffering  $cosa
+     * @return array<int, array{desde: float, precio: int, descuento: float}>
+     */
+    public function escalonesDe($cosa, ?int $base = null): array
+    {
+        $base ??= $cosa instanceof Supply
+            ? $this->precioDe($cosa)
+            : (int) $cosa->price_minor;
+
+        return $cosa->priceBreaks
+            ->map(fn (PriceBreak $e) => [
+                'desde'     => (float) $e->min_quantity,
+                'precio'    => (int) $e->price_minor,
+                'descuento' => $e->descuentoSobre($base),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

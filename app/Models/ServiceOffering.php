@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Un servicio con precio cerrado (§14).
@@ -63,5 +64,16 @@ class ServiceOffering extends Model
         return $this->lead_time_days === 1
             ? 'listo al día siguiente'
             : 'listo en ' . $this->lead_time_days . ' días';
+    }
+
+    /**
+     * Los escalones de precio por cantidad, del mas barato al mas caro.
+     *
+     * Ordenados por cantidad para que quien los lea —la tienda, el carrito—
+     * no tenga que ordenarlos otra vez y arriesgarse a ordenarlos distinto.
+     */
+    public function priceBreaks(): MorphMany
+    {
+        return $this->morphMany(PriceBreak::class, 'priceable')->orderBy('min_quantity');
     }
 }

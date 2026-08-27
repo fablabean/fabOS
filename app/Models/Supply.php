@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Insumo: lo que se consume y se repone (§7, §13).
@@ -109,5 +110,16 @@ class Supply extends Model
     {
         return $this->reorder_point !== null
             && (float) $this->stock <= (float) $this->reorder_point;
+    }
+
+    /**
+     * Los escalones de precio por cantidad, del mas barato al mas caro.
+     *
+     * Ordenados por cantidad para que quien los lea —la tienda, el carrito—
+     * no tenga que ordenarlos otra vez y arriesgarse a ordenarlos distinto.
+     */
+    public function priceBreaks(): MorphMany
+    {
+        return $this->morphMany(PriceBreak::class, 'priceable')->orderBy('min_quantity');
     }
 }

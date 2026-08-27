@@ -78,6 +78,11 @@ class Project extends Model
             ->selectRaw("count(*) as cuantos, sum($valor) as valor")
             ->first();
 
+        $enPausa = static::query()
+            ->where('status', 'pausado')
+            ->selectRaw("count(*) as cuantos, sum($valor) as valor")
+            ->first();
+
         $tarjetas = [];
 
         foreach (self::ETAPAS as $etapa => $nombre) {
@@ -90,19 +95,46 @@ class Project extends Model
                 'cuantos' => (int) ($fila->cuantos ?? 0),
                 'valor'   => (int) ($fila->valor ?? 0),
                 'cerrada' => $esCierre,
+                'pausa'   => false,
             ];
         }
+
+        /*
+         * Lo pausado va en su propia tarjeta, no repartido por etapas.
+         *
+         * El embudo mide lo que se mueve; un proyecto parado en propuesta
+         * sumado a los que estan vivos diria que hay mas cosas avanzando de
+         * las que hay. Aparte se ve, y se ve que no avanza.
+         */
+        $tarjetas[] = [
+            'etapa'   => 'pausado',
+            'nombre'  => 'En pausa',
+            'cuantos' => (int) ($enPausa->cuantos ?? 0),
+            'valor'   => (int) ($enPausa->valor ?? 0),
+            'cerrada' => false,
+            'pausa'   => true,
+        ];
 
         return $tarjetas;
     }
 
     public const ESTADOS = [
         'activo'     => 'Activo',
+        // Parado, no muerto. Un proyecto que espera una firma, una pieza que
+        // no llega o el semestre siguiente sigue vivo: marcarlo descartado
+        // para que deje de aparecer como atrasado es perder el rastro de que
+        // hay que volver a el.
+        'pausado'    => 'En pausa',
         'ganado'     => 'Ganado',
         'perdido'    => 'Perdido',
         'descartado' => 'Descartado',
         'cerrado'    => 'Cerrado',
     ];
+
+    public function estaEnPausa(): bool
+    {
+        return $this->status === 'pausado';
+    }
 
     /**
      * De quién es el encargo. Cambia el trámite, no el trabajo.

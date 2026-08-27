@@ -738,6 +738,36 @@ class ProjectService
         return $proyecto->refresh();
     }
 
+    /**
+     * Pausar: parado, no muerto.
+     *
+     * Un proyecto que espera una firma, una pieza que no llega o el semestre
+     * siguiente sigue vivo. Sin este estado, lo que se hace es descartarlo
+     * para que deje de aparecer como atrasado, y entonces se pierde el rastro
+     * de que hay que volver a el.
+     *
+     * No se toca `closed_at`: no se ha cerrado nada. El motivo va a las notas
+     * de cierre porque es el mismo campo donde vive «que paso con esto», y
+     * tener dos sitios para lo mismo acaba dejando uno vacio.
+     */
+    public function pausar(Project $proyecto, string $motivo): Project
+    {
+        $proyecto->update([
+            'status'        => 'pausado',
+            'closing_notes' => $motivo,
+        ]);
+
+        return $proyecto->refresh();
+    }
+
+    /** Y volver: se limpia el motivo, que ya no describe donde esta. */
+    public function reanudar(Project $proyecto): Project
+    {
+        $proyecto->update(['status' => 'activo', 'closing_notes' => null]);
+
+        return $proyecto->refresh();
+    }
+
     public function reabrir(Project $proyecto): Project
     {
         $proyecto->update(['status' => 'activo', 'closed_at' => null]);

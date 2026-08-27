@@ -45,6 +45,12 @@ class EmbudoDeProyectos extends Widget
      */
     public function enlaceDe(array $tarjeta): string
     {
+        // La de pausa no es una etapa: lo pausado esta repartido por todas, y
+        // filtrar por una sola escondería el resto.
+        if ($tarjeta['pausa'] ?? false) {
+            return '/admin/projects?tableFilters[status][value]=pausado';
+        }
+
         $filtros = ['tableFilters[stage][value]=' . $tarjeta['etapa']];
 
         $filtros[] = 'tableFilters[status][value]=' . ($tarjeta['cerrada'] ? 'cerrado' : 'activo');

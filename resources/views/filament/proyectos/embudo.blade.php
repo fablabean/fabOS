@@ -15,6 +15,10 @@
                         line-height:1.15; }
         .emb .valor { font-size:.72rem; color:rgb(107 114 128); }
         .emb .vacia .cuantos { color:rgb(156 163 175); }
+        /* Lo pausado no es una etapa del embudo: se separa a la vista para que
+           no se lea como una cosa mas que esta avanzando. */
+        .emb .parada { border-style:dashed; }
+        .emb .parada .cuantos { color:rgb(217 119 6); }
         .emb .nota { font-size:.78rem; color:rgb(107 114 128); margin-top:.7rem; }
         .dark .emb a.paso { border-color:rgb(55 65 81); background:rgb(31 41 55); }
     </style>
@@ -25,7 +29,9 @@
         $simbolo = config('fabos.money.symbol');
         $pesos = fn (int $v) => $simbolo . number_format($v, 0, ',', '.');
 
-        $enCurso = collect($tarjetas)->reject(fn ($t) => $t['cerrada'])->sum('cuantos');
+        $enCurso = collect($tarjetas)
+            ->reject(fn ($t) => $t['cerrada'] || ($t['pausa'] ?? false))
+            ->sum('cuantos');
     @endphp
 
     <div class="emb">
@@ -38,7 +44,7 @@
 
             <div class="rejilla">
                 @foreach ($tarjetas as $t)
-                    <a class="paso {{ $t['cuantos'] === 0 ? 'vacia' : '' }}"
+                    <a class="paso {{ $t['cuantos'] === 0 ? 'vacia' : '' }} {{ ($t['pausa'] ?? false) ? 'parada' : '' }}"
                        href="{{ $this->enlaceDe($t) }}">
                         <div class="etapa">{{ $t['nombre'] }}</div>
                         <div class="cuantos">{{ $t['cuantos'] }}</div>
@@ -47,6 +53,8 @@
                                 {{ $pesos($t['valor']) }}
                             @elseif ($t['cerrada'])
                                 cerrados en {{ $this->ano() }}
+                            @elseif ($t['pausa'] ?? false)
+                                parados, no muertos
                             @else
                                 &nbsp;
                             @endif
@@ -56,7 +64,9 @@
             </div>
 
             <p class="nota">
-                Las cinco primeras cuentan lo activo, que es trabajo por delante. La de cierre
+                Las cinco primeras cuentan lo activo, que es trabajo por delante. Lo pausado va
+                aparte: sigue vivo, pero no está avanzando, y sumarlo diría que hay más cosas en
+                marcha de las que hay. La de cierre
                 cuenta lo cerrado en {{ $this->ano() }}: el total histórico crece para siempre y
                 a los dos años deja de decir nada. El valor es lo acordado, o lo estimado
                 mientras no haya acuerdo.

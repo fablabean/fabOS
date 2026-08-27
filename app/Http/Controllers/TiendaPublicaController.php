@@ -45,7 +45,7 @@ class TiendaPublicaController extends Controller
             // llevar hoy, y un catalogo lleno de cosas que no hay erosiona esa
             // promesa. Para lo que no hay esta pedir cotizacion.
             ->where('stock', '>', 0)
-            ->with('area')
+            ->with(['area', 'priceBreaks'])
             ->orderBy('name')
             ->get()
             ->map(fn (Supply $s) => [
@@ -55,18 +55,23 @@ class TiendaPublicaController extends Controller
                 // Un precio derivado del costo de compra no lo decidio nadie:
                 // decirlo evita que se lea como una tarifa acordada.
                 'derivado' => $this->precios->esDerivado($s),
+                // Los escalones se enseñan antes de comprar. Un descuento que
+                // solo aparece al llegar a la cantidad no cambia la decision de
+                // nadie: no llega a saberse que existia.
+                'escalones' => $this->precios->escalonesDe($s),
             ])
             ->filter(fn (array $f) => $f['precio'] > 0);
 
         $servicios = ServiceOffering::enLaTienda()
-            ->with('area')
+            ->with(['area', 'priceBreaks'])
             ->orderBy('name')
             ->get()
             ->map(fn (ServiceOffering $s) => [
-                'cosa'     => $s,
-                'tipo'     => 'servicio',
-                'precio'   => (int) $s->price_minor,
-                'derivado' => false,
+                'cosa'      => $s,
+                'tipo'      => 'servicio',
+                'precio'    => (int) $s->price_minor,
+                'derivado'  => false,
+                'escalones' => $this->precios->escalonesDe($s),
             ])
             ->filter(fn (array $f) => $f['precio'] > 0);
 

@@ -138,9 +138,61 @@ class EmbudoDeProyectosTest extends TestCase
     {
         $resumen = Project::resumenDelEmbudo();
 
-        $this->assertCount(count(Project::ETAPAS), $resumen);
+        // Las etapas, mas la tarjeta de lo pausado.
+        $this->assertCount(count(Project::ETAPAS) + 1, $resumen);
         $this->assertSame(0, $resumen[0]['cuantos']);
         $this->assertSame(0, $resumen[0]['valor']);
+    }
+
+    // -------------------------------------------------------------- la pausa
+
+    /**
+     * Lo pausado va en su propia tarjeta, no repartido por etapas.
+     *
+     * El embudo mide lo que se mueve. Un proyecto parado en propuesta, sumado
+     * a los que están vivos, diría que hay más cosas avanzando de las que hay.
+     */
+    public function test_lo_pausado_sale_de_su_etapa_y_va_a_su_tarjeta(): void
+    {
+        $this->proyecto(['stage' => 'propuesta']);
+        $pausado = $this->proyecto(['stage' => 'propuesta', 'estimated_value' => 4_000_000]);
+
+        app(\App\Services\Projects\ProjectService::class)
+            ->pausar($pausado, 'Esperando la firma del convenio.');
+
+        $this->assertSame(1, $this->etapa('propuesta')['cuantos']);
+        $this->assertSame(1, $this->etapa('pausado')['cuantos']);
+        $this->assertSame(4_000_000, $this->etapa('pausado')['valor']);
+    }
+
+    /** Pausar no es cerrar: no se le pone fecha de cierre. */
+    public function test_pausar_no_cierra_el_proyecto(): void
+    {
+        $p = $this->proyecto(['stage' => 'ejecucion']);
+
+        $proyectos = app(\App\Services\Projects\ProjectService::class);
+        $proyectos->pausar($p, 'Falta una pieza que no llega.');
+
+        $this->assertSame('pausado', $p->fresh()->status);
+        $this->assertNull($p->fresh()->closed_at);
+        $this->assertTrue($p->fresh()->estaEnPausa());
+        $this->assertFalse($p->fresh()->estaCerrado());
+        $this->assertSame('Falta una pieza que no llega.', $p->fresh()->closing_notes);
+    }
+
+    /** Y al reanudar vuelve a contar, sin el motivo, que ya no describe dónde está. */
+    public function test_reanudar_lo_devuelve_a_su_etapa(): void
+    {
+        $p = $this->proyecto(['stage' => 'ejecucion']);
+
+        $proyectos = app(\App\Services\Projects\ProjectService::class);
+        $proyectos->pausar($p, 'Esperando el semestre siguiente.');
+        $proyectos->reanudar($p->fresh());
+
+        $this->assertSame('activo', $p->fresh()->status);
+        $this->assertNull($p->fresh()->closing_notes);
+        $this->assertSame(1, $this->etapa('ejecucion')['cuantos']);
+        $this->assertSame(0, $this->etapa('pausado')['cuantos']);
     }
 
     // ---------------------------------------------------------- la pantalla

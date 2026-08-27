@@ -122,6 +122,7 @@ class Reglas extends Page
             'proyectos'  => [
                 'porEtapa' => Project::where('status', 'activo')->get()->groupBy('stage')->map->count(),
                 'activos'  => Project::where('status', 'activo')->count(),
+                'pausados' => Project::where('status', 'pausado')->count(),
                 'cerrados' => Project::where('stage', 'cierre')->count(),
                 'perdidos' => Project::whereIn('status', ['perdido', 'descartado'])->count(),
                 'horaRef'  => (int) config('fabos.money.hourly_cost'),

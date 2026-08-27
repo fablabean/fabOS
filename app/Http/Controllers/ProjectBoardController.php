@@ -60,7 +60,9 @@ class ProjectBoardController extends Controller
 
         $proyectos = Project::query()
             ->with('lead')
-            ->when(! $todos, fn ($q) => $q->whereIn('status', ['activo', 'ganado']))
+            // Lo pausado tambien: sigue vivo, y verlo parado al lado de lo que
+            // avanza es justo lo que recuerda que hay que volver a el.
+            ->when(! $todos, fn ($q) => $q->whereIn('status', ['activo', 'ganado', 'pausado']))
             ->orderByRaw('starts_on is null, starts_on')
             ->orderBy('code')
             ->get();

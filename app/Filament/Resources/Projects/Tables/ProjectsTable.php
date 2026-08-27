@@ -102,6 +102,7 @@ class ProjectsTable
                     ->formatStateUsing(fn (string $state) => Project::ESTADOS[$state] ?? $state)
                     ->color(fn (string $state) => match ($state) {
                         'activo'  => 'success',
+                        'pausado' => 'warning',
                         'ganado'  => 'success',
                         'cerrado' => 'gray',
                         default   => 'danger',
@@ -266,6 +267,8 @@ class ProjectsTable
                 self::tablero(),
                 self::avanzar(),
                 self::mover(),
+                self::pausar(),
+                self::reanudar(),
                 self::descartar(),
                 self::borrar(),
                 EditAction::make()->iconButton()->tooltip('Editar'),
@@ -356,6 +359,56 @@ class ProjectsTable
             });
     }
 
+    /**
+     * Pausar, sin darlo por muerto.
+     *
+     * Antes, un proyecto que esperaba una firma o el semestre siguiente solo
+     * podia descartarse para que dejara de contarse como activo. Y lo que se
+     * descarta no se vuelve a mirar.
+     */
+    private static function pausar(): Action
+    {
+        return Action::make('pausar')
+            ->label('Pausar')
+            ->iconButton()
+            ->tooltip('Pausar')
+            ->icon('heroicon-o-pause-circle')
+            ->color('warning')
+            ->visible(fn (Project $r) => $r->status === 'activo')
+            ->modalDescription('Sigue vivo: deja de contarse como trabajo en curso, pero no se cierra ni se descarta.')
+            ->schema([
+                Textarea::make('motivo')
+                    ->label('Por qué se pausa')
+                    ->required()
+                    ->helperText('Lo que hace falta para volver a arrancarlo. Sin esto, dentro de dos meses nadie sabe qué se estaba esperando.'),
+            ])
+            ->action(function (Project $record, array $data) {
+                app(ProjectService::class)->pausar($record, $data['motivo']);
+
+                Notification::make()->title('En pausa')->success()->send();
+            });
+    }
+
+    private static function reanudar(): Action
+    {
+        return Action::make('reanudar')
+            ->label('Reanudar')
+            ->iconButton()
+            ->tooltip('Reanudar')
+            ->icon('heroicon-o-play-circle')
+            ->color('success')
+            ->visible(fn (Project $r) => $r->status === 'pausado')
+            ->requiresConfirmation()
+            ->modalDescription(fn (Project $r) => $r->closing_notes
+                ? 'Se pausó por: ' . $r->closing_notes
+                : 'Vuelve a contarse como trabajo en curso.')
+            ->action(function (Project $record) {
+                app(ProjectService::class)->reanudar($record);
+
+                Notification::make()->title('Reanudado')->success()->send();
+            });
+    }
+
     private static function descartar(): Action
     {
         return Action::make('descartar')
@@ -364,7 +417,10 @@ class ProjectsTable
             ->tooltip('Descartar')
             ->icon('heroicon-o-archive-box-x-mark')
             ->color('danger')
-            ->visible(fn (Project $r) => $r->status === 'activo')
+            // Tambien desde pausa: lo que se paro hace medio año a veces no
+            // vuelve, y obligar a reanudarlo para poder descartarlo es un paso
+            // que solo sirve para ensuciar el historico.
+            ->visible(fn (Project $r) => in_array($r->status, ['activo', 'pausado'], true))
             ->schema([
                 Select::make('estado')
                     ->label('Qué pasó')

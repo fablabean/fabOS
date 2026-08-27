@@ -59,7 +59,9 @@ class ShopService
             throw new ShopException('La cantidad debe ser mayor que cero.');
         }
 
-        $precio = $precioMenor ?? $this->precios->precioDe($insumo);
+        // Con la cantidad: quien compra veinte en el mostrador paga lo mismo
+        // que quien los compra por la tienda.
+        $precio = $precioMenor ?? $this->precios->precioDe($insumo, $cantidad);
 
         if ($precio <= 0) {
             throw new ShopException(

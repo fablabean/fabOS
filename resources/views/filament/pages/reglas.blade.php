@@ -776,6 +776,8 @@
             <dl>
                 <dt>Proyectos activos</dt>
                 <dd>{{ $proyectos['activos'] }}</dd>
+                <dt>En pausa</dt>
+                <dd>{{ $proyectos['pausados'] }} · parados, no descartados</dd>
                 @foreach (\App\Models\Project::ETAPAS as $clave => $nombre)
                     <dt>{{ $nombre }}</dt>
                     <dd>{{ $proyectos['porEtapa'][$clave] ?? 0 }}</dd>
