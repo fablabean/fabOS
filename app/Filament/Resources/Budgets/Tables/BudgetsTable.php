@@ -108,9 +108,11 @@ class BudgetsTable
             // La equivalencia, a la vista: el presupuesto se habla en pesos y
             // el laboratorio cobra en FabCoins, y sin la tasa delante hay que
             // ir a buscarla para entender cualquiera de las dos cifras.
+            // El resumen de arriba ya explica de donde salen las cifras: aqui
+            // solo queda lo que no dice, para no decir dos veces lo mismo en
+            // una pantalla.
             ->description(sprintf(
-                'Comprometido y ejecutado no se escriben: salen de las solicitudes de compra. '
-                . 'Aprobada compromete; recibida ejecuta. Lo de antes del sistema se anota como '
+                'Aprobada compromete; recibida ejecuta. Lo de antes del sistema se anota como '
                 . '«ejecutado de arranque» al editar. Todo en pesos, que es como se habla con la '
                 . 'Universidad: 1 %s = %s%s.',
                 config('fabos.currency.code'),

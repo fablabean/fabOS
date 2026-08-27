@@ -138,6 +138,58 @@ class Budget extends Model
         return $this->amount - $this->comprometido() - $this->ejecutado();
     }
 
+    /**
+     * El resumen del año: cuánto hay, en qué va y cuánto queda.
+     *
+     * Solo cuenta los de **gasto**, y a propósito. Un presupuesto de venta es
+     * una meta, no plata asignada: sumar los $10 millones que esperamos
+     * facturar al aprobado haría creer que hay diez millones más para gastar
+     * que nadie ha girado. Se devuelve al lado, como control interno, para que
+     * se vea sin confundirse con lo otro.
+     *
+     * Tampoco entran los borradores ni los cerrados: un presupuesto que aún se
+     * está escribiendo no es plata que se pueda comprometer.
+     *
+     * @return array{gasto: array, venta: array}
+     */
+    public static function resumenDelAno(int $ano): array
+    {
+        $vigentes = static::where('year', $ano)->where('status', 'vigente')->get();
+
+        $gasto = $vigentes->filter(fn (self $p) => ! $p->esDeVenta());
+        $venta = $vigentes->filter(fn (self $p) => $p->esDeVenta());
+
+        $aprobado = (int) $gasto->sum('amount');
+        $comprometido = (int) $gasto->sum(fn (self $p) => $p->comprometido());
+        $ejecutado = (int) $gasto->sum(fn (self $p) => $p->ejecutado());
+
+        $meta = (int) $venta->sum('amount');
+        $facturado = (int) $venta->sum(fn (self $p) => $p->ejecutado());
+
+        return [
+            'gasto' => [
+                'cuantos'      => $gasto->count(),
+                'aprobado'     => $aprobado,
+                'comprometido' => $comprometido,
+                'ejecutado'    => $ejecutado,
+                'disponible'   => $aprobado - $comprometido - $ejecutado,
+                'usado'        => $aprobado > 0
+                    ? round((($comprometido + $ejecutado) / $aprobado) * 100, 1)
+                    : 0.0,
+                // Lo anotado a mano de antes del sistema, aparte: es lo unico
+                // del resumen que nadie puede rastrear hasta una solicitud.
+                'arranque'     => (int) $gasto->sum('opening_executed'),
+            ],
+            'venta' => [
+                'cuantos'   => $venta->count(),
+                'meta'      => $meta,
+                'facturado' => $facturado,
+                'falta'     => max(0, $meta - $facturado),
+                'avance'    => $meta > 0 ? round(($facturado / $meta) * 100, 1) : 0.0,
+            ],
+        ];
+    }
+
     /** Cuánto se ha usado, para pintar una barra sin dividir por cero. */
     public function porcentajeUsado(): float
     {
