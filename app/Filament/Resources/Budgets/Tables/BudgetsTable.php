@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Budgets\Tables;
 
 use App\Models\Budget;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -80,12 +81,38 @@ class BudgetsTable
                 SelectFilter::make('kind')->label('Clase')->options(Budget::TIPOS),
                 SelectFilter::make('status')->label('Estado')->options(Budget::ESTADOS),
             ])
-            ->recordActions([EditAction::make()])
+            ->recordActions([
+                // De donde salen las cifras: sin este atajo hay que saber que
+                // el camino es «Compras → nueva solicitud → elegir este
+                // presupuesto», y quien no lo sabe se queda mirando un cero.
+                Action::make('solicitudes')
+                    ->label('Ver sus solicitudes')
+                    ->iconButton()
+                    ->tooltip('Ver las solicitudes de compra de este presupuesto')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->color('gray')
+                    ->visible(fn (Budget $r) => ! $r->esDeVenta())
+                    ->url(fn (Budget $r) => '/admin/purchase-requests?tableFilters[budget_id][value]=' . $r->id),
+
+                Action::make('pedir')
+                    ->label('Nueva solicitud')
+                    ->iconButton()
+                    ->tooltip('Pedir algo contra este presupuesto')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('gray')
+                    ->visible(fn (Budget $r) => ! $r->esDeVenta() && $r->status === 'vigente')
+                    ->url(fn (Budget $r) => '/admin/purchase-requests/create'),
+
+                EditAction::make()->iconButton()->tooltip('Editar'),
+            ])
             // La equivalencia, a la vista: el presupuesto se habla en pesos y
             // el laboratorio cobra en FabCoins, y sin la tasa delante hay que
             // ir a buscarla para entender cualquiera de las dos cifras.
             ->description(sprintf(
-                'Todo en pesos, que es como se habla con la Universidad. Equivalencia con la moneda interna: 1 %s = %s%s.',
+                'Comprometido y ejecutado no se escriben: salen de las solicitudes de compra. '
+                . 'Aprobada compromete; recibida ejecuta. Lo de antes del sistema se anota como '
+                . '«ejecutado de arranque» al editar. Todo en pesos, que es como se habla con la '
+                . 'Universidad: 1 %s = %s%s.',
                 config('fabos.currency.code'),
                 config('fabos.money.symbol'),
                 number_format((int) config('fabos.currency.peso_rate'), 0, ',', '.'),

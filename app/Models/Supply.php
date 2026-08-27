@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Supply extends Model
 {
     protected $fillable = [
-        'area_id', 'location_id', 'name', 'kind', 'sku', 'unit', 'description',
+        'area_id', 'category_id', 'location_id', 'name', 'kind', 'sku', 'unit', 'description',
         'photo_path', 'public_description',
-        'stock', 'reorder_point', 'last_cost', 'is_active', 'is_public',
+        'stock', 'reorder_point', 'max_stock', 'last_cost', 'is_active', 'is_public',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class Supply extends Model
         return [
             'stock'         => 'decimal:3',
             'reorder_point' => 'decimal:3',
+            'max_stock'     => 'decimal:3',
             'is_active'     => 'boolean',
             'is_public'     => 'boolean',
         ];
@@ -58,6 +59,34 @@ class Supply extends Model
     public function fotoUrl(): ?string
     {
         return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(SupplyCategory::class, 'category_id');
+    }
+
+    /**
+     * Cuánto habría que pedir para volver al máximo.
+     *
+     * El punto de reposición dice **cuándo** comprar; el máximo dice **cuánto**.
+     * Sin el segundo, quien repone sabe que hay que comprar pero no cuánto, y
+     * acaba comprando lo que le parece: de más y ocupa bodega, o de menos y en
+     * dos semanas vuelve a faltar.
+     */
+    public function cuantoPedir(): ?float
+    {
+        if (! $this->max_stock) {
+            return null;
+        }
+
+        return max(0, round((float) $this->max_stock - (float) $this->stock, 3));
+    }
+
+    public function estaBajoMinimo(): bool
+    {
+        return $this->reorder_point !== null
+            && (float) $this->stock <= (float) $this->reorder_point;
     }
 
     public function area(): BelongsTo

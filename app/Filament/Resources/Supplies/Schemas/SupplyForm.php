@@ -41,6 +41,26 @@ class SupplyForm
 
                         Select::make('area_id')->label('Área')->relationship('area', 'name'),
 
+                        Select::make('category_id')
+                            ->label('Categoría')
+                            ->options(fn () => \App\Models\SupplyCategory::paraElegir())
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Sin clasificar')
+                            // Se puede crear al vuelo: obligar a salir de esta
+                            // pantalla para crear «MDF» hace que se elija
+                            // «Varios» y ahi acabe todo.
+                            ->createOptionForm([
+                                TextInput::make('name')->label('Nombre')->required(),
+                                Select::make('parent_id')
+                                    ->label('Dentro de')
+                                    ->options(fn () => \App\Models\SupplyCategory::paraElegir())
+                                    ->searchable()
+                                    ->placeholder('Es una categoría de primer nivel'),
+                            ])
+                            ->createOptionUsing(fn (array $data) => \App\Models\SupplyCategory::create($data)->id)
+                            ->helperText('«Madera › MDF». Se anidan a cualquier profundidad.'),
+
                         Select::make('location_id')
                             ->label('Dónde está')
                             ->relationship('location', 'name')
@@ -88,17 +108,52 @@ class SupplyForm
                     ->description('La existencia no se edita aquí: se mueve con entradas, salidas y ajustes, y cada movimiento queda con su motivo.')
                     ->columns(2)
                     ->schema([
+                        /*
+                         * Solo al crear.
+                         *
+                         * Lo que hay hoy en el estante existe antes que su
+                         * ficha, y obligar a crearla vacía para luego mover la
+                         * existencia son dos pasos donde cabe uno. Pero **no
+                         * se escribe en `stock`**: entra como un movimiento de
+                         * entrada como cualquier otro, con su motivo y su
+                         * autor. Al editar no aparece, porque a partir de ahí
+                         * cambiar la existencia a mano es justo lo que rompe
+                         * la trazabilidad.
+                         */
+                        TextInput::make('existencia_inicial')
+                            ->label('Existencia inicial')
+                            ->numeric()
+                            ->minValue(0)
+                            // Se deshidrata: hace falta que llegue al array de
+                            // datos para poder convertirla en movimiento. La
+                            // pagina la saca antes de guardar el insumo.
+                            ->visibleOn('create')
+                            ->helperText('Lo que ya hay en el estante. Queda anotado como un movimiento de entrada, no como un número suelto.'),
+
                         TextInput::make('stock')
                             ->label('Existencia actual')
                             ->numeric()
                             ->disabled()
                             ->dehydrated(false)
+                            ->visibleOn('edit')
                             ->helperText('Usa el botón «Mover existencia» en el listado.'),
 
                         TextInput::make('reorder_point')
-                            ->label('Punto de reposición')
+                            ->label('Mínimo · punto de reposición')
                             ->numeric()
-                            ->helperText('Por debajo de esto, el insumo aparece en el carrito de reposición.'),
+                            ->minValue(0)
+                            ->helperText('Por debajo de esto, el insumo aparece en el carrito de reposición. Dice CUÁNDO comprar.'),
+
+                        TextInput::make('max_stock')
+                            ->label('Máximo · hasta cuánto reponer')
+                            ->numeric()
+                            ->minValue(0)
+                            ->helperText('Dice CUÁNTO comprar: se pide la diferencia hasta aquí. Sin esto, quien repone sabe que hace falta pero no cuánto.')
+                            ->rule(fn (\Filament\Schemas\Components\Utilities\Get $get) => function (string $atributo, $valor, $falla) use ($get) {
+                                if (filled($valor) && filled($get('reorder_point')) && (float) $valor < (float) $get('reorder_point')) {
+                                    $falla('El máximo no puede ser menor que el mínimo.');
+                                }
+                            }),
 
                         TextInput::make('last_cost')
                             ->label('Último costo por unidad')

@@ -504,12 +504,34 @@ Ver `docs/ASESORIAS.md`.
   una plata que ya no está. Va **aparte** de lo derivado y con explicación
   obligatoria, para no confundir nunca lo que el sistema sabe con lo que
   alguien afirmó. De ahí en adelante manda la solicitud de compra.
+- **De dónde salen las cifras, dicho en la pantalla.** Comprometido y ejecutado
+  no se escriben: salen de las solicitudes de compra —aprobada compromete,
+  recibida ejecuta—. Cada fila lleva atajo a sus solicitudes y a crear una
+  nueva; sin eso, quien mira un presupuesto en cero se queda mirando el cero.
 - **Presupuesto de venta** (`kind`). No todo presupuesto es para gastar: el
   laboratorio también tiene una meta de ingresos, y lo que se factura suma
   contra ella **solo** —sin que nadie lo anote a mano—. Es la misma idea leída
   al revés, y por eso comparte tabla en vez de tener pantalla propia. Las
   ventas viven en FabCoins y el presupuesto en pesos: la conversión usa la tasa
   configurada, así que es una **equivalencia**, no un extracto bancario.
+
+### Insumos: categorías, existencia inicial y reposición (§13)
+
+- **Categorías anidadas** (`supply_categories`), a cualquier profundidad:
+  «Madera › MDF › 3 mm». Un almacén crece por acumulación —primero veinte
+  insumos que se leen de un vistazo, luego doscientos— y fijar dos niveles
+  obligaría a inventar categorías falsas al llegar al tercero. Un insumo puede
+  no tener categoría: obligar a clasificar antes de anotar hace que se invente
+  un «Varios» donde acaba todo. Se crean al vuelo desde el propio insumo.
+- **Existencia inicial, solo al crear.** Lo que hay en el estante existe antes
+  que su ficha. Entra como **movimiento de entrada** con su motivo y su autor,
+  no escribiendo en `stock`: así el primer día del insumo tiene la misma
+  trazabilidad que el resto de su vida. Al editar desaparece, porque a partir
+  de ahí cambiar la existencia a mano es lo que rompe esa trazabilidad.
+- **Mínimo y máximo.** El mínimo (`reorder_point`) dice **cuándo** comprar; el
+  máximo (`max_stock`), **cuánto**: se pide la diferencia. Sin el segundo, quien
+  repone sabe que hace falta pero no cuánto, y compra de más —ocupa bodega— o
+  de menos —en dos semanas vuelve a faltar—.
 
 ### La tienda pública (§14)
 
