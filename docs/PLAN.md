@@ -521,6 +521,31 @@ que descargarlo, pasarlo a un computador y subirlo a una carpeta, no ocurre;
   final, sin decir por qué. 90 MB, con nginx en 96 y php-fpm en 128, para que
   el «no» lo dé el validador con su mensaje y no un 413 mudo.
 
+### Lotes de candidatos (§11)
+
+A veces no llega un proyecto: llega una **lista**. Veinte spin-offs de la
+incubadora, los ganadores de una convocatoria, los semilleros de una facultad.
+Sin un sitio para eso, la lista vive en un Excel que alguien reenvía, se evalúa
+en una reunión, y lo acordado se pierde entre la reunión y el momento de
+arrancar.
+
+- **Se pega tal como llega.** Tabulador, punto y coma o barra vertical, que es
+  lo que sale al copiar de Excel, de Sheets o de un correo: pedirle a quien
+  pega que primero convierta el formato es pedirle que no lo haga. Columnas:
+  nombre · organización · contacto · correo · descripción, y solo la primera
+  hace falta. Una cabecera pegada por descuido no entra como candidato.
+- **Un candidato no es un proyecto.** Vive aparte a propósito: darle código de
+  proyecto a algo que probablemente no se acepte ensucia el único sitio donde
+  se mira si el laboratorio entrega.
+- **Se evalúa con la lista entera delante**, que es como se compara: de uno en
+  uno, abriendo fichas sueltas, la tercera se juzga con otro criterio que la
+  primera. Queda quién decidió y por qué —una decisión sin autor se discute
+  otra vez dentro de un mes—.
+- **Lo aceptado se convierte en proyecto** sin volver a teclear nada, de uno en
+  uno o todo el lote de golpe. Lo que se escribió al evaluarlo pasa al resumen:
+  es lo primero que hay que recordar al arrancar. Solo lo aceptado, y solo una
+  vez.
+
 ### Borrar un proyecto descartado
 
 El histórico enseña, pero después de unas pruebas y un par de encargos que
