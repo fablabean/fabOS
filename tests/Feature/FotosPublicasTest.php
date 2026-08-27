@@ -31,6 +31,9 @@ class FotosPublicasTest extends TestCase
     private const SE_PUBLICAN = [
         'app/Filament/Resources/Assets/Schemas/AssetForm.php',
         'app/Filament/Resources/Courses/Schemas/CourseForm.php',
+        // La tienda se mira sin haber entrado: sus fotos van al disco publico.
+        'app/Filament/Resources/Supplies/Schemas/SupplyForm.php',
+        'app/Filament/Resources/ServiceOfferings/ServiceOfferingResource.php',
     ];
 
     /** Formularios cuyo archivo NO debe quedar en una URL adivinable. */

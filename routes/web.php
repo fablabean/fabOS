@@ -16,9 +16,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
-use App\Http\Controllers\ShopController;
 use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\SolicitudDeProyectoController;
+use App\Http\Controllers\TiendaPublicaController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +42,24 @@ Route::prefix('badges')->name('badges.')->group(function () {
     Route::get('/{tipo}/{clave}/clase', [BadgeController::class, 'clase'])->name('clase');
     Route::get('/{tipo}/{clave}', [BadgeController::class, 'asercion'])->name('asercion');
 });
+
+// La tienda (§14). Se mira sin entrar: obligar a identificarse para ver precios
+// es la forma mas rapida de que nadie los vea. El carrito vive en la sesion, y
+// la cuenta solo hace falta al final, para pagar o para que el pedido tenga
+// donde seguirse.
+Route::get('/tienda', [TiendaPublicaController::class, 'index'])->name('tienda.publica');
+Route::post('/tienda/carrito', [TiendaPublicaController::class, 'agregar'])->name('tienda.carrito.agregar');
+Route::post('/tienda/carrito/cantidad', [TiendaPublicaController::class, 'actualizar'])->name('tienda.carrito.actualizar');
+Route::post('/tienda/carrito/vaciar', [TiendaPublicaController::class, 'vaciar'])->name('tienda.carrito.vaciar');
+
+// Pedir cotizacion no exige cuenta: se crea al vuelo, como en el formulario de
+// proyectos. Pagar si, porque el saldo es de alguien.
+Route::post('/tienda/cotizar', [TiendaPublicaController::class, 'cotizar'])
+    ->middleware('throttle:10,60')
+    ->name('tienda.cotizar');
+Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
+    ->middleware('auth')
+    ->name('tienda.pagar');
 
 // Pedir un proyecto desde la web (§11). Sin sesion: lo que se pierde hoy son
 // las ideas que llegan un domingo y nunca se anotan. El limite de intentos es
@@ -155,8 +173,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/formacion/{edition}/inscribirme', [TrainingController::class, 'inscribir'])->name('formacion.inscribir');
     Route::post('/formacion/inscripcion/{enrollment}/retirar', [TrainingController::class, 'retirar'])->name('formacion.retirar');
 
-    // La tienda vista por quien compra: catalogo y precios (§14).
-    Route::get('/tienda', [ShopController::class, 'index'])->name('tienda');
 
     // Encargos: pedir un trabajo hecho por el equipo y aceptar su cotizacion (§14).
 

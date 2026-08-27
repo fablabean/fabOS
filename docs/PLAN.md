@@ -490,6 +490,33 @@ Ver `docs/ASESORIAS.md`.
   «¿vamos a tiempo?»; este responde la que decide si se acepta el siguiente
   encargo, «¿qué se nos junta?». Por separado todos parecen holgados.
 
+### La tienda pública (§14)
+
+Se mira **sin entrar**: obligar a identificarse para ver precios es la forma
+más rápida de que nadie los vea. Tres cosas distintas, porque confundirlas
+obliga a explicarlas en cada conversación:
+
+- **Insumos** y **productos terminados** comparten tabla (`supplies.kind`)
+  porque comparten lo que importa: se cuentan, se descuentan y se reponen.
+  Separarlos daría dos inventarios que habría que cuadrar entre sí.
+- **Servicios listos** (`service_offerings`): un trabajo con precio cerrado,
+  «corte láser por hoja». Existe aparte de la tarifa porque una tarifa es una
+  *regla de cobro* y esto es una *oferta*: algo que se puede pedir sin saber
+  qué es una hora de láser.
+- **`is_public`**, porque no todo lo que hay se vende: el laboratorio compra
+  acetona y brocas que no le va a vender a un estudiante. Y lo agotado no se
+  enseña: la tienda promete lo que se puede llevar hoy.
+- **El carrito vive en la sesión**, así que se llena sin cuenta. El precio se
+  calcula al mostrarlo, no al guardarlo: un carrito abandonado tres semanas no
+  puede prometer el precio de hace tres semanas. Lo que se congela es la venta.
+- **Dos salidas.** Pagar con FabCoins usa el **mismo** `ShopService` del
+  mostrador —es la misma operación, la haga quien atiende o la persona desde su
+  teléfono; duplicarla daría dos formas de cobrar que acabarían descontando
+  distinto—. Y **pedir cotización** convierte el carrito en una solicitud de
+  proyecto con cada línea como entregable, con el valor de lista anotado como
+  estimación de partida. Lo que se junta en un carrito no siempre es una
+  compra: a veces es la forma más clara de decir «necesito esto».
+
 ### Banco de contenido (§21)
 
 Lo que pasa en un fablab se documenta con el teléfono o no se documenta. Si hay

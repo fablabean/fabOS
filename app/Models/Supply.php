@@ -16,8 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Supply extends Model
 {
     protected $fillable = [
-        'area_id', 'location_id', 'name', 'sku', 'unit', 'description',
-        'stock', 'reorder_point', 'last_cost', 'is_active',
+        'area_id', 'location_id', 'name', 'kind', 'sku', 'unit', 'description',
+        'photo_path', 'public_description',
+        'stock', 'reorder_point', 'last_cost', 'is_active', 'is_public',
     ];
 
     protected function casts(): array
@@ -26,7 +27,37 @@ class Supply extends Model
             'stock'         => 'decimal:3',
             'reorder_point' => 'decimal:3',
             'is_active'     => 'boolean',
+            'is_public'     => 'boolean',
         ];
+    }
+
+    /**
+     * Insumo o producto terminado.
+     *
+     * Comparten tabla porque comparten lo que importa: se cuentan, se
+     * descuentan y se reponen. Lo que cambia es quién los compra —uno se lo
+     * lleva quien va a fabricar; el otro, quien no— y eso solo afecta a cómo se
+     * agrupan en la tienda.
+     */
+    public const TIPOS = [
+        'insumo'   => 'Insumo',
+        'producto' => 'Producto terminado',
+    ];
+
+    public function esProducto(): bool
+    {
+        return $this->kind === 'producto';
+    }
+
+    /** Lo que se puede mirar y comprar sin ser del laboratorio. */
+    public function scopeEnLaTienda($query)
+    {
+        return $query->where('is_active', true)->where('is_public', true);
+    }
+
+    public function fotoUrl(): ?string
+    {
+        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
     }
 
     public function area(): BelongsTo

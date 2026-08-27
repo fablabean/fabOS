@@ -64,6 +64,10 @@ class BackofficeTiendaTest extends TestCase
         return Supply::create(array_merge([
             'name' => 'Filamento PLA ' . uniqid(), 'unit' => 'kg',
             'stock' => 10, 'last_cost' => 90_000, 'is_active' => true,
+            // Publicado a proposito: por defecto un insumo NO se enseña -el
+            // laboratorio compra acetona y brocas que no vende-, asi que lo
+            // que se quiera ver en la tienda hay que marcarlo.
+            'is_public' => true,
         ], $datos));
     }
 
@@ -155,7 +159,7 @@ class BackofficeTiendaTest extends TestCase
         $this->assertSame(10.0, (float) $insumo->fresh()->stock);
     }
 
-    public function test_la_tienda_publica_muestra_precios_y_saldo(): void
+    public function test_la_tienda_muestra_precios_y_saldo(): void
     {
         $cliente = $this->conRol();
         app(ChargeService::class)->dotar($cliente, 45_000, '2026-08');
@@ -163,12 +167,13 @@ class BackofficeTiendaTest extends TestCase
         $this->insumo(['name' => 'Agotado del todo', 'stock' => 0]);
 
         $this->actingAs($cliente)
-            ->get(route('tienda'))
+            ->get(route('tienda.publica'))
             ->assertOk()
             ->assertSee('Filamento PLA negro')
-            ->assertSee('117,00')             // 90.000 + 30% a 1.000 por FabCoin
-            ->assertSee('450,00')             // su saldo
-            ->assertSee('estimado')           // el precio es calculado, y se dice
+            ->assertSee('$117.000')           // 90.000 + 30%, en pesos
+            ->assertSee('117 FBC')            // y en la moneda interna
+            ->assertSee('450 FBC')            // su saldo
+            ->assertSee('estimado del costo') // el precio es calculado, y se dice
             ->assertDontSee('Agotado del todo');
     }
 
@@ -185,8 +190,19 @@ class BackofficeTiendaTest extends TestCase
             ->assertSee('Anular no borra');
     }
 
-    public function test_la_tienda_exige_sesion(): void
+    /**
+     * La tienda se mira sin entrar: obligar a identificarse para ver precios es
+     * la forma mas rapida de que nadie los vea. Lo que si exige cuenta es
+     * pagar, porque el saldo es de alguien.
+     */
+    public function test_la_tienda_se_mira_sin_sesion_pero_pagar_no(): void
     {
-        $this->get(route('tienda'))->assertRedirect(route('login'));
+        $this->insumo(['name' => 'Filamento a la vista', 'stock' => 5, 'last_cost' => 90_000]);
+
+        $this->get(route('tienda.publica'))
+            ->assertOk()
+            ->assertSee('Filamento a la vista');
+
+        $this->post(route('tienda.pagar'))->assertRedirect(route('login'));
     }
 }
