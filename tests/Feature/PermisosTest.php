@@ -14,10 +14,35 @@ use Tests\TestCase;
  *
  * Lo que se prueba aquí no es cosmético: sin estas reglas un consultor podía
  * editar el catálogo entero.
+ *
+ * Las reglas ya no están escritas en la política: salen de la **matriz** de
+ * *Roles y accesos*, y estos son sus valores por defecto. Lo que se defiende
+ * sigue siendo lo mismo —el consultor mira, el administrador crea y edita pero
+ * no borra, y no toca personas—; lo que cambia es que ahora se puede ajustar
+ * sin desplegar.
+ *
+ * Crear se pregunta al **recurso** y no a la política: `can('create', Asset)`
+ * no recibe el modelo, así que la política no sabría de qué sección se habla.
+ * Quien decide es quien tiene esa información.
  */
 class PermisosTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Los permisos por defecto de cada rol: es lo que se esta probando.
+        app(\App\Services\Auth\MatrizDeAccesos::class)->sincronizar();
+    }
+
+    /** Si el recurso deja crear a esta persona. Es quien lo decide de verdad. */
+    private function puedeCrearActivos(User $u): bool
+    {
+        return $this->actingAs($u->fresh())
+            && \App\Filament\Resources\Assets\AssetResource::canCreate();
+    }
 
     private function conRol(?string $rol): User
     {
@@ -55,7 +80,7 @@ class PermisosTest extends TestCase
         $this->assertTrue($u->can('viewAny', Asset::class), 'debe poder ver el listado');
         $this->assertTrue($u->can('view', $a));
 
-        $this->assertFalse($u->can('create', Asset::class), 'no debe poder crear');
+        $this->assertFalse($this->puedeCrearActivos($u), 'no debe poder crear');
         $this->assertFalse($u->can('update', $a), 'no debe poder editar');
         $this->assertFalse($u->can('delete', $a), 'no debe poder borrar');
     }
@@ -65,7 +90,7 @@ class PermisosTest extends TestCase
         $u = $this->conRol(User::ROL_ADMINISTRADOR);
         $a = $this->activo();
 
-        $this->assertTrue($u->can('create', Asset::class));
+        $this->assertTrue($this->puedeCrearActivos($u));
         $this->assertTrue($u->can('update', $a));
 
         // Borrar pierde historial: queda en manos del superadmin.
@@ -87,7 +112,7 @@ class PermisosTest extends TestCase
         $a = $this->activo();
         $otro = $this->conRol(null);
 
-        $this->assertTrue($u->can('create', Asset::class));
+        $this->assertTrue($this->puedeCrearActivos($u));
         $this->assertTrue($u->can('update', $a));
         $this->assertTrue($u->can('delete', $a));
         $this->assertTrue($u->can('update', $otro));
@@ -98,6 +123,6 @@ class PermisosTest extends TestCase
         $u = $this->conRol(null);
 
         $this->assertFalse($u->can('viewAny', Asset::class));
-        $this->assertFalse($u->can('create', Asset::class));
+        $this->assertFalse($this->puedeCrearActivos($u));
     }
 }

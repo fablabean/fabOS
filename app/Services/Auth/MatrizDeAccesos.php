@@ -22,6 +22,17 @@ class MatrizDeAccesos
     /** Que el reparto de las acciones nuevas ya se hizo. */
     private const YA_HEREDADO = 'accesos.acciones_heredadas';
 
+    /** Y que se corrigio: el primer reparto abrio de mas. */
+    private const YA_REPARADO = 'accesos.acciones_reparadas';
+
+    /**
+     * Secciones que el sistema anterior reservaba al superadmin.
+     *
+     * Un administrador podia VER las personas, no editarlas: darse permisos a
+     * uno mismo no deberia estar a un clic.
+     */
+    private const RESERVADAS = ['user'];
+
     /**
      * Pone al día los permisos con las secciones que existen hoy.
      *
@@ -77,6 +88,7 @@ class MatrizDeAccesos
         }
 
         $this->heredarLasAccionesDeLoQueYaSeVeia();
+        $this->repararElRepartoQueAbrioDeMas();
 
         $this->olvidarLaCache();
     }
@@ -108,20 +120,7 @@ class MatrizDeAccesos
                 continue;
             }
 
-            $nuevos = [];
-
-            foreach ($tiene as $permiso) {
-                $clave = substr($permiso, strlen('ver.'));
-                $seccion = Secciones::todas()[$clave] ?? null;
-
-                if (! $seccion) {
-                    continue;
-                }
-
-                foreach (array_keys(Secciones::accionesDe($seccion['clase'])) as $accion) {
-                    $nuevos[] = $accion . '.' . $clave;
-                }
-            }
+            $nuevos = $this->loQuePodiaHacer($nombre, $tiene->all());
 
             if ($nuevos !== []) {
                 $this->asegurarQueExisten($nuevos);
@@ -130,6 +129,126 @@ class MatrizDeAccesos
         }
 
         Setting::put(self::YA_HEREDADO, true, 'accesos');
+    }
+
+    /**
+     * Lo que un rol podia hacer de verdad antes de la matriz.
+     *
+     * Y «de verdad» no es lo que decia el recurso: encima habia una **politica**
+     * —consultor ve, administrador crea y edita, superadmin borra— que se
+     * aplicaba a todo el backoffice. Mirar solo el recurso hacia creer que
+     * quien veia una seccion podia editarla, y no era cierto para nadie salvo
+     * el administrador.
+     *
+     * @param  list<string>  $tiene  permisos actuales del rol
+     * @return list<string>
+     */
+    private function loQuePodiaHacer(string $rol, array $tiene): array
+    {
+        // Borrar era solo del superadmin, y el superadmin no esta en la matriz.
+        if ($rol !== User::ROL_ADMINISTRADOR) {
+            return [];
+        }
+
+        $nuevos = [];
+
+        foreach ($tiene as $permiso) {
+            if (! str_starts_with($permiso, 'ver.')) {
+                continue;
+            }
+
+            $clave = substr($permiso, strlen('ver.'));
+            $seccion = Secciones::todas()[$clave] ?? null;
+
+            if (! $seccion || in_array($clave, self::RESERVADAS, true)) {
+                continue;
+            }
+
+            $aplican = Secciones::accionesDe($seccion['clase']);
+
+            foreach (['crear', 'editar'] as $accion) {
+                if (isset($aplican[$accion])) {
+                    $nuevos[] = $accion . '.' . $clave;
+                }
+            }
+        }
+
+        return $nuevos;
+    }
+
+    /**
+     * Corrige el primer reparto, que abrio de mas.
+     *
+     * Aquel reparto miro solo lo que decia cada recurso y concluyo que quien
+     * veia una seccion podia crear, editar y borrar en ella. Encima habia una
+     * politica que decia otra cosa: el consultor nunca pudo editar nada. El
+     * resultado fue darle al consultor —y a cualquier rol configurado— permisos
+     * que el sistema anterior le negaba.
+     *
+     * Se corrige solo donde nadie ha tocado nada desde entonces: si un rol
+     * quedo tal cual lo dejo aquel reparto, se rehace bien; si alguien ya lo
+     * ajusto a mano, se respeta, porque una decision tomada mirando la pantalla
+     * vale mas que esta correccion a ciegas.
+     */
+    private function repararElRepartoQueAbrioDeMas(): void
+    {
+        if (Setting::get(self::YA_REPARADO)) {
+            return;
+        }
+
+        foreach ($this->rolesEditables() as $nombre) {
+            $rol = Role::findByName($nombre, 'web');
+            $tiene = $rol->permissions->pluck('name')->all();
+
+            if (! $this->esLaHuellaDelRepartoViejo($tiene)) {
+                continue;
+            }
+
+            $ver = array_values(array_filter($tiene, fn (string $p) => str_starts_with($p, 'ver.')));
+            $fiel = array_merge($ver, $this->loQuePodiaHacer($nombre, $ver));
+
+            $this->asegurarQueExisten($fiel);
+            $rol->syncPermissions($fiel);
+        }
+
+        Setting::put(self::YA_REPARADO, true, 'accesos');
+    }
+
+    /**
+     * Si un rol tiene exactamente todas las acciones de todo lo que ve.
+     *
+     * Es lo que dejaba el reparto viejo, y practicamente nadie configura eso a
+     * mano: sirve para distinguir «esto lo hizo el programa» de «esto lo
+     * decidio una persona».
+     *
+     * @param  list<string>  $tiene
+     */
+    private function esLaHuellaDelRepartoViejo(array $tiene): bool
+    {
+        $esperado = [];
+
+        foreach ($tiene as $permiso) {
+            if (! str_starts_with($permiso, 'ver.')) {
+                continue;
+            }
+
+            $clave = substr($permiso, strlen('ver.'));
+            $seccion = Secciones::todas()[$clave] ?? null;
+
+            if (! $seccion) {
+                return false;
+            }
+
+            foreach (array_keys(Secciones::accionesDe($seccion['clase'])) as $accion) {
+                $esperado[] = $accion . '.' . $clave;
+            }
+        }
+
+        sort($esperado);
+        $actual = $tiene;
+        sort($actual);
+
+        return $esperado === $actual && $esperado !== [];
     }
 
     /**

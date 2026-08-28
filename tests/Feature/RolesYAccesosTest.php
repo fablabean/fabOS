@@ -360,17 +360,48 @@ class RolesYAccesosTest extends TestCase
         $rol = Role::findByName(User::ROL_CONSULTOR, 'web');
         $rol->syncPermissions(['ver.asset', 'ver.reservation']);
         // Como si el reparto no se hubiera hecho todavia.
-        \App\Models\Setting::query()->where('key', 'accesos.acciones_heredadas')->delete();
+        \App\Models\Setting::query()->whereIn('key', [
+            'accesos.acciones_heredadas', 'accesos.acciones_reparadas',
+        ])->delete();
         \App\Models\Setting::olvidarCache();
 
         $this->accesos()->sincronizar();
 
         $u = $this->con(User::ROL_CONSULTOR);
 
-        $this->assertTrue($u->puedeEnLaSeccion('editar', 'asset'));
-        $this->assertTrue($u->puedeEnLaSeccion('borrar', 'reservation'));
+        // El consultor NUNCA pudo editar: encima de los recursos habia una
+        // politica que solo dejaba crear y editar al administrador. Mirar solo
+        // el recurso hacia creer lo contrario.
+        $this->assertTrue($u->puedeEnLaSeccion('ver', 'asset'));
+        $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
+        $this->assertFalse($u->puedeEnLaSeccion('borrar', 'reservation'));
         // Y no le abre nada que no viera.
         $this->assertFalse($u->puedeEnLaSeccion('ver', 'budget'));
+    }
+
+    /** El administrador si creaba y editaba, y lo conserva. */
+    public function test_el_administrador_de_antes_conserva_crear_y_editar(): void
+    {
+        $rol = Role::findByName(User::ROL_ADMINISTRADOR, 'web');
+        $rol->syncPermissions(['ver.asset', 'ver.user']);
+
+        \App\Models\Setting::query()->whereIn('key', [
+            'accesos.acciones_heredadas', 'accesos.acciones_reparadas',
+        ])->delete();
+        \App\Models\Setting::olvidarCache();
+
+        $this->accesos()->sincronizar();
+
+        $u = $this->con(User::ROL_ADMINISTRADOR);
+
+        $this->assertTrue($u->puedeEnLaSeccion('editar', 'asset'));
+        $this->assertTrue($u->puedeEnLaSeccion('crear', 'asset'));
+        // Borrar era del superadmin.
+        $this->assertFalse($u->puedeEnLaSeccion('borrar', 'asset'));
+        // Y las personas se veian, no se editaban: darse permisos a uno mismo
+        // no deberia estar a un clic.
+        $this->assertTrue($u->puedeEnLaSeccion('ver', 'user'));
+        $this->assertFalse($u->puedeEnLaSeccion('editar', 'user'));
     }
 
     /** Y una vez repartido, no vuelve a abrir lo que se cierre a propósito. */
@@ -386,6 +417,98 @@ class RolesYAccesosTest extends TestCase
 
         $this->assertTrue($u->puedeEnLaSeccion('ver', 'asset'));
         $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
+    }
+
+    // -------------------------------------- el boton y la pantalla, de acuerdo
+
+    private function insumo(): \App\Models\Supply
+    {
+        return \App\Models\Supply::create([
+            'name' => 'Filamento PLA', 'unit' => 'g', 'stock' => 100, 'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Esconder el boton no es cerrar la pantalla.
+     *
+     * Es el fallo peor de los dos: la lista dice que no se puede editar y la
+     * direccion de edicion se abre igual y guarda. Quien lo descubre por
+     * casualidad —o por un enlace pegado en un chat— tiene mas permisos de los
+     * que el sistema dice haberle dado.
+     */
+    public function test_sin_editar_no_se_abre_la_pantalla_de_edicion(): void
+    {
+        $insumo = $this->insumo();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        $this->get('/admin/supplies')->assertOk();
+        $this->get('/admin/supplies/' . $insumo->getKey() . '/edit')->assertForbidden();
+    }
+
+    /** Y con el permiso, se abre. */
+    public function test_con_editar_se_abre_la_pantalla_de_edicion(): void
+    {
+        $insumo = $this->insumo();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true, 'editar' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        $this->get('/admin/supplies/' . $insumo->getKey() . '/edit')->assertOk();
+    }
+
+    /** El boton de la fila dice la verdad: si se puede editar, esta. */
+    public function test_el_boton_de_editar_aparece_cuando_se_puede(): void
+    {
+        $insumo = $this->insumo();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true, 'editar' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        Livewire::test(\App\Filament\Resources\Supplies\Pages\ListSupplies::class)
+            ->assertTableActionVisible('edit', record: $insumo);
+    }
+
+    public function test_el_boton_de_editar_no_aparece_cuando_no_se_puede(): void
+    {
+        $insumo = $this->insumo();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        Livewire::test(\App\Filament\Resources\Supplies\Pages\ListSupplies::class)
+            ->assertTableActionHidden('edit', record: $insumo);
+    }
+
+    /** Y el de crear, igual. */
+    public function test_el_boton_de_crear_sigue_al_permiso(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true, 'crear' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+        $this->get('/admin/supplies/create')->assertOk();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['supply' => ['ver' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+        $this->get('/admin/supplies/create')->assertForbidden();
     }
 
     // ------------------------------------------------- volver a sincronizar

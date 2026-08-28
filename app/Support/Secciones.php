@@ -152,6 +152,33 @@ class Secciones
         }
     }
 
+    /**
+     * De que seccion es este modelo.
+     *
+     * Hace falta porque las **politicas** de Laravel reciben el registro, no el
+     * recurso: sin este puente, la politica no sabria a que casilla de la
+     * matriz mirar y acabaria con sus propias reglas —que es como estaban las
+     * cosas, y como el boton de editar decia una cosa y la pantalla otra—.
+     */
+    public static function claveDelModelo(string $modelo): ?string
+    {
+        foreach (self::todas() as $clave => $seccion) {
+            if (! is_subclass_of($seccion['clase'], \Filament\Resources\Resource::class)) {
+                continue;
+            }
+
+            try {
+                if ($seccion['clase']::getModel() === $modelo) {
+                    return $clave;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
     /** Los permisos de todas las secciones, para sembrarlos de una vez. */
     public static function permisos(): array
     {
@@ -221,19 +248,30 @@ class Secciones
         ));
 
         /*
-         * Quien veia una seccion podia crear y editar en ella: no habia otra
-         * cosa. Asi que «todo lo que aplique» es lo fiel, tambien para el
-         * consultor —que por nombre solo deberia mirar, pero cambiarselo aqui
-         * seria estrecharle el trabajo sin avisar—. Ahora se puede hacer en la
-         * pantalla, mirandolo, que es donde toca decidirlo.
+         * Que puede hacer cada rol, tal como lo hacia el sistema anterior.
+         *
+         * Y «como lo hacia» no era lo que decia cada recurso: encima habia una
+         * politica que se aplicaba a todo el backoffice —el consultor mira; el
+         * administrador crea y edita; borrar es del superadmin; las personas no
+         * las toca nadie mas—. Mirar solo el recurso hacia creer que quien veia
+         * una seccion podia editarla, y no era cierto para casi nadie.
+         *
+         * Las personas se reservan aparte: darse permisos a uno mismo no
+         * deberia estar a un clic.
          */
-        $todoLoQueAplique = fn (array $claves) => collect($claves)
-            ->mapWithKeys(fn (string $c) => [$c => array_keys(self::accionesDe(self::todas()[$c]['clase']))])
+        $conAcciones = fn (array $claves, array $acciones) => collect($claves)
+            ->mapWithKeys(function (string $c) use ($acciones) {
+                $aplican = self::accionesDe(self::todas()[$c]['clase']);
+                $suyas = $c === 'user' ? ['ver'] : $acciones;
+
+                return [$c => array_values(array_intersect($suyas, array_keys($aplican)))];
+            })
             ->all();
 
         return [
-            User::ROL_ADMINISTRADOR => $todoLoQueAplique($administrador),
-            User::ROL_CONSULTOR     => $todoLoQueAplique($consultor),
+            // Sin borrar: era del superadmin, que no esta en la matriz.
+            User::ROL_ADMINISTRADOR => $conAcciones($administrador, ['ver', 'crear', 'editar']),
+            User::ROL_CONSULTOR     => $conAcciones($consultor, ['ver']),
 
             /*
              * El practicante mira. Solo toca lo que es su turno: atender una
