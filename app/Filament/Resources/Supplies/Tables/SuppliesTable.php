@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Supplies\Tables;
 
 use App\Models\Supply;
+use Illuminate\Database\Eloquent\Builder;
 use App\Services\Inventory\StockException;
 use App\Services\Inventory\StockService;
 use App\Services\Money\PricingService;
@@ -91,7 +92,13 @@ class SuppliesTable
             ->filters([
                 Filter::make('bajo_minimos')
                     ->label('Bajo mínimos')
-                    ->query(fn ($q) => $q->whereNotNull('reorder_point')->whereColumn('stock', '<=', 'reorder_point')),
+                    // El tipo no es adorno: Filament resuelve los argumentos de
+                    // estos cierres por nombre o por tipo, y un `$q` a secas no
+                    // es ninguno de los dos —llegaba nulo y la pantalla
+                    // reventaba al aplicar el filtro—.
+                    ->query(fn (Builder $query) => $query
+                        ->whereNotNull('reorder_point')
+                        ->whereColumn('stock', '<=', 'reorder_point')),
 
                 TernaryFilter::make('is_active')->label('Activo')->default(true),
             ])

@@ -511,6 +511,48 @@ class RolesYAccesosTest extends TestCase
         $this->get('/admin/supplies/create')->assertForbidden();
     }
 
+    /**
+     * Crear sin poder editar tiene que terminar en algun sitio.
+     *
+     * Filament, despues de crear, lleva a la ficha del registro nuevo. Si quien
+     * lo creo no puede editarlo, esa pantalla esta cerrada: la creacion sale
+     * bien y lo que se ve es un error, que es la peor manera de que algo
+     * funcione.
+     */
+    public function test_crear_sin_poder_editar_no_termina_en_un_error(): void
+    {
+        $area = \App\Models\Area::create(['slug' => 'imp-' . uniqid(), 'name' => 'Impresion 3D']);
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['asset' => ['ver' => true, 'crear' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        $pagina = Livewire::test(\App\Filament\Resources\Assets\Pages\CreateAsset::class)
+            ->fillForm([
+                'area_id' => $area->id,
+                'name' => 'Impresora nueva',
+                'kind' => 'fijo',
+                'status' => 'operativo',
+                'is_reservable' => true,
+                'min_minutes' => 30,
+                'autonomous_minutes' => 60,
+                'max_minutes' => 720,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('assets', ['name' => 'Impresora nueva']);
+
+        // Y a donde manda despues se puede abrir.
+        $destino = $pagina->effects['redirect'] ?? null;
+
+        if ($destino) {
+            $this->get($destino)->assertSuccessful();
+        }
+    }
+
     // ------------------------------------------------- volver a sincronizar
 
     /**

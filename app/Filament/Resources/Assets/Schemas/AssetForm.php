@@ -277,6 +277,17 @@ Select::make('status')
                             ])
                             ->columns(3)
                             ->addActionLabel('Añadir relación')
+                            /*
+                             * Empieza vacio.
+                             *
+                             * Casi ningun equipo depende de otro, y la fila que
+                             * Filament añade por cortesia trae un campo
+                             * OBLIGATORIO. Dentro de una seccion plegada, eso
+                             * significa que crear un equipo fallaba con un
+                             * error que no se veia: quien lo intentaba solo
+                             * sabia que «daba error».
+                             */
+                            ->defaultItems(0)
                             ->collapsed()
                             ->itemLabel(fn (array $state) => Asset::find($state['depends_on_asset_id'] ?? null)?->name),
                     ]),
