@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ShiftAssignments;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\ShiftAssignments\Pages\CreateShiftAssignment;
 use App\Filament\Resources\ShiftAssignments\Pages\EditShiftAssignment;
 use App\Filament\Resources\ShiftAssignments\Pages\ListShiftAssignments;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ShiftAssignmentResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = ShiftAssignment::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDateRange;

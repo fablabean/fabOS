@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Questions;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
 use App\Filament\Resources\Questions\Tables\QuestionsTable;
 use App\Models\Question;
@@ -21,6 +22,8 @@ use Filament\Tables\Table;
  */
 class QuestionResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Question::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
@@ -49,10 +52,6 @@ class QuestionResource extends Resource
         return 'warning';
     }
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     /** No se crean ni se editan desde aquí: se responden en el sitio. */
     public static function canCreate(): bool

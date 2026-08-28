@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ScheduleExceptions;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\ScheduleExceptions\Pages\CreateScheduleException;
 use App\Filament\Resources\ScheduleExceptions\Pages\EditScheduleException;
 use App\Filament\Resources\ScheduleExceptions\Pages\ListScheduleExceptions;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ScheduleExceptionResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = ScheduleException::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSun;

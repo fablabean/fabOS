@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Asset;
 use App\Models\RateCard;
 use App\Models\User;
@@ -35,6 +36,8 @@ use Illuminate\Contracts\Support\Htmlable;
  */
 class Cotizador extends Page
 {
+    use ControlaSuAcceso;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalculator;
 
     protected static ?int $navigationSort = 4;
@@ -64,10 +67,6 @@ class Cotizador extends Page
         return 'Con la misma tarifa que aplicará la reserva. No compromete nada: ni reserva, ni cobra, ni descuenta inventario.';
     }
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     public function mount(): void
     {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Budgets;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Budgets\Pages\CreateBudget;
 use App\Filament\Resources\Budgets\Pages\EditBudget;
 use App\Filament\Resources\Budgets\Pages\ListBudgets;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class BudgetResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Budget::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartPie;

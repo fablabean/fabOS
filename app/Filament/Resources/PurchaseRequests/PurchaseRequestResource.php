@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseRequests;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\PurchaseRequests\Pages\CreatePurchaseRequest;
 use App\Filament\Resources\PurchaseRequests\Pages\EditPurchaseRequest;
 use App\Filament\Resources\PurchaseRequests\Pages\ListPurchaseRequests;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class PurchaseRequestResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = PurchaseRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;

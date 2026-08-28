@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\User;
 use App\Support\CapturaDeCodigos;
 use BackedEnum;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\Log;
  */
 class CodigosDePrueba extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.codigos-de-prueba';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEyeSlash;
@@ -32,11 +35,6 @@ class CodigosDePrueba extends Page
 
     public int $horas = 24;
 
-    /** Solo el superadmin, y se comprueba en el servidor. */
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasRole(User::ROL_SUPERADMIN) ?? false;
-    }
 
     /** No ensucia el menú cuando no se está usando. */
     public static function shouldRegisterNavigation(): bool

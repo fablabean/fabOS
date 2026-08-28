@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\User;
@@ -20,16 +21,14 @@ use Illuminate\Support\Collection;
  */
 class Asesorias extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.asesorias';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLifebuoy;
 
     protected static ?int $navigationSort = 4;
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {

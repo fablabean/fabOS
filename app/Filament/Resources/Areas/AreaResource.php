@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Areas;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Areas\Pages\CreateArea;
 use App\Filament\Resources\Areas\Pages\EditArea;
 use App\Filament\Resources\Areas\Pages\ListAreas;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class AreaResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Area::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;

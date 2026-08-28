@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\User;
 use App\Services\Install\InstallationService;
 use App\Services\Install\ReadinessService;
@@ -30,6 +31,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class Instalacion extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.instalacion';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
@@ -39,11 +42,6 @@ class Instalacion extends Page
     /** Los campos administrables, sin el prefijo `lab.`. */
     public array $datos = [];
 
-    /** Configurar la instancia es competencia del superadmin. */
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasRole(User::ROL_SUPERADMIN) ?? false;
-    }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {

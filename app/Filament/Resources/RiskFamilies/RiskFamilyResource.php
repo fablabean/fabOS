@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RiskFamilies;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\RiskFamilies\Pages\CreateRiskFamily;
 use App\Filament\Resources\RiskFamilies\Pages\EditRiskFamily;
 use App\Filament\Resources\RiskFamilies\Pages\ListRiskFamilies;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class RiskFamilyResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = RiskFamily::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;

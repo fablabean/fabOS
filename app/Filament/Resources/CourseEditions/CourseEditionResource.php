@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CourseEditions;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\CourseEditions\Pages\CreateCourseEdition;
 use App\Filament\Resources\CourseEditions\Pages\EditCourseEdition;
 use App\Filament\Resources\CourseEditions\Pages\ListCourseEditions;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class CourseEditionResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = CourseEdition::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

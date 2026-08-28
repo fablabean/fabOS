@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Supplies;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Supplies\Pages\CreateSupply;
 use App\Filament\Resources\Supplies\Pages\EditSupply;
 use App\Filament\Resources\Supplies\Pages\ListSupplies;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class SupplyResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Supply::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;

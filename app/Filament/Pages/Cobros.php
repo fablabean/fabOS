@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\LedgerAccount;
 use App\Models\RateCard;
 use App\Models\Setting;
@@ -23,6 +24,8 @@ use Filament\Support\Icons\Heroicon;
  */
 class Cobros extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.cobros';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;
@@ -31,10 +34,6 @@ class Cobros extends Page
 
     public bool $cobrosActivos = false;
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasRole(User::ROL_SUPERADMIN) ?? false;
-    }
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {

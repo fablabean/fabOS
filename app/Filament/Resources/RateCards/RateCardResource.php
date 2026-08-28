@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RateCards;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\RateCards\Pages\CreateRateCard;
 use App\Filament\Resources\RateCards\Pages\EditRateCard;
 use App\Filament\Resources\RateCards\Pages\ListRateCards;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class RateCardResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = RateCard::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

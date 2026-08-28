@@ -25,5 +25,9 @@ class RoleSeeder extends Seeder
         // Comunicaciones entra al panel pero solo al banco de contenido: viene
         // a buscar material para divulgacion, no a mirar reservas ni saldos.
         Role::findOrCreate(User::ROL_COMUNICACIONES, 'web');
+
+        // Y lo que ve cada uno: los permisos por seccion, con sus valores por
+        // defecto. No pisa lo que ya este decidido.
+        app(\App\Services\Auth\MatrizDeAccesos::class)->sincronizar();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Asset;
 use App\Models\Budget;
 use App\Models\Certifab;
@@ -39,6 +40,8 @@ use Filament\Support\Icons\Heroicon;
  */
 class Reglas extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.reglas';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
@@ -60,11 +63,6 @@ class Reglas extends Page
         return 'Reglas del sistema';
     }
 
-    /** Todo el backoffice puede consultarlas: son el manual de operación. */
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     /** @return array<string,mixed> */
     public function getViewData(): array

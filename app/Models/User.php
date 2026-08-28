@@ -40,10 +40,30 @@ class User extends Authenticatable implements FilamentUser
      */
     public const ROL_COMUNICACIONES = 'comunicaciones';
 
+    /**
+     * Practicante: atiende el laboratorio, no lo administra.
+     *
+     * Entra al panel, pero solo a lo que se le abra en *Roles y accesos*. Sin
+     * un rol propio, la unica forma de que un practicante pudiera cerrar una
+     * reserva era hacerlo consultor —y entonces veia el presupuesto, los
+     * saldos y los datos de todas las personas—.
+     */
+    public const ROL_PRACTICANTE = 'practicante';
+
     public const ROLES_BACKOFFICE = [
         self::ROL_CONSULTOR,
+        self::ROL_PRACTICANTE,
         self::ROL_ADMINISTRADOR,
         self::ROL_SUPERADMIN,
+    ];
+
+    /** Todos los roles que existen, para pintar la matriz de accesos. */
+    public const ROLES = [
+        self::ROL_PRACTICANTE    => 'Practicante',
+        self::ROL_CONSULTOR      => 'Consultor',
+        self::ROL_ADMINISTRADOR  => 'Administrador',
+        self::ROL_COMUNICACIONES => 'Comunicaciones',
+        self::ROL_SUPERADMIN     => 'Superadmin',
     ];
 
     /**
@@ -57,10 +77,33 @@ class User extends Authenticatable implements FilamentUser
             && $this->hasAnyRole([...self::ROLES_BACKOFFICE, self::ROL_COMUNICACIONES]);
     }
 
-    /** Quien puede mirar el banco de contenido: el laboratorio y Comunicaciones. */
+    /** Quien puede mirar el banco de contenido: lo dice la matriz, como todo. */
     public function puedeVerElContenido(): bool
     {
-        return $this->hasAnyRole([...self::ROLES_BACKOFFICE, self::ROL_COMUNICACIONES]);
+        return $this->puedeVerLaSeccion('contenido');
+    }
+
+    /**
+     * Si esta persona entra a una seccion del panel (§5).
+     *
+     * **El superadmin entra siempre**, sin consultar nada. Un permiso que se le
+     * pueda quitar es la forma de quedarse fuera del sistema sin manera de
+     * volver a entrar: bastaria un clic mal dado en la propia pantalla de
+     * permisos para cerrar la puerta por dentro.
+     *
+     * Para el resto manda la matriz, que vive en la base y se edita en
+     * *Configuracion → Roles y accesos*.
+     */
+    public function puedeVerLaSeccion(string $clave): bool
+    {
+        if ($this->hasRole(self::ROL_SUPERADMIN)) {
+            return true;
+        }
+
+        // `can` y no `hasPermissionTo`: el segundo revienta cuando el permiso
+        // no existe todavia —una seccion recien añadida, una base sin sembrar—
+        // y una pantalla que revienta al mirarla es peor que una cerrada.
+        return $this->can('ver.' . $clave);
     }
 
     protected function casts(): array

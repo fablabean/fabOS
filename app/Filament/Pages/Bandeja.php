@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\User;
@@ -27,6 +28,8 @@ use Filament\Support\Icons\Heroicon;
  */
 class Bandeja extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.bandeja';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxArrowDown;
@@ -39,10 +42,6 @@ class Bandeja extends Page
     /** El motivo del rechazo, por id de reserva. */
     public array $motivo = [];
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]) ?? false;
-    }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {

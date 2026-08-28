@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Contenidos;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Contenidos\Pages\ListContenidos;
 use App\Models\Contenido;
 use BackedEnum;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
  */
 class ContenidoResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Contenido::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCamera;
@@ -34,10 +37,6 @@ class ContenidoResource extends Resource
         return 'Comunicaciones';
     }
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->puedeVerElContenido() ?? false;
-    }
 
     /** Se sube desde el teléfono, no desde aquí. */
     public static function canCreate(): bool

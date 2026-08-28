@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Reservations\Pages\CreateReservation;
 use App\Filament\Resources\Reservations\Pages\EditReservation;
 use App\Filament\Resources\Reservations\Pages\ListReservations;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ReservationResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Reservation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;

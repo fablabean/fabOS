@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\UserCategories;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\UserCategories\Pages\CreateUserCategory;
 use App\Filament\Resources\UserCategories\Pages\EditUserCategory;
 use App\Filament\Resources\UserCategories\Pages\ListUserCategories;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class UserCategoryResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = UserCategory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;

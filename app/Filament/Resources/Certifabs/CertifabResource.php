@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Certifabs;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Certifabs\Pages\CreateCertifab;
 use App\Filament\Resources\Certifabs\Pages\EditCertifab;
 use App\Filament\Resources\Certifabs\Pages\ListCertifabs;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class CertifabResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Certifab::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAcademicCap;

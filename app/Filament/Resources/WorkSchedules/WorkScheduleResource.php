@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WorkSchedules;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\WorkSchedules\Pages\CreateWorkSchedule;
 use App\Filament\Resources\WorkSchedules\Pages\EditWorkSchedule;
 use App\Filament\Resources\WorkSchedules\Pages\ListWorkSchedules;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class WorkScheduleResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = WorkSchedule::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;

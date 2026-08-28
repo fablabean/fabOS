@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\LedgerAccounts;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\LedgerAccounts\Pages\ListLedgerAccounts;
 use App\Filament\Resources\LedgerAccounts\Tables\LedgerAccountsTable;
 use App\Models\LedgerAccount;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
  */
 class LedgerAccountResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = LedgerAccount::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWallet;

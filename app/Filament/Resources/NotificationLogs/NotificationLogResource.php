@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\NotificationLogs;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\NotificationLogs\Pages\ListNotificationLogs;
 use App\Filament\Resources\NotificationLogs\Tables\NotificationLogsTable;
 use App\Models\NotificationLog;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
  */
 class NotificationLogResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = NotificationLog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxStack;

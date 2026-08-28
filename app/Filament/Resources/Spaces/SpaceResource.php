@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Spaces;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\Spaces\Pages\CreateSpace;
 use App\Filament\Resources\Spaces\Pages\EditSpace;
 use App\Filament\Resources\Spaces\Pages\ListSpaces;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class SpaceResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = Space::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;

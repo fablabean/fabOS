@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\LedgerTransactions;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\LedgerTransactions\Pages\ListLedgerTransactions;
 use App\Filament\Resources\LedgerTransactions\Tables\LedgerTransactionsTable;
 use App\Models\LedgerTransaction;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
  */
 class LedgerTransactionResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = LedgerTransaction::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;

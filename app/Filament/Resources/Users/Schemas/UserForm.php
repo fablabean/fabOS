@@ -53,7 +53,13 @@ class UserForm
                             ->relationship('roles', 'name')
                             ->multiple()
                             ->preload()
-                            ->helperText('Sin rol, la persona usa el sistema pero no entra al backoffice.'),
+                            // Con su nombre de verdad: «practicante» en minuscula
+                            // es como se llama la fila en la base, no como se
+                            // habla de una persona.
+                            ->getOptionLabelFromRecordUsing(
+                                fn ($record) => \App\Models\User::ROLES[$record->name] ?? $record->name
+                            )
+                            ->helperText('Sin rol, la persona usa el sistema pero no entra al backoffice. Qué ve cada rol se decide en Configuración → Roles y accesos.'),
                     ]),
             ]);
     }

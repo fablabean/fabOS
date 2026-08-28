@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CandidateBatches;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\CandidateBatches\Pages\EditCandidateBatch;
 use App\Filament\Resources\CandidateBatches\Pages\ListCandidateBatches;
 use App\Models\CandidateBatch;
@@ -26,6 +27,8 @@ use Filament\Tables\Table;
  */
 class CandidateBatchResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = CandidateBatch::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
@@ -41,10 +44,6 @@ class CandidateBatchResource extends Resource
         return 'Proyectos';
     }
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     /** Lo que queda por evaluar es lo que hace que alguien abra esto. */
     public static function getNavigationBadge(): ?string

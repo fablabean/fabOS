@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\User;
 use App\Services\Reports\ReportService;
 use BackedEnum;
@@ -18,6 +19,8 @@ use Illuminate\Support\Carbon;
  */
 class Informes extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.informes';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
@@ -28,10 +31,6 @@ class Informes extends Page
     public string $desde = '';
     public string $hasta = '';
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {

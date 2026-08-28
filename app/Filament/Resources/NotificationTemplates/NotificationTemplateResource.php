@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\NotificationTemplates;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\NotificationTemplates\Pages\CreateNotificationTemplate;
 use App\Filament\Resources\NotificationTemplates\Pages\EditNotificationTemplate;
 use App\Filament\Resources\NotificationTemplates\Pages\ListNotificationTemplates;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class NotificationTemplateResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = NotificationTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;

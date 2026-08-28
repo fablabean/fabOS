@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Settings;
@@ -18,6 +19,8 @@ use Filament\Support\Icons\Heroicon;
  */
 class Accesos extends Page
 {
+    use ControlaSuAcceso;
+
     protected string $view = 'filament.pages.accesos';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedKey;
@@ -25,11 +28,6 @@ class Accesos extends Page
     public bool $carnetLogin = false;
     public bool $otpLogin = true;
 
-    /** Configurar accesos es competencia exclusiva del superadmin. */
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasRole(User::ROL_SUPERADMIN) ?? false;
-    }
 
     protected static ?int $navigationSort = 1;
 

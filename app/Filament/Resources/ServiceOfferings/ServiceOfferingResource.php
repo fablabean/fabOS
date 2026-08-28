@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ServiceOfferings;
 
+use App\Filament\Concerns\ControlaSuAcceso;
 use App\Filament\Resources\ServiceOfferings\Pages\CreateServiceOffering;
 use App\Filament\Resources\ServiceOfferings\Pages\EditServiceOffering;
 use App\Filament\Resources\ServiceOfferings\Pages\ListServiceOfferings;
@@ -34,6 +35,8 @@ use Filament\Tables\Table;
  */
 class ServiceOfferingResource extends Resource
 {
+    use ControlaSuAcceso;
+
     protected static ?string $model = ServiceOffering::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
@@ -49,10 +52,6 @@ class ServiceOfferingResource extends Resource
         return 'Tienda';
     }
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {
