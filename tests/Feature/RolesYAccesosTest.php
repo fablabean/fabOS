@@ -346,6 +346,48 @@ class RolesYAccesosTest extends TestCase
         $this->assertTrue($this->con(User::ROL_PRACTICANTE)->puedeEnLaSeccion('borrar', 'asset'));
     }
 
+    /**
+     * Lo que se veía, se podía tocar.
+     *
+     * Antes de partir la llave en cuatro, «ver» era la única: quien veía una
+     * sección podía crear y borrar en ella. Un rol configurado con la llave
+     * vieja tiene que amanecer igual que se acostó, o el consultor pierde de
+     * golpe el trabajo que hacía sin que nadie lo decidiera.
+     */
+    public function test_un_rol_de_antes_conserva_lo_que_podia_hacer(): void
+    {
+        // Un rol como quedaban antes: solo permisos de ver.
+        $rol = Role::findByName(User::ROL_CONSULTOR, 'web');
+        $rol->syncPermissions(['ver.asset', 'ver.reservation']);
+        // Como si el reparto no se hubiera hecho todavia.
+        \App\Models\Setting::query()->where('key', 'accesos.acciones_heredadas')->delete();
+        \App\Models\Setting::olvidarCache();
+
+        $this->accesos()->sincronizar();
+
+        $u = $this->con(User::ROL_CONSULTOR);
+
+        $this->assertTrue($u->puedeEnLaSeccion('editar', 'asset'));
+        $this->assertTrue($u->puedeEnLaSeccion('borrar', 'reservation'));
+        // Y no le abre nada que no viera.
+        $this->assertFalse($u->puedeEnLaSeccion('ver', 'budget'));
+    }
+
+    /** Y una vez repartido, no vuelve a abrir lo que se cierre a propósito. */
+    public function test_el_reparto_no_se_repite(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_CONSULTOR => ['asset' => ['ver' => true]],
+        ]);
+
+        $this->accesos()->sincronizar();
+
+        $u = $this->con(User::ROL_CONSULTOR);
+
+        $this->assertTrue($u->puedeEnLaSeccion('ver', 'asset'));
+        $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
+    }
+
     // ------------------------------------------------- volver a sincronizar
 
     /**

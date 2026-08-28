@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Models\Setting;
 use App\Models\User;
 use App\Support\Secciones;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,9 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class MatrizDeAccesos
 {
+    /** Que el reparto de las acciones nuevas ya se hizo. */
+    private const YA_HEREDADO = 'accesos.acciones_heredadas';
+
     /**
      * Pone al día los permisos con las secciones que existen hoy.
      *
@@ -72,7 +76,60 @@ class MatrizDeAccesos
             }
         }
 
+        $this->heredarLasAccionesDeLoQueYaSeVeia();
+
         $this->olvidarLaCache();
+    }
+
+    /**
+     * Una sola vez: lo que se veía, se podía tocar.
+     *
+     * Antes de que existieran crear, editar y borrar, el permiso de **ver** era
+     * la unica llave: quien veia una seccion podia crear y borrar en ella. Si
+     * al partir la llave en cuatro no se reparten las tres nuevas, el dia del
+     * despliegue el consultor amanece sin poder editar nada —sin que nadie lo
+     * decidiera, y sin que nadie lo sepa hasta que se queje—.
+     *
+     * Corre una vez y se anota, para no volver a abrir lo que el laboratorio
+     * cierre despues a proposito.
+     */
+    private function heredarLasAccionesDeLoQueYaSeVeia(): void
+    {
+        if (Setting::get(self::YA_HEREDADO)) {
+            return;
+        }
+
+        foreach ($this->rolesEditables() as $nombre) {
+            $rol = Role::findByName($nombre, 'web');
+            $tiene = $rol->permissions->pluck('name');
+
+            // Si ya distingue acciones, alguien lo configuro: no se toca.
+            if ($tiene->contains(fn (string $p) => ! str_starts_with($p, 'ver.'))) {
+                continue;
+            }
+
+            $nuevos = [];
+
+            foreach ($tiene as $permiso) {
+                $clave = substr($permiso, strlen('ver.'));
+                $seccion = Secciones::todas()[$clave] ?? null;
+
+                if (! $seccion) {
+                    continue;
+                }
+
+                foreach (array_keys(Secciones::accionesDe($seccion['clase'])) as $accion) {
+                    $nuevos[] = $accion . '.' . $clave;
+                }
+            }
+
+            if ($nuevos !== []) {
+                $this->asegurarQueExisten($nuevos);
+                $rol->givePermissionTo($nuevos);
+            }
+        }
+
+        Setting::put(self::YA_HEREDADO, true, 'accesos');
     }
 
     /**
