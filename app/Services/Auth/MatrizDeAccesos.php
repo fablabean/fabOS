@@ -136,11 +136,34 @@ class MatrizDeAccesos
                     }
                 }
 
+                // Crear lo que falte antes de asignarlo: si una seccion es
+                // mas nueva que la ultima sincronizacion, Spatie no reconoce
+                // el permiso y la pantalla revienta al guardar en vez de
+                // guardar.
+                $this->asegurarQueExisten($permisos);
+
                 Role::findByName($nombre, 'web')->syncPermissions($permisos);
             }
         });
 
         $this->olvidarLaCache();
+    }
+
+    /** @param  list<string>  $permisos */
+    private function asegurarQueExisten(array $permisos): void
+    {
+        $existentes = Permission::whereIn('name', $permisos)
+            ->where('guard_name', 'web')
+            ->pluck('name')
+            ->all();
+
+        foreach (array_diff($permisos, $existentes) as $permiso) {
+            Permission::create(['name' => $permiso, 'guard_name' => 'web']);
+        }
+
+        if (array_diff($permisos, $existentes) !== []) {
+            $this->olvidarLaCache();
+        }
     }
 
     /** Todos menos el superadmin, que no se toca. */

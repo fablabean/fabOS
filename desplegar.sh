@@ -165,6 +165,12 @@ $COMPOSE exec -T -u sail laravel.test composer install --no-dev --optimize-autol
 grep -q '^APP_KEY=base64' .env || $ARTISAN key:generate --force
 
 $ARTISAN migrate --force
+
+# Los permisos de las secciones del panel. No es una migracion a proposito:
+# una migracion corre una vez, y esto tiene que volver a correr cada vez que
+# aparece una seccion o una accion nueva. No pisa lo que el laboratorio haya
+# decidido en «Roles y accesos».
+$ARTISAN fabos:accesos
 $ARTISAN storage:link || true
 
 # Cachés: se rehacen en cada despliegue, no una sola vez.

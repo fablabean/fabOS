@@ -325,6 +325,27 @@ class RolesYAccesosTest extends TestCase
         $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
     }
 
+    /**
+     * Guardar no revienta con un permiso que todavía no existía.
+     *
+     * La sincronización vivía dentro de una migración, y eso falló de la peor
+     * manera: una migración corre una vez. Al añadir crear/editar/borrar, los
+     * permisos nuevos aparecieron en desarrollo —donde la base se rehace— y no
+     * en producción, donde la migración ya estaba dada por hecha. La pantalla
+     * se veía bien y no guardaba.
+     */
+    public function test_guardar_crea_lo_que_falte_en_vez_de_reventar(): void
+    {
+        \Spatie\Permission\Models\Permission::where('name', 'borrar.asset')->delete();
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['asset' => ['ver' => true, 'borrar' => true]],
+        ]);
+
+        $this->assertTrue($this->con(User::ROL_PRACTICANTE)->puedeEnLaSeccion('borrar', 'asset'));
+    }
+
     // ------------------------------------------------- volver a sincronizar
 
     /**
