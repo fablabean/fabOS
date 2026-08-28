@@ -30,7 +30,7 @@ class RolesYAccesos extends Page
 
     protected static ?int $navigationSort = 2;
 
-    /** rol => clave de sección => si la ve. */
+    /** rol => clave de sección => acción => si puede. */
     public array $matriz = [];
 
     public static function getNavigationGroup(): string | \UnitEnum | null
@@ -66,11 +66,47 @@ class RolesYAccesos extends Page
         return Secciones::porGrupo();
     }
 
-    /** Marca o desmarca un grupo entero: son cuarenta casillas. */
-    public function todoElGrupo(string $rol, string $grupo, bool $valor): void
+    /** Qué se puede configurar en una sección: una página solo se ve. */
+    public function accionesDe(array $seccion): array
+    {
+        return Secciones::accionesDe($seccion['clase']);
+    }
+
+    /**
+     * Marca o desmarca un grupo entero.
+     *
+     * Con cuarenta secciones por cuatro acciones, ajustar un rol a mano son
+     * ciento sesenta clics. «Ver» pone solo la lectura, que es el punto de
+     * partida razonable; «todo» abre tambien crear, editar y borrar.
+     */
+    public function todoElGrupo(string $rol, string $grupo, string $hasta): void
     {
         foreach (Secciones::porGrupo()[$grupo] ?? [] as $seccion) {
-            $this->matriz[$rol][$seccion['clave']] = $valor;
+            foreach (array_keys($this->accionesDe($seccion)) as $accion) {
+                $this->matriz[$rol][$seccion['clave']][$accion] = match ($hasta) {
+                    'todo' => true,
+                    'ver'  => $accion === 'ver',
+                    default => false,
+                };
+            }
+        }
+    }
+
+    /**
+     * Sin ver no hay nada más: apagar «ver» apaga el resto en la pantalla.
+     *
+     * El servicio ya lo corrige al guardar, pero dejar las casillas marcadas
+     * mientras tanto enseña un permiso que no va a existir, y quien lo mira se
+     * queda creyendo que lo tiene.
+     */
+    public function alCambiarVer(string $rol, string $clave): void
+    {
+        if (! empty($this->matriz[$rol][$clave]['ver'])) {
+            return;
+        }
+
+        foreach (array_keys($this->matriz[$rol][$clave] ?? []) as $accion) {
+            $this->matriz[$rol][$clave][$accion] = false;
         }
     }
 

@@ -165,7 +165,7 @@ class RolesYAccesosTest extends TestCase
         $this->con(User::ROL_SUPERADMIN);
 
         Livewire::test(RolesYAccesos::class)
-            ->set('matriz.practicante.budget', true)
+            ->set('matriz.practicante.budget.ver', true)
             ->call('save');
 
         $practicante = $this->con(User::ROL_PRACTICANTE);
@@ -179,7 +179,7 @@ class RolesYAccesosTest extends TestCase
         $this->con(User::ROL_SUPERADMIN);
 
         Livewire::test(RolesYAccesos::class)
-            ->set('matriz.practicante.reservation', false)
+            ->set('matriz.practicante.reservation.ver', false)
             ->call('save');
 
         $this->con(User::ROL_PRACTICANTE);
@@ -193,7 +193,7 @@ class RolesYAccesosTest extends TestCase
         $this->con(User::ROL_SUPERADMIN);
 
         Livewire::test(RolesYAccesos::class)
-            ->call('todoElGrupo', User::ROL_PRACTICANTE, 'Compras', true)
+            ->call('todoElGrupo', User::ROL_PRACTICANTE, 'Compras', 'ver')
             ->call('save');
 
         $u = $this->con(User::ROL_PRACTICANTE);
@@ -206,13 +206,123 @@ class RolesYAccesosTest extends TestCase
     public function test_una_seccion_inventada_no_se_guarda(): void
     {
         $this->accesos()->guardar([
-            User::ROL_PRACTICANTE => ['seccion-que-no-existe' => true, 'reservation' => true],
+            User::ROL_PRACTICANTE => [
+                'seccion-que-no-existe' => ['ver' => true],
+                'reservation'           => ['ver' => true],
+            ],
         ]);
 
         $permisos = Role::findByName(User::ROL_PRACTICANTE, 'web')->permissions->pluck('name');
 
         $this->assertContains('ver.reservation', $permisos);
         $this->assertNotContains('ver.seccion-que-no-existe', $permisos);
+    }
+
+    // ------------------------------------------------------- ver, crear, borrar
+
+    /**
+     * Lo que pidió el laboratorio: ver una cosa sin poder tocarla.
+     *
+     * Ver y poder borrar no son lo mismo. Con una sola llave había que elegir
+     * entre que el practicante no viera los equipos o que los pudiera editar.
+     */
+    public function test_se_puede_ver_sin_poder_editar(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => [
+                'asset'  => ['ver' => true],
+                'supply' => ['ver' => true, 'crear' => true],
+            ],
+        ]);
+
+        $u = $this->con(User::ROL_PRACTICANTE);
+
+        $this->assertTrue($u->puedeEnLaSeccion('ver', 'asset'));
+        $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
+        $this->assertFalse($u->puedeEnLaSeccion('crear', 'asset'));
+
+        $this->assertTrue($u->puedeEnLaSeccion('crear', 'supply'));
+        $this->assertFalse($u->puedeEnLaSeccion('borrar', 'supply'));
+    }
+
+    /** Y el panel obedece: la lista se abre, la pantalla de crear no. */
+    public function test_sin_crear_la_pantalla_de_crear_no_se_abre(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['asset' => ['ver' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        $this->get('/admin/assets')->assertOk();
+        $this->get('/admin/assets/create')->assertForbidden();
+    }
+
+    public function test_con_crear_la_pantalla_de_crear_se_abre(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['asset' => ['ver' => true, 'crear' => true]],
+        ]);
+
+        $this->con(User::ROL_PRACTICANTE);
+
+        $this->get('/admin/assets/create')->assertOk();
+    }
+
+    /**
+     * Sin ver no hay nada más.
+     *
+     * Un permiso de editar sobre algo que no se puede abrir no es un permiso,
+     * es un estado imposible: deja a alguien buscando por qué no le aparece el
+     * botón.
+     */
+    public function test_editar_sin_ver_no_se_guarda(): void
+    {
+        $this->accesos()->guardar([
+            User::ROL_PRACTICANTE => ['budget' => ['ver' => false, 'editar' => true]],
+        ]);
+
+        $permisos = Role::findByName(User::ROL_PRACTICANTE, 'web')->permissions->pluck('name');
+
+        $this->assertNotContains('editar.budget', $permisos);
+        $this->assertNotContains('ver.budget', $permisos);
+    }
+
+    /**
+     * Lo que no es un permiso no se ofrece como tal.
+     *
+     * Un movimiento del libro lo escribe el libro; una pregunta se responde en
+     * el sitio. Marcar «crear» ahí no haría nada por mucho que se marque, y una
+     * casilla que no hace nada es una promesa incumplida.
+     */
+    public function test_lo_que_no_se_crea_desde_el_panel_no_ofrece_la_casilla(): void
+    {
+        $libro = Secciones::accionesDe(\App\Filament\Resources\LedgerTransactions\LedgerTransactionResource::class);
+
+        $this->assertArrayHasKey('ver', $libro);
+        $this->assertArrayNotHasKey('crear', $libro);
+
+        // Y una pagina solo se ve: no tiene filas que crear ni borrar.
+        $this->assertSame(['ver'], array_keys(Secciones::accionesDe(\App\Filament\Pages\Tablero::class)));
+
+        // Un recurso normal si las tiene todas.
+        $this->assertSame(
+            ['ver', 'crear', 'editar', 'borrar'],
+            array_keys(Secciones::accionesDe(\App\Filament\Resources\Reservations\ReservationResource::class)),
+        );
+    }
+
+    /** El practicante mira, atiende su turno y no borra nada. */
+    public function test_el_practicante_no_borra_en_ningun_sitio(): void
+    {
+        $u = $this->con(User::ROL_PRACTICANTE);
+
+        foreach (array_keys(Secciones::todas()) as $clave) {
+            $this->assertFalse($u->puedeEnLaSeccion('borrar', $clave), $clave . ' se le dejó borrar');
+        }
+
+        $this->assertTrue($u->puedeEnLaSeccion('editar', 'reservation'));
+        $this->assertFalse($u->puedeEnLaSeccion('editar', 'asset'));
     }
 
     // ------------------------------------------------- volver a sincronizar
@@ -226,7 +336,7 @@ class RolesYAccesosTest extends TestCase
      */
     public function test_sincronizar_otra_vez_respeta_lo_ajustado(): void
     {
-        $this->accesos()->guardar([User::ROL_PRACTICANTE => ['budget' => true]]);
+        $this->accesos()->guardar([User::ROL_PRACTICANTE => ['budget' => ['ver' => true]]]);
 
         $this->accesos()->sincronizar();
 

@@ -48,11 +48,19 @@ class MatrizDeAccesos
 
         $this->olvidarLaCache();
 
-        foreach (Secciones::porDefecto() as $nombre => $claves) {
+        foreach (Secciones::porDefecto() as $nombre => $porSeccion) {
             $rol = Role::findByName($nombre, 'web');
 
             if ($rol->permissions()->count() === 0) {
-                $rol->syncPermissions(array_map(fn (string $c) => 'ver.' . $c, $claves));
+                $permisos = [];
+
+                foreach ($porSeccion as $clave => $acciones) {
+                    foreach ($acciones as $accion) {
+                        $permisos[] = $accion . '.' . $clave;
+                    }
+                }
+
+                $rol->syncPermissions($permisos);
 
                 continue;
             }
@@ -68,13 +76,13 @@ class MatrizDeAccesos
     }
 
     /**
-     * La matriz para pintarla: rol => clave de sección => si la ve.
+     * La matriz para pintarla: rol => clave de sección => acción => si puede.
      *
      * El superadmin no está: lo ve todo por código, y ofrecer una casilla que
      * no hace nada —o peor, que sí la hace y te deja fuera— es mentir con la
      * interfaz.
      *
-     * @return array<string, array<string, bool>>
+     * @return array<string, array<string, array<string, bool>>>
      */
     public function matriz(): array
     {
@@ -83,8 +91,10 @@ class MatrizDeAccesos
         foreach ($this->rolesEditables() as $nombre) {
             $tiene = Role::findByName($nombre, 'web')->permissions->pluck('name')->all();
 
-            foreach (array_keys(Secciones::todas()) as $clave) {
-                $matriz[$nombre][$clave] = in_array('ver.' . $clave, $tiene, true);
+            foreach (Secciones::todas() as $clave => $seccion) {
+                foreach (array_keys(Secciones::accionesDe($seccion['clase'])) as $accion) {
+                    $matriz[$nombre][$clave][$accion] = in_array($accion . '.' . $clave, $tiene, true);
+                }
             }
         }
 
@@ -94,22 +104,39 @@ class MatrizDeAccesos
     /**
      * Guarda lo marcado.
      *
-     * @param  array<string, array<string, bool>>  $matriz
+     * Dos cosas se corrigen aquí en silencio, y a propósito:
+     *
+     *  · Una sección o una acción que no existe se descarta. El formulario
+     *    llega del navegador; no es la autoridad sobre qué permisos hay.
+     *  · **Sin ver, nada.** Marcar «editar» y dejar «ver» apagado deja un
+     *    permiso que no se puede ejercer, y alguien buscando después por qué
+     *    no aparece el botón.
+     *
+     * @param  array<string, array<string, array<string, bool>>>  $matriz
      */
     public function guardar(array $matriz): void
     {
-        DB::transaction(function () use ($matriz) {
-            foreach ($this->rolesEditables() as $nombre) {
-                $marcadas = collect($matriz[$nombre] ?? [])
-                    ->filter()
-                    ->keys()
-                    // Solo secciones que existen: una clave inventada por un
-                    // formulario manipulado no crea un permiso nuevo.
-                    ->filter(fn (string $clave) => isset(Secciones::todas()[$clave]))
-                    ->map(fn (string $clave) => 'ver.' . $clave)
-                    ->all();
+        $secciones = Secciones::todas();
 
-                Role::findByName($nombre, 'web')->syncPermissions($marcadas);
+        DB::transaction(function () use ($matriz, $secciones) {
+            foreach ($this->rolesEditables() as $nombre) {
+                $permisos = [];
+
+                foreach ($matriz[$nombre] ?? [] as $clave => $acciones) {
+                    if (! isset($secciones[$clave]) || empty($acciones['ver'])) {
+                        continue;
+                    }
+
+                    $aplican = Secciones::accionesDe($secciones[$clave]['clase']);
+
+                    foreach ($acciones as $accion => $marcada) {
+                        if ($marcada && isset($aplican[$accion])) {
+                            $permisos[] = $accion . '.' . $clave;
+                        }
+                    }
+                }
+
+                Role::findByName($nombre, 'web')->syncPermissions($permisos);
             }
         });
 

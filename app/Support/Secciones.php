@@ -22,6 +22,20 @@ use Illuminate\Support\Str;
  */
 class Secciones
 {
+    /**
+     * Lo que se puede hacer en una seccion.
+     *
+     * Ver y poder borrar no son lo mismo, y tratarlos como una sola llave
+     * obliga a elegir entre que alguien no vea nada o que lo pueda borrar
+     * todo. El practicante mira los insumos; no edita los equipos.
+     */
+    public const ACCIONES = [
+        'ver'    => 'Ver',
+        'crear'  => 'Crear',
+        'editar' => 'Editar',
+        'borrar' => 'Borrar',
+    ];
+
     /** @var array<string, array{clave: string, clase: string, nombre: string, grupo: string}>|null */
     private static ?array $cache = null;
 
@@ -87,10 +101,69 @@ class Secciones
         return 'ver.' . self::claveDe($clase);
     }
 
+    /**
+     * Que se puede configurar en esta seccion.
+     *
+     * Una **pagina** solo se ve: no tiene filas que crear ni borrar.
+     *
+     * Y algunos recursos deciden por si mismos que no se crean desde el panel
+     * —un movimiento del libro lo escribe el libro, el contenido llega del
+     * telefono, una pregunta se responde en el sitio—. Eso no es un permiso,
+     * es como funciona la cosa: ofrecer la casilla seria prometer algo que no
+     * va a pasar por mucho que se marque. Se detecta preguntando si la clase
+     * escribio su propia regla en vez de heredar la nuestra.
+     *
+     * @return array<string, string> accion => etiqueta
+     */
+    public static function accionesDe(string $clase): array
+    {
+        if (! is_subclass_of($clase, \Filament\Resources\Resource::class)) {
+            return ['ver' => self::ACCIONES['ver']];
+        }
+
+        $acciones = self::ACCIONES;
+
+        foreach (['crear' => 'canCreate', 'editar' => 'canEdit', 'borrar' => 'canDelete'] as $accion => $metodo) {
+            if (self::loDecideLaClase($clase, $metodo)) {
+                unset($acciones[$accion]);
+            }
+        }
+
+        return $acciones;
+    }
+
+    /**
+     * Si la clase escribio esa regla ella misma.
+     *
+     * Se compara el **fichero**, no la clase que declara. PHP aplana los
+     * traits: un metodo que viene de `ControlaSuAcceso` dice pertenecer al
+     * recurso que lo usa, y preguntarselo asi contestaba que todos los
+     * recursos deciden por su cuenta —y la matriz se quedaba con «ver» y nada
+     * mas—. El fichero, en cambio, sigue siendo el del trait.
+     */
+    private static function loDecideLaClase(string $clase, string $metodo): bool
+    {
+        try {
+            $metodo = new \ReflectionMethod($clase, $metodo);
+
+            return $metodo->getFileName() === (new \ReflectionClass($clase))->getFileName();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     /** Los permisos de todas las secciones, para sembrarlos de una vez. */
     public static function permisos(): array
     {
-        return array_map(fn (array $s) => 'ver.' . $s['clave'], array_values(self::todas()));
+        $permisos = [];
+
+        foreach (self::todas() as $seccion) {
+            foreach (array_keys(self::accionesDe($seccion['clase'])) as $accion) {
+                $permisos[] = $accion . '.' . $seccion['clave'];
+            }
+        }
+
+        return $permisos;
     }
 
     /**
@@ -104,7 +177,7 @@ class Secciones
      * que se le pueda quitar es la forma de quedarse fuera del sistema sin
      * manera de volver a entrar.
      *
-     * @return array<string, list<string>> rol => claves de sección
+     * @return array<string, array<string, list<string>>> rol => clave => acciones
      */
     public static function porDefecto(): array
     {
@@ -147,13 +220,37 @@ class Secciones
             $todas,
         ));
 
+        /*
+         * Quien veia una seccion podia crear y editar en ella: no habia otra
+         * cosa. Asi que «todo lo que aplique» es lo fiel, tambien para el
+         * consultor —que por nombre solo deberia mirar, pero cambiarselo aqui
+         * seria estrecharle el trabajo sin avisar—. Ahora se puede hacer en la
+         * pantalla, mirandolo, que es donde toca decidirlo.
+         */
+        $todoLoQueAplique = fn (array $claves) => collect($claves)
+            ->mapWithKeys(fn (string $c) => [$c => array_keys(self::accionesDe(self::todas()[$c]['clase']))])
+            ->all();
+
         return [
-            User::ROL_ADMINISTRADOR  => $administrador,
-            User::ROL_CONSULTOR      => $consultor,
-            User::ROL_PRACTICANTE    => $practicante,
+            User::ROL_ADMINISTRADOR => $todoLoQueAplique($administrador),
+            User::ROL_CONSULTOR     => $todoLoQueAplique($consultor),
+
+            /*
+             * El practicante mira. Solo toca lo que es su turno: atender una
+             * reserva y reportar una averia. Borrar, en ningun sitio: deshacer
+             * lo que otro anoto no es parte de atender el laboratorio.
+             */
+            User::ROL_PRACTICANTE => collect($practicante)
+                ->mapWithKeys(fn (string $c) => [
+                    $c => in_array($c, ['reservation', 'work-order'], true)
+                        ? ['ver', 'crear', 'editar']
+                        : ['ver'],
+                ])
+                ->all(),
+
             // Comunicaciones viene a buscar material para divulgación, y a
             // nada más. Es el rol mas estrecho del sistema, a proposito.
-            User::ROL_COMUNICACIONES => ['contenido'],
+            User::ROL_COMUNICACIONES => ['contenido' => ['ver']],
         ];
     }
 

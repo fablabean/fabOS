@@ -96,6 +96,19 @@ class User extends Authenticatable implements FilamentUser
      */
     public function puedeVerLaSeccion(string $clave): bool
     {
+        return $this->puedeEnLaSeccion('ver', $clave);
+    }
+
+    /**
+     * Si esta persona puede hacer algo —ver, crear, editar, borrar— en una
+     * seccion.
+     *
+     * **Sin ver no hay nada mas.** Poder editar algo que no se puede abrir no
+     * es un permiso, es un estado imposible; dejarlo existir es como acaban
+     * apareciendo botones que fallan al pulsarlos.
+     */
+    public function puedeEnLaSeccion(string $accion, string $clave): bool
+    {
         if ($this->hasRole(self::ROL_SUPERADMIN)) {
             return true;
         }
@@ -103,7 +116,11 @@ class User extends Authenticatable implements FilamentUser
         // `can` y no `hasPermissionTo`: el segundo revienta cuando el permiso
         // no existe todavia —una seccion recien añadida, una base sin sembrar—
         // y una pantalla que revienta al mirarla es peor que una cerrada.
-        return $this->can('ver.' . $clave);
+        if (! $this->can('ver.' . $clave)) {
+            return false;
+        }
+
+        return $accion === 'ver' || $this->can($accion . '.' . $clave);
     }
 
     protected function casts(): array
