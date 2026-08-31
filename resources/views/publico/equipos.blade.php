@@ -29,6 +29,23 @@
         .estado.ocupado{color:#DFA163}
         .estado.no_operativo{color:#E08585}
     }
+
+    /* Los filtros. Son enlaces, no botones de formulario: asi el filtro va en
+       la direccion y se puede pegar en un chat, que es como se comparte un
+       equipo con alguien. */
+    .filtros{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 1.6rem}
+    .filtros a{
+        display:inline-flex;align-items:baseline;gap:.35rem;
+        padding:.4rem .8rem;border:1px solid var(--rule);border-radius:99px;
+        background:var(--surface);color:var(--ink-soft);text-decoration:none;
+        font-size:.85rem;line-height:1.2;
+    }
+    .filtros a:hover{border-color:var(--accent);color:var(--ink)}
+    .filtros a.puesto{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+    .filtros a small{font-size:.72rem;opacity:.7;font-variant-numeric:tabular-nums}
+    .filtros .separa{width:1px;background:var(--rule);margin:.2rem .35rem}
+    .filtros a.libres.puesto{background:#0D6E63;border-color:#0D6E63}
+    .vacio{color:var(--muted);padding:1.4rem 0 2.4rem}
 @endsection
 
 @section('content')
@@ -42,9 +59,43 @@
         </p>
     </section>
 
-    @foreach ($porArea as $area => $equipos)
+    {{-- Las áreas son la primera pregunta de quien entra: noventa equipos en
+         una lista se recorren con la rueda del ratón, y quien busca una
+         cortadora láser no sabe si está más arriba o más abajo. --}}
+    <nav class="filtros" aria-label="Filtrar equipos">
+        <a href="{{ route('publico.equipos', $soloLibres ? ['libres' => 1] : []) }}"
+           class="{{ $area === '' ? 'puesto' : '' }}">
+            Todas <small>{{ $total }}</small>
+        </a>
+
+        @foreach ($areas as $a)
+            <a href="{{ route('publico.equipos', array_filter([
+                    'area'   => $a['slug'],
+                    'libres' => $soloLibres ? 1 : null,
+               ])) }}"
+               class="{{ $area === $a['slug'] ? 'puesto' : '' }}">
+                {{ $a['nombre'] }} <small>{{ $a['cuantos'] }}</small>
+            </a>
+        @endforeach
+
+        <span class="separa" aria-hidden="true"></span>
+
+        {{-- Lo que se puede usar ahora mismo: es lo que se pregunta cuando
+             alguien ya está de pie en la puerta del laboratorio. --}}
+        <a href="{{ route('publico.equipos', array_filter([
+                'area'   => $area ?: null,
+                'libres' => $soloLibres ? null : 1,
+           ])) }}"
+           class="libres {{ $soloLibres ? 'puesto' : '' }}">
+            Libre ahora <small>{{ $libres }}</small>
+        </a>
+    </nav>
+
+    {{-- `$nombreArea` y no `$area`: esa ya es el filtro puesto, y reusarla aquí
+         la dejaría valiendo el último grupo pintado. --}}
+    @foreach ($porArea as $nombreArea => $equipos)
         <section style="padding-top:1rem" id="{{ $equipos->first()->area?->slug }}">
-            <p class="rotulo">{{ $area }} · {{ $equipos->count() }}</p>
+            <p class="rotulo">{{ $nombreArea }} · {{ $equipos->count() }}</p>
             <div class="equipos">
                 @foreach ($equipos as $e)
                     <a class="equipo" href="{{ route('publico.equipo', $e) }}">
@@ -66,5 +117,16 @@
             </div>
         </section>
     @endforeach
+
+    @if ($porArea->isEmpty())
+        <p class="vacio">
+            @if ($soloLibres)
+                Ahora mismo no hay nada libre aquí. Prueba en otra área, o mira el catálogo
+                completo para reservar más tarde.
+            @else
+                No hay equipos publicados en esta área.
+            @endif
+        </p>
+    @endif
 </main>
 @endsection
