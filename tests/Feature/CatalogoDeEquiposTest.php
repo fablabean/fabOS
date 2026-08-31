@@ -12,15 +12,18 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * El catálogo público de equipos, con filtros (§7).
+ * Reservas: tres maneras de usar el laboratorio (§7, §10, §11).
  *
- * Noventa equipos en una sola lista se recorren con la rueda del ratón, y quien
- * busca una cortadora láser no sabe si está más arriba o más abajo. El área es
- * la primera pregunta de cualquiera que entra; «qué puedo usar ahora», la de
- * quien ya está de pie en la puerta.
+ * La página empezaba por la lista de ochenta y tres máquinas, y esa es la última
+ * pregunta, no la primera. Antes de saber **qué** máquina hay que saber **cómo**:
+ * con alguien al lado, encargándolo, o por tu cuenta. Quien no distingue eso se
+ * pone a mirar impresoras que todavía no puede reservar.
  *
- * El filtro va en la dirección y no en el navegador: así se puede pegar en un
- * chat, que es como se comparte un equipo con alguien.
+ * Después el área —con foto, porque «impresión 3D» se reconoce de un vistazo y
+ * «Prusa MK4» no—, y solo entonces las máquinas.
+ *
+ * Todo va en la dirección y no en el navegador: así se puede pegar en un chat,
+ * que es como se comparte un equipo con alguien.
  */
 class CatalogoDeEquiposTest extends TestCase
 {
@@ -72,17 +75,40 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
     }
 
+    // ---------------------------------------------------------- los tres caminos
+
+    public function test_los_tres_caminos_estan_arriba(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertSee('Asesoría')
+            ->assertSee('Producción')
+            ->assertSee('Autonomía')
+            // Producción no es una máquina que se reserve: es un encargo.
+            ->assertSee(route('proyectos.solicitar'), false);
+    }
+
     // ------------------------------------------------------------ las áreas
 
-    public function test_sin_filtro_se_ven_todos(): void
+    /**
+     * Se empieza eligiendo área, no mirando máquinas.
+     *
+     * Ochenta y tres equipos de golpe se recorren con la rueda del ratón; el
+     * área es la primera pregunta de cualquiera que entra.
+     */
+    public function test_de_entrada_se_eligen_areas_no_maquinas(): void
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
 
         $this->get('/equipos')
             ->assertOk()
-            ->assertSee('Cortadora láser')
-            ->assertSee('Impresora 3D');
+            ->assertSee('Corte láser')
+            ->assertSee('Impresión 3D')
+            // Las máquinas todavía no.
+            ->assertDontSee('Cortadora láser');
     }
 
     public function test_filtrar_por_area_deja_solo_esa(): void
@@ -96,26 +122,16 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertDontSee('Impresora 3D');
     }
 
-    /**
-     * Las cuentas de arriba salen del catálogo completo.
-     *
-     * Si menguaran al filtrar, la fila de filtros dejaría de servir para
-     * volver: se vería «Impresión 3D (0)» y parecería que no hay ninguna.
-     */
-    public function test_las_cuentas_de_los_filtros_no_menguan_al_filtrar(): void
+    /** Cada área dice cuántos equipos tiene: sin eso, elegir es a ciegas. */
+    public function test_cada_area_dice_cuantos_equipos_tiene(): void
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
         $this->equipo('Impresora 3D grande', 'impresion', 'Impresión 3D');
 
-        $html = $this->get('/equipos?area=corte')->assertOk()->getContent();
-
-        // La pastilla de Impresión 3D sigue diciendo que hay dos.
-        $this->assertMatchesRegularExpression(
-            '/Impresión 3D\s*<small>2<\/small>/u',
-            $html,
-            'La cuenta del área debería ser la del catálogo entero.',
-        );
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertSee('2 equipos');
     }
 
     /** Un área sin nada publicado lo dice, en vez de dejar la página en blanco. */
@@ -150,7 +166,7 @@ class CatalogoDeEquiposTest extends TestCase
             'status'          => 'confirmada',
         ]);
 
-        $this->get('/equipos?libres=1')
+        $this->get('/equipos?area=corte&libres=1')
             ->assertOk()
             ->assertSee('Cortadora láser')
             ->assertDontSee('Impresora 3D');
@@ -172,13 +188,101 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertDontSee('Impresora 3D');
     }
 
+    // ------------------------------------------------------------- autonomía
+
+    /**
+     * En autonomía solo sale lo que esa persona puede reservar.
+     *
+     * Enseñar lo demás es hacerle perder el viaje: llega al equipo, intenta
+     * reservar, y ahí se entera de que le falta el certifab.
+     */
+    public function test_en_autonomia_solo_sale_lo_que_puede_reservar(): void
+    {
+        $this->abrirElLaboratorio();
+
+        $puede = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+        $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
+
+        $familia = \App\Models\RiskFamily::create([
+            'area_id' => $puede->area_id, 'slug' => 'laser-' . uniqid(), 'name' => 'Láser',
+        ]);
+        $puede->update(['risk_family_id' => $familia->id]);
+
+        $quien = User::create([
+            'name' => 'Estudiante', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+        ]);
+
+        \App\Models\Certifab::create([
+            'user_id' => $quien->id, 'risk_family_id' => $familia->id, 'level' => 'mega',
+        ]);
+
+        $this->actingAs($quien->fresh())
+            ->get('/equipos?modo=autonomia')
+            ->assertOk()
+            ->assertSee('Corte láser')
+            ->assertDontSee('Impresión 3D');
+    }
+
+    /** Sin entrar no se puede saber: se dice, en vez de enseñar una lista vacía. */
+    public function test_en_autonomia_sin_cuenta_se_pide_entrar(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/equipos?modo=autonomia')
+            ->assertOk()
+            ->assertSee('hace falta que entres')
+            ->assertDontSee('Corte láser');
+    }
+
+    /** Y con cuenta pero sin certifabs, se dice y se ofrece la salida. */
+    public function test_sin_certifabs_se_ofrece_la_asesoria(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $quien = User::create([
+            'name' => 'Estudiante', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+        ]);
+
+        $this->actingAs($quien->fresh())
+            ->get('/equipos?modo=autonomia')
+            ->assertOk()
+            ->assertSee('no hay nada que puedas reservar');
+    }
+
+    // -------------------------------------------------------------- asesoría
+
+    public function test_en_asesoria_se_explica_que_no_hace_falta_certifab(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/equipos?modo=asesoria')
+            ->assertOk()
+            ->assertSee('No hace falta que sepas operar la máquina');
+    }
+
+    /** Y el equipo lleva derecho a pedir el acompañamiento, si hay quien asesore. */
+    public function test_en_asesoria_el_equipo_lleva_a_pedirla(): void
+    {
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $asesor = User::create([
+            'name' => 'Quien asesora', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+        $equipo->advisors()->attach($asesor->id, ['es_responsable' => true]);
+
+        $this->get('/equipos?modo=asesoria&area=corte')
+            ->assertOk()
+            ->assertSee(route('asesoria.show', $equipo), false);
+    }
+
     /** Lo privado no se enseña, con filtro o sin él. */
     public function test_lo_no_publicado_sigue_sin_verse(): void
     {
         $privado = $this->equipo('Equipo interno', 'corte', 'Corte láser');
         $privado->update(['is_public' => false]);
 
-        $this->get('/equipos')->assertOk()->assertDontSee('Equipo interno');
         $this->get('/equipos?area=corte')->assertOk()->assertDontSee('Equipo interno');
     }
 }

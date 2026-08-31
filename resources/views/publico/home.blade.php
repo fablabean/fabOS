@@ -196,7 +196,10 @@
         <h2 style="margin-bottom:1.2rem">Siete áreas de trabajo</h2>
         <div class="areas">
             @foreach ($areas as $area)
-                <a class="area" href="{{ route('publico.equipos') }}#{{ $area->slug }}">
+                {{-- Al area, no a un ancla: la pagina ya no pinta todas las
+                     secciones de golpe, asi que el ancla no llevaba a ningun
+                     sitio. --}}
+                <a class="area" href="{{ route('publico.equipos', ['area' => $area->slug]) }}">
                     <b>{{ $area->name }}</b>
                     <span>{{ $area->equipos_count }} {{ $area->equipos_count === 1 ? 'equipo' : 'equipos' }}</span>
                 </a>

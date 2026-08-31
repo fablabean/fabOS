@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\Asset;
 use App\Models\Certifab;
 use App\Services\Booking\AvailabilityService;
+use App\Services\Booking\EligibilityService;
 use Illuminate\Http\Request;
 
 /**
@@ -17,7 +18,10 @@ use Illuminate\Http\Request;
  */
 class PublicSiteController extends Controller
 {
-    public function __construct(private AvailabilityService $disponibilidad) {}
+    public function __construct(
+        private AvailabilityService $disponibilidad,
+        private EligibilityService $elegibilidad,
+    ) {}
 
     public function home()
     {
@@ -43,61 +47,108 @@ class PublicSiteController extends Controller
 
     /** Catálogo completo, agrupado por área. */
     /**
-     * El catalogo, con filtros arriba (§7).
+     * Reservas: tres maneras de usar el laboratorio (§7, §10, §11).
      *
-     * Noventa equipos en una sola lista se recorren con la rueda del raton, y
-     * quien busca una cortadora laser no sabe si esta mas arriba o mas abajo.
-     * Las areas son la primera pregunta que se hace cualquiera que entra.
+     * El catalogo empezaba por la lista de ochenta y tres maquinas, y esa es la
+     * ultima pregunta, no la primera. Antes de saber que maquina, hay que saber
+     * **como**: con alguien al lado, encargandolo, o por tu cuenta. Quien no
+     * distingue eso se pone a mirar impresoras que todavia no puede reservar.
      *
-     * El filtro va en la direccion —`?area=corte-laser`— y no en el navegador:
-     * asi se puede pegar en un chat, que es como se comparte un equipo.
+     *   · Asesoria   → te acompanamos. No hace falta certifab.
+     *   · Produccion → lo hacemos nosotros: se propone como proyecto.
+     *   · Autonomia  → reservas tu, con tus certifabs.
+     *
+     * Y despues el area, con foto, antes que la lista: «impresion 3D» se
+     * reconoce de un vistazo; «Prusa MK4» no, si nunca has entrado.
      */
     public function equipos(Request $request)
     {
+        $modo = $request->string('modo')->toString();
+        $modo = in_array($modo, ['asesoria', 'autonomia'], true) ? $modo : '';
+        $area = $request->string('area')->toString();
+
         $todos = Asset::query()
             ->withCount('advisors')
-            ->with('area', 'riskFamily')
+            ->with('area', 'riskFamily', 'dependencies')
             ->where('is_public', true)
             ->orderBy('name')
             ->get();
 
         $estados = $this->disponibilidad->estadoAhora($todos);
 
-        // Las areas y sus cuentas salen del catalogo COMPLETO: si menguaran al
-        // filtrar, la fila de arriba dejaria de servir para volver.
-        $areas = $todos
+        /*
+         * En autonomia solo sale lo que esta persona puede reservar de verdad.
+         * Ensenar lo que no puede es hacerle perder el viaje: llega al equipo,
+         * intenta reservar y ahi se entera de que le falta el certifab.
+         */
+        $quien = $request->user();
+        $visibles = $todos;
+
+        if ($modo === 'autonomia') {
+            if ($quien === null) {
+                $visibles = $todos->take(0);
+            } else {
+                $this->elegibilidad->precargar($quien);
+
+                $visibles = $todos->filter(
+                    fn (Asset $a) => $this->elegibilidad->evaluar($quien, $a)->puedeReservar(),
+                );
+            }
+        }
+
+        // Las areas se cuentan sobre lo VISIBLE en este modo: en autonomia, un
+        // area donde no puedes nada no deberia invitarte a entrar.
+        $areas = $visibles
             ->groupBy(fn (Asset $a) => $a->area?->slug ?? 'otros')
             ->map(fn ($equipos) => [
                 'slug'    => $equipos->first()->area?->slug ?? 'otros',
                 'nombre'  => $equipos->first()->area?->name ?? 'Otros',
                 'cuantos' => $equipos->count(),
+                // La foto de una de sus maquinas: un area se reconoce por lo
+                // que hay dentro, y no hay que subir nada nuevo para tenerla.
+                //
+                // Se prefiere una que se reserve. Los accesorios tambien tienen
+                // foto, y «Impresion 3D» ilustrada con un secador de filamento
+                // no dice lo que hay dentro.
+                'foto'    => (
+                    $equipos->first(fn (Asset $a) => $a->is_reservable && $a->photoUrl() !== null)
+                    ?? $equipos->first(fn (Asset $a) => $a->photoUrl() !== null)
+                )?->photoUrl(),
             ])
             ->sortBy('nombre')
             ->values();
 
-        $area = $request->string('area')->toString();
         $soloLibres = $request->boolean('libres');
 
-        $equipos = $todos
-            ->when($area !== '', fn ($lista) => $lista->filter(
-                fn (Asset $a) => ($a->area?->slug ?? 'otros') === $area,
-            ))
-            // Lo que se puede usar ahora mismo, que es lo que se pregunta
-            // cuando alguien esta de pie en la puerta del laboratorio.
+        $equipos = $visibles
+            ->when(
+                $area !== '',
+                fn ($lista) => $lista->filter(fn (Asset $a) => ($a->area?->slug ?? 'otros') === $area),
+            )
+            // Dentro de un area sigue valiendo la pregunta de quien ya esta de
+            // pie en la puerta: que puedo usar AHORA.
             ->when($soloLibres, fn ($lista) => $lista->filter(
                 fn (Asset $a) => ($estados[$a->id]['estado'] ?? null) === 'libre',
             ));
 
         return view('publico.equipos', [
+            'modo'       => $modo,
+            'area'       => $area,
+            'areas'      => $areas,
             'porArea'    => $equipos->groupBy(fn (Asset $a) => $a->area?->name ?? 'Otros'),
             'estados'    => $estados,
-            'areas'      => $areas,
-            'area'       => $area,
             'soloLibres' => $soloLibres,
-            'total'      => $todos->count(),
-            'libres'     => $todos->filter(
-                fn (Asset $a) => ($estados[$a->id]['estado'] ?? null) === 'libre',
-            )->count(),
+            'total'      => $visibles->count(),
+            // Las libres del area en la que se esta, no las del laboratorio
+            // entero: es la cifra que se mira estando dentro.
+            'libres'     => $visibles
+                ->when(
+                    $area !== '',
+                    fn ($lista) => $lista->filter(fn (Asset $a) => ($a->area?->slug ?? 'otros') === $area),
+                )
+                ->filter(fn (Asset $a) => ($estados[$a->id]['estado'] ?? null) === 'libre')
+                ->count(),
+            'identificada' => $quien !== null,
         ]);
     }
 

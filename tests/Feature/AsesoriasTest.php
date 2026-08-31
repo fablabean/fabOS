@@ -31,6 +31,21 @@ class AsesoriasTest extends TestCase
     {
         parent::setUp();
 
+        /*
+         * El reloj, quieto en un lunes por la mañana.
+         *
+         * Quien asesora en estas pruebas trabaja SOLO los lunes, de 08:00 a
+         * 18:00, y las franjas se buscan en los proximos siete dias. Corriendo
+         * un lunes por la tarde no cabe ninguna franja de 45 minutos: ni hoy
+         * —quedan veinte minutos de jornada— ni el lunes siguiente, que cae
+         * justo en el borde de la ventana. Cinco pruebas fallaban a las 17:40
+         * de un lunes y pasaban a las 11:00 del mismo dia.
+         *
+         * Una prueba que depende de cuando se ejecuta no prueba nada: o la
+         * crees cuando pasa, o la crees cuando falla, y no las dos.
+         */
+        $this->travelTo(Carbon::parse('2026-08-24 07:00', config('fabos.lab.timezone')));
+
         $area = Area::create(['name' => 'Prototipado', 'slug' => 'prototipado']);
 
         $this->equipo = Asset::create([

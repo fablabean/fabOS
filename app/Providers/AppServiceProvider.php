@@ -33,6 +33,7 @@ use App\Policies\BackofficePolicy;
 use App\Policies\CertifabPolicy;
 use App\Support\LabSettings;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -56,6 +57,22 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /*
+         * Si el sitio se sirve por https, sus enlaces tambien.
+         *
+         * Detras del tunel de Cloudflare la peticion llega a nginx en http, y
+         * Laravel construye desde ahi: la pagina viaja cifrada pero pide sus
+         * hojas de estilo y su javascript en claro. El navegador los bloquea
+         * por contenido mixto y la pantalla sale sin estilos, sin un error que
+         * mirar en el servidor —el fallo esta en el navegador de quien mira—.
+         *
+         * Se decide por APP_URL y no por el entorno: es la unica declaracion
+         * de como se llega al sitio de verdad.
+         */
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         // La identidad del laboratorio se administra desde el backoffice y pisa
         // a `.env`: cambiar el nombre no debería exigir entrar por SSH (§19).
         LabSettings::aplicar();

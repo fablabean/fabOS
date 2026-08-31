@@ -83,7 +83,9 @@
         <span class="palabra">fab<em>OS</em></span>
     </a>
     <nav>
-        <a href="{{ route('publico.equipos') }}">Equipos</a>
+        {{-- «Reservas» y no «Equipos»: quien entra de fuera no viene a mirar
+             un inventario, viene a usar el laboratorio. --}}
+        <a href="{{ route('publico.equipos') }}">Reservas</a>
             <a href="{{ route('preguntas.index') }}">Preguntas</a>
         <a href="{{ route('formacion') }}">Formación</a>
         @auth

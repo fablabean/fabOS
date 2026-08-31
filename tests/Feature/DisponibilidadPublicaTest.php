@@ -136,8 +136,10 @@ class DisponibilidadPublicaTest extends TestCase
             'starts_at' => now()->subMinutes(10), 'ends_at' => now()->addHour(),
         ]);
 
-        // Sin sesión: es la vitrina pública.
-        $this->get(route('publico.equipos'))
+        // Sin sesión: es la vitrina pública. Dentro del área, que es donde
+        // aparecen las máquinas desde que la portada pregunta primero cómo se
+        // quiere usar el laboratorio.
+        $this->get(route('publico.equipos', ['area' => $a->area?->slug]))
             ->assertOk()
             ->assertSee('Ocupado hasta las');
     }
