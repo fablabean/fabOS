@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\UtcDateTime;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -218,6 +219,48 @@ class Project extends Model
         'gerencia'   => 'Gerencia',
         'interno'    => 'Iniciativa del laboratorio',
     ];
+
+    /**
+     * Si esta persona lidera el proyecto (§11).
+     *
+     * El responsable responde por el: darle control sobre lo suyo no es un
+     * permiso extra, es lo que ya se espera de el. Lo contrario —tener que
+     * pedirle a un administrador que mueva de etapa un proyecto propio— es lo
+     * que hace que las etapas dejen de estar al dia.
+     */
+    public function loLidera(?User $quien): bool
+    {
+        return $quien !== null && $this->lead_id === $quien->id;
+    }
+
+    /**
+     * Si esta persona es del equipo: lo lidera o esta apuntada en el.
+     *
+     * Solo cuenta quien tiene cuenta. Un proveedor o el cliente son parte del
+     * equipo en el acta, pero no entran al sistema.
+     */
+    public function estaEnElEquipo(?User $quien): bool
+    {
+        if ($quien === null) {
+            return false;
+        }
+
+        return $this->loLidera($quien)
+            || $this->members()->where('user_id', $quien->id)->exists();
+    }
+
+    /** Los proyectos de alguien: los que lidera y en los que esta apuntado. */
+    public function scopeDeAlguien(Builder $query, ?User $quien): Builder
+    {
+        if ($quien === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $q) use ($quien) {
+            $q->where('lead_id', $quien->id)
+                ->orWhereHas('members', fn (Builder $m) => $m->where('user_id', $quien->id));
+        });
+    }
 
     public function lead(): BelongsTo
     {

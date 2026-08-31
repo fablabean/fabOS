@@ -28,7 +28,14 @@ class ProjectBoardController extends Controller
 
     public function show(Request $request, Project $project)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        /*
+         * Su equipo entra, aunque el rol no le abra la seccion de proyectos.
+         *
+         * Y al reves: tener rol de backoffice ya no basta para abrir el
+         * tablero de cualquier proyecto. Un tablero lleva el cliente, lo
+         * acordado y las tareas con nombres; eso no es de todo el que pase.
+         */
+        abort_unless($this->puedeVer($request->user(), $project), 403);
 
         return view('proyectos.tablero', [
             'proyecto'   => $project->load([
@@ -52,6 +59,12 @@ class ProjectBoardController extends Controller
      * nos junta en marzo?». Sin verlos superpuestos, cada proyecto parece
      * holgado por separado y el laboratorio se compromete de más.
      */
+    /** Quien puede mirar un proyecto: su equipo, o quien tiene la seccion. */
+    private function puedeVer(?User $quien, Project $proyecto): bool
+    {
+        return $quien?->can('view', $proyecto) ?? false;
+    }
+
     public function cronogramaGeneral(Request $request)
     {
         abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
@@ -60,6 +73,13 @@ class ProjectBoardController extends Controller
 
         $proyectos = Project::query()
             ->with('lead')
+            // Quien entra por su equipo ve los suyos, no el año entero del
+            // laboratorio: el cronograma general es un mapa de la carga de
+            // trabajo, y esa es una conversacion de quien coordina.
+            ->when(
+                ! $request->user()->puedeVerLaSeccion('project'),
+                fn ($query) => $query->deAlguien($request->user()),
+            )
             // Lo pausado tambien: sigue vivo, y verlo parado al lado de lo que
             // avanza es justo lo que recuerda que hay que volver a el.
             ->when(! $todos, fn ($q) => $q->whereIn('status', ['activo', 'ganado', 'pausado']))
@@ -147,7 +167,11 @@ class ProjectBoardController extends Controller
     /** Mover una tarjeta de columna. Un clic, sin salir del tablero. */
     public function moverTarea(Request $request, ProjectTask $task)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        // Mover una tarea es cambiar el proyecto, no mirarlo.
+        abort_unless(
+            $request->user()?->can('update', $task->project) ?? false,
+            403,
+        );
 
         $datos = $request->validate([
             'estado' => ['required', 'string'],

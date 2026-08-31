@@ -179,6 +179,30 @@ class Secciones
         return null;
     }
 
+    /** Los modelos que administra el panel. */
+    public static function modelos(): array
+    {
+        $modelos = [];
+
+        foreach (self::todas() as $seccion) {
+            if (! is_subclass_of($seccion['clase'], \Filament\Resources\Resource::class)) {
+                continue;
+            }
+
+            try {
+                $modelo = $seccion['clase']::getModel();
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($modelo) {
+                $modelos[] = $modelo;
+            }
+        }
+
+        return array_values(array_unique($modelos));
+    }
+
     /** Los permisos de todas las secciones, para sembrarlos de una vez. */
     public static function permisos(): array
     {

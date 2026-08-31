@@ -11,6 +11,7 @@ use App\Filament\Resources\Projects\Tables\ProjectsTable;
 use App\Models\Project;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -28,6 +29,57 @@ class ProjectResource extends Resource
     protected static ?string $pluralModelLabel = 'Proyectos';
 
     protected static ?int $navigationSort = 1;
+
+    /**
+     * La seccion se abre tambien para quien tiene un proyecto (§11).
+     *
+     * Sin esto, para que alguien viera el proyecto en el que trabaja habia que
+     * abrirle la seccion entera —los suyos y los de todos, con sus clientes y
+     * sus valores— o no dejarle ver ninguno y contarle por WhatsApp en que va
+     * lo suyo.
+     */
+    public static function canAccess(): bool
+    {
+        $quien = auth()->user();
+
+        if ($quien === null) {
+            return false;
+        }
+
+        return $quien->puedeVerLaSeccion('project')
+            || ($quien->canAccessPanel(filament()->getPanel('admin'))
+                && Project::deAlguien($quien)->exists());
+    }
+
+    /**
+     * Quien entra por su equipo ve **solo lo suyo**.
+     *
+     * Quien tiene el permiso de la seccion sigue viendolo todo. La diferencia
+     * importa: un proyecto lleva el nombre del cliente, lo que se acordo y por
+     * cuanto, y eso no es de todo el que pase por el panel.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $consulta = parent::getEloquentQuery();
+        $quien = auth()->user();
+
+        if ($quien && ! $quien->puedeVerLaSeccion('project')) {
+            $consulta->deAlguien($quien);
+        }
+
+        return $consulta;
+    }
+
+    /*
+     * Ver y editar NO se declaran aqui.
+     *
+     * Y no por pereza: el registro de secciones entiende que un recurso que
+     * escribe su propio `canEdit` decide por su cuenta —como los que no se
+     * crean desde el panel— y entonces deja de ofrecer esa casilla en la
+     * matriz. Escribirlo aqui borraba el permiso `editar.project` para todo el
+     * mundo. Las reglas del equipo viven en ProjectPolicy, que suma a la
+     * matriz en vez de reemplazarla.
+     */
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {

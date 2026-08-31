@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Tables;
 
+use App\Filament\Resources\Projects\ProjectResource;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\User;
@@ -142,7 +143,8 @@ class ProjectsTable
                     // proyectos de quien no tiene cuenta -una empresa que
                     // escribió por WhatsApp- y responderle es igual de
                     // necesario.
-                    ->visible(fn (Project $record) => filled($record->requestedBy?->email ?: $record->contact_email))
+                    ->visible(fn (Project $record) => self::puedeManejar($record)
+                        && filled($record->requestedBy?->email ?: $record->contact_email))
                     ->modalHeading('La propuesta')
                     ->modalDescription(fn (Project $record) => 'Esto es lo que va a ver '
                         . ($record->requestedBy?->name ?: $record->contact_name ?: $record->contact_email)
@@ -275,6 +277,18 @@ class ProjectsTable
             ]);
     }
 
+    /**
+     * Si esta persona puede mover este proyecto.
+     *
+     * Del equipo se ve; para cambiarlo hay que responder por el. Sin esto, un
+     * miembro cualquiera podria avanzar de etapa o descartar un proyecto que
+     * solo vino a consultar.
+     */
+    private static function puedeManejar(Project $proyecto): bool
+    {
+        return ProjectResource::canEdit($proyecto);
+    }
+
     private static function tablero(): Action
     {
         return Action::make('tablero')
@@ -305,7 +319,8 @@ class ProjectsTable
             ))
             ->icon('heroicon-o-arrow-right-circle')
             ->color('success')
-            ->visible(fn (Project $r) => app(ProjectService::class)->siguienteEtapa($r) !== null
+            ->visible(fn (Project $r) => self::puedeManejar($r)
+                && app(ProjectService::class)->siguienteEtapa($r) !== null
                 && ! in_array($r->status, ['perdido', 'descartado'], true))
             ->requiresConfirmation()
             ->modalDescription(fn (Project $r) => app(ProjectService::class)->queFalta($r)
@@ -339,6 +354,7 @@ class ProjectsTable
             ->tooltip('Mover de etapa')
             ->icon('heroicon-o-arrows-right-left')
             ->color('gray')
+            ->visible(fn (Project $r) => self::puedeManejar($r))
             ->schema([
                 Select::make('etapa')
                     ->label('A qué etapa')
@@ -374,7 +390,7 @@ class ProjectsTable
             ->tooltip('Pausar')
             ->icon('heroicon-o-pause-circle')
             ->color('warning')
-            ->visible(fn (Project $r) => $r->status === 'activo')
+            ->visible(fn (Project $r) => self::puedeManejar($r) && $r->status === 'activo')
             ->modalDescription('Sigue vivo: deja de contarse como trabajo en curso, pero no se cierra ni se descarta.')
             ->schema([
                 Textarea::make('motivo')
@@ -397,7 +413,7 @@ class ProjectsTable
             ->tooltip('Reanudar')
             ->icon('heroicon-o-play-circle')
             ->color('success')
-            ->visible(fn (Project $r) => $r->status === 'pausado')
+            ->visible(fn (Project $r) => self::puedeManejar($r) && $r->status === 'pausado')
             ->requiresConfirmation()
             ->modalDescription(fn (Project $r) => $r->closing_notes
                 ? 'Se pausó por: ' . $r->closing_notes
@@ -420,7 +436,8 @@ class ProjectsTable
             // Tambien desde pausa: lo que se paro hace medio año a veces no
             // vuelve, y obligar a reanudarlo para poder descartarlo es un paso
             // que solo sirve para ensuciar el historico.
-            ->visible(fn (Project $r) => in_array($r->status, ['activo', 'pausado'], true))
+            ->visible(fn (Project $r) => self::puedeManejar($r)
+                && in_array($r->status, ['activo', 'pausado'], true))
             ->schema([
                 Select::make('estado')
                     ->label('Qué pasó')

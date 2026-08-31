@@ -32,14 +32,27 @@ trait ControlaSuAcceso
         return static::permite('crear');
     }
 
+    /**
+     * Con registro delante se pregunta a la POLITICA, no a la matriz.
+     *
+     * La politica ya consulta la matriz, asi que la respuesta base es la
+     * misma; pero pasando por ella, un modelo puede añadir sus propias razones
+     * —el responsable de un proyecto lo maneja aunque su rol no abra la
+     * seccion— sin que el recurso tenga que escribir nada.
+     */
     public static function canEdit(Model $record): bool
     {
-        return static::permite('editar');
+        return auth()->user()?->can('update', $record) ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view', $record) ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::permite('borrar');
+        return auth()->user()?->can('delete', $record) ?? false;
     }
 
     public static function canDeleteAny(): bool
