@@ -263,6 +263,9 @@ class ReservationsTable
                     ->action(function (Reservation $record, array $data) {
                         $record->update([
                             'status'  => 'confirmada',
+                            // Desde aqui se cuenta la tolerancia para validar la
+                            // llegada: si no, nace fuera de plazo.
+                            'reinstated_at' => now(),
                             'purpose' => trim(($record->purpose ? $record->purpose . ' · ' : '')
                                 . 'Levantada por ' . auth()->user()->name . ': ' . $data['motivo']),
                         ]);
@@ -270,7 +273,8 @@ class ReservationsTable
                         Notification::make()
                             ->success()
                             ->title('Reserva levantada')
-                            ->body('Vuelve a estar confirmada.')
+                            ->body('Vuelve a estar confirmada. Se puede validar la llegada durante los próximos '
+                                . config('fabos.checkin.tolerancia') . ' minutos.')
                             ->send();
                     }),
 

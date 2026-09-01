@@ -66,7 +66,20 @@ class AttendanceService
 
         $ahora = now();
         $abre  = $reserva->starts_at->copy()->subMinutes(config('fabos.checkin.antes'));
-        $cierra = $reserva->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia'));
+
+        /*
+         * La tolerancia se cuenta desde que la reserva volvio a estar en pie.
+         *
+         * Una levantada a las nueve de la noche, de las que empezaban a las
+         * cinco, nacia fuera de plazo: el primer intento de escanear la
+         * marcaba otra vez como no presentada. Devolverla y que no sirva es
+         * peor que no poder devolverla, porque parece que si se pudo.
+         */
+        $desdeCuando = $reserva->reinstated_at && $reserva->reinstated_at->greaterThan($reserva->starts_at)
+            ? $reserva->reinstated_at
+            : $reserva->starts_at;
+
+        $cierra = $desdeCuando->copy()->addMinutes(config('fabos.checkin.tolerancia'));
 
         if ($ahora->lessThan($abre)) {
             throw new BookingException(

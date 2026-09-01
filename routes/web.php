@@ -192,6 +192,11 @@ Route::middleware('auth')->group(function () {
 
     // Escaneo del QR pegado en la maquina. La ruta es corta a proposito: cabe
     // en una etiqueta pequena y se lee bien desde el telefono.
+    // Abrir la camara desde la propia reserva, sin salir de la aplicacion.
+    // El QR sigue siendo la prueba de que se esta delante de la maquina; lo
+    // unico que cambia es que no hay que ir a buscar la camara del telefono.
+    Route::get('/escanear', [ScanController::class, 'camara'])->name('escaneo.camara');
+
     Route::get('/e/{token}', [ScanController::class, 'show'])->name('escaneo.equipo');
     Route::post('/e/reserva/{reservation}/llegada', [ScanController::class, 'checkIn'])->name('escaneo.checkin');
     Route::post('/e/reserva/{reservation}/salida', [ScanController::class, 'checkOut'])->name('escaneo.checkout');

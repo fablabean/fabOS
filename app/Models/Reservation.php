@@ -18,7 +18,7 @@ class Reservation extends Model
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
         'advisory_asset_id', 'advisory_area_id', 'participants', 'parent_reservation_id',
-        'status', 'mode', 'is_production', 'starts_at', 'ends_at',
+        'status', 'mode', 'is_production', 'starts_at', 'ends_at', 'reinstated_at',
         'checked_in_at', 'checked_out_at',
         'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
     ];
@@ -31,6 +31,7 @@ class Reservation extends Model
             'ends_at'        => UtcDateTime::class,
             'checked_in_at'  => UtcDateTime::class,
             'checked_out_at' => UtcDateTime::class,
+            'reinstated_at'  => UtcDateTime::class,
         ];
     }
 

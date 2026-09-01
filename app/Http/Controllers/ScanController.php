@@ -26,6 +26,18 @@ class ScanController extends Controller
         private MaintenanceService $mantenimiento,
     ) {}
 
+    /**
+     * La camara, para escanear sin salir de la aplicacion.
+     *
+     * El QR pegado en la maquina sigue siendo la prueba de que se esta
+     * delante de ella: eso no cambia. Lo unico que se ahorra es ir a buscar la
+     * camara del telefono y volver.
+     */
+    public function camara()
+    {
+        return view('escaneo.camara');
+    }
+
     public function show(Request $request, string $token)
     {
         $activo = Asset::where('qr_token', $token)->firstOrFail();

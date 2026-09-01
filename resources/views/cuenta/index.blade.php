@@ -283,6 +283,12 @@
                             </span>
                         </td>
                         <td style="text-align:right;white-space:nowrap">
+                            {{-- Validar la llegada desde aquí: hasta ahora había
+                                 que salir a buscar la cámara del teléfono. --}}
+                            @if (in_array($r->status, ['confirmada', 'en_curso'], true))
+                                <a href="{{ route('escaneo.camara') }}"><strong>Validar mi llegada</strong></a>
+                                ·
+                            @endif
                             <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
                         </td>
                     </tr>
