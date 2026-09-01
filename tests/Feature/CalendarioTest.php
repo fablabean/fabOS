@@ -199,6 +199,24 @@ class CalendarioTest extends TestCase
         }
     }
 
+    /**
+     * Y «no se presentó» también va marcada.
+     *
+     * El equipo se liberó en ese momento: dejarla pintada como un bloque
+     * confirmado en el calendario de alguien es enseñarle una hora que ya no
+     * tiene.
+     */
+    public function test_una_no_presentada_tambien_va_cancelada(): void
+    {
+        $quien = $this->persona();
+        $r = $this->reserva($quien, $this->equipo());
+        $r->update(['status' => 'no_show']);
+
+        $ics = $this->actingAs($quien)->get(route('calendario.reserva', $r->fresh()))->getContent();
+
+        $this->assertStringContainsString('STATUS:CANCELLED', $ics);
+    }
+
     /** Una cancelada se manda marcada: si desapareciera, seguiría en el calendario. */
     public function test_una_cancelada_va_marcada_como_cancelada(): void
     {

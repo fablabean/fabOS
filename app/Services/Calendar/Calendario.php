@@ -78,9 +78,16 @@ class Calendario
             'titulo' => $titulo,
             'descripcion' => $descripcion,
             'lugar' => config('fabos.lab.name'),
-            // Una cancelada se manda igual, marcada: si desapareciera sin más,
-            // el calendario de quien ya la tenía la seguiría enseñando.
-            'cancelado' => in_array($reserva->status, ['cancelada', 'rechazada'], true),
+            /*
+             * Se manda igual, marcada como cancelada: si desapareciera sin
+             * más, el calendario de quien ya la tenía la seguiría enseñando
+             * para siempre.
+             *
+             * Y «no se presentó» cuenta como cancelada. El equipo se libero en
+             * ese momento: dejarla pintada como un bloque confirmado en el
+             * calendario de alguien es enseñarle una hora que ya no tiene.
+             */
+            'cancelado' => in_array($reserva->status, ['cancelada', 'rechazada', 'no_show'], true),
             // La hora de la última modificación: es lo que mira el calendario
             // para saber cuál de las dos versiones es la nueva.
             'sello' => $reserva->updated_at ?? $reserva->created_at,
