@@ -18,6 +18,7 @@ use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ContenidoController;
+use App\Http\Controllers\EnlaceCortoController;
 use App\Http\Controllers\SolicitudDeProyectoController;
 use App\Http\Controllers\TiendaPublicaController;
 use App\Http\Controllers\Auth\LoginCodeController;
@@ -42,6 +43,18 @@ Route::get('/reservas', [PublicSiteController::class, 'equipos'])->name('publico
 // pagina que deja de existir sin avisar es una promesa rota.
 Route::get('/equipos', fn (\Illuminate\Http\Request $r) => redirect()->route('publico.reservas', $r->query()));
 Route::get('/equipos/{asset}', [PublicSiteController::class, 'equipo'])->name('publico.equipo');
+
+/*
+ * Enlaces cortos con QR (§7).
+ *
+ * Sin sesion y lo mas arriba posible: se abre desde un cartel, con el telefono
+ * en la mano. El codigo impreso no cambia nunca; a donde apunta se edita
+ * cuando haga falta, que es justo lo que evita que un cartel quede mintiendo.
+ */
+Route::get('/qr/{codigo}', EnlaceCortoController::class)
+    ->where('codigo', '[A-Za-z0-9-]{2,32}')
+    ->middleware('throttle:120,1')
+    ->name('qr');
 
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
