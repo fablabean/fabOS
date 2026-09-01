@@ -34,6 +34,8 @@ class FotosPublicasTest extends TestCase
         // La tienda se mira sin haber entrado: sus fotos van al disco publico.
         'app/Filament/Resources/Supplies/Schemas/SupplyForm.php',
         'app/Filament/Resources/ServiceOfferings/ServiceOfferingResource.php',
+        // El fondo del banner es lo primero que ve quien llega sin sesion.
+        'app/Filament/Resources/Banners/Schemas/BannerForm.php',
     ];
 
     /** Formularios cuyo archivo NO debe quedar en una URL adivinable. */

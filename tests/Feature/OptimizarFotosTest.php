@@ -127,4 +127,44 @@ class OptimizarFotosTest extends TestCase
         // lentitud se convierte a veces en un 502 sin explicacion.
         $this->assertStringContainsString('imageResizeTargetWidth(2000)', $fuente);
     }
+
+    /**
+     * Y la misma leccion en todos los formularios que suben una foto.
+     *
+     * Esta prueba existe porque la leccion se perdio: el editor del banner
+     * nacio sin el encogido, y la primera foto que alguien intento subir
+     * -siete megas y medio, recien salida del telefono- murio con un «error
+     * durante la subida» que no explica nada. El servidor la habria
+     * optimizado, pero nunca llego a recibirla.
+     *
+     * Se comprueba el fichero y no el comportamiento: el encogido ocurre en el
+     * navegador, donde ninguna prueba de PHP puede mirar. Lo que se vigila es
+     * que nadie escriba el proximo formulario sin acordarse.
+     */
+    public function test_todo_formulario_que_sube_una_foto_la_encoge_antes(): void
+    {
+        $formularios = [
+            'app/Filament/Resources/Assets/Schemas/AssetForm.php',
+            'app/Filament/Resources/Areas/Schemas/AreaForm.php',
+            'app/Filament/Resources/Banners/Schemas/BannerForm.php',
+        ];
+
+        foreach ($formularios as $ruta) {
+            $fuente = file_get_contents(base_path($ruta));
+
+            $this->assertStringContainsString(
+                'imageResizeTargetWidth',
+                $fuente,
+                "{$ruta} sube una foto sin encogerla en el navegador: una foto de teléfono "
+                . 'son siete u ocho megas, y por el túnel esa subida se cae con un 502 que '
+                . 'el formulario traduce a «error durante la subida».',
+            );
+
+            $this->assertStringContainsString(
+                'saveUploadedFileUsing',
+                $fuente,
+                "{$ruta} guarda la foto tal cual llega, sin pasarla por el optimizador.",
+            );
+        }
+    }
 }

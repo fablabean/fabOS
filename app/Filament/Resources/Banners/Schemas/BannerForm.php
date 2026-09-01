@@ -111,11 +111,30 @@ class BannerForm
                             ->acceptedFileTypes(fn ($get) => $get('fondo_tipo') === 'video'
                                 ? ['video/mp4', 'video/webm']
                                 : ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
-                            ->maxSize(fn ($get) => $get('fondo_tipo') === 'video' ? 61440 : 20480)
+                            ->maxSize(fn ($get) => $get('fondo_tipo') === 'video' ? 25600 : 20480)
                             ->helperText(fn ($get) => $get('fondo_tipo') === 'video'
-                                ? 'MP4 o WebM, sin sonido y de 8 a 15 segundos. Va en bucle detrás del texto: cuanto más pese, más tarda en aparecer en un teléfono.'
-                                : 'Apaisada y de al menos 1600 px de ancho. Se recorta según la pantalla: lo importante, al centro.')
+                                ? 'MP4 o WebM, sin sonido y de 8 a 15 segundos. Va en bucle detrás del texto: cuanto más pese, más tarda en aparecer en un teléfono, y más fácil es que la subida se caiga por el camino. Por debajo de 10 MB va sobrado.'
+                                : 'Apaisada. Se encoge en tu propio navegador antes de subirla, así que da igual que venga del teléfono con sus ocho megas. Se recorta según la pantalla: lo importante, al centro.')
                             ->columnSpanFull()
+                            /*
+                             * Encogida en el NAVEGADOR antes de salir.
+                             *
+                             * Una foto de telefono son siete u ocho megas, y
+                             * por el tunel esa subida se cae con un 502 que no
+                             * explica nada -el formulario solo dice «error
+                             * durante la subida»-. Ya nos habia pasado con las
+                             * fotos de area, y esta pantalla nacio sin heredar
+                             * la leccion.
+                             *
+                             * 2400 px de lado: el fondo se ve a pantalla
+                             * completa y ahi si se nota mas resolucion que en
+                             * una ficha de catalogo. El optimizador del
+                             * servidor la deja despues en WebP.
+                             */
+                            ->imageResizeMode(fn ($get) => $get('fondo_tipo') === 'video' ? null : 'contain')
+                            ->imageResizeTargetWidth(fn ($get) => $get('fondo_tipo') === 'video' ? null : '2400')
+                            ->imageResizeTargetHeight(fn ($get) => $get('fondo_tipo') === 'video' ? null : '2400')
+                            ->imageResizeUpscale(false)
                             /*
                              * Las fotos se encogen y se pasan a WebP; el video
                              * se guarda tal cual —recodificarlo aqui bloquearia
@@ -144,8 +163,14 @@ class BannerForm
                             ->visibility('public')
                             ->directory('banners')
                             ->image()
+                            ->maxSize(20480)
                             ->helperText('Un fotograma del propio video. Es lo que ve quien tenga el ahorro de datos activado.')
                             ->columnSpanFull()
+                            // Igual que el fondo: se encoge antes de subirla.
+                            ->imageResizeMode('contain')
+                            ->imageResizeTargetWidth('2400')
+                            ->imageResizeTargetHeight('2400')
+                            ->imageResizeUpscale(false)
                             ->saveUploadedFileUsing(
                                 fn ($file) => app(OptimizadorDeImagen::class)->guardar($file, 'banners')
                             ),
