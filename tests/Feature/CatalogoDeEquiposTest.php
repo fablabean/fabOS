@@ -393,6 +393,46 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertSee(route('asesoria.show', $equipo), false);
     }
 
+    /**
+     * Al avanzar, lo ya elegido se encoge.
+     *
+     * Antes seguían ahí las tres tarjetas grandes, la línea del espacio y las
+     * reservas propias: la página cambiaba de verdad, pero lo nuevo nacía por
+     * debajo del pliegue y parecía que el clic no había hecho nada.
+     */
+    public function test_al_avanzar_lo_elegido_se_encoge_a_una_linea(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $primero = $this->get('/reservas')->assertOk()->getContent();
+        $segundo = $this->get('/reservas?modo=asesoria')->assertOk()->getContent();
+
+        // La descripción larga de los tres caminos ya no está.
+        $this->assertStringContainsString('Reservas un acompañamiento', $primero);
+        $this->assertStringNotContainsString('Reservas un acompañamiento', $segundo);
+
+        // En su lugar, una miga que dice dónde estás y deja volver.
+        $this->assertStringContainsString('Dónde estás', $segundo);
+        $this->assertStringContainsString('¿Sobre qué área?', $segundo);
+
+        // Y la página siguiente es más corta que la primera: lo nuevo cabe
+        // arriba en vez de nacer por debajo del pliegue.
+        $this->assertLessThan(strlen($primero), strlen($segundo));
+    }
+
+    /** Y la miga deja volver al paso anterior sin el botón del navegador. */
+    public function test_la_miga_deja_volver(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/reservas?modo=asesoria&area=corte')
+            ->assertOk()
+            ->assertSee('Corte láser')
+            // Volver a elegir área, y volver al principio.
+            ->assertSee(route('publico.reservas', ['modo' => 'asesoria']), false)
+            ->assertSee(route('publico.reservas'), false);
+    }
+
     // ------------------------------------------- lo que no se puede perder
 
     /**

@@ -68,6 +68,15 @@
     .aviso p{margin:0 0 .6rem;color:var(--ink-soft);font-size:.9rem;line-height:1.55}
     .aviso p:last-child{margin-bottom:0}
     .vacio{color:var(--muted);padding:1.4rem 0 2.4rem}
+    /* La miga de pan: dice dónde estás y deja volver sin el botón del
+       navegador, que en el teléfono nadie usa. */
+    .migas{display:flex;flex-wrap:wrap;gap:.4rem;align-items:baseline;
+           font-size:.82rem;color:var(--muted);margin:0 0 .6rem;
+           font-family:ui-monospace,Consolas,monospace;letter-spacing:.04em;
+           text-transform:uppercase}
+    .migas a{color:var(--muted);text-decoration:none}
+    .migas a:hover{color:var(--accent)}
+    .migas strong{color:var(--ink-soft);font-weight:600}
     .reservas-mias{display:grid;gap:.5rem;margin-bottom:2rem}
     .mia{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:baseline;
          padding:.7rem .9rem;border:1px solid var(--rule);border-radius:6px;
@@ -85,85 +94,117 @@
         ]));
     @endphp
 
-    <section style="padding-bottom:1rem">
-        <p class="rotulo">Reservas</p>
-        <h1>¿Cómo quieres usar el laboratorio?</h1>
-        <p class="lead">
-            Hay tres maneras, y conviene elegir antes de mirar máquinas: cambia lo que
-            necesitas y lo que tienes que hacer.
-        </p>
-    </section>
+    @php
+        $nombreDelModo = ['asesoria' => 'Asesoría', 'autonomia' => 'Autonomía'][$modo] ?? null;
+        $nombreDelArea = $areas->firstWhere('slug', $area)['nombre'] ?? null;
+    @endphp
 
-    {{-- Los tres caminos. Producción sale del catálogo: no es una máquina que
-         se reserve, es un encargo que se propone. --}}
-    <div class="caminos">
-        <a class="camino {{ $modo === 'asesoria' ? 'puesto' : '' }}"
-           href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
-            <b>Asesoría</b>
-            <span>Alguien del laboratorio te acompaña en la máquina. No necesitas
-                  certifab: es justo para cuando todavía no lo tienes.</span>
-            <span class="pie">Reservas un acompañamiento</span>
-        </a>
-
-        <a class="camino" href="{{ route('proyectos.solicitar') }}">
-            <b>Producción</b>
-            <span>No operas tú: nos cuentas qué necesitas y lo fabricamos nosotros.
-                  Te respondemos con una propuesta, con precio y plazo.</span>
-            <span class="pie">Propones un proyecto</span>
-        </a>
-
-        <a class="camino {{ $modo === 'autonomia' ? 'puesto' : '' }}"
-           href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
-            <b>Autonomía</b>
-            <span>Reservas y operas por tu cuenta, en los equipos donde ya tienes
-                  certifab.</span>
-            <span class="pie">Reservas la máquina</span>
-        </a>
-    </div>
-
-    {{-- Reservar un espacio: no es una máquina, es una sala. Estaba en la
-         página vieja y es lo que se pide para trabajar en grupo o dar clase. --}}
-    <p class="lead" style="margin:-1.4rem 0 2rem">
-        ¿Vas a trabajar en grupo o dar una clase?
-        <a href="{{ route('espacios.index') }}"><strong>Reserva un espacio</strong></a>
-        y toma dentro las herramientas que necesites.
-        @if ($franjaHoy)
-            Hoy el laboratorio atiende de <strong>{{ substr($franjaHoy[0], 0, 5) }}</strong>
-            a <strong>{{ substr($franjaHoy[1], 0, 5) }}</strong>.
-        @else
-            Hoy no hay personal en jornada, así que lo que requiere acompañamiento no se
-            puede reservar.
-        @endif
-    </p>
-
-    {{-- Lo que ya tiene pedido. Es lo primero que se mira al llegar: antes de
-         reservar otra cosa, saber qué hay. --}}
-    @if ($misReservas->isNotEmpty())
-        <section style="padding-top:0">
-            <p class="rotulo">Mis próximas reservas</p>
-            <div class="reservas-mias">
-                @foreach ($misReservas as $r)
-                    <div class="mia">
-                        <b>
-                            @if ($r->esAsesoria())
-                                Asesoría · {{ $r->sobreQue() ?? 'con el equipo' }}
-                            @else
-                                {{ $r->reservable?->name ?? 'Reserva' }}
-                            @endif
-                        </b>
-                        <span>
-                            {{ $r->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
-                            — {{ $r->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}
-                            @if ($r->supervisor) · acompaña {{ $r->supervisor->name }} @endif
-                        </span>
-                    </div>
-                @endforeach
-            </div>
+    {{-- ------------------------------------------------------ dónde estoy
+         Al avanzar, lo ya elegido se encoge a una línea. Antes seguían ahí las
+         tres tarjetas grandes, la línea del espacio y las reservas propias: la
+         página cambiaba de verdad, pero lo nuevo nacía por debajo del pliegue y
+         parecía que el clic no había hecho nada. --}}
+    @if ($modo === '')
+        <section style="padding-bottom:1rem">
+            <p class="rotulo">Reservas</p>
+            <h1>¿Cómo quieres usar el laboratorio?</h1>
+            <p class="lead">
+                Hay tres maneras, y conviene elegir antes de mirar máquinas: cambia lo que
+                necesitas y lo que tienes que hacer.
+            </p>
         </section>
+
+        {{-- Los tres caminos. Producción sale del catálogo: no es una máquina
+             que se reserve, es un encargo que se propone. --}}
+        <div class="caminos">
+            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
+                <b>Asesoría</b>
+                <span>Alguien del laboratorio te acompaña en la máquina. No necesitas
+                      certifab: es justo para cuando todavía no lo tienes.</span>
+                <span class="pie">Reservas un acompañamiento</span>
+            </a>
+
+            <a class="camino" href="{{ route('proyectos.solicitar') }}">
+                <b>Producción</b>
+                <span>No operas tú: nos cuentas qué necesitas y lo fabricamos nosotros.
+                      Te respondemos con una propuesta, con precio y plazo.</span>
+                <span class="pie">Propones un proyecto</span>
+            </a>
+
+            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
+                <b>Autonomía</b>
+                <span>Reservas y operas por tu cuenta, en los equipos donde ya tienes
+                      certifab.</span>
+                <span class="pie">Reservas la máquina</span>
+            </a>
+        </div>
+
+        {{-- Reservar un espacio: no es una máquina, es una sala. Es lo que se
+             pide para trabajar en grupo o dar clase. --}}
+        <p class="lead" style="margin:-1.4rem 0 2rem">
+            ¿Vas a trabajar en grupo o dar una clase?
+            <a href="{{ route('espacios.index') }}"><strong>Reserva un espacio</strong></a>
+            y toma dentro las herramientas que necesites.
+            @if ($franjaHoy)
+                Hoy el laboratorio atiende de <strong>{{ substr($franjaHoy[0], 0, 5) }}</strong>
+                a <strong>{{ substr($franjaHoy[1], 0, 5) }}</strong>.
+            @else
+                Hoy no hay personal en jornada, así que lo que requiere acompañamiento no se
+                puede reservar.
+            @endif
+        </p>
+
+        {{-- Lo que ya tiene pedido: antes de reservar otra cosa, saber qué hay. --}}
+        @if ($misReservas->isNotEmpty())
+            <section style="padding-top:0">
+                <p class="rotulo">Mis próximas reservas</p>
+                <div class="reservas-mias">
+                    @foreach ($misReservas as $r)
+                        <div class="mia">
+                            <b>
+                                @if ($r->esAsesoria())
+                                    Asesoría · {{ $r->sobreQue() ?? 'con el equipo' }}
+                                @else
+                                    {{ $r->reservable?->name ?? 'Reserva' }}
+                                @endif
+                            </b>
+                            <span>
+                                {{ $r->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                                — {{ $r->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}
+                                @if ($r->supervisor) · acompaña {{ $r->supervisor->name }} @endif
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+    @else
+        {{-- Ya se eligió: una miga de pan y directo a la pregunta siguiente. --}}
+        <nav class="migas" aria-label="Dónde estás">
+            <a href="{{ route('publico.reservas') }}">Reservas</a>
+            <span aria-hidden="true">›</span>
+            @if ($nombreDelArea)
+                <a href="{{ route('publico.reservas', ['modo' => $modo]) }}">{{ $nombreDelModo }}</a>
+                <span aria-hidden="true">›</span>
+                <strong>{{ $nombreDelArea }}</strong>
+            @else
+                <strong>{{ $nombreDelModo }}</strong>
+            @endif
+        </nav>
+
+        <h1 style="margin-bottom:.3rem">
+            @if ($area === '')
+                {{ $modo === 'asesoria' ? '¿Sobre qué área?' : '¿Qué vas a reservar?' }}
+            @elseif ($modo === 'asesoria' && ! $eligiendoMaquina)
+                ¿Una máquina concreta, o el área entera?
+            @else
+                {{ $nombreDelArea }}
+            @endif
+        </h1>
     @endif
 
     {{-- ------------------------------------------------------------ autonomía --}}
-    @if ($modo === 'autonomia')
+    @if ($modo === 'autonomia' && $area === '')
         <div class="aviso">
             <p>
                 <strong>La autonomía se gana por equipo.</strong> El <em>certifab</em> es la
@@ -185,7 +226,7 @@
         </div>
     @endif
 
-    @if ($modo === 'asesoria')
+    @if ($modo === 'asesoria' && $area === '')
         <div class="aviso">
             <p>
                 <strong>No hace falta que sepas operar la máquina.</strong> Eliges el equipo,
