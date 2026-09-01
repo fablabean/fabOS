@@ -77,9 +77,17 @@
         .panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:1.2rem;margin-bottom:1.2rem}
         label{display:block;font-family:ui-monospace,Consolas,monospace;font-size:.66rem;
               letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:.9rem 0 .35rem}
-        input,select,textarea{
+        /* Los redondeles y las casillas quedan fuera: esta regla es para los
+           campos donde se escribe. Aplicada a un radio le pone ancho completo y
+           relleno, y el circulito acaba flotando en medio de una caja gris con
+           el texto a saber donde. */
+        input:not([type=radio]):not([type=checkbox]),select,textarea{
             width:100%;padding:.6rem .7rem;font-size:1rem;font-family:inherit;
             background:var(--ground);color:var(--ink);border:1px solid var(--rule);border-radius:4px;
+        }
+
+        input[type=radio],input[type=checkbox]{
+            width:1.05rem;height:1.05rem;margin:0;accent-color:var(--accent);flex:none;
         }
         input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
         button{

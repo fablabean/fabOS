@@ -37,7 +37,11 @@
     </form>
 
     <style>
-        .opcion{display:flex;gap:.6rem;align-items:baseline;padding:.35rem 0;cursor:pointer}
-        .opcion input{margin:0}
+        /* En rejilla y no en flex: asi el redondel ocupa una columna fija
+           pegada a la izquierda, y un texto de dos lineas sigue alineado
+           consigo mismo en vez de meterse debajo del circulito. */
+        .opcion{display:grid;grid-template-columns:1.05rem 1fr;gap:.65rem;
+                align-items:start;padding:.4rem 0;cursor:pointer;line-height:1.45}
+        .opcion input{margin-top:.15rem}
     </style>
 @endsection
