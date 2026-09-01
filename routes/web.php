@@ -16,6 +16,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
+use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\SolicitudDeProyectoController;
 use App\Http\Controllers\TiendaPublicaController;
@@ -110,6 +111,17 @@ Route::middleware('guest')->group(function () {
     Route::post('/ingresar/carnet', [CarnetLoginController::class, 'login'])->name('carnet.login');
 });
 
+/*
+ * El calendario suscribible de una persona (§8).
+ *
+ * Sin sesion a proposito: quien pide esta direccion es Outlook cada pocas
+ * horas, y no hay donde escribir una contrasena. La direccion ES el secreto
+ * —48 caracteres aleatorios— y se revoca generando otra.
+ */
+Route::get('/calendario/{token}.ics', [CalendarioController::class, 'suscripcion'])
+    ->middleware('throttle:60,60')
+    ->name('calendario.suscripcion');
+
 Route::middleware('auth')->group(function () {
     // Panel de la persona: certifabs, reservas y carne.
     Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('home');
@@ -138,6 +150,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->name('reservas.show');
     Route::post('/reservar/{asset}', [ReservationController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('reservas.cancel');
+
+    // Llevarse una reserva al calendario propio: un archivo suelto, que es una
+    // foto. Para que se mantenga al dia esta la suscripcion.
+    Route::get('/reservas/{reservation}/calendario.ics', [CalendarioController::class, 'reserva'])
+        ->name('calendario.reserva');
+    Route::post('/calendario/suscribirme', [CalendarioController::class, 'suscribirme'])
+        ->name('calendario.suscribirme');
 
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');

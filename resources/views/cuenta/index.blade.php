@@ -268,7 +268,7 @@
     @else
         <div class="panel">
             <table>
-                <thead><tr><th>Equipo</th><th>Cuándo</th><th>Estado</th></tr></thead>
+                <thead><tr><th>Equipo</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead>
                 <tbody>
                 @foreach ($reservas as $r)
                     <tr>
@@ -282,12 +282,55 @@
                                 {{ \App\Models\Reservation::ESTADOS[$r->status] ?? $r->status }}
                             </span>
                         </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
         </div>
     @endif
+
+    {{-- ------------------------------------------------ mi calendario --}}
+    <h2>Mi calendario</h2>
+    <div class="panel">
+        <p class="help" style="margin-top:0">
+            El enlace de cada reserva se descarga y se guarda: es una <strong>foto</strong>. Si
+            luego cambia la hora, esa copia no se entera.
+        </p>
+
+        @if (auth()->user()->calendar_token)
+            <p style="margin:.8rem 0 .3rem"><strong>Tu calendario, siempre al día</strong></p>
+            <p class="help" style="margin-top:0">
+                Pega esta dirección en Outlook —<em>Agregar calendario → Suscribirse desde
+                web</em>— y tus reservas y asesorías aparecen solas y se actualizan.
+            </p>
+            <input type="text" readonly onclick="this.select()"
+                   value="{{ route('calendario.suscripcion', auth()->user()->calendar_token) }}"
+                   style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:.8rem">
+            <p class="help">
+                Es <strong>secreta</strong>: quien la tenga ve tu agenda del laboratorio. No la
+                publiques.
+            </p>
+            <form method="POST" action="{{ route('calendario.suscribirme') }}">
+                @csrf
+                <button type="submit" class="secundario">Cambiar la dirección</button>
+            </form>
+            <p class="help">
+                Cambiarla deja de servir la anterior, por si la compartiste sin querer.
+            </p>
+        @else
+            <p class="help">
+                También puedes suscribir tu Outlook y que aparezcan solas, sin descargar nada
+                cada vez.
+            </p>
+            <form method="POST" action="{{ route('calendario.suscribirme') }}">
+                @csrf
+                <button type="submit">Crear mi dirección de calendario</button>
+            </form>
+        @endif
+    </div>
 
     {{-- ------------------------------------------------ como entro --}}
     <h2>Cómo entro</h2>
