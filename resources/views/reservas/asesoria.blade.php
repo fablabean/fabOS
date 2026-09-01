@@ -1,15 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Pedir asesoría · ' . $activo->name . ' · fabOS')
+@section('title', 'Pedir asesoría · ' . $titulo . ' · fabOS')
 
 @section('content')
     <p class="rotulo">Asesoría</p>
-    <h1>{{ $activo->name }}</h1>
+    <h1>{{ $titulo }}</h1>
 
-    <p class="help">
-        Todavía no tienes el certifab de {{ $activo->riskFamily?->name ?? $activo->name }}, y no
-        hace falta para esto: alguien del equipo te acompaña, resuelve tus dudas y te muestra
-        cómo se usa. Dura {{ $minutos }} minutos.
-    </p>
+    <p class="help">{{ $explicacion }} Dura {{ $minutos }} minutos.</p>
 
     @error('inicio') <p class="msg error">{{ $message }}</p> @enderror
 
@@ -17,13 +13,13 @@
         <div class="panel">
             <h2 style="margin-top:0">No hay horas disponibles</h2>
             <p class="help">
-                Quienes asesoran sobre este equipo no tienen huecos en los próximos días.
+                Quienes asesoran no tienen huecos en los próximos días.
                 Vuelve a mirar mañana, o escribe a la coordinación del laboratorio.
             </p>
-            <p class="foot"><a href="{{ route('reservas.show', $activo) }}">Volver al equipo</a></p>
+            <p class="foot"><a href="{{ $volver }}">← Volver</a></p>
         </div>
     @else
-        <form method="POST" action="{{ route('asesoria.store', $activo) }}">
+        <form method="POST" action="{{ $accion }}">
             @csrf
 
             <div class="panel">

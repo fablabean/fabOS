@@ -17,7 +17,7 @@ class Reservation extends Model
 {
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
-        'advisory_asset_id', 'participants', 'parent_reservation_id',
+        'advisory_asset_id', 'advisory_area_id', 'participants', 'parent_reservation_id',
         'status', 'mode', 'is_production', 'starts_at', 'ends_at',
         'checked_in_at', 'checked_out_at',
         'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
@@ -108,8 +108,26 @@ class Reservation extends Model
         return $this->belongsTo(Asset::class, 'advisory_asset_id');
     }
 
+    /** El área, cuando la asesoría es general y no de una máquina (§10). */
+    public function advisoryArea(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Area::class, 'advisory_area_id');
+    }
+
     public function esAsesoria(): bool
     {
         return $this->mode === 'asesoria';
+    }
+
+    /**
+     * Sobre qué trata la asesoría, para decirlo en una línea.
+     *
+     * Una general no tiene máquina: decir «asesoría» a secas obliga a abrir la
+     * ficha para saber de qué iba.
+     */
+    public function sobreQue(): ?string
+    {
+        return $this->advisoryAsset?->name
+            ?? ($this->advisoryArea ? 'General de ' . $this->advisoryArea->name : null);
     }
 }

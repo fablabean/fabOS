@@ -131,7 +131,23 @@ class PublicSiteController extends Controller
                 fn (Asset $a) => ($estados[$a->id]['estado'] ?? null) === 'libre',
             ));
 
+        /*
+         * Si el area admite una asesoria general, se ofrece antes que las
+         * maquinas: quien llega con «quiero imprimir esto en 3D» todavia no
+         * sabe cual necesita, y elegirla es parte de lo que viene a consultar.
+         */
+        $asesoriaGeneral = null;
+
+        if ($modo === 'asesoria' && $area !== '') {
+            $laDelArea = \App\Models\Area::where('slug', $area)->first();
+
+            if ($laDelArea && app(\App\Services\Booking\AsesoriaService::class)->seAsesora($laDelArea)) {
+                $asesoriaGeneral = $laDelArea;
+            }
+        }
+
         return view('publico.equipos', [
+            'asesoriaGeneral' => $asesoriaGeneral,
             'modo'       => $modo,
             'area'       => $area,
             'areas'      => $areas,

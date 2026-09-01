@@ -154,6 +154,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/espacios/{space}', [EspacioController::class, 'store'])->name('espacios.store');
 
     // Asesoria: la salida para quien todavia no tiene el certifab (§10).
+    //
+    // Y la general de un area, para quien llega con «quiero imprimir esto en
+    // 3D» y todavia no sabe si le toca la Prusa o la de resina: elegir la
+    // maquina es parte de lo que viene a consultar. Va antes que la de {asset}
+    // para que «area» no se lea como el codigo de un equipo.
+    Route::get('/asesoria/area/{area}', [AsesoriaController::class, 'showArea'])->name('asesoria.area.show');
+    Route::post('/asesoria/area/{area}', [AsesoriaController::class, 'storeArea'])->name('asesoria.area.store');
+
     Route::get('/asesoria/{asset}', [AsesoriaController::class, 'show'])->name('asesoria.show');
     Route::post('/asesoria/{asset}', [AsesoriaController::class, 'store'])->name('asesoria.store');
     Route::post('/espera/{entry}/salir', [ReservationController::class, 'salirDeEspera'])->name('reservas.espera.salir');

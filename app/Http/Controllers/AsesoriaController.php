@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Models\Asset;
 use App\Services\Booking\AsesoriaService;
 use App\Services\Notifications\NotificationService;
@@ -26,10 +27,46 @@ class AsesoriaController extends Controller
         // habría a quién asignárselas.
         abort_unless($this->asesorias->seAsesora($asset), 404);
 
-        return view('reservas.asesoria', [
-            'activo'  => $asset->load(['area', 'riskFamily']),
+        $asset->load(['area', 'riskFamily']);
+
+        return $this->pantalla($request, $asset, [
+            'titulo'      => $asset->name,
+            'explicacion' => 'Todavía no tienes el certifab de '
+                . ($asset->riskFamily?->name ?? $asset->name)
+                . ', y no hace falta para esto: alguien del equipo te acompaña, resuelve tus '
+                . 'dudas y te muestra cómo se usa.',
+            'accion'      => route('asesoria.store', $asset),
+            'volver'      => route('reservas.show', $asset),
+        ]);
+    }
+
+    /**
+     * Asesoría general de un área (§10).
+     *
+     * Quien llega con «quiero imprimir esto en 3D» todavía no sabe si le toca
+     * la Prusa o la de resina: elegir la máquina es parte de lo que viene a
+     * consultar. Obligarle a elegirla antes de poder preguntar es pedirle la
+     * respuesta para dejarle hacer la pregunta.
+     */
+    public function showArea(Request $request, Area $area)
+    {
+        abort_unless($this->asesorias->seAsesora($area), 404);
+
+        return $this->pantalla($request, $area, [
+            'titulo'      => 'Asesoría general de ' . $area->name,
+            'explicacion' => 'No hace falta que sepas qué máquina necesitas: alguien del '
+                . 'equipo te escucha, te dice con qué se hace lo que quieres y te acompaña.',
+            'accion'      => route('asesoria.area.store', $area),
+            'volver'      => route('publico.equipos', ['modo' => 'asesoria', 'area' => $area->slug]),
+        ]);
+    }
+
+    /** Lo común de las dos pantallas: las franjas con cupo de verdad. */
+    private function pantalla(Request $request, Asset|Area $ambito, array $textos)
+    {
+        return view('reservas.asesoria', $textos + [
             'franjas' => $this->asesorias->franjasDisponibles(
-                $asset,
+                $ambito,
                 $request->user(),
                 (int) config('fabos.asesorias.dias_vista', 7),
             )->groupBy(fn (array $f) => $f['inicio']->toDateString()),
@@ -40,6 +77,19 @@ class AsesoriaController extends Controller
     public function store(Request $request, Asset $asset)
     {
         abort_unless($this->asesorias->seAsesora($asset), 404);
+
+        return $this->agendar($request, $asset, $asset->name);
+    }
+
+    public function storeArea(Request $request, Area $area)
+    {
+        abort_unless($this->asesorias->seAsesora($area), 404);
+
+        return $this->agendar($request, $area, 'General de ' . $area->name);
+    }
+
+    private function agendar(Request $request, Asset|Area $ambito, string $sobreQue)
+    {
 
         $datos = $request->validate([
             'inicio' => ['required', 'date'],
@@ -58,7 +108,7 @@ class AsesoriaController extends Controller
         $fin = $inicio->copy()->addMinutes((int) config('fabos.asesorias.minutos', 45));
 
         $reserva = $this->asesorias->agendar(
-            $request->user(), $asset, $inicio, $fin, $datos['motivo'] ?? null,
+            $request->user(), $ambito, $inicio, $fin, $datos['motivo'] ?? null,
         );
 
         // Entre ver la hora libre y pedirla puede haberla tomado otra persona.
@@ -76,7 +126,7 @@ class AsesoriaController extends Controller
         // confirmada»: el mensaje equivocado a la persona equivocada. Y con los
         // huecos vacios, porque esa plantilla espera otras variables.
         $datos = [
-            'equipo' => $asset->name,
+            'equipo' => $sobreQue,
             'fecha'  => $inicio->format('d/m/Y'),
             'inicio' => $inicio->format('H:i'),
             'fin'    => $fin->format('H:i'),

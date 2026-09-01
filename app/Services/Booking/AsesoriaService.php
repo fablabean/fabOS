@@ -2,7 +2,9 @@
 
 namespace App\Services\Booking;
 
+use App\Models\Area;
 use App\Models\Asset;
+use App\Models\AssetAdvisor;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Services\Staffing\CoverageService;
@@ -35,9 +37,25 @@ class AsesoriaService
      *
      * @return Collection<int,User>
      */
-    public function asesoresDe(Asset $asset): Collection
+    public function asesoresDe(Asset|Area $ambito): Collection
     {
-        return $asset->advisors()->where('users.status', 'activo')->get();
+        if ($ambito instanceof Asset) {
+            return $ambito->advisors()->where('users.status', 'activo')->get();
+        }
+
+        /*
+         * De un area asesora quien asesore CUALQUIERA de sus maquinas.
+         *
+         * No hay una lista aparte de «asesores del area» a proposito: seria
+         * una segunda verdad que se separaria de la primera en cuanto alguien
+         * entre o salga del equipo de una maquina.
+         */
+        return User::query()
+            ->where('users.status', 'activo')
+            ->whereIn('id', AssetAdvisor::query()
+                ->whereIn('asset_id', Asset::where('area_id', $ambito->id)->select('id'))
+                ->select('user_id'))
+            ->get();
     }
 
     /**
@@ -50,12 +68,12 @@ class AsesoriaService
      * @return Collection<int,User>
      */
     public function disponiblesPara(
-        Asset $asset,
+        Asset|Area $ambito,
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?User $solicitante = null,
     ): Collection {
-        $declarados = $this->asesoresDe($asset);
+        $declarados = $this->asesoresDe($ambito);
 
         if ($declarados->isEmpty()) {
             return collect();
@@ -88,26 +106,35 @@ class AsesoriaService
      * recupera solo.
      */
     public function elegir(
-        Asset $asset,
+        Asset|Area $ambito,
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?User $solicitante = null,
     ): ?User {
-        $candidatos = $this->disponiblesPara($asset, $desde, $hasta, $solicitante);
+        $candidatos = $this->disponiblesPara($ambito, $desde, $hasta, $solicitante);
 
         if ($candidatos->isEmpty()) {
             return null;
         }
 
-        $responsables = $candidatos->filter(
-            fn (User $u) => (bool) $u->pivot?->es_responsable,
-        );
+        /*
+         * El responsable manda, pero solo de SU maquina.
+         *
+         * En una asesoria general del area no hay una persona marcada: nadie
+         * responde por «impresion 3D» en conjunto. Ahi vale el turno a secas,
+         * que es justo lo que reparte bien cuando no hay una regla mejor.
+         */
+        if ($ambito instanceof Asset) {
+            $responsables = $candidatos->filter(
+                fn (User $u) => (bool) $u->pivot?->es_responsable,
+            );
 
-        if ($responsables->isNotEmpty()) {
-            $candidatos = $responsables->values();
+            if ($responsables->isNotEmpty()) {
+                $candidatos = $responsables->values();
+            }
         }
 
-        $historial = $this->historialDe($asset, $candidatos->pluck('id')->all());
+        $historial = $this->historialDe($ambito, $candidatos->pluck('id')->all());
 
         // Una sola funcion que devuelve la tupla de desempate, y PHP compara
         // arrays elemento a elemento.
@@ -134,12 +161,12 @@ class AsesoriaService
      */
     public function agendar(
         User $solicitante,
-        Asset $asset,
+        Asset|Area $ambito,
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?string $motivo = null,
     ): ?Reservation {
-        return DB::transaction(function () use ($solicitante, $asset, $desde, $hasta, $motivo) {
+        return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo) {
             // Quien pide tambien tiene que estar libre. Se comprobaba solo al
             // asesor, asi que una misma persona podia agendarse dos asesorias a
             // la misma hora —con dos asesores distintos— y dejar plantado a uno.
@@ -150,7 +177,7 @@ class AsesoriaService
                 return null;
             }
 
-            $asesor = $this->elegir($asset, $desde, $hasta, $solicitante);
+            $asesor = $this->elegir($ambito, $desde, $hasta, $solicitante);
 
             if (! $asesor) {
                 return null;
@@ -160,7 +187,8 @@ class AsesoriaService
                 'reservable_type'   => User::class,
                 'reservable_id'     => $asesor->id,
                 'user_id'           => $solicitante->id,
-                'advisory_asset_id' => $asset->id,
+                'advisory_asset_id' => $ambito instanceof Asset ? $ambito->id : null,
+                'advisory_area_id'  => $ambito instanceof Area ? $ambito->id : null,
                 'mode'              => 'asesoria',
                 'status'            => 'confirmada',
                 'starts_at'         => $desde,
@@ -180,11 +208,18 @@ class AsesoriaService
      * @param  list<int>  $userIds
      * @return array<int,array{cuantas:int,ultima:?string}>
      */
-    public function historialDe(Asset $asset, array $userIds = []): array
+    public function historialDe(Asset|Area $ambito, array $userIds = []): array
     {
         return Reservation::query()
             ->where('mode', 'asesoria')
-            ->where('advisory_asset_id', $asset->id)
+            ->when(
+                $ambito instanceof Asset,
+                fn ($q) => $q->where('advisory_asset_id', $ambito->id),
+                // El turno de las generales se cuenta entre ellas: mezclarlo
+                // con el de cada maquina haria que quien asesora mucho una
+                // Prusa nunca cayera en una general, y al reves.
+                fn ($q) => $q->where('advisory_area_id', $ambito->id),
+            )
             ->where('reservable_type', User::class)
             ->whereNotIn('status', ['cancelada', 'rechazada'])
             ->when($userIds !== [], fn ($q) => $q->whereIn('reservable_id', $userIds))
@@ -216,12 +251,12 @@ class AsesoriaService
      * @return Collection<int,array{inicio:CarbonInterface,fin:CarbonInterface,cuantos:int}>
      */
     public function franjasDisponibles(
-        Asset $asset,
+        Asset|Area $ambito,
         ?User $solicitante = null,
         int $dias = 7,
         ?int $minutos = null,
     ): Collection {
-        if ($this->asesoresDe($asset)->isEmpty()) {
+        if ($this->asesoresDe($ambito)->isEmpty()) {
             return collect();
         }
 
@@ -250,7 +285,7 @@ class AsesoriaService
 
                 // Una hora que ya paso no es una opcion.
                 if ($inicio->greaterThan($ahora)) {
-                    $cuantos = $this->disponiblesPara($asset, $inicio, $hasta, $solicitante)->count();
+                    $cuantos = $this->disponiblesPara($ambito, $inicio, $hasta, $solicitante)->count();
 
                     if ($cuantos > 0) {
                         $franjas->push([
@@ -269,9 +304,9 @@ class AsesoriaService
     }
 
     /** Este equipo admite asesorias porque hay alguien declarado (§10). */
-    public function seAsesora(Asset $asset): bool
+    public function seAsesora(Asset|Area $ambito): bool
     {
-        return $this->asesoresDe($asset)->isNotEmpty();
+        return $this->asesoresDe($ambito)->isNotEmpty();
     }
 
     /**

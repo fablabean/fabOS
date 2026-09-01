@@ -189,6 +189,18 @@
             ← Todas las áreas
         </a>
 
+        @if ($asesoriaGeneral)
+            {{-- Antes que las máquinas: quien pide asesoría muchas veces no
+                 sabe cuál necesita, y elegirla es parte de la consulta. --}}
+            <a class="camino" style="margin-bottom:1.4rem"
+               href="{{ route('asesoria.area.show', $asesoriaGeneral) }}">
+                <b>Asesoría general de {{ $asesoriaGeneral->name }}</b>
+                <span>¿No sabes qué máquina necesitas? Pide la asesoría del área: alguien te
+                      escucha, te dice con qué se hace lo que quieres y te acompaña.</span>
+                <span class="pie">Sin elegir equipo</span>
+            </a>
+        @endif
+
         {{-- Dentro del área, la pregunta de quien ya está de pie en la puerta. --}}
         <p style="margin:0 0 1rem">
             <a class="volver"
