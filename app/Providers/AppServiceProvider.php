@@ -32,6 +32,7 @@ use App\Models\WorkSchedule;
 use App\Policies\BackofficePolicy;
 use App\Policies\CertifabPolicy;
 use App\Support\LabSettings;
+use Filament\Forms\Components\DateTimePicker;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -72,6 +73,23 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        /*
+         * Las fechas del panel, en la hora del laboratorio.
+         *
+         * El libro guarda todo en UTC —bien— pero los selectores de fecha
+         * mostraban ese valor crudo. La lista decia «17:00» y al abrir la misma
+         * reserva ponia «22:00»: cinco horas de diferencia, las de Bogota. Y no
+         * era solo un susto al mirar: al guardar, esas 22:00 se escribian como
+         * si fueran hora local y la reserva se corria de verdad.
+         *
+         * Se configura de una vez para todos los selectores en lugar de
+         * repetirlo en cada formulario: los dieciseis que habia estaban mal, y
+         * el diecisiete tambien lo estaria.
+         */
+        DateTimePicker::configureUsing(
+            fn (DateTimePicker $campo) => $campo->timezone(config('fabos.lab.timezone')),
+        );
 
         // La identidad del laboratorio se administra desde el backoffice y pisa
         // a `.env`: cambiar el nombre no debería exigir entrar por SSH (§19).

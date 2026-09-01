@@ -10,6 +10,7 @@ use App\Services\Projects\ProduccionService;
 use App\Services\Projects\ProjectException;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Carbon;
 use Filament\Notifications\Notification;
@@ -227,6 +228,51 @@ class ReservationsTable
                         'status' => 'rechazada',
                         'status_reason' => 'Rechazada desde el backoffice',
                     ])),
+
+                /*
+                 * Levantar una reserva que se cayo sola.
+                 *
+                 * El sistema marca «no se presento» cuando nadie valido la
+                 * llegada, y esta bien: una maquina apartada que nadie usa es
+                 * una maquina perdida. Pero hay reservas que no se validan
+                 * porque no hace falta —la que se programa desde un proyecto se
+                 * va a usar y punto—, y hasta ahora la unica salida era volver
+                 * a crearla a mano, perdiendo quien la pidio y para que.
+                 *
+                 * Devolverla es un acto de alguien, con su motivo escrito: eso
+                 * es lo que distingue corregir de tapar.
+                 */
+                Action::make('levantar')
+                    ->label('Levantar la reserva')
+                    ->iconButton()
+                    ->tooltip('Levantar la reserva')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->visible(fn (Reservation $r) => in_array($r->status, ['no_show', 'cancelada', 'rechazada'], true))
+                    ->modalHeading('Devolver la reserva')
+                    ->modalDescription(fn (Reservation $r) => 'Está como «'
+                        . (Reservation::ESTADOS[$r->status] ?? $r->status)
+                        . '». Vuelve a quedar confirmada y el equipo, apartado.')
+                    ->schema([
+                        Textarea::make('motivo')
+                            ->label('Por qué se levanta')
+                            ->required()
+                            ->placeholder('Se programó desde un proyecto: no hacía falta validar la llegada.')
+                            ->helperText('Queda escrito en la reserva. Sin el motivo, dentro de un mes nadie sabe por qué se revivió.'),
+                    ])
+                    ->action(function (Reservation $record, array $data) {
+                        $record->update([
+                            'status'  => 'confirmada',
+                            'purpose' => trim(($record->purpose ? $record->purpose . ' · ' : '')
+                                . 'Levantada por ' . auth()->user()->name . ': ' . $data['motivo']),
+                        ]);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Reserva levantada')
+                            ->body('Vuelve a estar confirmada.')
+                            ->send();
+                    }),
 
                 EditAction::make()->iconButton()->tooltip('Editar'),
             ])
