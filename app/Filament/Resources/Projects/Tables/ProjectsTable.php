@@ -41,8 +41,22 @@ class ProjectsTable
                     ->label('Código')
                     ->searchable()
                     ->weight('bold')
+                    /*
+                     * Encogida a su contenido.
+                     *
+                     * En una pantalla estrecha el navegador reparte el ancho
+                     * segun el texto mas largo de cada columna, y la linea de
+                     * abajo —«Formulario del sitio · Area o facultad de la
+                     * Universidad»— pedia mas sitio que el nombre del proyecto.
+                     * Resultado: el codigo ancho y vacio, y el nombre partido
+                     * palabra por palabra en vertical.
+                     *
+                     * `1px` es la forma de decirle a una tabla «lo justo»: el
+                     * resto del ancho se lo quedan las demas.
+                     */
+                    ->width('1px')
+                    ->extraCellAttributes(['style' => 'white-space:nowrap'])
                     ->description(fn (Project $r) => (Project::ORIGENES[$r->source] ?? $r->source)
-                        . ' · ' . (Project::CLIENTES[$r->client_kind] ?? $r->client_kind)
                         // Aceptada es el momento en que deja de ser una
                         // conversacion y pasa a ser un compromiso.
                         . ($r->accepted_at
@@ -63,9 +77,21 @@ class ProjectsTable
                     ->searchable()
                     ->weight('medium')
                     ->wrap()
+                    // Se queda con el ancho que sobra: es lo que se viene a
+                    // leer, y el resto de columnas caben en lo suyo.
+                    ->width('100%')
                     ->description(fn (Project $r) => $r->quienPide()),
 
+                // De quien es el encargo: estaba pegado al codigo, donde
+                // ensanchaba una columna que solo tiene que decir «PRY-2026-33».
+                TextColumn::make('client_kind')
+                    ->label('Cliente')
+                    ->formatStateUsing(fn (?string $state) => Project::CLIENTES[$state] ?? $state)
+                    ->color('gray')
+                    ->toggleable(),
+
                 TextColumn::make('stage')
+                    ->width('1px')
                     ->label('Etapa')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => Project::ETAPAS[$state] ?? $state)
@@ -98,6 +124,7 @@ class ProjectsTable
                         : null),
 
                 TextColumn::make('status')
+                    ->width('1px')
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => Project::ESTADOS[$state] ?? $state)
