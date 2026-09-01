@@ -80,6 +80,19 @@ services:
         command: 'tunnel --no-autoupdate run'
         environment:
             TUNNEL_TOKEN: '${CLOUDFLARE_TUNNEL_TOKEN}'
+            # Por TCP y no por QUIC.
+            #
+            # cloudflared habla con Cloudflare por QUIC (UDP/7844) si puede, y
+            # en esta red la conexion se caia sola: «timeout: no recent network
+            # activity» cincuenta veces en tres dias, subiendo a dieciocho en
+            # una sola hora. El UDP en una red universitaria se limita o se
+            # descarta cuando hay trafico, y una conexion QUIC muerta no avisa:
+            # deja de contestar y el sitio se cae hasta que reconecta.
+            #
+            # http2 usa TCP/7844, que atraviesa cortafuegos y aguanta
+            # congestion. Va un poco mas lento por conexion; a cambio no se
+            # cae, que es lo que se estaba pidiendo.
+            TUNNEL_TRANSPORT_PROTOCOL: 'http2'
         restart: unless-stopped
         networks:
             - sail
