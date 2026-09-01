@@ -38,6 +38,11 @@
         header.top nav{display:flex;gap:1rem;margin-left:auto;align-items:center;font-size:.9rem}
         header.top a{color:var(--ink-soft);text-decoration:none}
         header.top a:hover{color:var(--accent)}
+        /* «Mi cuenta» se ve igual dentro y fuera: el menu es el mismo, y una
+           misma cosa que cambia de forma segun la pagina se lee como otra. */
+        header.top a.btn{background:var(--accent);color:#fff;padding:.4rem .9rem;
+                         border-radius:6px;font-weight:600}
+        header.top a.btn:hover{color:#fff;filter:brightness(1.08)}
         .quien{font-family:ui-monospace,Consolas,monospace;font-size:.72rem;color:var(--muted)}
         main{max-width:62rem;margin:0 auto;padding:1.8rem 1.4rem 4rem}
         /* Una pagina pide todo el ancho definiendo la seccion «ancho» con el
@@ -98,17 +103,9 @@
     <header class="top">
         <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">fab<em>OS</em></span></a>
         <nav>
-            {{-- La misma puerta que ve quien entra de fuera. --}}
-            <a href="{{ route('publico.equipos') }}">Reservas</a>
-            <a href="{{ route('formacion') }}">Formación</a>
-            <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
-            <a href="{{ route('tienda.publica') }}">Tienda</a>
+            @include('partials.menu')
+
             @auth
-                <a href="{{ route('contenido.index') }}">Grabar</a>
-                <a href="{{ route('home') }}">Mi cuenta</a>
-                @if (auth()->user()->hasAnyRole(\App\Models\User::ROLES_BACKOFFICE))
-                    <a href="/admin">Backoffice</a>
-                @endif
                 <span class="quien">{{ auth()->user()->email }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="display:inline">
                     @csrf

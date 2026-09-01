@@ -310,6 +310,58 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertSee(route('asesoria.show', $equipo), false);
     }
 
+    // ------------------------------------------- lo que no se puede perder
+
+    /**
+     * Reservar un espacio sigue estando.
+     *
+     * No es una máquina, es una sala, y es lo que se pide para trabajar en
+     * grupo o dar clase. Estaba en la página vieja y al unificar la entrada se
+     * habría perdido sin que nadie lo notara hasta necesitarlo.
+     */
+    public function test_se_puede_reservar_un_espacio_desde_reservas(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertSee('Reserva un espacio')
+            ->assertSee(route('espacios.index'), false);
+    }
+
+    /** Y quien tiene sesión ve lo que ya tiene pedido, antes de pedir más. */
+    public function test_se_ven_mis_proximas_reservas(): void
+    {
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $quien = User::create([
+            'name' => 'Quien reserva', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+
+        Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id,
+            'user_id' => $quien->id, 'status' => 'confirmada', 'mode' => 'directa',
+            'starts_at' => now()->addDay()->setTime(10, 0),
+            'ends_at' => now()->addDay()->setTime(11, 0),
+        ]);
+
+        $this->actingAs($quien)
+            ->get('/equipos')
+            ->assertOk()
+            ->assertSee('Mis próximas reservas')
+            ->assertSee('Cortadora láser');
+    }
+
+    /** Sin sesión no hay nada que enseñar ahí, y no se enseña. */
+    public function test_sin_sesion_no_hay_reservas_propias(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertDontSee('Mis próximas reservas');
+    }
+
     // ------------------------------------------------- una sola puerta
 
     /**

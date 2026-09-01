@@ -83,20 +83,7 @@
         <span class="palabra">fab<em>OS</em></span>
     </a>
     <nav>
-        {{-- «Reservas» y no «Equipos»: quien entra de fuera no viene a mirar
-             un inventario, viene a usar el laboratorio. --}}
-        <a href="{{ route('publico.equipos') }}">Reservas</a>
-            <a href="{{ route('preguntas.index') }}">Preguntas</a>
-        <a href="{{ route('formacion') }}">Formación</a>
-        @auth
-            {{-- Sin un «Reservar» aparte: la misma puerta para todos. Lo que
-                 cambia al entrar con sesión no es el menú, es lo que se puede
-                 hacer dentro —en Autonomía sale lo tuyo, y solo lo tuyo—. Dos
-                 entradas a lo mismo obligan a adivinar cuál es cuál. --}}
-            <a class="btn" href="{{ route('home') }}">Mi cuenta</a>
-        @else
-            <a class="btn" href="{{ route('login') }}">Ingresar</a>
-        @endauth
+        @include('partials.menu')
     </nav>
 </div>
 

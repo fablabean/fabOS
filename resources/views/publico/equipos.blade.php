@@ -68,6 +68,12 @@
     .aviso p{margin:0 0 .6rem;color:var(--ink-soft);font-size:.9rem;line-height:1.55}
     .aviso p:last-child{margin-bottom:0}
     .vacio{color:var(--muted);padding:1.4rem 0 2.4rem}
+    .reservas-mias{display:grid;gap:.5rem;margin-bottom:2rem}
+    .mia{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:baseline;
+         padding:.7rem .9rem;border:1px solid var(--rule);border-radius:6px;
+         background:var(--surface)}
+    .mia b{font-size:.95rem}
+    .mia span{font-size:.84rem;color:var(--muted);font-variant-numeric:tabular-nums}
 @endsection
 
 @section('content')
@@ -114,6 +120,47 @@
             <span class="pie">Reservas la máquina</span>
         </a>
     </div>
+
+    {{-- Reservar un espacio: no es una máquina, es una sala. Estaba en la
+         página vieja y es lo que se pide para trabajar en grupo o dar clase. --}}
+    <p class="lead" style="margin:-1.4rem 0 2rem">
+        ¿Vas a trabajar en grupo o dar una clase?
+        <a href="{{ route('espacios.index') }}"><strong>Reserva un espacio</strong></a>
+        y toma dentro las herramientas que necesites.
+        @if ($franjaHoy)
+            Hoy el laboratorio atiende de <strong>{{ substr($franjaHoy[0], 0, 5) }}</strong>
+            a <strong>{{ substr($franjaHoy[1], 0, 5) }}</strong>.
+        @else
+            Hoy no hay personal en jornada, así que lo que requiere acompañamiento no se
+            puede reservar.
+        @endif
+    </p>
+
+    {{-- Lo que ya tiene pedido. Es lo primero que se mira al llegar: antes de
+         reservar otra cosa, saber qué hay. --}}
+    @if ($misReservas->isNotEmpty())
+        <section style="padding-top:0">
+            <p class="rotulo">Mis próximas reservas</p>
+            <div class="reservas-mias">
+                @foreach ($misReservas as $r)
+                    <div class="mia">
+                        <b>
+                            @if ($r->esAsesoria())
+                                Asesoría · {{ $r->sobreQue() ?? 'con el equipo' }}
+                            @else
+                                {{ $r->reservable?->name ?? 'Reserva' }}
+                            @endif
+                        </b>
+                        <span>
+                            {{ $r->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                            — {{ $r->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}
+                            @if ($r->supervisor) · acompaña {{ $r->supervisor->name }} @endif
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     {{-- ------------------------------------------------------------ autonomía --}}
     @if ($modo === 'autonomia')

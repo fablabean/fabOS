@@ -149,7 +149,30 @@ class PublicSiteController extends Controller
             }
         }
 
+        /*
+         * Lo que ya tiene reservado, y la jornada de hoy.
+         *
+         * Estaban en la pagina vieja de reservar y se habrian perdido al
+         * unificar la entrada. Son las dos cosas que se miran al llegar: que
+         * tengo pedido, y si hoy hay alguien para atenderlo.
+         */
+        $misReservas = $quien
+            ? \App\Models\Reservation::query()
+                ->where('user_id', $quien->id)
+                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
+                ->where('ends_at', '>=', now())
+                ->orderBy('starts_at')
+                ->with(['supervisor', 'advisoryAsset', 'advisoryArea'])
+                ->get()
+                ->each(fn ($r) => $r->reservable_type === Asset::class
+                    ? $r->setRelation('reservable', Asset::find($r->reservable_id))
+                    : null)
+            : collect();
+
         return view('publico.equipos', [
+            'misReservas' => $misReservas,
+            'franjaHoy'   => app(\App\Services\Staffing\CoverageService::class)
+                ->franjaAtendida(\Illuminate\Support\Carbon::now(config('fabos.lab.timezone'))),
             'asesoriaGeneral' => $asesoriaGeneral,
             'modo'       => $modo,
             'area'       => $area,
