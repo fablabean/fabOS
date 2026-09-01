@@ -17,7 +17,8 @@ class Course extends Model
 {
     protected $fillable = [
         'slug', 'name', 'area_id', 'level', 'summary', 'description',
-        'requirements', 'hours', 'photo_path', 'price_minor', 'is_active', 'is_public',
+        'requirements', 'hours', 'passing_score', 'requires_practical',
+        'photo_path', 'price_minor', 'is_active', 'is_public',
     ];
 
     protected function casts(): array
@@ -25,6 +26,8 @@ class Course extends Model
         return [
             'is_active' => 'boolean',
             'is_public' => 'boolean',
+            'requires_practical' => 'boolean',
+            'passing_score' => 'integer',
         ];
     }
 
@@ -45,6 +48,23 @@ class Course extends Model
     public function editions(): HasMany
     {
         return $this->hasMany(CourseEdition::class);
+    }
+
+    /** La teoria, en orden: son pantallas cortas, no un manual. */
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(CourseLesson::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(CourseQuestion::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** Si tiene examen que corregir. Sin preguntas no hay nada que aprobar. */
+    public function tieneExamen(): bool
+    {
+        return $this->questions()->exists();
     }
 
     /** Qué habilita aprobarlo. Sin esto un curso es solo una charla. */

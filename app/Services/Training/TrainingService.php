@@ -3,6 +3,7 @@
 namespace App\Services\Training;
 
 use App\Models\Certifab;
+use App\Models\CourseQuestion;
 use App\Models\CourseEdition;
 use App\Models\Enrollment;
 use App\Models\User;
@@ -107,6 +108,18 @@ class TrainingService
     {
         if ($inscripcion->status === 'retirado') {
             throw new TrainingException('Esa persona se retiró de la edición.');
+        }
+
+        /*
+         * El certifab no se firma antes de tiempo.
+         *
+         * Dice que esa persona puede usar la maquina sin nadie al lado. Si se
+         * pudiera otorgar saltandose el examen o la practica, la palabra
+         * dejaria de significar eso —y quien la lea despues no tendria como
+         * saber cuales si pasaron por ahi—.
+         */
+        if ($falta = $inscripcion->queFaltaParaAprobar()) {
+            throw new TrainingException($falta);
         }
 
         if ($inscripcion->aprobada()) {
@@ -234,6 +247,91 @@ class TrainingService
         $ultimo = CourseEdition::where('code', 'like', "FOR-{$ano}-%")->max('code');
 
         return sprintf('FOR-%d-%04d', $ano, $ultimo ? ((int) substr($ultimo, -4)) + 1 : 1);
+    }
+
+    /**
+     * Corrige el examen teorico y guarda el resultado.
+     *
+     * Se corrige aqui y no en el navegador: la respuesta correcta no puede
+     * viajar hasta la pantalla de quien esta examinandose.
+     *
+     * @param  array<int,int>  $respuestas  id de la pregunta => opcion elegida
+     * @return array{nota:int, aprobado:bool, fallos:\Illuminate\Support\Collection}
+     */
+    public function calificarExamen(Enrollment $inscripcion, array $respuestas): array
+    {
+        $curso = $inscripcion->edition?->course;
+
+        if (! $curso || ! $curso->tieneExamen()) {
+            throw new TrainingException('Este curso no tiene examen.');
+        }
+
+        if ($inscripcion->status === 'retirado') {
+            throw new TrainingException('Esa persona se retiró de la edición.');
+        }
+
+        $preguntas = $curso->questions;
+
+        $aciertos = $preguntas->filter(
+            fn (CourseQuestion $p) => $p->esCorrecta($respuestas[$p->id] ?? null),
+        );
+
+        $nota = (int) round($aciertos->count() / max(1, $preguntas->count()) * 100);
+        $aprobado = $nota >= (int) $curso->passing_score;
+
+        $inscripcion->update([
+            'theory_score'     => $nota,
+            'theory_attempts'  => $inscripcion->theory_attempts + 1,
+            // La fecha se guarda solo al aprobar, y no se pisa: es la de la vez
+            // que se logro, no la del ultimo intento.
+            'theory_passed_at' => $inscripcion->theory_passed_at
+                ?? ($aprobado ? now() : null),
+        ]);
+
+        return [
+            'nota'     => $nota,
+            'aprobado' => $aprobado,
+            // Lo que fallo, con su explicacion: un examen que solo dice «mal»
+            // enseña a adivinar, no a operar la maquina.
+            'fallos'   => $preguntas->reject(
+                fn (CourseQuestion $p) => $p->esCorrecta($respuestas[$p->id] ?? null),
+            )->values(),
+        ];
+    }
+
+    /**
+     * Firma la evaluacion presencial.
+     *
+     * La hace una persona, delante de la maquina: una pantalla no puede ver si
+     * alguien nivela una cama o si sabe parar la impresion cuando algo va mal.
+     */
+    public function registrarPractica(
+        Enrollment $inscripcion,
+        User $quienEvalua,
+        ?string $notas = null,
+    ): Enrollment {
+        if ($inscripcion->status === 'retirado') {
+            throw new TrainingException('Esa persona se retiró de la edición.');
+        }
+
+        $curso = $inscripcion->edition?->course;
+
+        // El orden no es ceremonia: la practica se evalua sobre lo que la
+        // teoria ya explico, y firmarla antes deja al evaluador improvisando
+        // que preguntar.
+        if ($curso?->tieneExamen() && ! $inscripcion->teoriaAprobada()) {
+            throw new TrainingException(
+                'Todavía no ha aprobado el examen teórico: la práctica se evalúa sobre eso.'
+            );
+        }
+
+        $inscripcion->update([
+            'practical_passed_at' => now(),
+            'practical_by'        => $quienEvalua->id,
+            'practical_notes'     => $notas,
+        ]);
+
+        return $inscripcion->refresh();
     }
 
     /** Familias de riesgo que una persona tendría habilitadas al aprobar. */
