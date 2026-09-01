@@ -9,7 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /** Área del laboratorio: unidad de certificación, espacio y responsable (§7). */
 class Area extends Model
 {
-    protected $fillable = ['slug', 'name', 'description', 'position'];
+    protected $fillable = ['slug', 'name', 'description', 'photo_path', 'position'];
+
+    /** URL de la foto del area, o null si todavia no tiene. */
+    public function fotoUrl(): ?string
+    {
+        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+    }
 
     /** Quienes pueden certificar en esta área (§5). */
     public function responsibles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany

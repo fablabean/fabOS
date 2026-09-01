@@ -144,6 +144,39 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertSee('No hay equipos publicados en esta área');
     }
 
+    // ------------------------------------------------------ la foto del área
+
+    /**
+     * La foto del área manda sobre la de sus máquinas.
+     *
+     * Es la que el laboratorio eligió para presentarse. La de una máquina sirve
+     * para arrancar sin subir nada, pero la elige el orden alfabético:
+     * «Impresión 3D» salía representada por un secador de filamento.
+     */
+    public function test_la_foto_del_area_manda_sobre_la_de_la_maquina(): void
+    {
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+        $equipo->update(['photo_path' => 'activos/una-maquina.jpg']);
+
+        $equipo->area->update(['photo_path' => 'areas/corte-laser.jpg']);
+
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertSee('areas/corte-laser.jpg')
+            ->assertDontSee('activos/una-maquina.jpg');
+    }
+
+    /** Sin foto propia se usa la de una máquina: mejor eso que un hueco gris. */
+    public function test_sin_foto_del_area_se_usa_la_de_una_maquina(): void
+    {
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+        $equipo->update(['photo_path' => 'activos/una-maquina.jpg']);
+
+        $this->get('/equipos')
+            ->assertOk()
+            ->assertSee('activos/una-maquina.jpg');
+    }
+
     // -------------------------------------------------------- lo que está libre
 
     public function test_libre_ahora_deja_fuera_lo_ocupado(): void

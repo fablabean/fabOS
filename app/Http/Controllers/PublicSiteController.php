@@ -104,13 +104,16 @@ class PublicSiteController extends Controller
                 'slug'    => $equipos->first()->area?->slug ?? 'otros',
                 'nombre'  => $equipos->first()->area?->name ?? 'Otros',
                 'cuantos' => $equipos->count(),
-                // La foto de una de sus maquinas: un area se reconoce por lo
-                // que hay dentro, y no hay que subir nada nuevo para tenerla.
-                //
-                // Se prefiere una que se reserve. Los accesorios tambien tienen
-                // foto, y «Impresion 3D» ilustrada con un secador de filamento
-                // no dice lo que hay dentro.
-                'foto'    => (
+                /*
+                 * La del area, si la tiene: es la que el laboratorio eligio
+                 * para presentarse.
+                 *
+                 * Y si no, la de una de sus maquinas —prefiriendo una que se
+                 * reserve—, que es mejor que un hueco gris. Pero esa la elige
+                 * el orden alfabetico: «Impresion 3D» salia representada por un
+                 * secador de filamento.
+                 */
+                'foto'    => $equipos->first()->area?->fotoUrl() ?? (
                     $equipos->first(fn (Asset $a) => $a->is_reservable && $a->photoUrl() !== null)
                     ?? $equipos->first(fn (Asset $a) => $a->photoUrl() !== null)
                 )?->photoUrl(),
