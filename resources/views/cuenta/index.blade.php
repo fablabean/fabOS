@@ -143,6 +143,29 @@
                             <span class="pill {{ $inscripcion->aprobada() ? 'ok' : ($inscripcion->status === 'reprobado' ? 'bad' : 'warn') }}">
                                 {{ \App\Models\Enrollment::ESTADOS[$inscripcion->status] ?? $inscripcion->status }}
                             </span>
+
+                            {{-- Qué falta y por dónde seguir. Sin esto, quien
+                                 aprueba el examen y no recibe el certifab no
+                                 tiene forma de saber que espera una práctica. --}}
+                            @if (! $inscripcion->aprobada() && $inscripcion->status !== 'retirado')
+                                @php $curso = $inscripcion->edition?->course; @endphp
+
+                                @if ($curso?->lessons?->isNotEmpty())
+                                    <div class="quien" style="margin-top:.3rem">
+                                        <a href="{{ route('formacion.teoria', $inscripcion) }}">Ver la teoría</a>
+                                        @if ($curso->tieneExamen())
+                                            ·
+                                            <a href="{{ route('formacion.examen', $inscripcion) }}">
+                                                {{ $inscripcion->teoriaAprobada() ? 'Repetir el examen' : 'Hacer el examen' }}
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                @if ($falta = $inscripcion->queFaltaParaAprobar())
+                                    <div class="quien">{{ $falta }}</div>
+                                @endif
+                            @endif
                         </td>
                         <td>
                             @if ($inscripcion->certificate_code)

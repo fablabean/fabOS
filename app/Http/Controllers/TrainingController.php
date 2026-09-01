@@ -40,6 +40,79 @@ class TrainingController extends Controller
         ]);
     }
 
+    /**
+     * La teoria de un curso, pantalla a pantalla.
+     *
+     * Se lee con la inscripcion hecha: no es secreto, pero el avance se guarda
+     * contra una inscripcion, y sin ella no hay donde apuntar que esta persona
+     * ya paso por aqui.
+     */
+    public function teoria(Request $request, Enrollment $enrollment, int $numero = 1)
+    {
+        abort_unless($enrollment->user_id === $request->user()->id, 403);
+
+        $curso = $enrollment->edition?->course;
+        $lecciones = $curso?->lessons ?? collect();
+
+        abort_if($lecciones->isEmpty(), 404);
+
+        // Fuera de rango se lleva a la primera en vez de reventar: una
+        // direccion escrita a mano no deberia romper la pagina.
+        $indice = max(1, min($numero, $lecciones->count()));
+
+        return view('formacion.teoria', [
+            'inscripcion' => $enrollment,
+            'curso'       => $curso,
+            'leccion'     => $lecciones[$indice - 1],
+            'numero'      => $indice,
+            'cuantas'     => $lecciones->count(),
+        ]);
+    }
+
+    /** El examen: las preguntas, sin la respuesta correcta. */
+    public function examen(Request $request, Enrollment $enrollment)
+    {
+        abort_unless($enrollment->user_id === $request->user()->id, 403);
+
+        $curso = $enrollment->edition?->course;
+
+        abort_unless($curso?->tieneExamen(), 404);
+
+        return view('formacion.examen', [
+            'inscripcion' => $enrollment,
+            'curso'       => $curso,
+            // Sin `correct` ni `explanation`: la respuesta buena no puede viajar
+            // hasta la pantalla de quien se esta examinando.
+            'preguntas'   => $curso->questions->map(fn ($p) => [
+                'id'      => $p->id,
+                'prompt'  => $p->prompt,
+                'options' => $p->options,
+            ]),
+        ]);
+    }
+
+    public function calificar(Request $request, Enrollment $enrollment)
+    {
+        abort_unless($enrollment->user_id === $request->user()->id, 403);
+
+        $datos = $request->validate([
+            'respuestas'   => ['required', 'array'],
+            'respuestas.*' => ['nullable', 'integer'],
+        ]);
+
+        try {
+            $resultado = $this->formacion->calificarExamen($enrollment, $datos['respuestas']);
+        } catch (TrainingException $e) {
+            return back()->withErrors(['examen' => $e->getMessage()]);
+        }
+
+        return view('formacion.resultado', [
+            'inscripcion' => $enrollment->fresh(),
+            'curso'       => $enrollment->edition?->course,
+            'resultado'   => $resultado,
+        ]);
+    }
+
     public function inscribir(Request $request, CourseEdition $edition)
     {
         try {

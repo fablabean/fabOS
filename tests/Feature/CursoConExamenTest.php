@@ -192,6 +192,85 @@ class CursoConExamenTest extends TestCase
         $this->assertStringContainsString('Niveló', $inscripcion->practical_notes);
     }
 
+    // ------------------------------------------------------------ las pantallas
+
+    private function entrar(Enrollment $inscripcion): User
+    {
+        $u = $inscripcion->user;
+        $this->actingAs($u);
+
+        return $u;
+    }
+
+    public function test_la_teoria_se_lee_pantalla_a_pantalla(): void
+    {
+        $inscripcion = $this->inscribir();
+        $this->entrar($inscripcion);
+
+        $this->get(route('formacion.teoria', $inscripcion))
+            ->assertOk()
+            ->assertSee('Antes de imprimir')
+            ->assertSee('Nivelar la cama')
+            // Al final de la teoría, la puerta del examen.
+            ->assertSee(route('formacion.examen', $inscripcion), false);
+    }
+
+    /** La teoría de otra persona no se abre: es su expediente, no un folleto. */
+    public function test_la_teoria_de_otra_persona_no_se_abre(): void
+    {
+        $inscripcion = $this->inscribir();
+
+        $this->actingAs($this->alguien())
+            ->get(route('formacion.teoria', $inscripcion))
+            ->assertForbidden();
+    }
+
+    /**
+     * El examen se enseña **sin la respuesta correcta**.
+     *
+     * No puede viajar hasta la pantalla de quien se está examinando: con mirar
+     * el código fuente se aprueba sin leer nada.
+     */
+    public function test_el_examen_no_lleva_la_respuesta_correcta(): void
+    {
+        $inscripcion = $this->inscribir();
+        $this->entrar($inscripcion);
+
+        $html = $this->get(route('formacion.examen', $inscripcion))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Pregunta 1', $html);
+        $this->assertStringNotContainsString('Porque sí, la 1', $html);
+    }
+
+    public function test_entregar_el_examen_devuelve_la_nota(): void
+    {
+        $inscripcion = $this->inscribir();
+        $this->entrar($inscripcion);
+
+        $this->post(route('formacion.calificar', $inscripcion), [
+            'respuestas' => $this->respuestas(),
+        ])
+            ->assertOk()
+            ->assertSee('Aprobaste la teoría')
+            ->assertSee('100%')
+            // Y qué falta para el certifab.
+            ->assertSee('evaluación presencial');
+    }
+
+    /** Suspender enseña lo que falló, con su porqué. */
+    public function test_al_suspender_se_ve_que_fallo_y_por_que(): void
+    {
+        $inscripcion = $this->inscribir();
+        $this->entrar($inscripcion);
+
+        $this->post(route('formacion.calificar', $inscripcion), [
+            'respuestas' => $this->respuestas(3),
+        ])
+            ->assertOk()
+            ->assertSee('Todavía no')
+            ->assertSee('Porque sí, la 1');
+    }
+
     // ------------------------------------------------------------ el certifab
 
     /**

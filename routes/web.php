@@ -221,6 +221,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/u/equipo/{asset}', [InventoryController::class, 'registrar'])->name('inventario.registrar');
 
     // Inscribirse exige sesion: un cupo se le asigna a alguien concreto (§9).
+    // El curso, paso a paso: la teoria se lee, el examen se corrige solo, y la
+    // practica la firma alguien delante de la maquina desde el backoffice.
+    Route::get('/formacion/mi/{enrollment}/teoria/{numero?}', [TrainingController::class, 'teoria'])->name('formacion.teoria');
+    Route::get('/formacion/mi/{enrollment}/examen', [TrainingController::class, 'examen'])->name('formacion.examen');
+    Route::post('/formacion/mi/{enrollment}/examen', [TrainingController::class, 'calificar'])
+        ->middleware('throttle:20,60')
+        ->name('formacion.calificar');
+
     Route::post('/formacion/{edition}/inscribirme', [TrainingController::class, 'inscribir'])->name('formacion.inscribir');
     Route::post('/formacion/inscripcion/{enrollment}/retirar', [TrainingController::class, 'retirar'])->name('formacion.retirar');
 

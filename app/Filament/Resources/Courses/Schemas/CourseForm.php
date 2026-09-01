@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Courses\Schemas;
 use App\Models\Course;
 use App\Services\Media\OptimizadorDeImagen;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -124,6 +125,78 @@ class CourseForm
                             ->default(true)
                             ->helperText('Un curso puede existir sin salir en la vitrina.'),
                     ]),
+
+                Section::make('La teoría')
+                    ->description('Pantallas cortas y en orden. Un manual de veinte páginas no lo lee nadie antes de un examen; seis pantallas de dos minutos, sí.')
+                    ->collapsed()
+                    ->schema([
+                        Repeater::make('lessons')
+                            ->label('')
+                            ->relationship()
+                            ->orderColumn('position')
+                            ->addActionLabel('Añadir una pantalla')
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
+                            ->collapsed()
+                            ->schema([
+                                TextInput::make('title')->label('Título')->required(),
+                                Textarea::make('body')->label('Contenido')->rows(8)->required(),
+                            ]),
+                    ]),
+
+                Section::make('El examen teórico')
+                    ->description('De opción múltiple: son las que se corrigen sin una persona delante, y eso permite que alguien lo haga un domingo.')
+                    ->collapsed()
+                    ->schema([
+                        TextInput::make('passing_score')
+                            ->label('Mínimo para aprobar')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->default(80)
+                            ->helperText('Por curso y no global: no es lo mismo un primer contacto que lo que habilita a usar una máquina sola.'),
+
+                        Repeater::make('questions')
+                            ->label('Preguntas')
+                            ->relationship()
+                            ->orderColumn('position')
+                            ->addActionLabel('Añadir una pregunta')
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state) => \Illuminate\Support\Str::limit($state['prompt'] ?? '', 60) ?: null)
+                            ->collapsed()
+                            ->schema([
+                                Textarea::make('prompt')->label('Pregunta')->rows(2)->required(),
+
+                                Repeater::make('options')
+                                    ->label('Opciones')
+                                    ->simple(TextInput::make('opcion')->required())
+                                    ->minItems(2)
+                                    ->defaultItems(3)
+                                    ->helperText('La primera es la número 0.'),
+
+                                TextInput::make('correct')
+                                    ->label('Cuál es la correcta')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->required()
+                                    ->helperText('El número de la opción, empezando por 0.'),
+
+                                Textarea::make('explanation')
+                                    ->label('Por qué')
+                                    ->rows(2)
+                                    ->helperText('Se enseña al corregir. Un examen que solo dice «mal» enseña a adivinar, no a operar la máquina.'),
+                            ]),
+                    ]),
+
+                Section::make('La evaluación presencial')
+                    ->description('La firma una persona, delante de la máquina: una pantalla no puede ver si alguien nivela una cama.')
+                    ->schema([
+                        Toggle::make('requires_practical')
+                            ->label('Este curso exige evaluación presencial')
+                            ->helperText('Sin ella, aprobar el examen basta para el certifab. Con ella, alguien tiene que firmar que además sabe hacerlo.'),
+                    ]),
+
             ]);
     }
 }

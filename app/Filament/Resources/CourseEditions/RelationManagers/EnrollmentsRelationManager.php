@@ -77,6 +77,7 @@ class EnrollmentsRelationManager extends RelationManager
                 self::inscribir(),
             ])
             ->recordActions([
+                self::firmarPractica(),
                 self::aprobar(),
                 self::reprobar(),
                 self::retirar(),
@@ -112,6 +113,51 @@ class EnrollmentsRelationManager extends RelationManager
             });
     }
 
+    /**
+     * Firmar la evaluacion presencial.
+     *
+     * La hace una persona, delante de la maquina: una pantalla no puede ver si
+     * alguien nivela una cama o si sabe parar la impresion cuando algo va mal.
+     * Queda con nombre y notas, porque quien firma responde de lo que firma.
+     */
+    private static function firmarPractica(): Action
+    {
+        return Action::make('practica')
+            ->label('Firmar la práctica')
+            ->icon('heroicon-o-hand-thumb-up')
+            ->color('warning')
+            ->visible(fn (Enrollment $r) => $r->edition?->course?->requires_practical
+                && ! $r->practicaAprobada()
+                && $r->status !== 'retirado')
+            ->modalDescription(fn (Enrollment $r) => $r->teoriaAprobada()
+                ? 'Aprobó la teoría con ' . $r->theory_score . '%. Firmas que también sabe hacerlo.'
+                : 'Todavía no ha aprobado el examen teórico.')
+            ->schema([
+                Textarea::make('notas')
+                    ->label('Qué hizo')
+                    ->rows(3)
+                    ->placeholder('Niveló la cama, cargó filamento y paró una impresión fallida sin ayuda.')
+                    ->helperText('Queda en el expediente. Es lo que sostiene el certifab si alguien pregunta.'),
+            ])
+            ->action(function (Enrollment $record, array $data) {
+                try {
+                    app(TrainingService::class)->registrarPractica(
+                        $record, auth()->user(), $data['notas'] ?? null,
+                    );
+                } catch (TrainingException $e) {
+                    Notification::make()->danger()->title('No se pudo firmar')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title('Práctica firmada')
+                    ->body('Ya se puede aprobar y otorgar el certifab.')
+                    ->send();
+            });
+    }
+
     private static function aprobar(): Action
     {
         return Action::make('aprobar')
@@ -119,6 +165,11 @@ class EnrollmentsRelationManager extends RelationManager
             ->icon('heroicon-o-check-badge')
             ->color('success')
             ->visible(fn (Enrollment $r) => $r->status === 'inscrito')
+            // Decir que falta antes de pulsar, y no despues de un error: el
+            // certifab exige los pasos que ese curso declare.
+            ->modalDescription(fn (Enrollment $r) => $r->queFaltaParaAprobar()
+                ?? 'Se emite el certificado y quedan otorgados los certifabs del curso.')
+            ->disabled(fn (Enrollment $r) => $r->queFaltaParaAprobar() !== null)
             ->schema([
                 TextInput::make('nota')
                     ->label('Nota')
