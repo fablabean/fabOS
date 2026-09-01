@@ -30,9 +30,19 @@ Schedule::call(fn () => app(App\Services\Booking\WaitlistService::class)->vencer
 // hash. Se conservan 30 días (§18).
 Schedule::command('fabos:respaldar')->dailyAt('03:00');
 
-// La dotación del mes, el día 1. Repetirla no abona dos veces: la clave de
-// idempotencia lleva el periodo, así que un reintento es inofensivo (§12).
-Schedule::command('fabos:dotar')->monthlyOn(1, '06:00');
+/*
+ * La dotación NO se programa: emitir moneda es un acto del laboratorio (§12).
+ *
+ * Estaba puesta el día 1 de cada mes, y funcionaba: el 1 de septiembre a la una
+ * de la mañana aparecieron tres mil cien FabCoins repartidos entre seis
+ * personas, sin que nadie lo hubiera decidido ese mes y sin nombre en el
+ * asiento. Un movimiento que crea dinero y no dice quién lo creó es el que
+ * nadie puede explicar después.
+ *
+ * Se emite desde «Finanzas → Dotación», con quién y cuándo escritos. El comando
+ * `fabos:dotar` sigue existiendo para la consola, con `--simular` para ver a
+ * quién le tocaría sin escribir nada.
+ */
 
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede
 // buscar rastro de tareas ya ejecutadas, y entonces no distingue «nadie

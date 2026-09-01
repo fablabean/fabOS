@@ -138,9 +138,20 @@ class ChargeService
         );
     }
 
-    /** Dotación periódica de la categoría: FabCoins nuevos, no dinero real (§12). */
-    public function dotar(User $usuario, int $importeMenor, string $periodo, ?string $memo = null): mixed
-    {
+    /**
+     * Dotación de la categoría: FabCoins nuevos, no dinero real (§12).
+     *
+     * Emitir moneda es un acto del laboratorio, y por eso lleva firma: sin
+     * `$porQuien` el movimiento queda sin autor, y un asiento que crea dinero
+     * sin decir quién lo creó es justo el que nadie puede explicar después.
+     */
+    public function dotar(
+        User $usuario,
+        int $importeMenor,
+        string $periodo,
+        ?string $memo = null,
+        ?User $porQuien = null,
+    ): mixed {
         if ($importeMenor <= 0) {
             return null;
         }
@@ -152,6 +163,8 @@ class ChargeService
             'dotacion',
             $memo ?? "Dotación {$periodo}",
             'dotacion:' . $usuario->id . ':' . $periodo,
+            null,
+            $porQuien,
         );
 
         return $this->avisarAbono($usuario, $transaccion, "dotación de {$periodo}", $importeMenor);

@@ -235,7 +235,11 @@ class Secciones
         $todas = array_keys(self::todas());
 
         // Lo que solo el superadmin tocaba, y sigue siendo suyo.
-        $soloSuperadmin = ['accesos', 'cobros', 'codigos-de-prueba', 'instalacion', 'roles-y-accesos'];
+        // Emitir moneda entra aqui: crea FabCoins de la nada, como «cobros»
+        // enciende el cobro. Se puede abrir a administrador desde la pantalla
+        // de accesos, pero que el defecto sea el mas estrecho.
+        $soloSuperadmin = ['accesos', 'cobros', 'codigos-de-prueba', 'instalacion',
+            'roles-y-accesos', 'dotacion'];
 
         $administrador = array_values(array_diff($todas, $soloSuperadmin));
 
