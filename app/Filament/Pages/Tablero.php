@@ -51,16 +51,34 @@ class Tablero extends Page
     }
 
 
-    /** @return array<string,mixed> */
+    /**
+     * @return array<string,mixed>
+     *
+     * Quién mira decide qué se calcula, no solo qué se dibuja.
+     *
+     * El tablero lo abre casi todo el mundo —es la entrada del panel— y estaba
+     * resumiendo aquí, en una pantalla abierta, datos que sus propias secciones
+     * tienen cerradas: un practicante entraba y leía el presupuesto del
+     * laboratorio entero.
+     *
+     * Esconderlo en la vista no habría bastado: la consulta seguiría corriendo
+     * y el dato seguiría viajando al navegador, donde se lee sin más que abrir
+     * el inspector. Lo que no se puede ver, no se calcula.
+     */
     public function getViewData(): array
     {
         $servicio = app(DashboardService::class);
+        $quien = auth()->user();
 
         return [
+            // Ocupación y uso son operativos: quien atiende el laboratorio
+            // necesita saber qué está en uso y qué se detuvo hoy.
             'ahora'     => $servicio->ahora(),
-            'alertas'   => $servicio->alertas(),
             'tendencia' => $servicio->tendencia(),
-            'finanzas'  => $servicio->finanzas(),
+
+            // Estas dos preguntan a la matriz de accesos.
+            'alertas'   => $servicio->alertas($quien),
+            'finanzas'  => $servicio->finanzas($quien),
         ];
     }
 }

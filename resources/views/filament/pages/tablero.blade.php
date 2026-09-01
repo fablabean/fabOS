@@ -134,6 +134,11 @@
         </x-filament::section>
 
         {{-- ---------------------------------------------------- finanzas --}}
+        {{-- Solo para quien puede abrir Presupuestos. Sin `$finanzas` no hay
+             bloque: el servicio devuelve null en vez de ceros, porque un cero
+             tambien es un dato y «presupuesto vigente: $0» seria una respuesta
+             falsa a una pregunta que no debio hacerse. --}}
+        @if ($finanzas)
         <x-filament::section collapsible>
             <x-slot name="heading">Presupuesto y carga de trabajo</x-slot>
 
@@ -165,6 +170,7 @@
                 <a href="{{ \App\Filament\Pages\Informes::getUrl() }}">Informe de cierre</a>.
             </p>
         </x-filament::section>
+        @endif
 
     </div>
 

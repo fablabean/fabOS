@@ -144,6 +144,43 @@ class PortadaTest extends TestCase
         $this->assertStringNotContainsString('autoplay', $html);
     }
 
+    /**
+     * Lo que sale del sitio se abre aparte.
+     *
+     * Quien pulsa «web del evento» venía mirando el laboratorio: llevárselo
+     * fuera de la pestaña es perder la visita. Se decide por el host y no por
+     * el «http» del principio, porque las direcciones propias también se
+     * escriben enteras y si no todo parecería externo.
+     */
+    public function test_un_boton_a_otro_sitio_abre_en_pestana_nueva(): void
+    {
+        $this->soloEstas([
+            'titulo'        => 'Con enlaces',
+            'accion_texto'  => 'Web del evento',
+            'accion_url'    => 'https://edicionesuniandes.github.io/libera',
+            'accion2_texto' => 'Ver los equipos',
+            'accion2_url'   => route('publico.reservas'),
+        ]);
+
+        $html = $this->portada();
+
+        $this->assertMatchesRegularExpression(
+            '/href="https:\/\/edicionesuniandes[^"]*"\s+target="_blank" rel="noopener noreferrer"/',
+            $html,
+            'el enlace externo tiene que abrirse aparte, y sin dar control de esta pestaña al destino',
+        );
+
+        // Y lo de casa se queda en la misma pestaña: abrir una nueva para ir a
+        // otra pagina del propio sitio deja pestañas sueltas por todas partes.
+        $this->assertStringContainsString('href="' . route('publico.reservas') . '"', $html);
+
+        $this->assertSame(
+            1,
+            substr_count($html, 'target="_blank"'),
+            'solo el enlace que sale del sitio se abre aparte',
+        );
+    }
+
     /** Sin botones propios salen los de siempre; con ellos, los suyos. */
     public function test_los_botones_de_la_lamina_pisan_a_los_de_siempre(): void
     {

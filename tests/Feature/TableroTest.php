@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Support\FactoresDeSesion;
 use App\Models\Area;
 use App\Models\Asset;
+use App\Models\Budget;
 use App\Models\Certifab;
 use App\Models\Project;
 use App\Models\RiskFamily;
@@ -21,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /** El tablero de indicadores (§17). */
@@ -37,6 +39,19 @@ class TableroTest extends TestCase
     private function tablero(): DashboardService
     {
         return app(DashboardService::class);
+    }
+
+    /**
+     * Quien lo ve todo.
+     *
+     * Las alertas y el dinero preguntan a la matriz de accesos, así que una
+     * llamada sin persona no devuelve nada -que es el fallo seguro-. Las
+     * pruebas que miran el CONTENIDO piden con quien puede verlo; las que
+     * miran el cierre, con quien no.
+     */
+    private function admin(): User
+    {
+        return $this->persona(User::ROL_ADMINISTRADOR);
     }
 
     private function persona(?string $rol = null): User
@@ -104,7 +119,7 @@ class TableroTest extends TestCase
     {
         $this->equipo();
 
-        $this->assertTrue($this->tablero()->alertas()->isEmpty());
+        $this->assertTrue($this->tablero()->alertas($this->admin())->isEmpty());
     }
 
     public function test_avisa_de_un_equipo_detenido(): void
@@ -112,7 +127,7 @@ class TableroTest extends TestCase
         $equipo = $this->equipo();
         app(MaintenanceService::class)->reportarFalla($equipo, $this->persona(), 'No calienta', detieneElEquipo: true);
 
-        $alerta = $this->tablero()->alertas()->firstWhere('titulo', 'Equipos fuera de servicio');
+        $alerta = $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Equipos fuera de servicio');
 
         $this->assertNotNull($alerta);
         $this->assertSame(1, $alerta['cuantos']);
@@ -124,7 +139,7 @@ class TableroTest extends TestCase
         Supply::create(['name' => 'Filamento', 'unit' => 'kg', 'stock' => 1, 'reorder_point' => 5]);
         Supply::create(['name' => 'Resina', 'unit' => 'ml', 'stock' => 900, 'reorder_point' => 500]);
 
-        $alerta = $this->tablero()->alertas()->firstWhere('titulo', 'Insumos bajo mínimos');
+        $alerta = $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Insumos bajo mínimos');
 
         $this->assertSame(1, $alerta['cuantos']);
     }
@@ -136,7 +151,7 @@ class TableroTest extends TestCase
         $conResponsable = app(ProjectService::class)->registrarIdea(['name' => 'Con dueño']);
         $conResponsable->update(['lead_id' => $this->persona()->id]);
 
-        $alerta = $this->tablero()->alertas()->firstWhere('titulo', 'Proyectos sin responsable');
+        $alerta = $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Proyectos sin responsable');
 
         $this->assertSame(1, $alerta['cuantos']);
         $this->assertSame(1, Project::whereNotNull('lead_id')->count());
@@ -196,5 +211,122 @@ class TableroTest extends TestCase
         $this->actingAs($this->persona())
             ->get('/admin/tablero')
             ->assertForbidden();
+    }
+
+    // ------------------------------------------------------- lo que no se ve
+
+    private function entra(User $u): self
+    {
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($u);
+        $servicio->confirmar($u, app(Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($u->fresh())->withSession([
+            FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true],
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * El consultor tal como está configurado en el laboratorio: una sola llave.
+     *
+     * Se sincroniza el ROL y no la persona. Es la distinción que hacía pasar
+     * esta prueba sin que nada estuviera cerrado: los permisos directos se
+     * suman a los del rol, no lo sustituyen, y el consultor seguía entrando
+     * con todo lo que su rol trae por defecto.
+     */
+    private function consultorConSolaLlave(): User
+    {
+        Role::findByName(User::ROL_CONSULTOR, 'web')->syncPermissions(['ver.tablero']);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return $this->persona(User::ROL_CONSULTOR)->fresh();
+    }
+
+    private function conPresupuesto(): void
+    {
+        Budget::create([
+            'name' => 'Presupuesto 2026', 'year' => 2026,
+            'amount' => 87_650_000, 'status' => 'vigente',
+        ]);
+    }
+
+    /**
+     * El tablero es la entrada del panel y lo abre casi todo el mundo.
+     *
+     * Estaba resumiendo aquí, en una pantalla abierta, lo que sus propias
+     * secciones tienen cerrado: un practicante entraba y leía cuánto dinero
+     * hay, cuánto se comprometió y cuánto queda. Se supo porque lo contaron.
+     */
+    public function test_quien_no_abre_presupuestos_no_ve_el_dinero_en_el_tablero(): void
+    {
+        $this->conPresupuesto();
+
+        $practicante = $this->persona(User::ROL_PRACTICANTE);
+
+        $this->entra($practicante)->get('/admin/tablero')
+            ->assertOk()
+            ->assertSee('Ahora mismo')
+            ->assertDontSee('presupuesto vigente')
+            ->assertDontSee('comprometido')
+            ->assertDontSee('87.650.000');
+    }
+
+    /** Y el consultor tampoco: mira la operación, no la caja. */
+    public function test_el_consultor_tampoco_ve_el_dinero(): void
+    {
+        $this->conPresupuesto();
+
+        $consultor = $this->consultorConSolaLlave();
+
+        $this->entra($consultor)->get('/admin/tablero')
+            ->assertOk()
+            ->assertDontSee('87.650.000');
+    }
+
+    /** Quien sí lo abre lo sigue viendo: esto cierra, no rompe. */
+    public function test_quien_abre_presupuestos_si_ve_el_dinero(): void
+    {
+        $this->conPresupuesto();
+
+        $this->entra($this->admin())->get('/admin/tablero')
+            ->assertOk()
+            ->assertSee('presupuesto vigente')
+            ->assertSee('87.650.000');
+    }
+
+    /**
+     * No basta con esconderlo en la vista: la cifra viajaría igual al navegador
+     * y se leería abriendo el inspector. Lo que no se puede ver, no se calcula.
+     */
+    public function test_el_dinero_ni_siquiera_se_calcula(): void
+    {
+        $this->conPresupuesto();
+
+        $this->assertNull($this->tablero()->finanzas($this->persona(User::ROL_PRACTICANTE)));
+        $this->assertNull($this->tablero()->finanzas(null));
+        $this->assertNotNull($this->tablero()->finanzas($this->admin()));
+    }
+
+    /**
+     * Y una alerta que lleva a una sección cerrada es dos cosas malas: un
+     * callejón sin salida, y la cifra de algo que no se debía mirar.
+     */
+    public function test_no_se_avisa_de_lo_que_no_se_puede_abrir(): void
+    {
+        Supply::create(['name' => 'Filamento', 'unit' => 'kg', 'stock' => 1, 'reorder_point' => 5]);
+
+        $consultor = $this->consultorConSolaLlave();
+
+        $this->assertTrue(
+            $this->tablero()->alertas($consultor)->isEmpty(),
+            'con una sola llave -el tablero- no debería llegarle ninguna alerta',
+        );
+
+        $this->assertNotNull(
+            $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Insumos bajo mínimos'),
+            'y quien sí abre insumos la sigue recibiendo',
+        );
     }
 }

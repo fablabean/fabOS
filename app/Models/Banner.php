@@ -180,7 +180,12 @@ class Banner extends Model
     /**
      * Los botones de esta lamina, si los tiene.
      *
-     * @return array<int,array{texto:string,url:string}>
+     * Cada uno dice si sale del sitio. Un enlace a la web de una feria o a la
+     * inscripcion de un evento se abre en pestaña nueva: quien lo pulsa venia
+     * mirando el laboratorio, y llevarselo fuera es perder la visita —vuelve
+     * con el boton de atras, o no vuelve—.
+     *
+     * @return array<int,array{texto:string,url:string,fuera:bool}>
      */
     public function acciones(): array
     {
@@ -189,8 +194,28 @@ class Banner extends Model
             ['texto' => $this->accion2_texto, 'url' => $this->accion2_url],
         ])
             ->filter(fn (array $a) => filled($a['texto']) && filled($a['url']))
+            ->map(fn (array $a) => $a + ['fuera' => self::vaFuera($a['url'])])
             ->values()
             ->all();
+    }
+
+    /**
+     * Si esta direccion sale de este sitio.
+     *
+     * Se compara el HOST con el nuestro y no se busca «http» al principio: las
+     * direcciones propias tambien se escriben enteras —`route()` las devuelve
+     * asi— y entonces todo habria parecido externo, incluida la pagina de
+     * reservas. Lo que no lleva host —`/formacion`, `#areas`— es de casa.
+     */
+    public static function vaFuera(?string $url): bool
+    {
+        $suyo = parse_url((string) $url, PHP_URL_HOST);
+
+        if (blank($suyo)) {
+            return false;
+        }
+
+        return mb_strtolower($suyo) !== mb_strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
     }
 
     /** El rotulo, o la identidad del laboratorio si no lleva uno propio. */

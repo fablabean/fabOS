@@ -64,8 +64,13 @@
 
                     <div class="acciones">
                         @forelse ($l->acciones() as $a)
+                            {{-- Lo que sale del sitio, en pestaña nueva: quien
+                                 lo pulsa venía mirando el laboratorio. Y con
+                                 `noopener`, que la página de destino no pueda
+                                 tocar la nuestra desde su javascript. --}}
                             <a class="btn {{ $loop->first ? 'claro' : 'borde' }}"
-                               href="{{ $a['url'] }}" rel="noopener">{{ $a['texto'] }}</a>
+                               href="{{ $a['url'] }}"
+                               @if ($a['fuera']) target="_blank" rel="noopener noreferrer" @endif>{{ $a['texto'] }}</a>
                         @empty
                             {{-- Sin botones propios, los de siempre: una lámina
                                  sin salida deja al visitante mirando. --}}
