@@ -48,13 +48,17 @@ return [
     |--------------------------------------------------------------------------
     | Banner de la portada
     |--------------------------------------------------------------------------
-    | Rota entre lo que el laboratorio hace y lo que el sistema resuelve. Vive
-    | en configuracion —y no en la vista— para que cambiar un mensaje sea editar
-    | una linea, y para que la ilustracion de cada lamina se pueda reemplazar
-    | por una foto real del taller sin tocar codigo.
+    | SEMILLA, no la fuente. El banner se edita desde el panel, en
+    | *Comunicaciones -> Banner de la portada*: estas laminas se copian a la
+    | tabla `banners` al migrar, y desde entonces manda lo que se edite alli.
     |
-    | `titulo` admite <em> para resaltar; nada mas: es texto de configuracion,
-    | no una plantilla.
+    | Se conservan por dos razones: una instalacion nueva arranca con una
+    | portada que ya dice algo, y si algun dia no queda ninguna lamina vigente
+    | -todas caducadas, todas apagadas- se vuelven a enseñar estas. Una portada
+    | que de pronto no dice que es este sitio seria peor que una lamina vieja.
+    |
+    | `titulo` admite <em> para resaltar; en el editor eso se escribe con
+    | *asteriscos*, y al sembrar se convierte.
     */
     'hero' => [
         [

@@ -116,6 +116,9 @@ decisión tuya
 
 ### Portal público
 - [x] Portada pública con banner y áreas
+- [x] Editor del banner: láminas con fondo de color, foto o video, efectos
+      de entrada del título y fechas de vigencia —lo que anuncia un evento
+      se apaga solo cuando el evento pasa—
 - [x] Catálogo público de equipos con foto, video y descripción
 - [x] Disponibilidad en vivo en el catálogo público: libre, ocupado hasta tal
       hora, fuera de horario, en mantenimiento o accesorio

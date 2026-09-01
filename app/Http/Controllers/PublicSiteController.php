@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Asset;
+use App\Models\Banner;
 use App\Models\Certifab;
 use App\Services\Booking\AvailabilityService;
 use App\Services\Booking\EligibilityService;
@@ -32,6 +33,9 @@ class PublicSiteController extends Controller
             ->filter(fn (Area $a) => $a->equipos_count > 0);
 
         return view('publico.home', [
+            // El banner se administra desde el panel (§3). Si nadie lo ha
+            // tocado todavia, el modelo devuelve las laminas de fabrica.
+            'laminas'   => Banner::paraLaPortada(),
             'areas'     => $areas,
             'destacados' => $this->destacados(),
             'cifras'    => [

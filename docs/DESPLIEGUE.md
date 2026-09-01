@@ -47,9 +47,16 @@ LAB_MONEY_SYMBOL=$
 archivo dentro de `public/`. Si es SVG se inserta en línea y hereda el color del
 tema; cualquier otro formato se muestra como imagen.
 
-**El banner de la portada**: `config/fabos.hero`. Cada lámina tiene su texto y su
-ilustración; las de fábrica están dibujadas en SVG y se reemplazan por fotos del
-taller cuando las haya.
+**El banner de la portada**: se edita desde el panel, en *Comunicaciones →
+Banner de la portada*. Cada lámina lleva su texto, su fondo —color, foto o
+video—, el efecto con el que entra el título y, si hace falta, las fechas entre
+las que se ve: lo que anuncia una feria se apaga solo cuando la feria pasa.
+
+Las láminas de fábrica viven en `config/fabos.hero` y solo actúan de semilla: se
+copian a la tabla al migrar, y vuelven a salir si algún día no queda ninguna
+vigente —una portada que de pronto no dice qué es este sitio sería peor que una
+lámina vieja—. Sus ilustraciones están dibujadas en SVG y se reemplazan por
+fotos del taller cuando las haya.
 
 ## 3. Instalar
 

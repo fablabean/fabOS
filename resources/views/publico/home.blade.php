@@ -2,69 +2,7 @@
 @section('title', config('fabos.lab.name') . ' · ' . config('fabos.lab.tagline'))
 
 @section('styles')
-    .hero{
-        background:var(--banner);color:var(--banner-ink);position:relative;overflow:hidden;
-        padding:clamp(3rem,9vh,6rem) 1.4rem clamp(2.6rem,7vh,4.5rem);
-    }
-    .hero::before{
-        content:"";position:absolute;inset:0;pointer-events:none;
-        background-image:
-            linear-gradient(to right, rgba(243,244,236,.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(243,244,236,.05) 1px, transparent 1px);
-        background-size:64px 64px;
-        -webkit-mask-image:radial-gradient(120% 95% at 10% 0%, #000 20%, transparent 75%);
-        mask-image:radial-gradient(120% 95% at 10% 0%, #000 20%, transparent 75%);
-    }
-    .hero::after{
-        content:"";position:absolute;inset:0;pointer-events:none;
-        background:radial-gradient(60% 100% at 88% 15%, rgba(92,201,184,.18), transparent 60%);
-    }
-    .hero .in{position:relative;z-index:1;max-width:70rem;margin:0 auto}
-    .hero h1{color:var(--banner-ink);max-width:18ch}
-    .hero h1 em{font-style:normal;color:var(--banner-accent)}
-    .hero p{color:var(--banner-muted);font-size:1.1rem;max-width:46ch;margin:0 0 1.6rem}
-    .hero .acciones{display:flex;gap:.7rem;flex-wrap:wrap}
-
-    /* ---------- láminas rotatorias ---------- */
-    /* Las ilustraciones van como fondo apilado y se cruzan por opacidad: así
-       ninguna «salta» al entrar, y el texto nunca se mueve de sitio. */
-    .laminas{position:absolute;inset:0;pointer-events:none}
-    .lamina{
-        position:absolute;inset:0;opacity:0;transition:opacity 1.1s ease;
-        background-position:center;background-size:cover;background-repeat:no-repeat;
-    }
-    .lamina.activa{opacity:1}
-    /* Vela sobre la ilustración para que el texto siempre se lea, venga la
-       lámina que venga. */
-    .hero .velo{
-        position:absolute;inset:0;pointer-events:none;
-        background:linear-gradient(100deg, rgba(23,26,21,.94) 0%, rgba(23,26,21,.86) 38%, rgba(23,26,21,.45) 100%);
-    }
-    .texto{position:relative;min-height:11.5rem}
-    .diapo{
-        position:absolute;inset:0;opacity:0;visibility:hidden;
-        transform:translateY(.5rem);transition:opacity .5s ease, transform .5s ease;
-    }
-    .diapo.activa{opacity:1;visibility:visible;transform:none;position:relative}
-    .puntos{display:flex;gap:.5rem;margin-top:1.4rem}
-    .puntos button{
-        margin:0;padding:0;width:2.2rem;height:4px;border:0;border-radius:2px;cursor:pointer;
-        background:rgba(243,244,236,.25);transition:background .3s ease;
-    }
-    .puntos button[aria-current="true"]{background:var(--banner-accent)}
-    @media (max-width:40rem){ .texto{min-height:15rem} }
-    /* Sin animación, las láminas siguen rotando: lo que se quita es el cruce
-       suave, no el contenido. */
-    @media (prefers-reduced-motion:reduce){
-        .lamina,.diapo{transition:none}
-    }
-    .cifras{
-        display:flex;gap:2.6rem;flex-wrap:wrap;margin-top:2.6rem;
-        padding-top:1.6rem;border-top:1px solid rgba(243,244,236,.16);
-    }
-    .cifra b{display:block;font-size:1.9rem;letter-spacing:-.03em;color:var(--banner-ink)}
-    .cifra span{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;
-                letter-spacing:.14em;text-transform:uppercase;color:var(--banner-muted)}
+@include('publico.banner-estilos')
 
     .areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
     .area{
@@ -124,71 +62,7 @@
 
 @section('content')
 
-@php $laminas = config('fabos.hero', []); @endphp
-
-<div class="hero" id="hero">
-    {{-- Las ilustraciones, apiladas. Van de fondo y no como <img> porque son
-         decorativas: no aportan información que el texto no diga. --}}
-    <div class="laminas">
-        @foreach ($laminas as $i => $lamina)
-            <div class="lamina {{ $i === 0 ? 'activa' : '' }}"
-                 data-lamina="{{ $i }}"
-                 style="background-image:url('{{ asset($lamina['imagen']) }}')"></div>
-        @endforeach
-    </div>
-    <div class="velo"></div>
-
-    <div class="in">
-        <div class="texto">
-            @foreach ($laminas as $i => $lamina)
-                <div class="diapo {{ $i === 0 ? 'activa' : '' }}" data-diapo="{{ $i }}">
-                    {{-- Sin rótulo propio, la lámina se presenta con la
-                         identidad del laboratorio. --}}
-                    <p class="rotulo" style="color:var(--banner-muted)">
-                        {{ $lamina['rotulo']
-                            ?? config('fabos.lab.institution') . ' · ' . config('fabos.lab.city') }}
-                    </p>
-                    {{-- Solo <em> viene de configuración, y la escribe quien
-                         administra el sitio: no es contenido de usuario. --}}
-                    <h1>{!! $lamina['titulo'] !!}</h1>
-                    <p>{{ $lamina['texto'] }}</p>
-                </div>
-            @endforeach
-        </div>
-
-        @if (count($laminas) > 1)
-            <div class="puntos" role="tablist" aria-label="Qué hace el laboratorio">
-                @foreach ($laminas as $i => $lamina)
-                    <button type="button" role="tab"
-                            data-punto="{{ $i }}"
-                            aria-current="{{ $i === 0 ? 'true' : 'false' }}"
-                            aria-label="{{ $lamina['rotulo'] }}"></button>
-                @endforeach
-            </div>
-        @endif
-
-        <div class="acciones" style="margin-top:1.6rem">
-            <a class="btn claro" href="{{ route('publico.reservas') }}">Ver los equipos</a>
-            <a class="btn borde" href="{{ route('proyectos.solicitar') }}">Proponer un proyecto</a>
-            @guest
-                <a class="btn borde" href="{{ route('login') }}">Ingresar y reservar</a>
-            @endguest
-        </div>
-
-        <div class="cifras">
-            <div class="cifra"><b>{{ $cifras['equipos'] }}</b><span>equipos</span></div>
-            <div class="cifra"><b>{{ $cifras['libres'] }}</b><span>libres ahora</span></div>
-            <div class="cifra"><b>{{ $cifras['areas'] }}</b><span>áreas</span></div>
-            {{-- Una cifra pequeña resta en vez de sumar: «1 persona habilitada»
-                 comunica lo contrario de lo que se quiere. Aparece sola cuando
-                 ya cuenta una historia; el umbral vive en config/fabos.php. --}}
-            @if ($cifras['personas'] >= config('fabos.showcase.min_personas'))
-                <div class="cifra"><b>{{ $cifras['personas'] }}</b><span>personas habilitadas</span></div>
-            @endif
-            <div class="cifra"><b>Fab</b><span>Academy acreditado</span></div>
-        </div>
-    </div>
-</div>
+@include('publico.banner')
 
 <main>
     <section>
@@ -279,55 +153,5 @@
         </div>
     </section>
 </main>
-
-{{-- Rotación del banner.
-     Sin dependencias y con tres cuidados: se detiene al pasar el ratón o al
-     enfocar con el teclado —para poder leer sin que se escape—, se detiene si
-     la pestaña queda en segundo plano, y sigue rotando aunque el sistema pida
-     menos animación: lo que se quita entonces es el cruce suave, no el
-     contenido. --}}
-<script>
-(function () {
-    const hero = document.getElementById('hero');
-    if (! hero) return;
-
-    const laminas = hero.querySelectorAll('[data-lamina]');
-    const diapos  = hero.querySelectorAll('[data-diapo]');
-    const puntos  = hero.querySelectorAll('[data-punto]');
-    if (diapos.length < 2) return;
-
-    const INTERVALO = 7000;
-    let actual = 0;
-    let reloj = null;
-
-    function mostrar(i) {
-        actual = (i + diapos.length) % diapos.length;
-
-        laminas.forEach((l, n) => l.classList.toggle('activa', n === actual));
-        diapos.forEach((d, n) => d.classList.toggle('activa', n === actual));
-        puntos.forEach((p, n) => p.setAttribute('aria-current', n === actual ? 'true' : 'false'));
-    }
-
-    function arrancar() {
-        detener();
-        reloj = setInterval(() => mostrar(actual + 1), INTERVALO);
-    }
-
-    function detener() {
-        if (reloj) { clearInterval(reloj); reloj = null; }
-    }
-
-    puntos.forEach((p, n) => p.addEventListener('click', () => { mostrar(n); arrancar(); }));
-
-    hero.addEventListener('mouseenter', detener);
-    hero.addEventListener('mouseleave', arrancar);
-    hero.addEventListener('focusin', detener);
-    hero.addEventListener('focusout', arrancar);
-
-    document.addEventListener('visibilitychange', () => document.hidden ? detener() : arrancar());
-
-    arrancar();
-})();
-</script>
 
 @endsection
