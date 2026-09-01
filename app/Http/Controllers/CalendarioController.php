@@ -78,6 +78,44 @@ class CalendarioController extends Controller
     }
 
     /**
+     * Guarda —o quita— el calendario de fuera de esta persona.
+     *
+     * Es de solo lectura y en un sentido: fabOS mira si ya tiene algo a esa
+     * hora para no ofrecer una franja a la que no puede ir. No escribe nada
+     * allá, ni podría: una URL de calendario no admite escritura.
+     */
+    public function agendaExterna(Request $request)
+    {
+        $datos = $request->validate([
+            'url' => ['nullable', 'url', 'max:2000'],
+        ]);
+
+        $quien = $request->user();
+        $url = trim((string) ($datos['url'] ?? ''));
+
+        /*
+         * Outlook reparte el enlace envuelto en SafeLinks, y ese envoltorio
+         * caduca y ademas identifica a quien lo abrio. Si viene asi, se saca
+         * la direccion de verdad en vez de guardar una que dejara de servir.
+         */
+        if ($url !== '' && str_contains($url, 'safelinks.protection.outlook.com')) {
+            parse_str((string) parse_url($url, PHP_URL_QUERY), $partes);
+            $url = $partes['url'] ?? $url;
+        }
+
+        $quien->forceFill([
+            'external_calendar_url' => $url ?: null,
+            'external_calendar_synced_at' => null,
+        ])->save();
+
+        app(\App\Services\Calendar\AgendaExterna::class)->olvidar($quien);
+
+        return back()->with('status', $url
+            ? 'Guardado. Tus compromisos de ese calendario dejarán de ofrecerse como horas libres.'
+            : 'Quitado. Vuelven a ofrecerse todas tus horas de jornada.');
+    }
+
+    /**
      * Crea —o rehace— la dirección secreta.
      *
      * Rehacerla es la forma de revocar la anterior: si alguien compartió la

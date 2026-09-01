@@ -332,6 +332,37 @@
         @endif
     </div>
 
+    {{-- ------------------------------------ mi agenda de fuera --}}
+    <div class="panel">
+        <p style="margin:0 0 .3rem"><strong>Tu calendario de la Universidad</strong></p>
+        <p class="help" style="margin-top:0">
+            Si pegas aquí tu calendario publicado de Outlook, fabOS mira si ya tienes algo a
+            esa hora y <strong>deja de ofrecer esa franja</strong> para asesorías. Es de solo
+            lectura: no escribe nada en tu calendario, ni podría.
+        </p>
+
+        <form method="POST" action="{{ route('calendario.agenda') }}">
+            @csrf
+            <label for="agenda">Dirección del calendario publicado</label>
+            <input type="url" id="agenda" name="url" maxlength="2000"
+                   value="{{ auth()->user()->external_calendar_url }}"
+                   placeholder="https://outlook.office365.com/owa/calendar/…/reachcalendar.ics">
+            <p class="help">
+                En Outlook web: <em>Configuración → Calendario → Calendarios compartidos →
+                Publicar calendario</em>. Copia el enlace <strong>ICS</strong>. Déjalo vacío
+                para quitarlo.
+            </p>
+            <button type="submit">Guardar mi calendario</button>
+        </form>
+
+        <p class="help">
+            Dos cosas que conviene saber, y no son fallos: Outlook regenera ese enlace
+            <strong>cada pocas horas</strong>, así que una reunión de esta mañana puede tardar
+            en aparecer; y según cómo lo publiques, los eventos llegan sin título —da igual,
+            aquí solo hace falta saber cuándo—.
+        </p>
+    </div>
+
     {{-- ------------------------------------------------ como entro --}}
     <h2>Cómo entro</h2>
     <div class="panel">

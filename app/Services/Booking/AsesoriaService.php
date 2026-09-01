@@ -3,6 +3,7 @@
 namespace App\Services\Booking;
 
 use App\Models\Area;
+use App\Services\Calendar\AgendaExterna;
 use App\Models\Asset;
 use App\Models\AssetAdvisor;
 use App\Models\Reservation;
@@ -30,6 +31,7 @@ class AsesoriaService
     public function __construct(
         private CoverageService $cobertura,
         private BookingService $reservas,
+        private AgendaExterna $agenda,
     ) {}
 
     /**
@@ -87,6 +89,15 @@ class AsesoriaService
             // busca a otra persona.
             ->when($solicitante, fn (Collection $c) => $c->where('id', '!=', $solicitante->id))
             ->filter(fn (User $u) => $this->reservas->estaLibre(User::class, $u->id, $desde, $hasta))
+            /*
+             * Y lo que tiene fuera de fabOS: una clase, una reunión.
+             *
+             * Sin esto se ofrecían horas a las que quien asesora no podía ir, y
+             * el choque se descubría cuando ya había alguien esperando. Solo
+             * cuenta para quien haya pegado su calendario: quien no lo hizo
+             * sigue como antes.
+             */
+            ->filter(fn (User $u) => ! $this->agenda->ocupadoEn($u, $desde, $hasta))
             ->values();
     }
 

@@ -158,6 +158,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/calendario/suscribirme', [CalendarioController::class, 'suscribirme'])
         ->name('calendario.suscribirme');
 
+    // El calendario de fuera: lo que ya tiene esa persona y no puede chocar
+    // con una asesoria.
+    Route::post('/calendario/mi-agenda', [CalendarioController::class, 'agendaExterna'])
+        ->name('calendario.agenda');
+
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');
 
