@@ -162,6 +162,9 @@ Route::middleware('auth')->group(function () {
     // con una asesoria.
     Route::post('/calendario/mi-agenda', [CalendarioController::class, 'agendaExterna'])
         ->name('calendario.agenda');
+    Route::post('/calendario/comprobar', [CalendarioController::class, 'comprobar'])
+        ->middleware('throttle:10,1')
+        ->name('calendario.comprobar');
 
     // Lista de espera: apuntarse a un equipo lleno y salirse (§10).
     Route::post('/reservar/{asset}/esperar', [ReservationController::class, 'esperar'])->name('reservas.esperar');

@@ -196,6 +196,55 @@ class AgendaExternaTest extends TestCase
         Http::assertNothingSent();
     }
 
+    // ------------------------------------------------------- decir si funciona
+
+    /**
+     * Quien pega una dirección tiene que poder saber si sirve.
+     *
+     * Una mal copiada y una buena se ven igual hasta que alguien nota, semanas
+     * después, que sus horas ocupadas se seguían ofreciendo.
+     */
+    public function test_la_cuenta_dice_cuantos_compromisos_lee(): void
+    {
+        Http::fake(['*' => Http::response($this->ics(
+            $this->evento('1', '20260824T140000Z', '20260824T150000Z')
+            . $this->evento('2', '20260825T140000Z', '20260825T150000Z'),
+        ))]);
+
+        $ana = $this->persona();
+
+        $this->actingAs($ana)
+            ->get('/mi-cuenta')
+            ->assertOk()
+            ->assertSee('Se está leyendo')
+            ->assertSee('2 compromisos');
+    }
+
+    public function test_si_no_se_puede_leer_lo_dice(): void
+    {
+        Http::fake(['*' => Http::response('', 404)]);
+
+        $this->actingAs($this->persona())
+            ->get('/mi-cuenta')
+            ->assertOk()
+            ->assertSee('No se pudo leer');
+    }
+
+    /** Y se puede volver a leer ahora, sin esperar a que caduque lo guardado. */
+    public function test_comprobar_ahora_vuelve_a_leerlo(): void
+    {
+        Http::fake(['*' => Http::response($this->ics(
+            $this->evento('1', '20260824T140000Z', '20260824T150000Z'),
+        ))]);
+
+        $ana = $this->persona();
+
+        $this->actingAs($ana)
+            ->post(route('calendario.comprobar'))
+            ->assertRedirect()
+            ->assertSessionHas('status', fn (string $m) => str_contains($m, '1 compromisos'));
+    }
+
     // ------------------------------------------------- donde de verdad importa
 
     /**

@@ -79,6 +79,32 @@ class AgendaExterna
         return $this->enMemoria[$persona->id] = $this->leer($crudo);
     }
 
+    /**
+     * Como va la lectura, para poder enseñarlo.
+     *
+     * Quien pega una direccion no tiene forma de saber si sirve: una mal
+     * copiada y una buena se ven igual hasta que alguien nota, semanas
+     * despues, que las horas ocupadas se seguian ofreciendo.
+     *
+     * @return array{ok: bool, cuantos: int, leido: ?\Illuminate\Support\Carbon}
+     */
+    public function resumen(User $persona): array
+    {
+        if (! filled($persona->external_calendar_url)) {
+            return ['ok' => false, 'cuantos' => 0, 'leido' => null];
+        }
+
+        $cuantos = $this->ocupaciones($persona)->count();
+
+        return [
+            // Se lee bien si trajo algo, o si al menos se descargo: un
+            // calendario vacio de verdad tambien es una respuesta valida.
+            'ok'      => $persona->fresh()->external_calendar_synced_at !== null,
+            'cuantos' => $cuantos,
+            'leido'   => $persona->fresh()->external_calendar_synced_at,
+        ];
+    }
+
     /** Vacía lo guardado, para cuando alguien cambia su dirección. */
     public function olvidar(User $persona): void
     {
@@ -107,6 +133,11 @@ class AgendaExterna
 
                 return null;
             }
+
+            // Se anota cuando se leyo bien: es lo unico que le permite a
+            // quien pego la direccion saber si funciona. Sin esto, pegar una
+            // direccion mala y pegar una buena se ven exactamente igual.
+            $persona->forceFill(['external_calendar_synced_at' => now()])->save();
 
             return $respuesta->body();
         } catch (\Throwable $e) {

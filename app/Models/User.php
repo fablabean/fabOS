@@ -130,6 +130,10 @@ class User extends Authenticatable implements FilamentUser
             'identity_verified_at' => 'datetime',
             'carnet_linked_at'     => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
+            // Sin esto llega como texto y la cuenta revienta al escribir «leído
+            // hace un momento», que es justo la linea que se añadio para
+            // tranquilizar a quien pego su calendario.
+            'external_calendar_synced_at' => 'datetime',
             'category_confirmed'   => 'boolean',
             'password'             => 'hashed',
         ];

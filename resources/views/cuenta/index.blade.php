@@ -347,6 +347,30 @@
             lectura: no escribe nada en tu calendario, ni podría.
         </p>
 
+        @if (auth()->user()->external_calendar_url)
+            {{-- Decir si funciona. Una dirección mal copiada y una buena se ven
+                 igual hasta que alguien nota, semanas después, que sus horas
+                 ocupadas se seguían ofreciendo. --}}
+            @if ($agenda['ok'])
+                <p class="msg" style="margin:.8rem 0">
+                    <strong>Se está leyendo.</strong>
+                    {{ $agenda['cuantos'] . ' ' . ($agenda['cuantos'] === 1 ? 'compromiso' : 'compromisos') }}
+                    en las próximas semanas; esas horas no se ofrecen para asesorías.
+                    @if ($agenda['leido'])
+                        <span class="help">
+                            Última lectura {{ $agenda['leido']->timezone($tz)->format('d/m H:i') }}.
+                        </span>
+                    @endif
+                </p>
+            @else
+                <p class="msg error" style="margin:.8rem 0">
+                    <strong>No se pudo leer.</strong> Comprueba que sea el enlace <em>ICS</em> de
+                    un calendario <strong>publicado</strong> —no el de compartir con alguien— y
+                    que siga publicado en Outlook.
+                </p>
+            @endif
+        @endif
+
         <form method="POST" action="{{ route('calendario.agenda') }}">
             @csrf
             <label for="agenda">Dirección del calendario publicado</label>
@@ -360,6 +384,16 @@
             </p>
             <button type="submit">Guardar mi calendario</button>
         </form>
+
+        @if (auth()->user()->external_calendar_url)
+            {{-- Volver a leerlo ahora: se guarda media hora, y quien acaba de
+                 arreglar algo en Outlook no quiere esperar media hora para
+                 saber si ya sirve. --}}
+            <form method="POST" action="{{ route('calendario.comprobar') }}" style="margin-top:.6rem">
+                @csrf
+                <button type="submit" class="secundario">Comprobar ahora</button>
+            </form>
+        @endif
 
         <p class="help">
             Dos cosas que conviene saber, y no son fallos: Outlook regenera ese enlace

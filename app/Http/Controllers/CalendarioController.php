@@ -116,6 +116,25 @@ class CalendarioController extends Controller
     }
 
     /**
+     * Vuelve a leer el calendario de fuera, ahora.
+     *
+     * Se guarda media hora para no llamar a internet en cada pantalla, pero
+     * quien acaba de arreglar algo en Outlook no quiere esperar media hora
+     * para saber si ya sirve.
+     */
+    public function comprobar(Request $request)
+    {
+        $agenda = app(\App\Services\Calendar\AgendaExterna::class);
+        $agenda->olvidar($request->user());
+
+        $resumen = $agenda->resumen($request->user());
+
+        return back()->with('status', $resumen['ok']
+            ? 'Leído: ' . $resumen['cuantos'] . ' compromisos en las próximas semanas.'
+            : 'No se pudo leer ese calendario. Revisa la dirección.');
+    }
+
+    /**
      * Crea —o rehace— la dirección secreta.
      *
      * Rehacerla es la forma de revocar la anterior: si alguien compartió la

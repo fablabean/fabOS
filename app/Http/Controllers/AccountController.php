@@ -71,6 +71,10 @@ class AccountController extends Controller
                 ->latest('id')
                 ->limit(10)
                 ->get(),
+            // Como va la lectura del calendario de fuera: quien pego una
+            // direccion no tiene otra forma de saber si sirve.
+            'agenda'    => app(\App\Services\Calendar\AgendaExterna::class)->resumen($user),
+
             'reservas'  => Reservation::query()
                 ->where('user_id', $user->id)
                 ->where('reservable_type', Asset::class)
