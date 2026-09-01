@@ -89,7 +89,10 @@
             <a href="{{ route('preguntas.index') }}">Preguntas</a>
         <a href="{{ route('formacion') }}">Formación</a>
         @auth
-            <a href="{{ route('reservas.index') }}">Reservar</a>
+            {{-- Sin un «Reservar» aparte: la misma puerta para todos. Lo que
+                 cambia al entrar con sesión no es el menú, es lo que se puede
+                 hacer dentro —en Autonomía sale lo tuyo, y solo lo tuyo—. Dos
+                 entradas a lo mismo obligan a adivinar cuál es cuál. --}}
             <a class="btn" href="{{ route('home') }}">Mi cuenta</a>
         @else
             <a class="btn" href="{{ route('login') }}">Ingresar</a>

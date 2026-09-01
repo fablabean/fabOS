@@ -221,10 +221,16 @@
                     @foreach ($equipos as $e)
                         {{-- En asesoría se va derecho a pedir el acompañamiento, si el
                              equipo tiene asesores declarados. En lo demás, a la ficha. --}}
+                        {{-- A donde lleva cada máquina depende del camino:
+                             en asesoría, a pedir el acompañamiento; en
+                             autonomía, derecho a reservarla; sin camino
+                             elegido, a su ficha. --}}
                         <a class="equipo"
-                           href="{{ $modo === 'asesoria' && $e->advisors_count > 0
-                                ? route('asesoria.show', $e)
-                                : route('publico.equipo', $e) }}">
+                           href="{{ match (true) {
+                                $modo === 'asesoria' && $e->advisors_count > 0 => route('asesoria.show', $e),
+                                $modo === 'autonomia' => route('reservas.show', $e),
+                                default => route('publico.equipo', $e),
+                           } }}">
                             @if ($e->photoUrl())
                                 <img class="foto" src="{{ $e->photoUrl() }}" alt="{{ $e->name }}" loading="lazy">
                             @else

@@ -98,7 +98,8 @@
     <header class="top">
         <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">fab<em>OS</em></span></a>
         <nav>
-            <a href="{{ route('reservas.index') }}">Reservar</a>
+            {{-- La misma puerta que ve quien entra de fuera. --}}
+            <a href="{{ route('publico.equipos') }}">Reservas</a>
             <a href="{{ route('formacion') }}">Formación</a>
             <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
             <a href="{{ route('tienda.publica') }}">Tienda</a>

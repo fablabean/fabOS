@@ -277,6 +277,55 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertSee(route('asesoria.show', $equipo), false);
     }
 
+    // ------------------------------------------------- una sola puerta
+
+    /**
+     * La misma entrada para todos, con y sin sesión.
+     *
+     * Antes había «Reservas» y, si entrabas, además «Reservar»: dos puertas a
+     * lo mismo obligan a adivinar cuál es cuál. Lo que cambia al entrar no es
+     * el menú, es lo que se puede hacer dentro.
+     */
+    public function test_no_hay_dos_entradas_a_lo_mismo(): void
+    {
+        $quien = User::create([
+            'name' => 'Quien entra', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+
+        $html = $this->actingAs($quien)->get('/equipos')->assertOk()->getContent();
+
+        // La barra trae «Reservas» y no un «Reservar» aparte.
+        $this->assertStringContainsString('>Reservas<', $html);
+        $this->assertStringNotContainsString('>Reservar<', $html);
+    }
+
+    /** Y en autonomía, la máquina lleva derecho a reservarla. */
+    public function test_en_autonomia_la_maquina_lleva_a_reservarla(): void
+    {
+        $this->abrirElLaboratorio();
+
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $familia = \App\Models\RiskFamily::create([
+            'area_id' => $equipo->area_id, 'slug' => 'laser-' . uniqid(), 'name' => 'Láser',
+        ]);
+        $equipo->update(['risk_family_id' => $familia->id]);
+
+        $quien = User::create([
+            'name' => 'Estudiante', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+        ]);
+
+        \App\Models\Certifab::create([
+            'user_id' => $quien->id, 'risk_family_id' => $familia->id, 'level' => 'mega',
+        ]);
+
+        $this->actingAs($quien->fresh())
+            ->get('/equipos?modo=autonomia&area=corte')
+            ->assertOk()
+            ->assertSee(route('reservas.show', $equipo), false);
+    }
+
     /** Lo privado no se enseña, con filtro o sin él. */
     public function test_lo_no_publicado_sigue_sin_verse(): void
     {
