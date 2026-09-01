@@ -433,6 +433,41 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertSee(route('publico.reservas'), false);
     }
 
+    /**
+     * El menú se pliega en el teléfono.
+     *
+     * Ocho enlaces en una fila obligan al navegador a apretarlos hasta que no
+     * se pueden pulsar sin acertar, o a empujar el logo fuera de la pantalla.
+     *
+     * El botón vive en el HTML —no lo crea el javascript— para que exista
+     * aunque el script falle: un menú que solo abre con javascript es un menú
+     * que a veces no abre.
+     */
+    public function test_el_menu_trae_su_boton_para_plegarse(): void
+    {
+        $html = $this->get('/reservas')->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="menu-boton"', $html);
+        $this->assertStringContainsString('aria-controls="menu-enlaces"', $html);
+        $this->assertStringContainsString('id="menu-enlaces"', $html);
+    }
+
+    /** Y la salida está dentro del bloque plegable, no suelta en la barra. */
+    public function test_la_salida_va_dentro_del_menu(): void
+    {
+        $quien = User::create([
+            'name' => 'Quien entra', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+
+        $html = $this->actingAs($quien)->get('/reservas')->assertOk()->getContent();
+
+        $menu = substr($html, strpos($html, 'id="menu-enlaces"'));
+        $menu = substr($menu, 0, strpos($menu, '</div>'));
+
+        $this->assertStringContainsString('Salir', $menu);
+        $this->assertStringContainsString($quien->email, $menu);
+    }
+
     // ------------------------------------------- lo que no se puede perder
 
     /**

@@ -23,7 +23,8 @@
         a{color:var(--accent)}
 
         /* ---------- barra ---------- */
-        .nav{
+        /* Posicion relativa: el menu plegado del telefono se ancla aqui. */
+        .nav{position:relative;
             position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--ground) 92%,transparent);
             backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);
             padding:.75rem 1.4rem;display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;

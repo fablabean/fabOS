@@ -23,7 +23,8 @@
             margin:0;background:var(--ground);color:var(--ink);line-height:1.6;
             font-family:system-ui,"Segoe UI","Helvetica Neue",Arial,sans-serif;
         }
-        header.top{
+        /* Posicion relativa: el menu plegado del telefono se ancla aqui. */
+        header.top{position:relative;
             border-bottom:1px solid var(--rule);background:var(--surface);
             padding:.9rem 1.4rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;
         }
@@ -112,14 +113,6 @@
         <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">fab<em>OS</em></span></a>
         <nav>
             @include('partials.menu')
-
-            @auth
-                <span class="quien">{{ auth()->user()->email }}</span>
-                <form method="POST" action="{{ route('logout') }}" style="display:inline">
-                    @csrf
-                    <button type="submit" style="margin:0;padding:.3rem .7rem;font-size:.8rem">Salir</button>
-                </form>
-            @endauth
         </nav>
     </header>
 
