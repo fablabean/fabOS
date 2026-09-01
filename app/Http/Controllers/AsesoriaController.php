@@ -57,7 +57,7 @@ class AsesoriaController extends Controller
             'explicacion' => 'No hace falta que sepas qué máquina necesitas: alguien del '
                 . 'equipo te escucha, te dice con qué se hace lo que quieres y te acompaña.',
             'accion'      => route('asesoria.area.store', $area),
-            'volver'      => route('publico.equipos', ['modo' => 'asesoria', 'area' => $area->slug]),
+            'volver'      => route('publico.reservas', ['modo' => 'asesoria', 'area' => $area->slug]),
         ]);
     }
 

@@ -81,7 +81,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos')
+        $this->get('/reservas')
             ->assertOk()
             ->assertSee('Asesoría')
             ->assertSee('Producción')
@@ -98,17 +98,99 @@ class CatalogoDeEquiposTest extends TestCase
      * Ochenta y tres equipos de golpe se recorren con la rueda del ratón; el
      * área es la primera pregunta de cualquiera que entra.
      */
-    public function test_de_entrada_se_eligen_areas_no_maquinas(): void
+    /**
+     * Una decisión por pantalla, y en orden.
+     *
+     * Al llegar solo se pregunta CÓMO. Preguntar «qué área» antes de saber si
+     * vas a que te acompañen o a reservar tú es el segundo paso antes del
+     * primero: el área no significa lo mismo en cada caso.
+     */
+    public function test_al_llegar_solo_se_pregunta_como(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $this->get('/reservas')
+            ->assertOk()
+            ->assertSee('Asesoría')
+            ->assertSee('Autonomía')
+            // Ni áreas ni máquinas todavía.
+            ->assertDontSee('Elige un área')
+            ->assertDontSee('Cortadora láser');
+    }
+
+    /** Elegido el camino, entonces sí el área. */
+    public function test_elegido_el_camino_se_eligen_areas(): void
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
 
-        $this->get('/equipos')
+        $this->get('/reservas?modo=asesoria')
             ->assertOk()
+            ->assertSee('Elige un área')
             ->assertSee('Corte láser')
             ->assertSee('Impresión 3D')
             // Las máquinas todavía no.
             ->assertDontSee('Cortadora láser');
+    }
+
+    /**
+     * Y elegida el área, si es general o de una máquina.
+     *
+     * Son dos consultas distintas: quien viene sin saber qué máquina necesita
+     * no debería tener que elegir una para poder preguntar.
+     */
+    public function test_elegida_el_area_se_pregunta_general_o_maquina(): void
+    {
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $asesor = User::create([
+            'name' => 'Quien asesora', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+        $equipo->advisors()->attach($asesor->id, ['es_responsable' => true]);
+
+        $this->get('/reservas?modo=asesoria&area=corte')
+            ->assertOk()
+            ->assertSee('General del área')
+            ->assertSee('Sobre una máquina')
+            // La lista de máquinas, en el paso siguiente.
+            ->assertDontSee('Cortadora láser');
+
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')
+            ->assertOk()
+            ->assertSee('Cortadora láser');
+    }
+
+    /** En autonomía no hay «general»: siempre se reserva una máquina concreta. */
+    public function test_en_autonomia_el_area_lleva_derecho_a_las_maquinas(): void
+    {
+        $this->abrirElLaboratorio();
+
+        $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+
+        $familia = \App\Models\RiskFamily::create([
+            'area_id' => $equipo->area_id, 'slug' => 'laser-' . uniqid(), 'name' => 'Láser',
+        ]);
+        $equipo->update(['risk_family_id' => $familia->id]);
+
+        $quien = User::create([
+            'name' => 'Estudiante', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+        ]);
+
+        \App\Models\Certifab::create([
+            'user_id' => $quien->id, 'risk_family_id' => $familia->id, 'level' => 'mega',
+        ]);
+
+        $this->actingAs($quien->fresh())
+            ->get('/reservas?modo=autonomia&area=corte')
+            ->assertOk()
+            ->assertSee('Cortadora láser');
+    }
+
+    /** La dirección vieja sigue viva: está pegada en chats y en marcadores. */
+    public function test_la_direccion_vieja_lleva_a_la_nueva(): void
+    {
+        $this->get('/equipos')->assertRedirect(route('publico.reservas'));
     }
 
     public function test_filtrar_por_area_deja_solo_esa(): void
@@ -116,7 +198,7 @@ class CatalogoDeEquiposTest extends TestCase
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
 
-        $this->get('/equipos?area=corte')
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')
             ->assertOk()
             ->assertSee('Cortadora láser')
             ->assertDontSee('Impresora 3D');
@@ -129,7 +211,7 @@ class CatalogoDeEquiposTest extends TestCase
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
         $this->equipo('Impresora 3D grande', 'impresion', 'Impresión 3D');
 
-        $this->get('/equipos')
+        $this->get('/reservas?modo=asesoria')
             ->assertOk()
             ->assertSee('2 equipos');
     }
@@ -139,7 +221,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos?area=no-existe')
+        $this->get('/reservas?modo=asesoria&area=no-existe&maquina=1')
             ->assertOk()
             ->assertSee('No hay equipos publicados en esta área');
     }
@@ -160,7 +242,7 @@ class CatalogoDeEquiposTest extends TestCase
 
         $equipo->area->update(['photo_path' => 'areas/corte-laser.jpg']);
 
-        $this->get('/equipos')
+        $this->get('/reservas?modo=asesoria')
             ->assertOk()
             ->assertSee('areas/corte-laser.jpg')
             ->assertDontSee('activos/una-maquina.jpg');
@@ -172,7 +254,7 @@ class CatalogoDeEquiposTest extends TestCase
         $equipo = $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $equipo->update(['photo_path' => 'activos/una-maquina.jpg']);
 
-        $this->get('/equipos')
+        $this->get('/reservas?modo=asesoria')
             ->assertOk()
             ->assertSee('activos/una-maquina.jpg');
     }
@@ -199,7 +281,7 @@ class CatalogoDeEquiposTest extends TestCase
             'status'          => 'confirmada',
         ]);
 
-        $this->get('/equipos?area=corte&libres=1')
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1&libres=1')
             ->assertOk()
             ->assertSee('Cortadora láser')
             ->assertDontSee('Impresora 3D');
@@ -215,7 +297,7 @@ class CatalogoDeEquiposTest extends TestCase
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
         $this->equipo('Impresora 3D', 'impresion', 'Impresión 3D');
 
-        $this->get('/equipos?area=corte&libres=1')
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1&libres=1')
             ->assertOk()
             ->assertSee('Cortadora láser')
             ->assertDontSee('Impresora 3D');
@@ -251,7 +333,7 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
 
         $this->actingAs($quien->fresh())
-            ->get('/equipos?modo=autonomia')
+            ->get('/reservas?modo=autonomia')
             ->assertOk()
             ->assertSee('Corte láser')
             ->assertDontSee('Impresión 3D');
@@ -262,7 +344,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos?modo=autonomia')
+        $this->get('/reservas?modo=autonomia')
             ->assertOk()
             ->assertSee('hace falta que entres')
             ->assertDontSee('Corte láser');
@@ -279,7 +361,7 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
 
         $this->actingAs($quien->fresh())
-            ->get('/equipos?modo=autonomia')
+            ->get('/reservas?modo=autonomia')
             ->assertOk()
             ->assertSee('no hay nada que puedas reservar');
     }
@@ -290,7 +372,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos?modo=asesoria')
+        $this->get('/reservas?modo=asesoria')
             ->assertOk()
             ->assertSee('No hace falta que sepas operar la máquina');
     }
@@ -305,7 +387,8 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
         $equipo->advisors()->attach($asesor->id, ['es_responsable' => true]);
 
-        $this->get('/equipos?modo=asesoria&area=corte')
+        // Con el paso de «una máquina» ya dado: antes se pregunta si general.
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')
             ->assertOk()
             ->assertSee(route('asesoria.show', $equipo), false);
     }
@@ -323,7 +406,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos')
+        $this->get('/reservas')
             ->assertOk()
             ->assertSee('Reserva un espacio')
             ->assertSee(route('espacios.index'), false);
@@ -346,7 +429,7 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
 
         $this->actingAs($quien)
-            ->get('/equipos')
+            ->get('/reservas')
             ->assertOk()
             ->assertSee('Mis próximas reservas')
             ->assertSee('Cortadora láser');
@@ -357,7 +440,7 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
-        $this->get('/equipos')
+        $this->get('/reservas')
             ->assertOk()
             ->assertDontSee('Mis próximas reservas');
     }
@@ -377,7 +460,7 @@ class CatalogoDeEquiposTest extends TestCase
             'name' => 'Quien entra', 'email' => uniqid() . '@test.co', 'status' => 'activo',
         ]);
 
-        $html = $this->actingAs($quien)->get('/equipos')->assertOk()->getContent();
+        $html = $this->actingAs($quien)->get('/reservas')->assertOk()->getContent();
 
         // La barra trae «Reservas» y no un «Reservar» aparte.
         $this->assertStringContainsString('>Reservas<', $html);
@@ -406,7 +489,7 @@ class CatalogoDeEquiposTest extends TestCase
         ]);
 
         $this->actingAs($quien->fresh())
-            ->get('/equipos?modo=autonomia&area=corte')
+            ->get('/reservas?modo=autonomia&area=corte')
             ->assertOk()
             ->assertSee(route('reservas.show', $equipo), false);
     }
@@ -417,6 +500,6 @@ class CatalogoDeEquiposTest extends TestCase
         $privado = $this->equipo('Equipo interno', 'corte', 'Corte láser');
         $privado->update(['is_public' => false]);
 
-        $this->get('/equipos?area=corte')->assertOk()->assertDontSee('Equipo interno');
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')->assertOk()->assertDontSee('Equipo interno');
     }
 }

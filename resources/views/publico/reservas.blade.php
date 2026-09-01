@@ -79,7 +79,7 @@
 @section('content')
 <main>
     @php
-        $enlaceDeArea = fn (string $slug) => route('publico.equipos', array_filter([
+        $enlaceDeArea = fn (string $slug) => route('publico.reservas', array_filter([
             'modo' => $modo ?: null,
             'area' => $slug,
         ]));
@@ -98,7 +98,7 @@
          se reserve, es un encargo que se propone. --}}
     <div class="caminos">
         <a class="camino {{ $modo === 'asesoria' ? 'puesto' : '' }}"
-           href="{{ route('publico.equipos', ['modo' => 'asesoria']) }}">
+           href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
             <b>Asesoría</b>
             <span>Alguien del laboratorio te acompaña en la máquina. No necesitas
                   certifab: es justo para cuando todavía no lo tienes.</span>
@@ -113,7 +113,7 @@
         </a>
 
         <a class="camino {{ $modo === 'autonomia' ? 'puesto' : '' }}"
-           href="{{ route('publico.equipos', ['modo' => 'autonomia']) }}">
+           href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
             <b>Autonomía</b>
             <span>Reservas y operas por tu cuenta, en los equipos donde ya tienes
                   certifab.</span>
@@ -174,7 +174,7 @@
                 <p>
                     Abajo está <strong>solo lo que puedes reservar hoy</strong>. Lo que no
                     aparece es porque todavía te falta el certifab —o el equipo está fuera de
-                    servicio—. Para eso está la <a href="{{ route('publico.equipos', ['modo' => 'asesoria']) }}">asesoría</a>.
+                    servicio—. Para eso está la <a href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">asesoría</a>.
                 </p>
             @else
                 <p>
@@ -204,7 +204,12 @@
     @endif
 
     {{-- --------------------------------------------------- elegir área, o la lista --}}
-    @if ($area === '')
+    {{-- Las áreas solo cuando ya se eligió el camino: preguntar «qué área»
+         antes de saber si vas a que te acompañen o a reservar tú es el segundo
+         paso antes del primero. El área no significa lo mismo en cada caso. --}}
+    @if ($modo === '')
+        {{-- Nada más. Los tres caminos de arriba son toda la pregunta. --}}
+    @elseif ($area === '')
         @if ($areas->isNotEmpty())
             <section style="padding-top:.4rem">
                 <p class="rotulo">Elige un área · {{ $total }} equipos</p>
@@ -228,30 +233,43 @@
             <p class="vacio">
                 Todavía no tienes certifabs vigentes, así que no hay nada que puedas reservar
                 por tu cuenta. Empieza por una
-                <a href="{{ route('publico.equipos', ['modo' => 'asesoria']) }}">asesoría</a>.
+                <a href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">asesoría</a>.
             </p>
         @endif
     @else
-        <a class="volver" href="{{ route('publico.equipos', array_filter(['modo' => $modo ?: null])) }}">
+        <a class="volver" href="{{ route('publico.reservas', array_filter(['modo' => $modo ?: null])) }}">
             ← Todas las áreas
         </a>
 
-        @if ($asesoriaGeneral)
-            {{-- Antes que las máquinas: quien pide asesoría muchas veces no
-                 sabe cuál necesita, y elegirla es parte de la consulta. --}}
-            <a class="camino" style="margin-bottom:1.4rem"
-               href="{{ route('asesoria.area.show', $asesoriaGeneral) }}">
-                <b>Asesoría general de {{ $asesoriaGeneral->name }}</b>
-                <span>¿No sabes qué máquina necesitas? Pide la asesoría del área: alguien te
-                      escucha, te dice con qué se hace lo que quieres y te acompaña.</span>
-                <span class="pie">Sin elegir equipo</span>
-            </a>
+        {{-- Elegida el área, la siguiente pregunta: ¿general o de una máquina?
+             Son dos consultas distintas, y quien viene sin saber qué máquina
+             necesita no debería tener que elegir una para poder preguntar. --}}
+        @if ($modo === 'asesoria' && ! $eligiendoMaquina)
+            <div class="caminos">
+                @if ($asesoriaGeneral)
+                    <a class="camino" href="{{ route('asesoria.area.show', $asesoriaGeneral) }}">
+                        <b>General del área</b>
+                        <span>No sabes todavía qué máquina necesitas. Alguien te escucha, te dice
+                              con qué se hace lo que quieres y te acompaña.</span>
+                        <span class="pie">Sin elegir equipo</span>
+                    </a>
+                @endif
+
+                <a class="camino" href="{{ route('publico.reservas', [
+                        'modo' => 'asesoria', 'area' => $area, 'maquina' => 1,
+                   ]) }}">
+                    <b>Sobre una máquina</b>
+                    <span>Ya sabes cuál: eliges el equipo y reservas la franja con quien te
+                          va a acompañar.</span>
+                    <span class="pie">Eliges el equipo</span>
+                </a>
+            </div>
         @endif
 
         {{-- Dentro del área, la pregunta de quien ya está de pie en la puerta. --}}
-        <p style="margin:0 0 1rem">
+        <p style="margin:0 0 1rem" @if (! $eligiendoMaquina) hidden @endif>
             <a class="volver"
-               href="{{ route('publico.equipos', array_filter([
+               href="{{ route('publico.reservas', array_filter([
                     'modo'   => $modo ?: null,
                     'area'   => $area,
                     'libres' => $soloLibres ? null : 1,
@@ -261,7 +279,7 @@
             </a>
         </p>
 
-        @foreach ($porArea as $nombreArea => $equipos)
+        @foreach ($eligiendoMaquina ? $porArea : [] as $nombreArea => $equipos)
             <section id="{{ $equipos->first()->area?->slug }}">
                 <p class="rotulo">{{ $nombreArea }} · {{ $equipos->count() }}</p>
                 <div class="equipos">
@@ -297,7 +315,7 @@
             </section>
         @endforeach
 
-        @if ($porArea->isEmpty())
+        @if ($eligiendoMaquina && $porArea->isEmpty())
             <p class="vacio">
                 @if ($soloLibres)
                     Ahora mismo no hay nada libre aquí. Quita el filtro para verlo todo y

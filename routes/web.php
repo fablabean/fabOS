@@ -29,7 +29,18 @@ Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
 // Preguntas del laboratorio: leer es publico, preguntar exige cuenta (§20).
 Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');
 
-Route::get('/equipos', [PublicSiteController::class, 'equipos'])->name('publico.equipos');
+/*
+ * Reservas: la direccion dice lo que es.
+ *
+ * Se llamaba «equipos» de cuando la pagina era un catalogo. Ahora pregunta
+ * primero COMO se quiere usar el laboratorio, y una direccion que no coincide
+ * con el nombre de la seccion se pega en un chat y confunde.
+ */
+Route::get('/reservas', [PublicSiteController::class, 'equipos'])->name('publico.reservas');
+
+// La direccion vieja sigue viva: esta pegada en chats y en marcadores, y una
+// pagina que deja de existir sin avisar es una promesa rota.
+Route::get('/equipos', fn (\Illuminate\Http\Request $r) => redirect()->route('publico.reservas', $r->query()));
 Route::get('/equipos/{asset}', [PublicSiteController::class, 'equipo'])->name('publico.equipo');
 
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).

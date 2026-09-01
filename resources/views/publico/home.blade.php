@@ -168,7 +168,7 @@
         @endif
 
         <div class="acciones" style="margin-top:1.6rem">
-            <a class="btn claro" href="{{ route('publico.equipos') }}">Ver los equipos</a>
+            <a class="btn claro" href="{{ route('publico.reservas') }}">Ver los equipos</a>
             <a class="btn borde" href="{{ route('proyectos.solicitar') }}">Proponer un proyecto</a>
             @guest
                 <a class="btn borde" href="{{ route('login') }}">Ingresar y reservar</a>
@@ -199,7 +199,7 @@
                 {{-- Al area, no a un ancla: la pagina ya no pinta todas las
                      secciones de golpe, asi que el ancla no llevaba a ningun
                      sitio. --}}
-                <a class="area" href="{{ route('publico.equipos', ['area' => $area->slug]) }}">
+                <a class="area" href="{{ route('publico.reservas', ['area' => $area->slug]) }}">
                     <b>{{ $area->name }}</b>
                     <span>{{ $area->equipos_count }} {{ $area->equipos_count === 1 ? 'equipo' : 'equipos' }}</span>
                 </a>
@@ -226,7 +226,7 @@
             @endforeach
         </div>
         <p style="margin-top:1.4rem">
-            <a href="{{ route('publico.equipos') }}">Ver el catálogo completo →</a>
+            <a href="{{ route('publico.reservas') }}">Ver el catálogo completo →</a>
         </p>
     </section>
 

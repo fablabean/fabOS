@@ -9,7 +9,7 @@
     Aquí está la lista una vez. Lo que depende de quién mira son unos pocos
     enlaces marcados, no el menú entero.
 --}}
-<a href="{{ route('publico.equipos') }}">Reservas</a>
+<a href="{{ route('publico.reservas') }}">Reservas</a>
 <a href="{{ route('formacion') }}">Formación</a>
 <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
 <a href="{{ route('tienda.publica') }}">Tienda</a>

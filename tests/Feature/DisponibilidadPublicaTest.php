@@ -139,7 +139,9 @@ class DisponibilidadPublicaTest extends TestCase
         // Sin sesión: es la vitrina pública. Dentro del área, que es donde
         // aparecen las máquinas desde que la portada pregunta primero cómo se
         // quiere usar el laboratorio.
-        $this->get(route('publico.equipos', ['area' => $a->area?->slug]))
+        $this->get(route('publico.reservas', [
+            'modo' => 'asesoria', 'area' => $a->area?->slug, 'maquina' => 1,
+        ]))
             ->assertOk()
             ->assertSee('Ocupado hasta las');
     }

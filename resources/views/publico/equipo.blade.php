@@ -37,7 +37,7 @@
 @section('content')
 <main>
     <section>
-        <p style="margin-bottom:1rem"><a href="{{ route('publico.equipos', ['area' => $equipo->area?->slug]) }}">← {{ $equipo->area?->name ?? 'Todos los equipos' }}</a></p>
+        <p style="margin-bottom:1rem"><a href="{{ route('publico.reservas', ['area' => $equipo->area?->slug]) }}">← {{ $equipo->area?->name ?? 'Todos los equipos' }}</a></p>
 
         <div class="ficha">
             <div>

@@ -63,9 +63,27 @@ class PublicSiteController extends Controller
      */
     public function equipos(Request $request)
     {
+        /*
+         * Una decision por pantalla, en este orden:
+         *
+         *   1. COMO: asesoria, produccion o autonomia.
+         *   2. QUE AREA.
+         *   3. Y en asesoria, si es general del area o de una maquina.
+         *
+         * Enseñarlo todo de golpe obliga a elegir sin saber todavia que se
+         * esta eligiendo: el area no significa lo mismo si vas a que te
+         * acompañen que si vas a reservar tu.
+         */
         $modo = $request->string('modo')->toString();
         $modo = in_array($modo, ['asesoria', 'autonomia'], true) ? $modo : '';
-        $area = $request->string('area')->toString();
+
+        // Sin camino elegido no se pregunta el area: seria el segundo paso
+        // antes del primero.
+        $area = $modo === '' ? '' : $request->string('area')->toString();
+
+        // En asesoria, elegir el area todavia no lleva a la lista de maquinas:
+        // antes hay que decir si se quiere la general o una concreta.
+        $eligiendoMaquina = $modo !== 'asesoria' || $request->boolean('maquina');
 
         $todos = Asset::query()
             ->withCount('advisors')
@@ -169,7 +187,8 @@ class PublicSiteController extends Controller
                     : null)
             : collect();
 
-        return view('publico.equipos', [
+        return view('publico.reservas', [
+            'eligiendoMaquina' => $eligiendoMaquina,
             'misReservas' => $misReservas,
             'franjaHoy'   => app(\App\Services\Staffing\CoverageService::class)
                 ->franjaAtendida(\Illuminate\Support\Carbon::now(config('fabos.lab.timezone'))),

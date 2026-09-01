@@ -250,8 +250,11 @@ class AsesoriaGeneralTest extends TestCase
         $prusa = $this->equipo('Prusa MK4');
         $this->asesora($prusa, 'Ana');
 
-        $this->get('/equipos?modo=asesoria&area=impresion-3d')
+        // Al elegir el área se pregunta si general o de una máquina: ahí es
+        // donde se ofrece, antes de la lista.
+        $this->get('/reservas?modo=asesoria&area=impresion-3d')
             ->assertOk()
-            ->assertSee('Asesoría general de Impresión 3D');
+            ->assertSee('General del área')
+            ->assertSee(route('asesoria.area.show', $this->area), false);
     }
 }
