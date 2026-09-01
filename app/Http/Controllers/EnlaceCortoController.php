@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ShortLink;
 use App\Models\ShortLinkVisit;
+use App\Services\Qr\QrRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,39 @@ class EnlaceCortoController extends Controller
         // quien ya lo escaneó una vez. Es justo lo que este sistema existe
         // para permitir.
         return redirect()->away($enlace->target, 302);
+    }
+
+    /**
+     * El código en vectorial, para imprimirlo grande.
+     *
+     * En SVG y no en imagen: un QR es una rejilla de cuadrados, y en vectorial
+     * se amplía a un pendón de dos metros sin que se vea un solo borde
+     * dentado. Una captura de pantalla del modal, no.
+     *
+     * La dirección NO termina en «.svg» a propósito. nginx sirve todo lo que
+     * acabe en una extensión de estático desde el disco y sin despertar a PHP:
+     * un fichero que no existe daría 404 y el archivo no llegaría nunca. Ya
+     * pasó con el javascript de Livewire.
+     */
+    public function descargar(Request $request, ShortLink $shortLink)
+    {
+        abort_unless(
+            $request->user()?->puedeVerLaSeccion('short-link') ?? false,
+            403,
+        );
+
+        // Grande por defecto. Da igual para la nitidez —es vectorial— pero
+        // decide a qué tamaño lo coloca un programa de diseño al abrirlo.
+        $lado = min(4000, max(200, $request->integer('lado') ?: 1000));
+
+        $svg = app(QrRenderer::class)->svg($shortLink->url(), $lado);
+
+        return response($svg)
+            ->header('Content-Type', 'image/svg+xml')
+            ->header(
+                'Content-Disposition',
+                'attachment; filename="qr-' . $shortLink->code . '.svg"',
+            );
     }
 
     /**

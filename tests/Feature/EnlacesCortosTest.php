@@ -180,6 +180,83 @@ class EnlacesCortosTest extends TestCase
         $this->assertSame(0, $enlace->visits()->count());
     }
 
+    // ---------------------------------------------------- descargarlo grande
+
+    private function delLaboratorio(): User
+    {
+        $u = User::create([
+            'name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+        $u->assignRole(\Spatie\Permission\Models\Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+
+        return $u->fresh();
+    }
+
+    /**
+     * En vectorial: un QR es una rejilla de cuadrados, y en SVG se amplía a un
+     * pendón de dos metros sin un solo borde dentado.
+     */
+    public function test_el_codigo_se_descarga_en_vectorial(): void
+    {
+        $enlace = $this->enlace();
+
+        $respuesta = $this->actingAs($this->delLaboratorio())
+            ->get(route('enlaces.codigo', $enlace))
+            ->assertOk();
+
+        $respuesta->assertHeader('content-type', 'image/svg+xml');
+        $this->assertStringContainsString('attachment; filename="qr-A1H13G3.svg"',
+            $respuesta->headers->get('content-disposition'));
+        $this->assertStringContainsString('<svg', $respuesta->getContent());
+    }
+
+    /**
+     * La dirección NO acaba en «.svg», y eso no es un descuido.
+     *
+     * nginx sirve todo lo que acabe en extensión de estático desde el disco y
+     * sin despertar a PHP: el archivo no llegaría nunca. Ya pasó con el
+     * javascript de Livewire.
+     */
+    public function test_la_direccion_no_acaba_en_extension_de_estatico(): void
+    {
+        $ruta = route('enlaces.codigo', $this->enlace());
+
+        $this->assertDoesNotMatchRegularExpression('/\.(svg|png|jpg|css|js)$/', $ruta);
+    }
+
+    /** Se puede pedir a otro tamaño, con topes: nadie necesita un lado de un millón. */
+    public function test_el_tamano_se_puede_pedir_dentro_de_un_rango(): void
+    {
+        $enlace = $this->enlace();
+        $quien = $this->delLaboratorio();
+
+        $grande = $this->actingAs($quien)
+            ->get(route('enlaces.codigo', $enlace) . '?lado=99999')
+            ->getContent();
+
+        $this->assertStringContainsString('width="4000"', $grande);
+
+        $chico = $this->actingAs($quien)
+            ->get(route('enlaces.codigo', $enlace) . '?lado=1')
+            ->getContent();
+
+        $this->assertStringContainsString('width="200"', $chico);
+    }
+
+    /** Y no lo descarga cualquiera: es del laboratorio. */
+    public function test_sin_permiso_no_se_descarga(): void
+    {
+        $enlace = $this->enlace();
+
+        $cualquiera = User::create([
+            'name' => 'Alguien', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+        ]);
+
+        $this->actingAs($cualquiera)
+            ->get(route('enlaces.codigo', $enlace))
+            ->assertForbidden();
+    }
+
     // -------------------------------------------------------------- el código
 
     /**

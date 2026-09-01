@@ -257,6 +257,14 @@ Route::middleware('auth')->group(function () {
         ->name('contenido.store');
     Route::get('/contenido/{contenido}/archivo', [ContenidoController::class, 'archivo'])->name('contenido.archivo');
 
+    // El QR de un enlace corto, en vectorial y para descargar.
+    //
+    // La direccion no acaba en «.svg» a proposito: nginx sirve lo que acabe en
+    // extension de estatico desde el disco, sin despertar a PHP, y el archivo
+    // no llegaria nunca. El nombre del fichero lo pone la cabecera.
+    Route::get('/enlaces/{shortLink}/codigo', [EnlaceCortoController::class, 'descargar'])
+        ->name('enlaces.codigo');
+
     // Hoja de etiquetas QR para imprimir (§7).
     Route::get('/etiquetas', [LabelController::class, 'index'])->name('etiquetas');
 

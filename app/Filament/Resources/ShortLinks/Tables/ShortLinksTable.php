@@ -68,6 +68,7 @@ class ShortLinksTable
                 TernaryFilter::make('is_active')->label('Activo')->default(true),
             ])
             ->recordActions([
+                self::descargar(),
                 self::verElCodigo(),
                 self::seguimiento(),
                 EditAction::make()->iconButton()->tooltip('Editar'),
@@ -77,6 +78,25 @@ class ShortLinksTable
                 . 'De cada visita se guarda cuándo, de dónde venía y si fue teléfono u ordenador: '
                 . 'ni dirección IP ni cookies.'
             );
+    }
+
+    /**
+     * Descargar el codigo en vectorial.
+     *
+     * Un QR es una rejilla de cuadrados: en SVG se amplia a un pendon de dos
+     * metros sin un solo borde dentado. Una captura de pantalla del modal, no
+     * —y es lo que acabaria haciendo quien no tenga este boton—.
+     */
+    private static function descargar(): Action
+    {
+        return Action::make('descargar')
+            ->label('Descargar en vectorial')
+            ->iconButton()
+            ->tooltip('Descargar en vectorial (SVG)')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('gray')
+            ->url(fn (ShortLink $r) => route('enlaces.codigo', $r))
+            ->openUrlInNewTab();
     }
 
     /** El QR grande, para imprimirlo o fotografiarlo desde la pantalla. */
@@ -96,10 +116,15 @@ class ShortLinksTable
                 . '<div style="display:inline-block;background:#fff;padding:1rem;border-radius:10px">%s</div>'
                 . '<p style="font-family:ui-monospace,Consolas,monospace;margin:1rem 0 .2rem;font-size:1.1rem">%s</p>'
                 . '<p style="color:rgb(107 114 128);font-size:.85rem;margin:0">%s</p>'
+                . '<p style="margin:1rem 0 0"><a href="%s" style="text-decoration:underline">'
+                . 'Descargar en vectorial (SVG)</a></p>'
+                . '<p style="color:rgb(156 163 175);font-size:.78rem;margin:.3rem 0 0">'
+                . 'Se amplía a cualquier tamaño sin perder definición.</p>'
                 . '</div>',
                 app(QrRenderer::class)->svg($r->url(), 260),
                 e($r->url()),
                 e($r->destinoCorto()),
+                route('enlaces.codigo', $r),
             )));
     }
 
