@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EsDeUnProyecto;
+
 use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,8 +18,24 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  */
 class ProjectTask extends Model
 {
+    use EsDeUnProyecto;
+
+    /** Donde guarda a quien lo creo. Lo lee la politica del proyecto. */
+    public const COLUMNA_AUTOR = 'created_by';
+
+    /**
+     * Una tarea asignada se ve aunque la haya escrito otro.
+     *
+     * Es la excepcion que hace util la regla: si solo se viera lo propio, a
+     * nadie se le podria encargar nada -no veria el encargo-.
+     */
+    public function leToca(?User $quien): bool
+    {
+        return $quien !== null && (int) $this->assigned_to === $quien->id;
+    }
+
     protected $fillable = [
-        'project_id', 'assigned_to', 'title', 'description', 'status',
+        'project_id', 'assigned_to', 'created_by', 'title', 'description', 'status',
         'starts_on', 'due_on', 'is_milestone', 'progress', 'position', 'completed_at',
     ];
 

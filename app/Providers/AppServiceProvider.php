@@ -113,6 +113,26 @@ class AppServiceProvider extends ServiceProvider
         // defecto para este modelo.
         Gate::policy(\App\Models\Project::class, \App\Policies\ProjectPolicy::class);
 
+        /*
+         * Y lo que cuelga del proyecto, con la misma idea llevada a las piezas:
+         * quien trabaja en un proyecto maneja LO SUYO dentro de el.
+         *
+         * Va aqui y no en el bucle porque estas piezas no tienen seccion
+         * propia. Con la politica de por defecto, la pregunta «¿de que seccion
+         * es una tarea?» no tenia respuesta y se caia del lado del superadmin:
+         * ni siquiera el administrador podia editar una tarea desde la ficha
+         * del proyecto.
+         */
+        foreach ([
+            \App\Models\ProjectComment::class,
+            \App\Models\ProjectCost::class,
+            \App\Models\ProjectDocument::class,
+            \App\Models\ProjectTask::class,
+            \App\Models\ProjectTimeLog::class,
+        ] as $pieza) {
+            Gate::policy($pieza, \App\Policies\ProjectItemPolicy::class);
+        }
+
         // Certificar tiene reglas propias: no basta con ser administrador.
         Gate::policy(Certifab::class, CertifabPolicy::class);
     }

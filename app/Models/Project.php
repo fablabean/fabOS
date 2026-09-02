@@ -234,6 +234,82 @@ class Project extends Model
     }
 
     /**
+     * A quién va dirigida la propuesta: al cliente.
+     *
+     * Parece obvio y no lo era. `requested_by` no siempre es el cliente: un
+     * proyecto que anota el propio laboratorio —el que llega por teléfono o por
+     * correo— queda a nombre de **quien lo anotó**, que es alguien del equipo.
+     * Como la propuesta se mandaba a `requested_by` si existía, esos proyectos
+     * le mandaban la propuesta al colaborador y el cliente no recibía nada. Lo
+     * contaba, además, con la frase que más cuesta responder: «no pude aceptar
+     * la propuesta que me mandaron».
+     *
+     * El correo de contacto manda porque es, literalmente, el contacto del
+     * proyecto. En una solicitud de la web coincide con la cuenta de quien la
+     * escribió, así que ahí no cambia nada.
+     */
+    public function correoDeLaPropuesta(): ?string
+    {
+        return $this->contact_email ?: $this->requestedBy?->email;
+    }
+
+    /**
+     * Y su cuenta, si ese correo tiene una.
+     *
+     * Con cuenta el aviso respeta sus preferencias y queda en su bitácora; sin
+     * ella se manda igual, que para eso el laboratorio anota proyectos de quien
+     * no entra al sistema.
+     */
+    public function destinatarioDeLaPropuesta(): ?User
+    {
+        $correo = $this->correoDeLaPropuesta();
+
+        if (blank($correo)) {
+            return null;
+        }
+
+        if ($this->requestedBy && mb_strtolower($this->requestedBy->email) === mb_strtolower($correo)) {
+            return $this->requestedBy;
+        }
+
+        return User::whereRaw('lower(email) = ?', [mb_strtolower($correo)])->first();
+    }
+
+    /**
+     * Quién puede aceptar la propuesta.
+     *
+     * La acepta el cliente y nadie más. Tres puertas, y las tres hacen falta:
+     *
+     *  · El **enlace firmado** del correo, que funciona sin haber entrado.
+     *  · La **cuenta de quien la pidió**, para cuando el correo se pierde.
+     *  · La **cuenta del correo de contacto**: en los proyectos que anota el
+     *    laboratorio, quien pidió figura como el colaborador que los anotó, y
+     *    el cliente se quedaba mirando una propuesta sin forma de aceptarla.
+     *
+     * Y la excepción que sostiene todo lo demás: quien es del laboratorio no
+     * acepta en nombre del cliente, aunque el proyecto figure a su nombre por
+     * haberlo anotado él.
+     */
+    public function loPuedeAceptar(?User $quien, bool $conEnlaceFirmado = false): bool
+    {
+        if ($conEnlaceFirmado) {
+            return true;
+        }
+
+        if ($quien === null) {
+            return false;
+        }
+
+        if (filled($this->contact_email)
+            && mb_strtolower($quien->email) === mb_strtolower($this->contact_email)) {
+            return true;
+        }
+
+        return $quien->id === $this->requested_by
+            && ! $quien->hasAnyRole(User::ROLES_BACKOFFICE);
+    }
+
+    /**
      * Si esta persona es del equipo: lo lidera o esta apuntada en el.
      *
      * Solo cuenta quien tiene cuenta. Un proveedor o el cliente son parte del

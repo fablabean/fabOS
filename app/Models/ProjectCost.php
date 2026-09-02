@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EsDeUnProyecto;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,6 +17,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ProjectCost extends Model
 {
+    use EsDeUnProyecto;
+
+    /** Donde guarda a quien lo creo. Lo lee la politica del proyecto. */
+    public const COLUMNA_AUTOR = 'registered_by';
+
     protected $fillable = [
         'project_id', 'kind', 'concept', 'supplier',
         'amount', 'incurred_on', 'document_ref', 'notes', 'registered_by',

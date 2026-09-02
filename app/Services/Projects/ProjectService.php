@@ -329,9 +329,12 @@ class ProjectService
      * versiones de lo que se prometió. Lo que se escribe aquí queda guardado en
      * el proyecto, y el correo solo lleva el enlace para verlo.
      *
-     * Se manda a la cuenta de quien lo pidió si la hay, y si no al correo de
-     * contacto: el laboratorio anota proyectos de quien no tiene cuenta, y
-     * responderle es igual de necesario.
+     * Se manda al **correo de contacto** del proyecto, y a su cuenta si ese
+     * correo tiene una. Antes se prefería la cuenta de `requested_by`, y eso
+     * mandaba la propuesta al sitio equivocado en todos los proyectos que
+     * anota el propio laboratorio: ahí `requested_by` es el colaborador que lo
+     * anotó, no el cliente. El cliente no recibía nada y lo contaba diciendo
+     * que no había podido aceptar la propuesta que le mandaron.
      *
      * @param  array{mensaje?:?string,estimated_value?:?int,starts_on?:?string,due_on?:?string,entregables?:array}  $datos
      *
@@ -339,7 +342,9 @@ class ProjectService
      */
     public function enviarPropuesta(Project $proyecto, array $datos = []): Project
     {
-        $correo = $proyecto->requestedBy?->email ?: $proyecto->contact_email;
+        // Al CLIENTE, no a quien anotó el proyecto. La regla vive en el modelo
+        // porque la misma pregunta la hace la pantalla de la propuesta.
+        $correo = $proyecto->correoDeLaPropuesta();
 
         if (blank($correo)) {
             throw new ProjectException(
@@ -412,8 +417,10 @@ class ProjectService
                 'version'  => $version->etiqueta(),
             ];
 
-            if ($proyecto->requestedBy) {
-                $this->avisos->enviar('proyecto.propuesta', $proyecto->requestedBy, $variables, $proyecto);
+            $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+            if ($destinatario) {
+                $this->avisos->enviar('proyecto.propuesta', $destinatario, $variables, $proyecto);
             } else {
                 $this->avisos->enviarSinCuenta(
                     'proyecto.propuesta',

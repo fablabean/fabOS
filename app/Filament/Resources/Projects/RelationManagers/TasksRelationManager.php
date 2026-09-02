@@ -147,7 +147,15 @@ class TasksRelationManager extends RelationManager
                             ->send();
                     }),
 
-                CreateAction::make()->label('Añadir tarea'),
+                // Quien la escribe queda anotado: de eso depende que pueda
+                // luego editarla o borrarla sin tener la seccion de Proyectos.
+                CreateAction::make()
+                    ->label('Añadir tarea')
+                    ->mutateDataUsing(function (array $data): array {
+                        $data['created_by'] = auth()->id();
+
+                        return $data;
+                    }),
             ])
             ->recordActions([
                 Action::make('mover')

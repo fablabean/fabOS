@@ -270,6 +270,20 @@
                 </div>
             </form>
         </div>
+    @elseif ($respondida && ! $proyecto->estaAceptado() && ! $puedeAceptar)
+        {{-- Se puede leer, pero no aceptar desde aquí. Antes el recuadro
+             desaparecía sin decir nada, y quien lo miraba concluía lo único que
+             podía concluir: «no pude aceptar la propuesta». Decirlo, y decir
+             por dónde sí, cuesta un párrafo. --}}
+        <div class="panel">
+            <h2 style="margin-top:0">¿Seguimos?</h2>
+            <p class="help" style="margin:0">
+                La propuesta la acepta quien la pidió, desde el enlace que le llegó por
+                correo a <strong>{{ $proyecto->correoDeLaPropuesta() }}</strong>. Si eres
+                tú y no encuentras ese correo —míralo también en la carpeta de no
+                deseado—, escríbenos y te lo volvemos a mandar.
+            </p>
+        </div>
     @elseif ($proyecto->estaAceptado())
         {{-- Aceptada ya no se discute aquí. Ofrecer un campo de comentarios
              después del sí invita a renegociar por la puerta de atrás, y lo que

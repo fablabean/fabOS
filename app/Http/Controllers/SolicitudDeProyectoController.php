@@ -158,8 +158,11 @@ class SolicitudDeProyectoController extends Controller
                 : null,
             'firmado'  => $firmado,
 
-            // El backoffice mira, no acepta en nombre de nadie.
-            'puedeAceptar' => $firmado || $request->user()?->id === $project->requested_by,
+            // La regla vive en el modelo: la misma pregunta la hace el POST de
+            // aceptar, y dos respuestas para la misma pregunta acaban
+            // contradiciendose -la pantalla escondia el boton y la direccion
+            // seguia aceptando, o al reves-.
+            'puedeAceptar' => $project->loPuedeAceptar($request->user(), $firmado),
 
             // Quien llega por el correo acepta con un enlace firmado también:
             // sin sesión, el POST no tendría cómo demostrar quién es.
@@ -182,11 +185,13 @@ class SolicitudDeProyectoController extends Controller
     {
         abort_unless($this->puedeVerla($request, $project), 403);
 
-        // El backoffice mira, no acepta en nombre de nadie.
-        abort_if(
-            ! $request->hasValidSignature() && $request->user()?->id !== $project->requested_by,
+        // El backoffice mira, no acepta en nombre de nadie. Y «quien la pidió»
+        // no es siempre `requested_by`: un proyecto que anota el propio
+        // laboratorio figura a nombre del colaborador que lo anotó.
+        abort_unless(
+            $project->loPuedeAceptar($request->user(), $request->hasValidSignature()),
             403,
-            'La propuesta la acepta quien la pidió.',
+            'La propuesta la acepta el cliente.',
         );
 
         $datos = $request->validate([
@@ -271,7 +276,11 @@ class SolicitudDeProyectoController extends Controller
             return false;
         }
 
-        return $quien->id === $project->requested_by
+        // El cliente ve la suya, venga el proyecto de la web o lo haya anotado
+        // el laboratorio: en el segundo caso su cuenta no figura como «quien lo
+        // pidió» y se quedaba fuera de su propia propuesta.
+        return $project->loPuedeAceptar($quien)
+            || $quien->id === $project->requested_by
             || $quien->hasAnyRole(User::ROLES_BACKOFFICE);
     }
 }

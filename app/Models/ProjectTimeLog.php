@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EsDeUnProyecto;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ProjectTimeLog extends Model
 {
+    use EsDeUnProyecto;
+
+    /** Donde guarda a quien lo creo. Lo lee la politica del proyecto. */
+    public const COLUMNA_AUTOR = 'user_id';
+
     protected $fillable = [
         'project_id', 'user_id', 'external_name', 'worked_on',
         'hours', 'activity', 'hourly_cost',

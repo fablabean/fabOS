@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EsDeUnProyecto;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** El documento que sostiene una etapa del proyecto (§11). */
 class ProjectDocument extends Model
 {
+    use EsDeUnProyecto;
+
+    /** Donde guarda a quien lo creo. Lo lee la politica del proyecto. */
+    public const COLUMNA_AUTOR = 'uploaded_by';
+
     protected $fillable = [
         'project_id', 'kind', 'title', 'file_path', 'url',
         'uploaded_by', 'signed_on', 'notes',
