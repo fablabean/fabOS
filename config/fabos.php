@@ -247,6 +247,26 @@ return [
          * -y para eso esta el enlace a donde ya vive-.
          */
         'max_mb' => (int) env('CONTENIDO_MAX_MB', 90),
+
+        /*
+         * Lo que vale un aporte reconocido, en FabCoins.
+         *
+         * Documentar es trabajo, y hasta ahora era trabajo gratis. No se abona
+         * solo al subir: se reconoce a mano desde Comunicaciones, una pieza por
+         * una. Abonar cada subida premiaria por cantidad y no por valor, y
+         * doscientas fotos borrosas acabarian valiendo mas que el video en que
+         * alguien explica como lo hizo.
+         *
+         * Este numero es el que sale propuesto al reconocer; quien reconoce lo
+         * puede cambiar en ese momento sin desplegar nada. En cero, el boton
+         * desaparece: el laboratorio no reconoce con saldo y no se promete lo
+         * que no se va a pagar.
+         */
+        'reconocimiento' => (float) env('CONTENIDO_RECONOCIMIENTO', 5),
+
+        'reconocimiento_minor' => (int) round(
+            (float) env('CONTENIDO_RECONOCIMIENTO', 5) * 100,
+        ),
     ],
 
     'otp' => [

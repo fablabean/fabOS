@@ -170,16 +170,31 @@ class ChargeService
         return $this->avisarAbono($usuario, $transaccion, "dotación de {$periodo}", $importeMenor);
     }
 
-    /** Bonificación por colaborar: mentorías, apoyo en cursos, soporte a otros. */
-    public function bonificar(User $usuario, int $importeMenor, string $motivo, ?User $porQuien = null): mixed
-    {
+    /**
+     * Bonificación por colaborar: mentorías, apoyo en cursos, soporte a otros.
+     *
+     * Admite clave de idempotencia y referencia porque hay bonificaciones que
+     * cuelgan de una cosa concreta —el aporte de contenido número tal— y esas
+     * no pueden pagarse dos veces por un doble clic o un reintento. Quien
+     * bonifica a mano, sin nada a lo que apuntar, las deja vacías.
+     */
+    public function bonificar(
+        User $usuario,
+        int $importeMenor,
+        string $motivo,
+        ?User $porQuien = null,
+        ?string $idempotencia = null,
+        mixed $referencia = null,
+    ): mixed {
         $transaccion = $this->libro->transferir(
             $this->libro->cuentaDeSistema(LedgerAccount::EMISION),
             $this->libro->cuentaDe($usuario),
             $importeMenor,
             'bonificacion',
             $motivo,
-            porQuien: $porQuien,
+            $idempotencia,
+            $referencia,
+            $porQuien,
         );
 
         return $this->avisarAbono($usuario, $transaccion, $motivo, $importeMenor);

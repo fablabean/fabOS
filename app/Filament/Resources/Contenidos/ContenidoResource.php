@@ -26,9 +26,12 @@ class ContenidoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCamera;
 
-    protected static ?string $modelLabel = 'pieza de contenido';
+    protected static ?string $modelLabel = 'aporte';
 
-    protected static ?string $pluralModelLabel = 'Contenido';
+    // «Aportes» y no «Contenido»: es lo mismo visto desde quien lo sube. El
+    // sitio publico lo llama igual, y el laboratorio puede reconocerlos con
+    // FabCoins, cosa que «contenido» no sugiere por ningun lado.
+    protected static ?string $pluralModelLabel = 'Aportes';
 
     protected static ?int $navigationSort = 1;
 

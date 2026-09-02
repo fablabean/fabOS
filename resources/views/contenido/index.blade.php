@@ -1,13 +1,27 @@
 @extends('layouts.app')
-@section('title', 'Grabar el laboratorio · ' . config('fabos.lab.name'))
+@section('title', 'Aportes · ' . config('fabos.lab.name'))
 
 @section('content')
-    <h1>Grabar el laboratorio</h1>
+    <h1>Tus aportes al laboratorio</h1>
 
     <p class="help">
         Una pieza saliendo de la impresora, el primer corte que salió bien, alguien
-        explicando cómo lo hizo. Se toma con la cámara y queda guardado aquí mismo.
+        explicando cómo lo hizo. Se toma con la cámara y queda guardado aquí mismo,
+        con tu nombre: lo que documenta el laboratorio lo aporta alguien.
     </p>
+
+    @if ($aportes > 0)
+        {{-- Lo ganado se cuenta sobre TODOS sus aportes y no sobre los que
+             caben en la galería: este número tiene que cuadrar con su saldo. --}}
+        <p class="resumen">
+            <strong>{{ $aportes }}</strong> {{ $aportes === 1 ? 'aporte' : 'aportes' }}
+            @if ($ganado > 0)
+                · te han reconocido
+                <strong>{{ number_format($ganado / config('fabos.currency.minor_units'), 2, ',', '.') }}
+                {{ config('fabos.currency.code') }}</strong>
+            @endif
+        </p>
+    @endif
 
     @if (session('subido'))
         <div class="msg ok">
@@ -103,6 +117,18 @@
 
         <button type="submit" id="enviar">Subir</button>
 
+        @if (config('fabos.contenido.reconocimiento_minor') > 0)
+            {{-- Se dice lo que es y no se promete lo que no es: el
+                 reconocimiento lo decide el laboratorio mirando el aporte. Un
+                 «gana X por foto» convertiria esto en subir por subir. --}}
+            <p class="foot" style="margin-top:.7rem">
+                El laboratorio puede reconocer un aporte con
+                {{ config('fabos.currency.name') }}s: no por subir, sino cuando lo que
+                subiste sirve para contar lo que aquí se hace. Ponle título y ligalo a
+                tu proyecto — así se entiende qué es sin tener que abrirlo.
+            </p>
+        @endif
+
         <p class="foot" style="margin-top:.7rem">
             Hasta 10 archivos, {{ $maxMb }} MB cada uno. Los videos largos tardan:
             no cierres la página mientras suben.
@@ -129,6 +155,12 @@
                         @unless ($pieza->estaDisponible())
                             <span class="quien">retirado</span>
                         @endunless
+                        @if ($pieza->estaReconocido())
+                            <span class="reconocido">
+                                +{{ number_format($pieza->recognized_minor / config('fabos.currency.minor_units'), 2, ',', '.') }}
+                                {{ config('fabos.currency.code') }}
+                            </span>
+                        @endif
                     </span>
                 </a>
             @endforeach
@@ -167,6 +199,10 @@
         .galeria .video { display:flex; align-items:center; justify-content:center;
                           font-size:1.6rem; color:var(--muted); }
         .galeria .pie { display:block; font-size:.78rem; margin-top:.3rem; line-height:1.3; }
+        .galeria .reconocido { display:inline-block; margin-top:.15rem; font-weight:700;
+                               font-size:.72rem; color:var(--accent); }
+
+        .resumen { margin:-.4rem 0 1.2rem; font-size:.92rem; color:var(--ink-soft); }
     </style>
 
     <script>

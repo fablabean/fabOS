@@ -27,6 +27,7 @@ class Contenido extends Model
         'title', 'description',
         'rights_accepted_at', 'rights_version',
         'withdrawn_at', 'withdrawn_reason',
+        'recognized_at', 'recognized_minor', 'recognized_by',
     ];
 
     protected function casts(): array
@@ -34,6 +35,8 @@ class Contenido extends Model
         return [
             'rights_accepted_at' => UtcDateTime::class,
             'withdrawn_at'       => UtcDateTime::class,
+            'recognized_at'      => UtcDateTime::class,
+            'recognized_minor'   => 'integer',
         ];
     }
 
@@ -55,6 +58,29 @@ class Contenido extends Model
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);
+    }
+
+    /** Quien decidió reconocer el aporte. Emitir moneda lleva firma. */
+    public function reconocidoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recognized_by');
+    }
+
+    public function estaReconocido(): bool
+    {
+        return $this->recognized_at !== null;
+    }
+
+    /**
+     * Si este aporte puede reconocerse hoy.
+     *
+     * Un aporte retirado no se reconoce: se retira porque no se puede usar
+     * -sale alguien que no quiere aparecer, se subió por error-, y pagar por
+     * material que el laboratorio acaba de apartar seria contradecirse.
+     */
+    public function sePuedeReconocer(): bool
+    {
+        return ! $this->estaReconocido() && $this->estaDisponible();
     }
 
     /** Se retira, no se borra: el archivo sigue siendo del proyecto. */

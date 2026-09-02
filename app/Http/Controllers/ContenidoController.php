@@ -11,11 +11,15 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
- * Grabar el laboratorio desde el teléfono (§21).
+ * Los aportes: grabar el laboratorio desde el teléfono (§21).
  *
  * Se entra con cuenta y se sube desde la cámara. Todo lo que no sea eso —elegir
  * carpeta, renombrar, recordar dónde iba— es un paso en el que la gente deja de
  * documentar, y entonces el laboratorio no tiene con qué contar lo que hace.
+ *
+ * Se llama «aportes» y no «grabar» porque eso es lo que son: documentar el
+ * laboratorio es trabajo, queda atribuido a quien lo hizo, y el laboratorio
+ * puede reconocerlo con FabCoins desde Comunicaciones.
  */
 class ContenidoController extends Controller
 {
@@ -34,6 +38,14 @@ class ContenidoController extends Controller
                 ->get(),
             'terminos'  => (string) config('fabos.contenido.terminos'),
             'maxMb'     => (int) config('fabos.contenido.max_mb'),
+
+            /*
+             * Lo reconocido se cuenta sobre TODOS sus aportes, no sobre los 24
+             * que se enseñan: el total tiene que cuadrar con su saldo, y un
+             * total que solo suma lo que cabe en pantalla no cuadra con nada.
+             */
+            'aportes'   => Contenido::where('user_id', $persona->id)->count(),
+            'ganado'    => (int) Contenido::where('user_id', $persona->id)->sum('recognized_minor'),
         ]);
     }
 

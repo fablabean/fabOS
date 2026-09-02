@@ -65,6 +65,20 @@ class ContenidoTable
                     ->timezone(config('fabos.lab.timezone'))
                     ->sortable(),
 
+                // Lo reconocido, a la vista: es la respuesta a «¿a esta ya le
+                // pagamos?», que es lo que se pregunta antes de pulsar.
+                TextColumn::make('recognized_minor')
+                    ->label('Reconocido')
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('—')
+                    ->formatStateUsing(fn (?int $state) => $state === null ? null : number_format(
+                        $state / config('fabos.currency.minor_units'), 2, ',', '.',
+                    ) . ' ' . config('fabos.currency.code'))
+                    ->description(fn (Contenido $r) => $r->estaReconocido()
+                        ? 'por ' . ($r->reconocidoPor?->name ?? 'alguien que ya no está')
+                        : null),
+
                 TextColumn::make('peso')
                     ->label('Pesa')
                     ->state(fn (Contenido $r) => $r->peso())
@@ -96,6 +110,56 @@ class ContenidoTable
                     ->color('gray')
                     ->url(fn (Contenido $r) => $r->enlace())
                     ->openUrlInNewTab(),
+
+                /*
+                 * Reconocer el aporte con FabCoins (§12, §21).
+                 *
+                 * Documentar es trabajo, y hasta ahora era trabajo gratis.
+                 *
+                 * No lo puede pulsar cualquiera que entre a esta pantalla:
+                 * esto EMITE moneda, y la galería la abre Comunicaciones
+                 * entera. Se pide la misma llave que emitir la dotación, que
+                 * por defecto es del superadmin y se abre a quien haga falta
+                 * desde *Roles y accesos*, sin desplegar.
+                 */
+                Action::make('reconocer')
+                    ->label('Reconocer')
+                    ->icon('heroicon-o-gift')
+                    ->color('success')
+                    ->visible(fn (Contenido $r) => $r->sePuedeReconocer()
+                        && BancoDeContenido::reconocimientoPorDefecto() > 0
+                        && (auth()->user()?->puedeEnLaSeccion('ver', 'dotacion') ?? false))
+                    ->modalHeading('Reconocer este aporte')
+                    ->modalDescription(fn (Contenido $r) => 'Se le abonan FabCoins a '
+                        . ($r->user?->name ?? 'quien lo subió')
+                        . ', y queda anotado que lo decidiste tú. No se puede reconocer dos veces.')
+                    ->schema([
+                        TextInput::make('importe')
+                            ->label('Cuántos ' . config('fabos.currency.name'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(0.01)
+                            ->step(0.01)
+                            ->default(fn () => BancoDeContenido::reconocimientoPorDefecto()
+                                / config('fabos.currency.minor_units'))
+                            ->helperText('Sale propuesto lo de siempre. Súbelo si el aporte lo merece.'),
+                    ])
+                    ->action(function (Contenido $record, array $data) {
+                        // A unidades menores: el libro solo trabaja con
+                        // enteros, y arrastrar decimales por la contabilidad es
+                        // como acaban los saldos que no cuadran por un peso.
+                        $menor = (int) round(
+                            (float) $data['importe'] * config('fabos.currency.minor_units'),
+                        );
+
+                        app(BancoDeContenido::class)->reconocer($record, auth()->user(), $menor);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Aporte reconocido')
+                            ->body('Se le avisó a ' . ($record->user?->name ?? 'quien lo subió') . '.')
+                            ->send();
+                    }),
 
                 // Retirar, no borrar: lo que se quita es la disponibilidad para
                 // divulgación, que es una decisión distinta de tirar el

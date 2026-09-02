@@ -6,6 +6,7 @@ use App\Models\Contenido;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Media\OptimizadorDeImagen;
+use App\Services\Money\ChargeService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 
@@ -26,7 +27,10 @@ class BancoDeContenido
 
     public const TIPOS_VIDEO = ['mp4', 'mov', 'm4v', 'webm', '3gp'];
 
-    public function __construct(private OptimizadorDeImagen $optimizador) {}
+    public function __construct(
+        private OptimizadorDeImagen $optimizador,
+        private ChargeService $cobros,
+    ) {}
 
     /**
      * Los proyectos a los que esta persona puede cargar material.
@@ -110,5 +114,70 @@ class BancoDeContenido
         $pieza->update(['withdrawn_at' => null, 'withdrawn_reason' => null]);
 
         return $pieza->refresh();
+    }
+
+    /**
+     * Reconoce un aporte con FabCoins (§12, §21).
+     *
+     * Documentar es trabajo, y hasta ahora era trabajo gratis. Se reconoce a
+     * mano y una por una: abonar sola cada subida premiaría por cantidad y no
+     * por valor —doscientas fotos borrosas valdrían más que el video en que
+     * alguien explica cómo lo hizo—.
+     *
+     * Tres cuidados, y ninguno sobra:
+     *
+     *  · **No se paga dos veces.** La clave de idempotencia lleva el id de la
+     *    pieza, así que un doble clic o un reintento devuelven el movimiento
+     *    que ya existe en vez de emitir otro.
+     *  · **Lleva firma.** Emitir moneda es un acto del laboratorio; un asiento
+     *    que crea dinero sin decir quién lo creó es el que nadie puede
+     *    explicar después.
+     *  · **No se reconoce lo retirado.** Se retira porque no se puede usar, y
+     *    pagar por lo que el laboratorio acaba de apartar es contradecirse.
+     */
+    public function reconocer(
+        Contenido $pieza,
+        User $porQuien,
+        ?int $importeMenor = null,
+    ): Contenido {
+        if (! $pieza->sePuedeReconocer()) {
+            return $pieza;
+        }
+
+        $importe = $importeMenor ?? self::reconocimientoPorDefecto();
+
+        if ($importe <= 0) {
+            return $pieza;
+        }
+
+        $autor = $pieza->user;
+
+        // Sin autor no hay a quién reconocerle: pasa si la cuenta se borró.
+        if ($autor === null) {
+            return $pieza;
+        }
+
+        $this->cobros->bonificar(
+            $autor,
+            $importe,
+            'Aporte al banco de contenido: ' . $pieza->comoSeLlama(),
+            $porQuien,
+            'aporte:' . $pieza->id,
+            $pieza,
+        );
+
+        $pieza->update([
+            'recognized_at'    => now(),
+            'recognized_minor' => $importe,
+            'recognized_by'    => $porQuien->id,
+        ]);
+
+        return $pieza->refresh();
+    }
+
+    /** Lo que vale un aporte, mientras nadie diga otra cosa al reconocerlo. */
+    public static function reconocimientoPorDefecto(): int
+    {
+        return (int) config('fabos.contenido.reconocimiento_minor');
     }
 }
