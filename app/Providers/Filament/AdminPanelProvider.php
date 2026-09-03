@@ -10,6 +10,7 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
+use Filament\View\PanelsRenderHook;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
@@ -49,6 +50,14 @@ class AdminPanelProvider extends PanelProvider
              * por que decidirlo por ella.
              */
             ->readOnlyRelationManagersOnResourceViewPagesByDefault(false)
+            // Un buscador de PANTALLAS dentro del menu lateral, y el menu mas
+            // apretado. Con cuarenta y cuatro entradas el menu ya no se
+            // recorre con la vista: se busca. Es distinto del buscador global,
+            // que busca registros.
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_START,
+                fn (): string => view('filament.parciales.buscador-menu')->render(),
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
