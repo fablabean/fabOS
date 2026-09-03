@@ -62,22 +62,23 @@
                         <p class="dice">{{ $l->texto }}</p>
                     @endif
 
-                    <div class="acciones">
-                        @forelse ($l->acciones() as $a)
-                            {{-- Lo que sale del sitio, en pestaña nueva: quien
-                                 lo pulsa venía mirando el laboratorio. Y con
-                                 `noopener`, que la página de destino no pueda
-                                 tocar la nuestra desde su javascript. --}}
-                            <a class="btn {{ $loop->first ? 'claro' : 'borde' }}"
-                               href="{{ $a['url'] }}"
-                               @if ($a['fuera']) target="_blank" rel="noopener noreferrer" @endif>{{ $a['texto'] }}</a>
-                        @empty
-                            {{-- Sin botones propios, los de siempre: una lámina
-                                 sin salida deja al visitante mirando. --}}
-                            <a class="btn claro" href="{{ route('publico.reservas') }}">Ver los equipos</a>
-                            <a class="btn borde" href="{{ route('proyectos.solicitar') }}">Proponer un proyecto</a>
-                        @endforelse
-                    </div>
+                    {{-- Solo los botones que se escribieron. Antes, sin
+                         botones salían dos «de siempre»; pero a veces no se
+                         quiere ninguno —una lámina que solo anuncia, o que
+                         lleva a su QR— y no había forma de decirlo. --}}
+                    @if ($l->acciones())
+                        <div class="acciones">
+                            @foreach ($l->acciones() as $a)
+                                {{-- Lo que sale del sitio, en pestaña nueva: quien
+                                     lo pulsa venía mirando el laboratorio. Y con
+                                     `noopener`, que la página de destino no pueda
+                                     tocar la nuestra desde su javascript. --}}
+                                <a class="btn {{ $loop->first ? 'claro' : 'borde' }}"
+                                   href="{{ $a['url'] }}"
+                                   @if ($a['fuera']) target="_blank" rel="noopener noreferrer" @endif>{{ $a['texto'] }}</a>
+                            @endforeach
+                        </div>
+                    @endif
 
                     @if ($l->tieneQr())
                         {{-- El QR es para la pantalla del laboratorio o el stand:

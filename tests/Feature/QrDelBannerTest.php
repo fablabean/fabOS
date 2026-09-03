@@ -112,6 +112,23 @@ class QrDelBannerTest extends TestCase
             ->assertSee('aria-label="Código QR"', false);
     }
 
+    /**
+     * Sin botones escritos, sin botones. Antes salían dos «de siempre», y una
+     * lámina que solo anuncia —o que lleva a su QR— no tenía forma de no
+     * llevarlos.
+     */
+    public function test_sin_botones_escritos_no_sale_ninguno(): void
+    {
+        $this->lamina(['qr_tipo' => 'teams', 'qr_destino' => 'fablab@utadeo.edu.co']);
+
+        $this->get(route('publico.home'))
+            ->assertOk()
+            ->assertSee('Escríbenos por Teams')
+            ->assertDontSee('Ver los equipos')
+            ->assertDontSee('Proponer un proyecto')
+            ->assertDontSee('class="acciones"', false);
+    }
+
     public function test_sin_qr_la_portada_no_enseña_ninguno(): void
     {
         $this->lamina(['qr_tipo' => 'ninguno']);

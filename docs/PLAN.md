@@ -119,6 +119,9 @@ decisión tuya
 - [x] QR en la lámina del banner: lleva a un chat de WhatsApp, a un chat de
       Teams con una cuenta concreta, o a una dirección; el enlace lo arma el
       sistema y el mensaje llega ya escrito. En el teléfono se vuelve botón
+- [x] Los botones de la lámina son solo los escritos: sin ellos no sale ninguno.
+      Las láminas que salían con los «de siempre» los recibieron escritos, para
+      poder borrarlos
 - [x] Editor del banner: láminas con fondo de color, foto o video, efectos
       de entrada del título y fechas de vigencia —lo que anuncia un evento
       se apaga solo cuando el evento pasa—

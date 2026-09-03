@@ -104,21 +104,22 @@
        pantallas medianas; a la derecha, a media altura, cuando hay sitio y
        el texto va a la izquierda. */
     .hero .qr{
-        display:inline-flex;align-items:center;gap:.9rem;margin-top:1.6rem;
-        padding:.6rem .9rem .6rem .6rem;border-radius:12px;
+        display:inline-flex;flex-direction:column;align-items:center;gap:.45rem;
+        margin-top:1.6rem;padding:.55rem .55rem .6rem;border-radius:12px;
         background:rgba(243,244,236,.94);color:#111;text-decoration:none;
-        box-shadow:0 10px 30px rgba(0,0,0,.25);
+        box-shadow:0 10px 30px rgba(0,0,0,.25);text-align:center;
     }
     .hero .qr .codigo{display:block;line-height:0;border-radius:6px;overflow:hidden;background:#fff}
     .hero .qr .codigo svg{display:block;width:8rem;height:8rem}
-    .hero .qr .dice-qr{font-weight:600;font-size:.95rem;max-width:11ch;line-height:1.25}
+    /* Debajo del código y pequeño: es un pie, no un titular. */
+    .hero .qr .dice-qr{font-weight:600;font-size:.72rem;max-width:8rem;line-height:1.2;letter-spacing:.01em}
     .in.centro .qr{align-self:center}
     @media (min-width:960px){
         .hero .in:not(.centro) .qr{
-            position:absolute;right:0;top:50%;transform:translateY(-50%);margin:0;
-            flex-direction:column;text-align:center;padding:.8rem;
+            position:absolute;right:0;top:50%;transform:translateY(-50%);margin:0;padding:.7rem .7rem .75rem;
         }
         .hero .in:not(.centro) .qr .codigo svg{width:10rem;height:10rem}
+        .hero .in:not(.centro) .qr .dice-qr{max-width:10rem}
     }
     /* En el teléfono el QR no sirve: se esconde y el texto queda de botón. */
     @media (max-width:640px){

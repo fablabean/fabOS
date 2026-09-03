@@ -204,7 +204,7 @@ class BannerForm
                     ]),
 
                 Section::make('Botones')
-                    ->description('Opcionales. Sin ellos salen los de siempre: ver los equipos y proponer un proyecto.')
+                    ->description('Opcionales. Sin ellos la lámina no lleva botones: a veces solo anuncia, o lleva a su QR.')
                     ->columns(2)
                     ->schema([
                         TextInput::make('accion_texto')

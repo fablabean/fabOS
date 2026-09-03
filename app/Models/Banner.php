@@ -145,6 +145,13 @@ class Banner extends Model
             'velo'       => 70,
             'efecto'     => 'subir',
             'alineacion' => 'izquierda',
+            // Los botones de siempre. Una lamina escrita en el panel lleva
+            // solo los suyos, pero una instalacion nueva no puede arrancar
+            // con una portada sin salida.
+            'accion_texto'  => 'Ver los equipos',
+            'accion_url'    => route('publico.reservas'),
+            'accion2_texto' => 'Proponer un proyecto',
+            'accion2_url'   => route('proyectos.solicitar'),
         ]))->values();
     }
 
