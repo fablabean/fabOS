@@ -12,6 +12,7 @@ use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -301,6 +302,13 @@ class ProjectsTable
                 self::descartar(),
                 self::borrar(),
                 EditAction::make()->iconButton()->tooltip('Editar'),
+
+                // Para quien ve y no edita: del equipo, sin la seccion. Sin
+                // esto veia la fila y ninguna puerta para entrar.
+                ViewAction::make()
+                    ->iconButton()
+                    ->tooltip('Abrir')
+                    ->visible(fn (Project $r) => ! ProjectResource::canEdit($r)),
             ]);
     }
 

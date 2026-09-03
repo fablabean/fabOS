@@ -38,6 +38,17 @@ class AdminPanelProvider extends PanelProvider
             // columnas. Aquí se trabaja con listados anchos —activos, reservas,
             // movimientos—, no con artículos de lectura.
             ->maxContentWidth(Width::Full)
+            /*
+             * En una ficha de solo lectura, las pestañas siguen activas.
+             *
+             * Filament apaga por defecto los gestores de relacion en las
+             * paginas de vista: sin crear, sin editar, sin borrar. Aqui esa
+             * ficha es la que abre quien entra a un proyecto por su equipo, y
+             * entra justo a registrar sus horas o subir una foto. Que pueda
+             * o no lo decide la politica de cada pieza; la pagina no tiene
+             * por que decidirlo por ella.
+             */
+            ->readOnlyRelationManagersOnResourceViewPagesByDefault(false)
             ->colors([
                 'primary' => Color::Amber,
             ])

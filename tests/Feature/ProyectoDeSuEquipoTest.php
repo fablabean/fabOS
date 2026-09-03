@@ -167,6 +167,41 @@ class ProyectoDeSuEquipoTest extends TestCase
         $this->get('/admin/projects/' . $p->getKey() . '/edit')->assertForbidden();
     }
 
+    /**
+     * Pero sí ENTRA.
+     *
+     * Ver la fila y no poder abrirla era una puerta cerrada a la vista: la
+     * ficha solo existía como página de edición. Quien entra por su equipo
+     * abre la de vista, y ahí están las pestañas para registrar sus horas o
+     * subir una foto. Al comienzo no ha creado nada todavía: por eso tiene
+     * que poder entrar antes de tener algo suyo que ver.
+     */
+    public function test_del_equipo_entra_a_la_ficha(): void
+    {
+        $quien = $this->practicante();
+        $p = $this->proyecto();
+        $p->members()->create(['user_id' => $quien->id, 'role' => 'equipo']);
+
+        $this->entrarComo($quien);
+
+        $this->get('/admin/projects/' . $p->getKey())
+            ->assertOk()
+            ->assertSee('Horas')
+            ->assertSee('Conversación');
+    }
+
+    /** Y a la ficha de un proyecto ajeno, no: ni siquiera existe para él. */
+    public function test_la_ficha_de_un_proyecto_ajeno_no_se_abre(): void
+    {
+        $quien = $this->practicante();
+        $this->proyecto()->members()->create(['user_id' => $quien->id, 'role' => 'equipo']);
+        $ajeno = $this->proyecto();
+
+        $this->entrarComo($quien);
+
+        $this->get('/admin/projects/' . $ajeno->getKey())->assertNotFound();
+    }
+
     public function test_el_responsable_lo_maneja(): void
     {
         $quien = $this->practicante();
