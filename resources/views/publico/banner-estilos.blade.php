@@ -98,6 +98,38 @@
     .hero .acciones{display:flex;gap:.7rem;flex-wrap:wrap}
     .in.centro .acciones{justify-content:center}
 
+    /* ---------- el QR ----------
+       Una tarjeta clara sobre el fondo oscuro: el QR necesita contraste y
+       borde blanco para leerse desde lejos. Debajo de los botones en
+       pantallas medianas; a la derecha, a media altura, cuando hay sitio y
+       el texto va a la izquierda. */
+    .hero .qr{
+        display:inline-flex;align-items:center;gap:.9rem;margin-top:1.6rem;
+        padding:.6rem .9rem .6rem .6rem;border-radius:12px;
+        background:rgba(243,244,236,.94);color:#111;text-decoration:none;
+        box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .hero .qr .codigo{display:block;line-height:0;border-radius:6px;overflow:hidden;background:#fff}
+    .hero .qr .codigo svg{display:block;width:8rem;height:8rem}
+    .hero .qr .dice-qr{font-weight:600;font-size:.95rem;max-width:11ch;line-height:1.25}
+    .in.centro .qr{align-self:center}
+    @media (min-width:960px){
+        .hero .in:not(.centro) .qr{
+            position:absolute;right:0;top:50%;transform:translateY(-50%);margin:0;
+            flex-direction:column;text-align:center;padding:.8rem;
+        }
+        .hero .in:not(.centro) .qr .codigo svg{width:10rem;height:10rem}
+    }
+    /* En el teléfono el QR no sirve: se esconde y el texto queda de botón. */
+    @media (max-width:640px){
+        .hero .qr{padding:0;background:transparent;box-shadow:none;margin-top:.9rem}
+        .hero .qr .codigo{display:none}
+        .hero .qr .dice-qr{
+            max-width:none;display:inline-block;padding:.6rem 1rem;border-radius:999px;
+            border:1px solid rgba(243,244,236,.5);color:var(--banner-ink);
+        }
+    }
+
     /* ---------- los puntos ----------
        Cada barra se llena mientras dura su lámina: se ve cuánto falta para
        que cambie, en vez de que cambie de repente mientras se lee. */

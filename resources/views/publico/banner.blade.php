@@ -78,6 +78,17 @@
                             <a class="btn borde" href="{{ route('proyectos.solicitar') }}">Proponer un proyecto</a>
                         @endforelse
                     </div>
+
+                    @if ($l->tieneQr())
+                        {{-- El QR es para la pantalla del laboratorio o el stand:
+                             quien lo ve saca el teléfono. En el propio teléfono
+                             un QR no sirve de nada, así que ahí se esconde y
+                             queda el texto como botón: el enlace es el mismo. --}}
+                        <a class="qr" href="{{ $l->qrUrl() }}" target="_blank" rel="noopener noreferrer">
+                            <span class="codigo" aria-hidden="true">{!! app(\App\Services\Qr\QrRenderer::class)->svg($l->qrUrl(), 128) !!}</span>
+                            <span class="dice-qr">{{ $l->qrTexto() }}</span>
+                        </a>
+                    @endif
                 </div>
             @endforeach
         </div>

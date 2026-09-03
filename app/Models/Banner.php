@@ -36,6 +36,7 @@ class Banner extends Model
         'fondo_tipo', 'fondo_color', 'fondo_path', 'poster_path', 'fondo_pos', 'velo',
         'efecto', 'alineacion',
         'accion_texto', 'accion_url', 'accion2_texto', 'accion2_url',
+        'qr_tipo', 'qr_destino', 'qr_mensaje', 'qr_texto',
         'starts_at', 'ends_at',
     ];
 
@@ -76,6 +77,21 @@ class Banner extends Model
     public const ALINEACIONES = [
         'izquierda' => 'A la izquierda',
         'centro'    => 'Centrado',
+    ];
+
+    /**
+     * A dónde lleva el QR de la lámina.
+     *
+     * WhatsApp y Teams van aparte de «una dirección» porque armar sus enlaces
+     * a mano es justo lo que sale mal: el número sin indicativo, el correo en
+     * la dirección equivocada. Aquí se escribe el número o la cuenta, y el
+     * enlace lo arma el sistema.
+     */
+    public const QR_TIPOS = [
+        'ninguno'  => 'Sin QR',
+        'whatsapp' => 'Chat de WhatsApp',
+        'teams'    => 'Chat de Teams',
+        'url'      => 'Una dirección',
     ];
 
     /**
@@ -223,5 +239,53 @@ class Banner extends Model
     {
         return $this->rotulo
             ?: config('fabos.lab.institution') . ' · ' . config('fabos.lab.city');
+    }
+
+    // ------------------------------------------------------------- el QR
+
+    public function tieneQr(): bool
+    {
+        return $this->qrUrl() !== null;
+    }
+
+    /**
+     * La dirección que lleva el QR, armada según el tipo.
+     *
+     *  · WhatsApp: `wa.me` con el número solo en dígitos —se limpian el «+»,
+     *    los espacios y los guiones, que es como la gente lo escribe—, y el
+     *    mensaje ya puesto.
+     *  · Teams: el enlace profundo de chat con esa cuenta, y el mensaje.
+     *  · Una dirección: tal cual se escribió.
+     *
+     * Nula si no hay QR o falta el destino: una lámina no enseña un QR que
+     * lleve a ninguna parte.
+     */
+    public function qrUrl(): ?string
+    {
+        if (blank($this->qr_destino)) {
+            return null;
+        }
+
+        $destino = trim((string) $this->qr_destino);
+        $mensaje = filled($this->qr_mensaje) ? rawurlencode(trim((string) $this->qr_mensaje)) : null;
+
+        return match ($this->qr_tipo) {
+            'whatsapp' => 'https://wa.me/' . preg_replace('/\D+/', '', $destino)
+                . ($mensaje ? '?text=' . $mensaje : ''),
+            'teams'    => 'https://teams.microsoft.com/l/chat/0/0?users=' . rawurlencode($destino)
+                . ($mensaje ? '&message=' . $mensaje : ''),
+            'url'      => $destino,
+            default    => null,
+        };
+    }
+
+    /** Lo que dice debajo del QR: lo escrito, o lo obvio para ese tipo. */
+    public function qrTexto(): string
+    {
+        return $this->qr_texto ?: match ($this->qr_tipo) {
+            'whatsapp' => 'Escríbenos por WhatsApp',
+            'teams'    => 'Escríbenos por Teams',
+            default    => 'Escanea para abrir',
+        };
     }
 }

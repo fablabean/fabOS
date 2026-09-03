@@ -228,6 +228,68 @@ class BannerForm
                             ->requiredWith('accion2_texto'),
                     ]),
 
+                /*
+                 * El QR es para la pantalla del laboratorio y el stand de la
+                 * feria: ahi nadie hace clic, se saca el telefono. Lleva
+                 * directo a un chat o a una direccion sin teclear nada.
+                 */
+                Section::make('Código QR')
+                    ->description('Opcional. Para cuando la portada se proyecta en una pantalla o en un stand: quien la mira escanea y llega directo a un chat o a una dirección.')
+                    ->columns(2)
+                    ->schema([
+                        ToggleButtons::make('qr_tipo')
+                            ->label('A dónde lleva')
+                            ->options(Banner::QR_TIPOS)
+                            ->default('ninguno')
+                            ->inline()
+                            ->required()
+                            ->live()
+                            ->columnSpanFull(),
+
+                        TextInput::make('qr_destino')
+                            ->label(fn ($get) => match ($get('qr_tipo')) {
+                                'whatsapp' => 'Número de WhatsApp',
+                                'teams'    => 'Cuenta de Teams',
+                                default    => 'Dirección completa',
+                            })
+                            ->placeholder(fn ($get) => match ($get('qr_tipo')) {
+                                'whatsapp' => '573001234567',
+                                'teams'    => 'alguien@' . (config('fabos.identity.institutional_domain') ?: 'universidad.edu.co'),
+                                default    => 'https://…',
+                            })
+                            ->helperText(fn ($get) => match ($get('qr_tipo')) {
+                                'whatsapp' => 'Con el indicativo del país y solo números. El enlace lo arma el sistema.',
+                                'teams'    => 'El correo de la persona o del grupo que recibe el chat.',
+                                default    => 'Tal cual se abre en el navegador, con https://.',
+                            })
+                            ->visible(fn ($get) => $get('qr_tipo') !== 'ninguno')
+                            ->required(fn ($get) => $get('qr_tipo') !== 'ninguno')
+                            ->maxLength(500)
+                            ->email(fn ($get) => $get('qr_tipo') === 'teams')
+                            ->url(fn ($get) => $get('qr_tipo') === 'url')
+                            ->regex(fn ($get) => $get('qr_tipo') === 'whatsapp' ? '/^\+?[\d\s\-()]{8,20}$/' : null)
+                            ->validationMessages(['regex' => 'Solo el número, con indicativo: 573001234567.'])
+                            ->columnSpanFull(),
+
+                        TextInput::make('qr_mensaje')
+                            ->label('Mensaje que llega escrito')
+                            ->placeholder('Hola, quiero saber más de LIBERA')
+                            ->helperText('Opcional. Quien escanea abre el chat con esto ya puesto: solo tiene que enviar.')
+                            ->visible(fn ($get) => in_array($get('qr_tipo'), ['whatsapp', 'teams'], true))
+                            ->maxLength(500),
+
+                        TextInput::make('qr_texto')
+                            ->label('Qué dice debajo del QR')
+                            ->placeholder(fn ($get) => match ($get('qr_tipo')) {
+                                'whatsapp' => 'Escríbenos por WhatsApp',
+                                'teams'    => 'Escríbenos por Teams',
+                                default    => 'Escanea para abrir',
+                            })
+                            ->helperText('Si se deja vacío sale lo obvio para ese tipo.')
+                            ->visible(fn ($get) => $get('qr_tipo') !== 'ninguno')
+                            ->maxLength(60),
+                    ]),
+
                 Section::make('Cuándo se ve')
                     ->columns(3)
                     ->schema([
