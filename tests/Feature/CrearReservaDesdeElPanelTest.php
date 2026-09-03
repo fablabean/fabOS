@@ -262,6 +262,36 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame([$juan->id], $hija->companions->pluck('id')->all());
     }
 
+    /**
+     * La hora no se corre.
+     *
+     * El selector del panel entrega UTC; el formulario la releía como hora de
+     * Bogotá y una reserva de 8 a 12 quedaba de 13 a 17. Aquí el estado del
+     * formulario ES la hora en UTC, y lo guardado tiene que ser esa misma.
+     */
+    public function test_la_hora_del_formulario_se_guarda_tal_cual(): void
+    {
+        $this->asesorEnJornada();
+        $sala = Space::create(['slug' => 'sala', 'name' => 'Sala', 'capacity' => 10, 'is_reservable' => true]);
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'espacio', 'user_id' => $this->alguien()->id, 'space_ids' => [$sala->id],
+                'participantes' => 2,
+                // Se escribe 08:00 de Bogotá, como en pantalla. El selector lo
+                // convierte a 13:00 UTC al guardar el estado; el formulario no
+                // debe volver a convertirlo.
+                'starts_at' => '2026-08-24 08:00:00', 'ends_at' => '2026-08-24 12:00:00',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $r = Reservation::firstOrFail();
+
+        $this->assertSame('13:00', $r->starts_at->utc()->format('H:i'));
+        $this->assertSame('08:00', $r->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i'));
+    }
+
     /** «Todo el laboratorio» va solo: al elegirlo, los demás se sueltan. */
     public function test_elegir_todo_el_laboratorio_suelta_los_demas_espacios(): void
     {

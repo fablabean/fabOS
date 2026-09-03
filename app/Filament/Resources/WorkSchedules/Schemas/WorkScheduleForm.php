@@ -52,12 +52,21 @@ class WorkScheduleForm
                     ->required()
                     ->hiddenOn('create'),
 
+                /*
+                 * Hora de PARED, no un instante. «Entra a las 07:00» es a las
+                 * siete de cada lunes, en el reloj del laboratorio; no hay
+                 * fecha a la que convertirla. La conversion de zona que el
+                 * panel aplica a todos los selectores la corria cinco horas:
+                 * se escribia 07:00 y se guardaba 12:00.
+                 */
                 TimePicker::make('starts_at')
+                    ->timezone(config('app.timezone'))
                     ->label('Entrada')
                     ->seconds(false)
                     ->required(),
 
                 TimePicker::make('ends_at')
+                    ->timezone(config('app.timezone'))
                     ->label('Salida')
                     ->seconds(false)
                     ->required()

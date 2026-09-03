@@ -293,9 +293,17 @@ class CreateReservation extends CreateRecord
      */
     protected function handleRecordCreation(array $data): Model
     {
+        /*
+         * El selector de fecha del panel ya entrega la hora en la zona de la
+         * aplicacion -UTC-: la conversion desde la hora de Bogota la hace el
+         * propio selector, configurado para todo el panel. Releerla aqui como
+         * hora de Bogota la corria cinco horas: una reserva de 8 a 12 quedaba
+         * de 13 a 17. Es la trampa numero uno del proyecto, y esta pantalla
+         * cayo en ella el dia que nacio.
+         */
         $tz = config('fabos.lab.timezone');
-        $desde = Carbon::parse($data['starts_at'], $tz);
-        $hasta = Carbon::parse($data['ends_at'], $tz);
+        $desde = Carbon::parse($data['starts_at'], config('app.timezone'))->setTimezone($tz);
+        $hasta = Carbon::parse($data['ends_at'], config('app.timezone'))->setTimezone($tz);
         $quien = User::findOrFail($data['user_id']);
         $paraQue = $data['proposito'] ?? null;
 

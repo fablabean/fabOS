@@ -126,8 +126,12 @@ class ProduccionesRelationManager extends RelationManager
                             return app(ProduccionService::class)->programar(
                                 Asset::findOrFail($data['reservable_id']),
                                 auth()->user(),
-                                \Illuminate\Support\Carbon::parse($data['starts_at'], config('fabos.lab.timezone')),
-                                \Illuminate\Support\Carbon::parse($data['ends_at'], config('fabos.lab.timezone')),
+                                // El selector ya entrega UTC; releerlo como hora
+                                // de Bogota corria la produccion cinco horas.
+                                \Illuminate\Support\Carbon::parse($data['starts_at'], config('app.timezone'))
+                                    ->setTimezone(config('fabos.lab.timezone')),
+                                \Illuminate\Support\Carbon::parse($data['ends_at'], config('app.timezone'))
+                                    ->setTimezone(config('fabos.lab.timezone')),
                                 $this->getOwnerRecord(),
                                 $data['purpose'] ?? null,
                             );
