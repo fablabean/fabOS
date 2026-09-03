@@ -125,6 +125,26 @@ class ReservaSeLevantaTest extends TestCase
         $this->assertStringContainsString('uniones prueba hablador', $r->purpose);
     }
 
+    /**
+     * Anotar que llegó a tiempo, desde el panel: para cuando el escáner falló
+     * o quien atendía olvidó validar. La llegada queda a la hora reservada.
+     */
+    public function test_se_anota_que_llego_a_tiempo_y_queda_a_la_hora_reservada(): void
+    {
+        $this->admin();
+        $r = $this->reserva('confirmada');
+        $r->update(['starts_at' => now()->subMinutes(50), 'ends_at' => now()->addMinutes(40)]);
+
+        Livewire::test(ListReservations::class)
+            ->callAction(TestAction::make('llego_a_tiempo')->table($r));
+
+        $r->refresh();
+
+        $this->assertSame('en_curso', $r->status);
+        $this->assertTrue($r->checked_in_at->equalTo($r->starts_at), 'la llegada es a la hora reservada, no a la de pulsar');
+        $this->assertStringContainsString('anotada por', $r->status_reason);
+    }
+
     public function test_tambien_se_levanta_una_cancelada(): void
     {
         $this->admin();

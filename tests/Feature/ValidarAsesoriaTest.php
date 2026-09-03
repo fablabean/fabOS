@@ -92,10 +92,12 @@ class ValidarAsesoriaTest extends TestCase
     {
         $a = $this->asesoria();
 
-        $r = $this->asistencia()->llego($a, $this->ana, $this->hora('10:05'));
+        $r = $this->asistencia()->llego($a, $this->ana, $this->hora('10:44'));
 
         $this->assertSame('en_curso', $r->status);
-        $this->assertNotNull($r->checked_in_at);
+        // Validada a las 10:44, la llegada es a las 10:00: validar es decir
+        // «vino a su hora», no «pulsé el botón ahora».
+        $this->assertTrue($r->checked_in_at->equalTo($a->starts_at));
     }
 
     /** Validada al día siguiente, la llegada queda a la hora de la asesoría. */

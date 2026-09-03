@@ -71,11 +71,16 @@ class AsistenciaDeAsesoria
             );
         }
 
-        // Validada tarde, la llegada se anota a la hora de la asesoría y no a
-        // la de pulsar el botón: la persona vino a las diez, no al día
-        // siguiente a las tres.
+        /*
+         * La llegada queda a la HORA DE LA ASESORÍA, siempre.
+         *
+         * Validar es decir «vino a su hora», no «pulsé el botón a las 15:44».
+         * Quien atiende valida cuando se acuerda —al empezar, al terminar, al
+         * día siguiente— y ninguna de esas horas es la de la llegada. La hora
+         * de inicio sí: es la que se acordó, y a la que se le espera.
+         */
         $asesoria->update([
-            'checked_in_at' => $ahora->greaterThan($asesoria->ends_at) ? $asesoria->starts_at : $ahora,
+            'checked_in_at' => $asesoria->starts_at,
             'status'        => $ahora->greaterThan($asesoria->ends_at) ? 'completada' : 'en_curso',
             'status_reason' => 'Llegada validada por ' . $quienAtiende->name,
         ]);

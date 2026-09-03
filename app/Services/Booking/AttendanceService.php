@@ -159,6 +159,43 @@ class AttendanceService
      * Libera las reservas a las que nadie llegó. Pensado para el planificador,
      * como red de seguridad de lo que ya se marca al intentar el check-in tarde.
      */
+    /**
+     * Anota que llego a tiempo, desde el panel (§7, §10).
+     *
+     * Para cuando el escaner fallo, o para una asesoria que quien atendia
+     * olvido validar. La llegada queda a la HORA DE INICIO: anotarla a la
+     * hora en que alguien se acordo de pulsar diria que la persona llego
+     * tarde, y no es verdad. Y lleva firma: es una correccion de una persona,
+     * no un hecho que el sistema vio.
+     *
+     * @throws BookingException
+     */
+    public function llegoATiempo(Reservation $reserva, User $quien): Reservation
+    {
+        if ($reserva->checked_in_at) {
+            throw new BookingException('Esta reserva ya tiene la llegada anotada.');
+        }
+
+        if (! in_array($reserva->status, ['confirmada', 'en_curso'], true)) {
+            throw new BookingException(
+                'Esta reserva está ' . mb_strtolower(Reservation::ESTADOS[$reserva->status] ?? $reserva->status)
+                . ': levántala primero si hace falta.'
+            );
+        }
+
+        if ($reserva->starts_at->isFuture()) {
+            throw new BookingException('Todavía no ha empezado: no hay llegada que anotar.');
+        }
+
+        $reserva->update([
+            'checked_in_at' => $reserva->starts_at,
+            'status'        => $reserva->ends_at->isPast() ? 'completada' : 'en_curso',
+            'status_reason' => 'Llegada a tiempo anotada por ' . $quien->name,
+        ]);
+
+        return $reserva->refresh();
+    }
+
     public function liberarAusencias(?Carbon $hasta = null): int
     {
         $limite = ($hasta ?? now())->copy()->subMinutes(config('fabos.checkin.tolerancia'));

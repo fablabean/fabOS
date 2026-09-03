@@ -250,6 +250,39 @@ class ReservationsTable
                  * Devolverla es un acto de alguien, con su motivo escrito: eso
                  * es lo que distingue corregir de tapar.
                  */
+                /*
+                 * «Llego a tiempo», desde el panel. Para cuando el escaner
+                 * fallo o quien atendia olvido validar. La llegada queda a la
+                 * hora de inicio, no a la de pulsar: si no, la persona
+                 * figuraria llegando tarde por un olvido ajeno.
+                 */
+                Action::make('llego_a_tiempo')
+                    ->label('Llegó a tiempo')
+                    ->iconButton()
+                    ->tooltip('Anotar que llegó a tiempo')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->visible(fn (Reservation $r) => $r->checked_in_at === null
+                        && in_array($r->status, ['confirmada', 'en_curso'], true)
+                        && $r->starts_at->isPast()
+                        && ! $r->esProduccion())
+                    ->requiresConfirmation()
+                    ->modalHeading('Anotar que llegó a tiempo')
+                    ->modalDescription(fn (Reservation $r) => 'La llegada queda a las '
+                        . $r->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i')
+                        . ', la hora reservada, con tu nombre como quien lo anotó.')
+                    ->action(function (Reservation $record) {
+                        try {
+                            app(\App\Services\Booking\AttendanceService::class)->llegoATiempo($record, auth()->user());
+                        } catch (\App\Services\Booking\BookingException $e) {
+                            Notification::make()->danger()->title('No se pudo anotar')->body($e->getMessage())->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()->title('Llegada anotada a la hora reservada')->send();
+                    }),
+
                 Action::make('levantar')
                     ->label('Levantar la reserva')
                     ->iconButton()
