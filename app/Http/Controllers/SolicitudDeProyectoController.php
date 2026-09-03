@@ -56,6 +56,14 @@ class SolicitudDeProyectoController extends Controller
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
             'telefono'     => ['nullable', 'string', 'max:40'],
             'organizacion' => ['nullable', 'string', 'max:160'],
+
+            // Quien firma: lo que el contrato necesita, pedido de una vez.
+            'persona'        => ['nullable', Rule::in(array_keys(Project::PERSONAS))],
+            'documento_tipo' => ['nullable', Rule::in(array_keys(Project::DOCUMENTOS))],
+            'documento'      => ['nullable', 'string', 'max:40'],
+            'razon_social'   => ['nullable', 'string', 'max:180', Rule::requiredIf(fn () => $request->input('persona') === 'juridica')],
+            'representante'  => ['nullable', 'string', 'max:120'],
+            'direccion'      => ['nullable', 'string', 'max:200'],
             'cliente'      => [Rule::requiredIf(! $request->user()?->category), Rule::in(array_keys(Project::CLIENTES))],
             'para_cuando'  => ['nullable', 'date', 'after:today'],
 
@@ -260,6 +268,31 @@ class SolicitudDeProyectoController extends Controller
 
         return $disco->response($project->reference_image_path, null, [
             'Cache-Control'          => 'private, max-age=600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Un documento del proyecto -el contrato, casi siempre- para quien lo pidió.
+     *
+     * Se sirve desde aquí y no por /storage: los documentos viven en el disco
+     * privado, y con razón. Quien llega por el correo trae el enlace firmado;
+     * quien entra con su cuenta, su sesión.
+     */
+    public function documento(Request $request, Project $project, \App\Models\ProjectDocument $document)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+        abort_unless($document->project_id === $project->id, 404);
+
+        if ($document->url) {
+            return redirect()->away($document->url);
+        }
+
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+
+        abort_unless($document->file_path && $disco->exists($document->file_path), 404);
+
+        return $disco->response($document->file_path, basename($document->file_path), [
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

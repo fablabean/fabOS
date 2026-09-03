@@ -4,6 +4,7 @@ namespace App\Services\Projects;
 
 use App\Models\Project;
 use App\Models\ProjectComment;
+use App\Models\ProjectDocument;
 use App\Models\ProjectMember;
 use App\Models\ProjectTask;
 use App\Models\User;
@@ -289,6 +290,14 @@ class ProjectService
                 'contact_name'    => trim($datos['nombre']),
                 'contact_email'   => $correo,
                 'contact_phone'   => $datos['telefono'] ?? null,
+                // Quién firma. Se pide desde el principio porque es lo que el
+                // contrato necesita, y preguntarlo después es un correo más.
+                'client_person_kind'    => $datos['persona'] ?? null,
+                'client_document_type'  => $datos['documento_tipo'] ?? null,
+                'client_document'       => $datos['documento'] ?? null,
+                'client_legal_name'     => $datos['razon_social'] ?? null,
+                'client_representative' => $datos['representante'] ?? null,
+                'client_address'        => $datos['direccion'] ?? null,
                 'requested_by'    => $persona->id,
                 'due_on'          => $datos['para_cuando'] ?? null,
             ]);
@@ -433,9 +442,95 @@ class ProjectService
 
             $proyecto->update(['proposal_sent_at' => now()]);
 
+            /*
+             * Y queda en la conversación. La propuesta es lo más importante
+             * que el laboratorio le dice al cliente, y no aparecía en el hilo:
+             * al abrir «Conversación» se veía vacío un proyecto con dos
+             * propuestas cruzadas. Con qué valor y qué plazo, para que al
+             * releer se sepa qué cambió entre la v1 y la v2.
+             */
+            $proyecto->comments()->create([
+                'user_id'     => auth()->id(),
+                'author_name' => auth()->user()?->name ?: 'El laboratorio',
+                'side'        => 'laboratorio',
+                'body'        => 'Enviamos la propuesta ' . $version->etiqueta() . ' a ' . $correo . '.'
+                    . ($proyecto->estimated_value ? ' Valor: ' . config('fabos.money.symbol') . number_format((float) $proyecto->estimated_value, 0, ',', '.') . '.' : '')
+                    . ($proyecto->due_on ? ' Entrega: ' . $proyecto->due_on->format('d/m/Y') . '.' : '')
+                    . (filled($datos['mensaje'] ?? null) ? "\n\n" . $datos['mensaje'] : ''),
+            ]);
+
             // Mandar la propuesta ES estar en la etapa de propuesta. No hace
             // falta pedirle además la compuerta: el hecho es la evidencia.
             $this->avanzarPorEvento($proyecto, 'propuesta');
+
+            return $proyecto->refresh();
+        });
+    }
+
+    /**
+     * Manda el contrato u orden de servicio al cliente (§11).
+     *
+     * Una propuesta aceptada es un acuerdo, y lo que sigue es dejarlo por
+     * escrito. El contrato se manda desde aquí como se mandó la propuesta:
+     * con enlace firmado, anotado en la conversación y con fecha. Mandarlo por
+     * fuera deja a la ficha diciendo «aceptada» meses después, sin que nadie
+     * sepa si el papel salió.
+     *
+     * @throws ProjectException si no está aceptada o el documento no es un contrato
+     */
+    public function enviarContrato(
+        Project $proyecto,
+        ProjectDocument $documento,
+        ?string $mensaje = null,
+        ?User $porQuien = null,
+    ): Project {
+        if (! $proyecto->estaAceptado()) {
+            throw new ProjectException('El contrato se manda cuando la propuesta está aceptada. Esta todavía no.');
+        }
+
+        if ($documento->project_id !== $proyecto->id || $documento->kind !== 'contrato') {
+            throw new ProjectException('Ese documento no es un contrato de este proyecto.');
+        }
+
+        $correo = $proyecto->correoDeLaPropuesta();
+
+        if (blank($correo)) {
+            throw new ProjectException('Este proyecto no tiene correo de contacto: no hay a quién mandarle el contrato.');
+        }
+
+        return DB::transaction(function () use ($proyecto, $documento, $mensaje, $porQuien, $correo) {
+            $variables = [
+                'proyecto' => $proyecto->name,
+                'codigo'   => $proyecto->code,
+                'mensaje'  => $mensaje ?? '',
+                'enlace'   => URL::temporarySignedRoute(
+                    'proyectos.documento',
+                    now()->addDays(60),
+                    ['project' => $proyecto->id, 'document' => $documento->id],
+                ),
+            ];
+
+            $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+            if ($destinatario) {
+                $this->avisos->enviar('proyecto.contrato', $destinatario, $variables, $proyecto);
+            } else {
+                $this->avisos->enviarSinCuenta(
+                    'proyecto.contrato', $correo,
+                    $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                    $variables, $proyecto,
+                );
+            }
+
+            $proyecto->update(['contract_sent_at' => now()]);
+
+            $proyecto->comments()->create([
+                'user_id'     => $porQuien?->id,
+                'author_name' => $porQuien?->name ?: 'El laboratorio',
+                'side'        => 'laboratorio',
+                'body'        => 'Enviamos el contrato «' . $documento->title . '» a ' . $correo . ' para su firma.'
+                    . (filled($mensaje) ? "\n\n" . $mensaje : ''),
+            ]);
 
             return $proyecto->refresh();
         });
@@ -509,16 +604,17 @@ class ProjectService
                 'acceptance_note' => $nota,
             ]);
 
-            // Si aceptó diciendo algo, eso también es parte de la conversación:
-            // guardarlo solo en `acceptance_note` lo escondería del hilo.
-            if (filled($nota)) {
-                $proyecto->comments()->create([
-                    'user_id'     => $quien?->id,
-                    'author_name' => $quien?->name ?: $proyecto->contact_name,
-                    'side'        => 'cliente',
-                    'body'        => $nota,
-                ]);
-            }
+            // La aceptación es parte de la conversación, siempre: es el
+            // momento en que deja de ser una charla y pasa a ser un
+            // compromiso, y tiene que leerse en el hilo con su fecha. Si
+            // aceptó diciendo algo, va con ella.
+            $proyecto->comments()->create([
+                'user_id'     => $quien?->id,
+                'author_name' => $quien?->name ?: $proyecto->contact_name,
+                'side'        => 'cliente',
+                'body'        => 'Acepté la propuesta ' . ($proyecto->propuestaVigente()?->etiqueta() ?? '') . '.'
+                    . (filled($nota) ? "\n\n" . $nota : ''),
+            ]);
 
             $variables = [
                 'proyecto'          => $proyecto->name,

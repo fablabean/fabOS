@@ -14,6 +14,8 @@ class Project extends Model
 {
     protected $fillable = [
         'code', 'name', 'stage', 'status', 'source', 'is_internal', 'client_kind',
+        'client_person_kind', 'client_document_type', 'client_document',
+        'client_legal_name', 'client_representative', 'client_address', 'contract_sent_at',
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
@@ -25,6 +27,7 @@ class Project extends Model
     {
         return [
             'is_internal' => 'boolean',
+            'contract_sent_at' => UtcDateTime::class,
             'starts_on' => 'date',
             'due_on'    => 'date',
             'closed_at'        => UtcDateTime::class,
@@ -144,6 +147,58 @@ class Project extends Model
      * interna, un circuito de cuatro manos que no se corre en tres días. Un
      * estudiante no pasa por nada de eso, y una empresa de fuera tampoco.
      */
+    /** Quién firma: una persona con su cédula, o una empresa con su NIT. */
+    public const PERSONAS = [
+        'natural'  => 'Persona natural',
+        'juridica' => 'Persona jurídica (empresa u organización)',
+    ];
+
+    public const DOCUMENTOS = [
+        'CC'  => 'Cédula de ciudadanía',
+        'CE'  => 'Cédula de extranjería',
+        'PA'  => 'Pasaporte',
+        'NIT' => 'NIT',
+    ];
+
+    public function esPersonaJuridica(): bool
+    {
+        return $this->client_person_kind === 'juridica';
+    }
+
+    /**
+     * A nombre de quién va el contrato, en una línea.
+     *
+     * «Acrílicos del Norte S.A.S. · NIT 900.123.456-7 · representante legal
+     * Marcela Ruiz», o «Marcela Ruiz · CC 52.123.456». Es lo que se copia al
+     * encabezado del contrato sin preguntar nada por WhatsApp.
+     */
+    public function quienFirma(): ?string
+    {
+        if (! $this->client_person_kind) {
+            return null;
+        }
+
+        $documento = $this->client_document
+            ? ($this->client_document_type ?: 'Doc.') . ' ' . $this->client_document
+            : null;
+
+        if ($this->esPersonaJuridica()) {
+            return collect([
+                $this->client_legal_name ?: $this->organization,
+                $documento,
+                $this->client_representative ? 'representante legal ' . $this->client_representative : null,
+            ])->filter()->implode(' · ');
+        }
+
+        return collect([$this->contact_name, $documento])->filter()->implode(' · ');
+    }
+
+    /** El contrato más reciente cargado en Documentos, si lo hay. */
+    public function contratoVigente(): ?ProjectDocument
+    {
+        return $this->documents()->where('kind', 'contrato')->latest('id')->first();
+    }
+
     public const CLIENTES = [
         'interno'    => 'Área o facultad de la Universidad',
         'estudiante' => 'Estudiante',

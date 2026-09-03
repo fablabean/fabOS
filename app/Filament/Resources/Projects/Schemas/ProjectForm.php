@@ -8,6 +8,7 @@ use App\Services\Media\OptimizadorDeImagen;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class ProjectForm
 {
@@ -27,6 +29,41 @@ class ProjectForm
                     ->description('Lo primero es que quede anotada. El resto se completa después.')
                     ->columns(2)
                     ->schema([
+                        /*
+                         * En que va la propuesta, arriba del todo. Un proyecto
+                         * aceptado no se distinguia de uno en conversacion sin
+                         * ir a mirar la lista, y es la primera pregunta de
+                         * quien abre la ficha: ¿ya dijo que si?
+                         */
+                        Placeholder::make('estado_propuesta')
+                            ->label('La propuesta')
+                            ->columnSpanFull()
+                            ->visible(fn (?Project $record) => $record !== null)
+                            ->content(function (?Project $record) {
+                                $tz = config('fabos.lab.timezone');
+
+                                if ($record->contract_sent_at) {
+                                    return new HtmlString('<strong>Aceptada</strong> el '
+                                        . $record->accepted_at?->timezone($tz)->format('d/m/Y')
+                                        . ' · <strong>contrato enviado</strong> el '
+                                        . $record->contract_sent_at->timezone($tz)->format('d/m/Y') . '.');
+                                }
+
+                                if ($record->estaAceptado()) {
+                                    return new HtmlString('<strong>Aceptada</strong> el '
+                                        . $record->accepted_at->timezone($tz)->format('d/m/Y')
+                                        . ($record->acceptedBy ? ' por ' . e($record->acceptedBy->name) : '')
+                                        . '. Falta mandar el contrato: desde la lista, «Enviar contrato».');
+                                }
+
+                                if ($record->proposal_sent_at) {
+                                    return 'Propuesta ' . ($record->propuestaVigente()?->etiqueta() ?? '') . ' enviada el '
+                                        . $record->proposal_sent_at->timezone($tz)->format('d/m/Y') . ', esperando respuesta.';
+                                }
+
+                                return 'Sin propuesta todavía.';
+                            }),
+
                         TextInput::make('name')->label('Nombre del proyecto')->required()->columnSpanFull(),
 
                         Select::make('source')
@@ -93,6 +130,37 @@ class ProjectForm
                         TextInput::make('contact_name')->label('Persona de contacto'),
                         TextInput::make('contact_email')->label('Correo')->email(),
                         TextInput::make('contact_phone')->label('Teléfono'),
+
+                        /*
+                         * Quien firma. Un contrato se firma con alguien
+                         * concreto, y sin esto se redactaba preguntando el NIT
+                         * por WhatsApp.
+                         */
+                        Select::make('client_person_kind')
+                            ->label('Firma como')
+                            ->options(Project::PERSONAS)
+                            ->live()
+                            ->placeholder('Sin definir'),
+
+                        Select::make('client_document_type')
+                            ->label('Tipo de documento')
+                            ->options(Project::DOCUMENTOS)
+                            ->placeholder('—'),
+
+                        TextInput::make('client_document')->label('Número de documento')->maxLength(40),
+
+                        TextInput::make('client_address')->label('Dirección')->maxLength(200),
+
+                        TextInput::make('client_legal_name')
+                            ->label('Razón social')
+                            ->maxLength(180)
+                            ->visible(fn ($get) => $get('client_person_kind') === 'juridica')
+                            ->helperText('Como aparece en el RUT.'),
+
+                        TextInput::make('client_representative')
+                            ->label('Representante legal')
+                            ->maxLength(120)
+                            ->visible(fn ($get) => $get('client_person_kind') === 'juridica'),
 
                         Select::make('requested_by')
                             ->label('Si ya tiene cuenta')

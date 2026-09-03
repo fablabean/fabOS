@@ -61,7 +61,7 @@ class ProjectsTable
                         // Aceptada es el momento en que deja de ser una
                         // conversacion y pasa a ser un compromiso.
                         . ($r->accepted_at
-                            ? ' · aceptada'
+                            ? ($r->contract_sent_at ? ' · contrato enviado' : ' · aceptada')
                             : ($r->proposal_sent_at
                                 ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
                                 : ''))),
@@ -291,6 +291,73 @@ class ProjectsTable
                             ->success()
                             ->title('Propuesta enviada')
                             ->body('A ' . $a . '. El enlace vale 60 días.')
+                            ->send();
+                    }),
+
+                /*
+                 * Enviar el contrato, cuando la propuesta esta aceptada. Se
+                 * elige uno ya cargado en Documentos o se sube aqui mismo; va
+                 * con enlace firmado, queda en la conversacion y con fecha.
+                 */
+                Action::make('contrato')
+                    ->label('Enviar contrato')
+                    ->iconButton()
+                    ->tooltip('Enviar el contrato al cliente')
+                    ->icon('heroicon-o-document-check')
+                    ->color(fn (Project $r) => $r->contract_sent_at ? 'gray' : 'success')
+                    ->visible(fn (Project $r) => $r->estaAceptado() && self::puedeManejar($r))
+                    ->modalHeading(fn (Project $r) => 'Enviar el contrato de ' . $r->code)
+                    ->modalDescription(fn (Project $r) => 'A ' . ($r->correoDeLaPropuesta() ?? 'sin correo')
+                        . ($r->quienFirma() ? ' · a nombre de ' . $r->quienFirma() : ' · sin datos de quién firma: complétalos en la ficha antes, o el contrato saldrá sin ellos.'))
+                    ->schema([
+                        Select::make('document_id')
+                            ->label('Un contrato ya cargado')
+                            ->options(fn (Project $record) => $record->documents()->where('kind', 'contrato')->latest('id')->pluck('title', 'id'))
+                            ->placeholder('Ninguno: lo subo ahora')
+                            ->live(),
+
+                        FileUpload::make('archivo')
+                            ->label('O el archivo del contrato')
+                            ->directory('proyectos')
+                            ->maxSize(10240)
+                            ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            ->visible(fn ($get) => blank($get('document_id')))
+                            ->required(fn ($get) => blank($get('document_id')))
+                            ->columnSpanFull(),
+
+                        TextInput::make('titulo')
+                            ->label('Cómo se llama')
+                            ->default(fn (Project $record) => 'Contrato ' . $record->code)
+                            ->visible(fn ($get) => blank($get('document_id')))
+                            ->maxLength(160),
+
+                        Textarea::make('mensaje')
+                            ->label('Algo que quieras añadir')
+                            ->rows(3)
+                            ->columnSpanFull()
+                            ->helperText('Va dentro del correo. Opcional.'),
+                    ])
+                    ->action(function (Project $record, array $data) {
+                        $documento = filled($data['document_id'] ?? null)
+                            ? $record->documents()->find($data['document_id'])
+                            : $record->documents()->create([
+                                'kind'        => 'contrato',
+                                'title'       => $data['titulo'] ?: 'Contrato ' . $record->code,
+                                'file_path'   => $data['archivo'],
+                                'uploaded_by' => auth()->id(),
+                            ]);
+
+                        try {
+                            app(ProjectService::class)->enviarContrato($record, $documento, $data['mensaje'] ?? null, auth()->user());
+                        } catch (ProjectException $e) {
+                            Notification::make()->danger()->title('No se pudo enviar')->body($e->getMessage())->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()
+                            ->title('Contrato enviado')
+                            ->body('A ' . $record->correoDeLaPropuesta() . '. Queda en la conversación del proyecto.')
                             ->send();
                     }),
 

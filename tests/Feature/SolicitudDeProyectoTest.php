@@ -944,7 +944,10 @@ class SolicitudDeProyectoTest extends TestCase
             ->post(route('proyectos.aceptar', $p), ['nota' => 'Perfecto, adelante.']);
 
         $this->assertCount(1, $p->fresh()->comments);
-        $this->assertSame('Perfecto, adelante.', $p->fresh()->comments->first()->body);
+        // La nota va dentro del comentario de aceptacion, que ahora siempre
+        // existe: «Acepte la propuesta» y debajo lo que dijo.
+        $this->assertStringContainsString('Perfecto, adelante.', $p->fresh()->comments->first()->body);
+        $this->assertStringContainsString('Acepté la propuesta', $p->fresh()->comments->first()->body);
     }
 
     public function test_el_hilo_se_ve_en_la_propuesta(): void

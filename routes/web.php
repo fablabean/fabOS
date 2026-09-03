@@ -103,6 +103,11 @@ Route::post('/proyectos/{project}/aceptar', [SolicitudDeProyectoController::clas
     ->name('proyectos.aceptar');
 Route::get('/proyectos/{project}/imagen', [SolicitudDeProyectoController::class, 'imagen'])
     ->name('proyectos.imagen');
+// El contrato y demas documentos del proyecto, con el enlace firmado del
+// correo o con la sesion de quien lo pidio. Fuera del grupo con sesion: el
+// enlace del correo llega sin haber entrado.
+Route::get('/proyectos/{project}/documentos/{document}', [SolicitudDeProyectoController::class, 'documento'])
+    ->name('proyectos.documento');
 
 // La evidencia vive en el disco privado y comprueba ella misma quien pide: la
 // sesion del backoffice, la de quien lo pidio, o el enlace firmado del correo.

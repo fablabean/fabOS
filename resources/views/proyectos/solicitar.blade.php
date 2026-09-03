@@ -254,6 +254,68 @@
             </div>
         @endif
 
+        {{-- Quién firma. Un proyecto aceptado pasa a contrato, y un contrato se
+             firma con alguien concreto: una persona con su cédula o una empresa
+             con su NIT y su representante. Pedirlo aquí ahorra el correo de
+             después; nada de esto es obligatorio para preguntar. --}}
+        <div class="panel" style="margin-top:1rem">
+            <p style="margin:0 0 .5rem;font-weight:600">Si el proyecto sigue, ¿a nombre de quién iría el contrato?</p>
+            <p class="foot" style="margin:0 0 .8rem">Opcional ahora; nos lo ahorra después. Se puede completar más adelante.</p>
+
+            <div class="dos">
+                <label>
+                    Pides como
+                    <select name="persona" id="persona">
+                        <option value="">Todavía no lo sé</option>
+                        @foreach (\App\Models\Project::PERSONAS as $clave => $nombre)
+                            <option value="{{ $clave }}" @selected(old('persona') === $clave)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label>
+                    Documento
+                    <span style="display:flex;gap:.4rem">
+                        <select name="documento_tipo" style="max-width:8rem">
+                            <option value="">Tipo</option>
+                            @foreach (\App\Models\Project::DOCUMENTOS as $clave => $nombre)
+                                <option value="{{ $clave }}" @selected(old('documento_tipo') === $clave)>{{ $clave }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="documento" maxlength="40" value="{{ old('documento') }}" placeholder="Número">
+                    </span>
+                </label>
+
+                <label data-juridica hidden>
+                    Razón social
+                    <input type="text" name="razon_social" maxlength="180" value="{{ old('razon_social') }}"
+                           placeholder="Como aparece en el RUT">
+                </label>
+
+                <label data-juridica hidden>
+                    Representante legal
+                    <input type="text" name="representante" maxlength="120" value="{{ old('representante') }}">
+                </label>
+
+                <label>
+                    Dirección
+                    <input type="text" name="direccion" maxlength="200" value="{{ old('direccion') }}">
+                </label>
+            </div>
+        </div>
+
+        <script>
+            // Razón social y representante solo tienen sentido en una empresa.
+            (function () {
+                const sel = document.getElementById('persona');
+                if (! sel) return;
+                const pintar = () => document.querySelectorAll('[data-juridica]')
+                    .forEach((el) => { el.hidden = sel.value !== 'juridica'; });
+                sel.addEventListener('change', pintar);
+                pintar();
+            })();
+        </script>
+
         <button type="submit">Enviar la solicitud</button>
 
         <p class="foot" style="margin-top:.8rem">

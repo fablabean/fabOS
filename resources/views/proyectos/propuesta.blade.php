@@ -298,6 +298,20 @@
                 @endif
             </p>
 
+            @if ($proyecto->contract_sent_at && ($contrato = $proyecto->contratoVigente()))
+                {{-- El contrato, donde está la propuesta que se aceptó: es el
+                     mismo enlace del correo, para cuando el correo se pierda. --}}
+                <p style="margin:.9rem 0 0">
+                    <strong>Contrato para tu firma:</strong>
+                    <a href="{{ $firmado
+                        ? \Illuminate\Support\Facades\URL::temporarySignedRoute('proyectos.documento', now()->addDays(60), ['project' => $proyecto->id, 'document' => $contrato->id])
+                        : route('proyectos.documento', [$proyecto, $contrato]) }}">{{ $contrato->title }}</a>
+                    @if ($proyecto->quienFirma())
+                        <span class="quien">· a nombre de {{ $proyecto->quienFirma() }}</span>
+                    @endif
+                </p>
+            @endif
+
             {{-- Y qué pasa ahora. Aceptar y que la página no diga nada más deja
                  a quien aceptó sin saber si tiene que hacer algo, que es cuando
                  vuelve a escribir por otro canal. --}}

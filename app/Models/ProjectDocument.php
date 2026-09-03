@@ -31,6 +31,11 @@ class ProjectDocument extends Model
         'brief'     => 'Brief',
         'acta'      => 'Acta de hito',
         'informe'   => 'Informe de cierre',
+        // Lo que el cliente aporta para el contrato: sin esto se pide por
+        // correo y se pierde en el correo.
+        'rut'       => 'RUT',
+        'camara'    => 'Cámara de comercio',
+        'identidad' => 'Documento de identidad',
         'otro'      => 'Otro',
     ];
 
