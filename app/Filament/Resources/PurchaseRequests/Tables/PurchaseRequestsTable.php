@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PurchaseRequests\Tables;
 
+use App\Filament\Resources\PurchaseRequests\Actions\AccionesDeCompartir;
 use App\Models\Budget;
 use App\Models\PurchaseRequest;
 use App\Models\User;
@@ -84,6 +85,9 @@ class PurchaseRequestsTable
             ->recordActions([
                 ActionGroup::make([
                     self::verRequisicion(),
+                    self::descargarPdf(),
+                    AccionesDeCompartir::compartir(),
+                    AccionesDeCompartir::dejarDeCompartir(),
                     self::enviar(),
                     self::aprobar(),
                     self::rechazar(),
@@ -103,6 +107,15 @@ class PurchaseRequestsTable
             ->color('gray')
             ->url(fn (PurchaseRequest $r) => route('compras.requisicion', $r))
             ->openUrlInNewTab();
+    }
+
+    private static function descargarPdf(): Action
+    {
+        return Action::make('pdf')
+            ->label('Descargar PDF')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('gray')
+            ->url(fn (PurchaseRequest $r) => route('compras.requisicion.pdf', $r));
     }
 
     private static function enviar(): Action

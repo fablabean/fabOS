@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Inventory\StockService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * El camino de una compra (§13).
@@ -281,6 +282,33 @@ class PurchasingService
         ]);
 
         return $solicitud->refresh();
+    }
+
+    /**
+     * Comparte la requisición: un enlace sin sesión que compras abre y baja
+     * en PDF.
+     *
+     * Se genera una sola vez: compartir dos veces devuelve el mismo enlace, que
+     * es lo que espera quien ya lo mandó por correo. Y no congela nada: si
+     * después se corrige una cantidad, compras ve la corrección en el mismo
+     * enlace, en vez de quedarse con el PDF viejo adjunto en un correo.
+     */
+    public function compartir(PurchaseRequest $solicitud): string
+    {
+        if (! $solicitud->share_token) {
+            $solicitud->update([
+                'share_token' => Str::random(40),
+                'shared_at'   => now(),
+            ]);
+        }
+
+        return $solicitud->enlaceCompartido();
+    }
+
+    /** Revoca el enlace: el que ya se mandó deja de abrir, y compartir de nuevo da otro. */
+    public function dejarDeCompartir(PurchaseRequest $solicitud): void
+    {
+        $solicitud->update(['share_token' => null, 'shared_at' => null]);
     }
 
     /**

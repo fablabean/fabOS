@@ -19,7 +19,8 @@ class PurchaseRequest extends Model
         'code', 'budget_id', 'project_id', 'area_id', 'requested_by', 'approved_by',
         'status', 'justification', 'notes',
         'submitted_at', 'decided_at', 'decision_reason', 'closed_at',
-     'tax_rate',];
+        'tax_rate', 'cart_url', 'share_token', 'shared_at',
+    ];
 
     protected function casts(): array
     {
@@ -28,6 +29,7 @@ class PurchaseRequest extends Model
             'submitted_at' => UtcDateTime::class,
             'decided_at'   => UtcDateTime::class,
             'closed_at'    => UtcDateTime::class,
+            'shared_at'    => UtcDateTime::class,
         ];
     }
 
@@ -140,5 +142,20 @@ class PurchaseRequest extends Model
     public function esEditable(): bool
     {
         return in_array($this->status, self::EDITABLES, true);
+    }
+
+    /** Hay un enlace vivo que cualquiera que lo tenga puede abrir. */
+    public function estaCompartida(): bool
+    {
+        return $this->share_token !== null;
+    }
+
+    /**
+     * La dirección que se le manda a compras. Nula si no se ha compartido:
+     * el enlace no existe hasta que alguien decide que exista.
+     */
+    public function enlaceCompartido(): ?string
+    {
+        return $this->share_token ? route('compras.compartida', $this->share_token) : null;
     }
 }

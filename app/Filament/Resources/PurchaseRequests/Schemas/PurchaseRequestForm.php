@@ -74,6 +74,16 @@ class PurchaseRequestForm
                 Section::make('Qué se pide')
                     ->description('Cada línea lleva su cantidad y su precio estimado. El total con impuesto es lo que se compara contra el presupuesto.')
                     ->schema([
+                        // Cuando la compra va por Amazon -o cualquier tienda con
+                        // carrito- se deja armado antes de pedir: a compras le
+                        // queda mas facil copiar un enlace que buscar cada cosa.
+                        TextInput::make('cart_url')
+                            ->label('Enlace del carrito')
+                            ->url()
+                            ->maxLength(2000)
+                            ->placeholder('https://www.amazon.com/gp/cart/...')
+                            ->helperText('Si el carrito ya está armado en Amazon u otra tienda, pégalo aquí: va en la requisición para que compras lo copie tal cual.'),
+
                         Repeater::make('items')
                             ->label('')
                             ->relationship()
@@ -105,7 +115,12 @@ class PurchaseRequestForm
                                 TextInput::make('description')
                                     ->label('Qué')
                                     ->required()
-                                    ->columnSpan(3),
+                                    ->columnSpan(3)
+                                    ->placeholder('Sensor de temperatura DS18B20')
+                                    // Lo que no esta en el catalogo se escribe
+                                    // aqui tal cual: la ficha, si hace falta,
+                                    // se crea cuando llegue.
+                                    ->helperText('Con sus palabras. No tiene que estar en el catálogo.'),
 
                                 TextInput::make('quantity')
                                     ->label('Cantidad')

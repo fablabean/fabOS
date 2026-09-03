@@ -426,6 +426,16 @@
                 Recibir más de lo pedido se rechaza: si de verdad llegó de más, se corrige la línea
                 primero, para que la requisición siga contando lo que pasó.
             </div>
+            <div class="porque">
+                <b>La requisición se comparte con un enlace, no con un adjunto.</b> Quien la recibe
+                en compras no tiene cuenta aquí: abre el enlace sin entrar y baja el PDF. Un PDF
+                adjunto congela el documento en el correo; si después se corrige una cantidad, el
+                papel que tiene compras es el viejo. Como lleva proveedores y precios, el enlace
+                <b>no existe hasta que alguien decide compartir</b>, es largo y aleatorio, y se
+                revoca desde la misma solicitud. Y si la compra va por Amazon, el carrito ya
+                armado va en la requisición, para que compras lo copie tal cual en vez de buscar
+                cada cosa.
+            </div>
 
             <h3 style="margin-top:1.2rem">Existencias</h3>
             <ul>

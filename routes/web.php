@@ -278,9 +278,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/informes/cierre', [ReportController::class, 'cierre'])->name('informes.cierre');
 
     // La requisición que se le entrega al área de compras de la Universidad (§13).
-    // Va con sesión y no con enlace público: lleva proveedores y precios.
     Route::get('/compras/{purchaseRequest}/requisicion', [PurchaseRequestController::class, 'show'])
         ->name('compras.requisicion');
+    Route::get('/compras/{purchaseRequest}/requisicion.pdf', [PurchaseRequestController::class, 'pdf'])
+        ->name('compras.requisicion.pdf');
+});
+
+/*
+ * La requisición compartida con compras (§13).
+ *
+ * Sin sesión: quien la recibe en el área de compras no tiene cuenta en fabOS.
+ * Lleva proveedores y precios, así que no es pública por defecto: el enlace
+ * existe solo cuando alguien decidió compartir esa solicitud, es largo y
+ * aleatorio, y se revoca desde el panel. El mismo enlace deja bajar el PDF.
+ */
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/compras/compartida/{token}', [PurchaseRequestController::class, 'compartida'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('compras.compartida');
+    Route::get('/compras/compartida/{token}/pdf', [PurchaseRequestController::class, 'compartidaPdf'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('compras.compartida.pdf');
 });
 
 // La ficha de una pregunta va al final: si fuera antes, /preguntas/nueva

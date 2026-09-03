@@ -149,6 +149,8 @@ decisión tuya
       por lo recibido; no se aprueba por encima del disponible
 - [x] Carrito de compra → requisición imprimible para el área de compras de la
       Universidad, con código consecutivo por año
+- [x] Requisición compartida por enlace sin sesión, con PDF; enlace del carrito
+      ya armado (Amazon) en la solicitud
 - [x] Recepción parcial: lo que llega y repone un insumo entra al inventario en
       el mismo acto y actualiza el último costo conocido
 - [x] Insumos con existencias, punto de reposición y carrito de reposición
@@ -524,6 +526,24 @@ Ver `docs/ASESORIAS.md`.
   no se escriben: salen de las solicitudes de compra —aprobada compromete,
   recibida ejecuta—. Cada fila lleva atajo a sus solicitudes y a crear una
   nueva; sin eso, quien mira un presupuesto en cero se queda mirando el cero.
+- **La requisición se comparte por enlace** (`purchase_requests.share_token`).
+  Quien la recibe en compras no tiene cuenta en fabOS, y mandar un PDF adjunto
+  congela el documento en el correo: si después se corrige una cantidad, el
+  papel que tiene compras es el viejo. El enlace abre sin sesión y deja bajar
+  el PDF —generado del mismo HTML que se ve en pantalla, sin plantilla aparte
+  que se desfase—. Lleva proveedores y precios, así que **no es público por
+  defecto**: existe solo cuando alguien decidió compartir esa solicitud, es
+  largo y aleatorio, se genera una sola vez (compartir dos veces da el mismo,
+  que es lo que espera quien ya lo mandó) y se revoca desde el panel.
+- **El carrito ya armado** (`purchase_requests.cart_url`). Cuando la compra va
+  por Amazon el laboratorio deja el carrito listo antes de pedir: a compras le
+  queda más fácil copiar un enlace que buscar cada cosa. Es de la solicitud
+  entera, no de una línea, y va en la requisición en un lugar visible.
+- **Lo que no está en el catálogo se pide con sus palabras.** «Repone» es
+  opcional y «Qué» es texto libre: un servicio, unos honorarios o un sensor
+  que nunca se ha comprado entran igual. La ficha del insumo, si hace falta,
+  se crea cuando llegue; obligar a crearla antes de pedir es lo que hace que
+  el catálogo se llene de fichas de cosas que nunca llegaron.
 - **Presupuesto de venta** (`kind`). No todo presupuesto es para gastar: el
   laboratorio también tiene una meta de ingresos, y lo que se factura suma
   contra ella **solo** —sin que nadie lo anote a mano—. Es la misma idea leída

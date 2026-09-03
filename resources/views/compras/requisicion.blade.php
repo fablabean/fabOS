@@ -6,6 +6,11 @@
     $tz = config('fabos.lab.timezone');
     $pesos = fn ($v) => $simbolo . number_format((float) $v, 0, ',', '.');
     $cantidad = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, ',', '.'), '0'), ',');
+    // La misma plantilla sirve la pantalla y el PDF: lo que se ve es lo que se
+    // baja. En el PDF no hay botones, y la letra es una que el generador trae
+    // con acentos y eñes.
+    $paraPdf = $paraPdf ?? false;
+    $enlacePdf = $enlacePdf ?? null;
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -14,83 +19,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $solicitud->code }} · Requisición · {{ $lab }}</title>
     <style>
-        /* Pensada para imprimirse o exportarse a PDF: es lo que se le entrega
-           al área de compras, así que tiene que verse bien en papel. */
-        :root { --ink:#111; --soft:#666; --rule:#ddd; }
+        /* Pensada para imprimirse o bajarse en PDF: es lo que se le entrega al
+           área de compras, así que tiene que verse bien en papel. Todo va en
+           tablas y no en flex ni grid, porque el generador de PDF no los
+           entiende y la hoja saldría desarmada. */
         *{box-sizing:border-box}
+        @if ($paraPdf)
+            @page{margin:1.1cm 1.4cm}
+        @endif
         body{
-            font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-            color:var(--ink);margin:0;padding:2.5rem;max-width:900px;background:#fff;
+            @if ($paraPdf)
+                font-family:DejaVu Sans,sans-serif;font-size:11px;padding:0;
+            @else
+                font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:14px;padding:2.5rem;
+            @endif
+            line-height:1.5;color:#111;margin:0;max-width:900px;background:#fff;
         }
-        header{display:flex;justify-content:space-between;align-items:flex-start;
-               border-bottom:2px solid var(--ink);padding-bottom:1rem;margin-bottom:1.5rem}
+        table{width:100%;border-collapse:collapse}
+        .cabecera{border-bottom:2px solid #111;margin-bottom:1.5rem}
+        .cabecera td{padding:0 0 1rem;vertical-align:top}
         h1{font-size:1.4rem;margin:0}
-        .codigo{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;text-align:right}
-        .meta{font-size:.85rem;color:var(--soft);text-align:right;margin-top:.2rem}
-        dl{display:grid;grid-template-columns:auto 1fr;gap:.3rem 1rem;margin:0 0 1.5rem;font-size:.9rem}
-        dt{color:var(--soft)}
-        dd{margin:0;font-weight:500}
-        table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
-        th,td{text-align:left;padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top}
-        th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);
-           border-bottom:1px solid var(--ink)}
+        .codigo{font-size:1.6rem;font-weight:700;text-align:right}
+        .meta{font-size:.85rem;color:#666;margin-top:.2rem}
+        .derecha{text-align:right}
+        .datos{margin-bottom:1.5rem;font-size:.9rem}
+        .datos td{padding:.15rem 0;vertical-align:top}
+        .datos td.k{color:#666;width:9rem;padding-right:1rem;white-space:nowrap}
+        .datos td.v{font-weight:bold}
+        .lineas{margin-bottom:1.5rem}
+        .lineas th,.lineas td{text-align:left;padding:.55rem .5rem;border-bottom:1px solid #ddd;vertical-align:top}
+        .lineas th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#666;border-bottom:1px solid #111}
         td.num,th.num{text-align:right;white-space:nowrap}
-        tfoot td{border-bottom:none;padding-top:.5rem}
-        tfoot tr:last-child td{font-weight:700;font-size:1.05rem;border-top:2px solid var(--ink)}
-        .enlace{font-size:.78rem;color:var(--soft);word-break:break-all}
-        .firmas{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:4rem}
-        .firma{border-top:1px solid var(--ink);padding-top:.4rem;font-size:.82rem;color:var(--soft)}
-        .nota{font-size:.8rem;color:var(--soft);margin-top:2rem;border-top:1px solid var(--rule);padding-top:.8rem}
-        .sello{display:inline-block;border:1px solid var(--ink);border-radius:3px;
+        .lineas tfoot td{border-bottom:none;padding-top:.5rem}
+        .lineas tfoot tr.total td{font-weight:700;font-size:1.05rem;border-top:2px solid #111}
+        .enlace{font-size:.78rem;color:#666;word-wrap:break-word;word-break:break-all}
+        .carrito{border:1px solid #111;padding:.8rem 1rem;margin:0 0 1.5rem}
+        .carrito .titulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:.2rem}
+        .carrito .url{font-family:'DejaVu Sans Mono',Menlo,Consolas,monospace;font-size:.85rem;word-wrap:break-word;word-break:break-all}
+        .firmas{margin-top:3rem}
+        .firmas td{width:50%;padding:0 1.5rem 0 0}
+        .firmas td+td{padding:0 0 0 1.5rem}
+        .firma{border-top:1px solid #111;padding-top:.4rem;font-size:.82rem;color:#666}
+        .nota{font-size:.8rem;color:#666;margin-top:1.5rem;border-top:1px solid #ddd;padding-top:.8rem}
+        .sello{display:inline-block;border:1px solid #111;border-radius:3px;
                padding:.15rem .5rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+        .boton{font:inherit;display:inline-block;padding:.5rem 1rem;border:1px solid #111;background:#fff;
+               border-radius:4px;cursor:pointer;color:#111;text-decoration:none;margin-right:.5rem}
+        .boton.principal{background:#111;color:#fff}
         @media print{ body{padding:0} .noimprimir{display:none} }
     </style>
 </head>
 <body>
 
-<header>
-    <div>
-        <h1>{{ $lab }}</h1>
-        <div class="meta" style="text-align:left">Requisición de compra</div>
-    </div>
-    <div>
-        <div class="codigo">{{ $solicitud->code }}</div>
-        <div class="meta">
-            <span class="sello">{{ \App\Models\PurchaseRequest::ESTADOS[$solicitud->status] ?? $solicitud->status }}</span>
-        </div>
-    </div>
-</header>
+<table class="cabecera">
+    <tr>
+        <td>
+            <h1>{{ $lab }}</h1>
+            <div class="meta">Requisición de compra</div>
+        </td>
+        <td class="derecha">
+            <div class="codigo">{{ $solicitud->code }}</div>
+            <div class="meta">
+                <span class="sello">{{ \App\Models\PurchaseRequest::ESTADOS[$solicitud->status] ?? $solicitud->status }}</span>
+            </div>
+        </td>
+    </tr>
+</table>
 
-<dl>
-    <dt>Solicita</dt>
-    <dd>{{ $solicitud->requestedBy?->name }} · {{ $solicitud->requestedBy?->email }}</dd>
-
+<table class="datos">
+    <tr>
+        <td class="k">Solicita</td>
+        <td class="v">{{ $solicitud->requestedBy?->name }} · {{ $solicitud->requestedBy?->email }}</td>
+    </tr>
     @if ($solicitud->area)
-        <dt>Área</dt>
-        <dd>{{ $solicitud->area->name }}</dd>
+        <tr><td class="k">Área</td><td class="v">{{ $solicitud->area->name }}</td></tr>
     @endif
-
+    @if ($solicitud->project)
+        <tr><td class="k">Proyecto</td><td class="v">{{ $solicitud->project->name }}</td></tr>
+    @endif
     @if ($solicitud->justification)
-        <dt>Para qué</dt>
-        <dd>{{ $solicitud->justification }}</dd>
+        <tr><td class="k">Para qué</td><td class="v">{{ $solicitud->justification }}</td></tr>
     @endif
-
-    <dt>Fecha de envío</dt>
-    <dd>{{ $solicitud->submitted_at?->timezone($tz)->format('d/m/Y') ?? 'sin enviar' }}</dd>
-
+    <tr>
+        <td class="k">Fecha de envío</td>
+        <td class="v">{{ $solicitud->submitted_at?->timezone($tz)->format('d/m/Y') ?? 'sin enviar' }}</td>
+    </tr>
     @if ($solicitud->budget)
-        <dt>Presupuesto</dt>
-        <dd>{{ $solicitud->budget->name }} {{ $solicitud->budget->year }}</dd>
+        <tr><td class="k">Presupuesto</td><td class="v">{{ $solicitud->budget->name }} {{ $solicitud->budget->year }}</td></tr>
     @endif
-
     @if ($solicitud->approvedBy)
-        <dt>Aprobó</dt>
-        <dd>{{ $solicitud->approvedBy->name }} ·
-            {{ $solicitud->decided_at?->timezone($tz)->format('d/m/Y') }}</dd>
+        <tr>
+            <td class="k">Aprobó</td>
+            <td class="v">{{ $solicitud->approvedBy->name }} · {{ $solicitud->decided_at?->timezone($tz)->format('d/m/Y') }}</td>
+        </tr>
     @endif
-</dl>
+</table>
 
-<table>
+{{-- El carrito ya armado va antes de las líneas y enmarcado: es lo primero
+     que compras quiere copiar, y en una lista de veinte cosas se pierde. --}}
+@if ($solicitud->cart_url)
+    <div class="carrito">
+        <div class="titulo">Carrito ya armado</div>
+        <div class="url"><a href="{{ $solicitud->cart_url }}" style="color:#111">{{ $solicitud->cart_url }}</a></div>
+        <div class="enlace">Trae todo lo de la lista de abajo, en las cantidades pedidas. Copiar el enlace tal cual.</div>
+    </div>
+@endif
+
+<table class="lineas">
     <thead>
         <tr>
             <th style="width:2rem" class="num">#</th>
@@ -135,7 +170,7 @@
                 <td class="num">{{ $pesos($solicitud->totalEstimado() - $solicitud->subtotal()) }}</td>
             </tr>
         @endif
-        <tr>
+        <tr class="total">
             <td colspan="5" class="num">Total estimado</td>
             <td class="num">{{ $pesos($solicitud->totalEstimado()) }}</td>
         </tr>
@@ -146,10 +181,12 @@
     <p style="font-size:.88rem"><strong>Observaciones.</strong> {!! nl2br(e($solicitud->notes)) !!}</p>
 @endif
 
-<div class="firmas">
-    <div class="firma">Solicita · {{ $solicitud->requestedBy?->name }}</div>
-    <div class="firma">Aprueba · {{ $solicitud->approvedBy?->name ?? '' }}</div>
-</div>
+<table class="firmas">
+    <tr>
+        <td><div class="firma">Solicita · {{ $solicitud->requestedBy?->name }}</div></td>
+        <td><div class="firma">Aprueba · {{ $solicitud->approvedBy?->name ?? '' }}</div></td>
+    </tr>
+</table>
 
 <p class="nota">
     Los valores unitarios son estimados de referencia tomados del último costo conocido
@@ -157,13 +194,14 @@
     Documento generado por fabOS el {{ now()->timezone($tz)->format('d/m/Y H:i') }}.
 </p>
 
-<p class="noimprimir" style="margin-top:2rem">
-    <button onclick="window.print()"
-            style="font:inherit;padding:.5rem 1rem;border:1px solid var(--ink);background:#fff;
-                   border-radius:4px;cursor:pointer">
-        Imprimir o guardar como PDF
-    </button>
-</p>
+@unless ($paraPdf)
+    <p class="noimprimir" style="margin-top:2rem">
+        @if ($enlacePdf)
+            <a class="boton principal" href="{{ $enlacePdf }}">Descargar PDF</a>
+        @endif
+        <button class="boton" onclick="window.print()">Imprimir</button>
+    </p>
+@endunless
 
 </body>
 </html>

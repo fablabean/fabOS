@@ -134,7 +134,10 @@ Implementado y verificado:
   se envía, se aprueba contra un presupuesto —validando el disponible— y se
   recibe, casi siempre por partes. Lo que llega y repone un insumo entra al
   inventario en el mismo acto. El entregable es una **requisición imprimible**
-  para el área de compras de la Universidad. El saldo del presupuesto se deriva
+  para el área de compras de la Universidad: se comparte con un enlace sin
+  sesión que deja bajarla en PDF, y lleva el enlace del carrito ya armado
+  (Amazon u otra tienda) para que compras lo copie tal cual. Lo que no está en
+  el catálogo se pide con sus palabras. El saldo del presupuesto se deriva
   igual que en el libro contable: comprometido por lo aprobado, ejecutado por lo
   recibido, nunca un campo editable a mano.
 - **Insumos con existencias.** Distintos de los activos: un activo es una unidad
