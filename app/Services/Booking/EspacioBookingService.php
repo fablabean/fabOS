@@ -106,10 +106,6 @@ class EspacioBookingService
             );
         }
 
-        if ($esRecorrido) {
-            $this->comprobarElRecorrido($espacio, $participantes, $desde, $hasta);
-        }
-
         if ($espacio->esTodoElLaboratorio() && ! $esRecorrido) {
             $this->comprobarElCierre($desde, $hasta);
         }
@@ -117,12 +113,20 @@ class EspacioBookingService
         // El aforo es un dato del espacio, editable desde el backoffice. El
         // mensaje dice el numero para que quien lo lea sepa si es un limite
         // real o uno que nadie ha revisado todavia.
-        if ($espacio->capacity && $participantes > $espacio->capacity) {
+        // El aforo de una sala es un tope: no caben mas sillas. El del
+        // laboratorio entero es una guia -un recorrido de cuarenta y cinco se
+        // parte en tres grupos y entra igual-, y eso se dice mas abajo en vez
+        // de impedirlo.
+        if ($espacio->capacity && $participantes > $espacio->capacity && ! $espacio->esTodoElLaboratorio()) {
             throw new BookingException(
                 'En ' . $espacio->name . ' caben ' . $espacio->capacity . ' personas, y pediste '
                 . $participantes . '. Si el aforo real es otro, se corrige en Espacios.'
             );
         }
+
+        $nota = $espacio->esTodoElLaboratorio()
+            ? $this->notaDeAforo($espacio, $participantes, $desde, $hasta, $modalidad ?? self::RECORRIDO)
+            : null;
 
         /*
          * Fuera de la jornada del equipo se puede PEDIR, no reservar.
@@ -141,6 +145,12 @@ class EspacioBookingService
         $cubierta = $this->cobertura->hayCobertura($desde, $hasta, incluirRemota: $espacio->type === 'virtual');
         $estado = $cubierta ? 'confirmada' : 'solicitada';
         $motivo = $cubierta ? null : self::FUERA_DE_JORNADA;
+
+        // La nota del aforo va con el motivo: es lo que quien lo lea tiene que
+        // saber para organizar la actividad.
+        if ($nota) {
+            $motivo = trim(($motivo ? $motivo . ' ' : '') . $nota);
+        }
 
         $herramientas = $this->comprobarHerramientas($espacio, $herramientaIds, $desde, $hasta);
 
@@ -348,27 +358,41 @@ class EspacioBookingService
             ->sum('participants');
     }
 
-    private function comprobarElRecorrido(Space $todo, int $participantes, CarbonInterface $desde, CarbonInterface $hasta): void
+    /**
+     * Lo que hay que saber para organizar la actividad, sin impedirla.
+     *
+     * Un recorrido de cuarenta y cinco personas no se rechaza: se parte en
+     * tres grupos que rotan, y eso es cosa de quien lo lleva. Lo que el
+     * sistema hace es SUGERIR los grupos y avisar si a esa hora ya hay otro
+     * recorrido, para que la cuenta de cuantos hay a la vez la haga una
+     * persona con los dos datos delante. Para una operacion se dice el aforo
+     * a secas: no hay grupos que armar, pero conviene saber que se pasa.
+     */
+    public function notaDeAforo(Space $todo, int $participantes, CarbonInterface $desde, CarbonInterface $hasta, string $modalidad): ?string
     {
         $aforo = (int) ($todo->capacity ?: 30);
+        $partes = [];
 
-        if ($participantes > $aforo) {
-            throw new BookingException(
-                'Un recorrido recibe hasta ' . $aforo . ' personas a la vez, en grupos de '
-                . self::GRUPO_DE_RECORRIDO . '. Para ' . $participantes . ' hacen falta dos horarios.',
-            );
+        if ($modalidad === self::RECORRIDO) {
+            $grupos = (int) ceil($participantes / self::GRUPO_DE_RECORRIDO);
+
+            if ($grupos > 1) {
+                $partes[] = $participantes . ' personas: se sugiere hacerlo en ' . $grupos . ' grupos de hasta '
+                    . self::GRUPO_DE_RECORRIDO . ($grupos > 2 ? ', rotando' : ', en paralelo') . '.';
+            }
+
+            $yaEstan = $this->personasEnRecorrido($desde, $hasta);
+
+            if ($yaEstan > 0) {
+                $partes[] = 'A esa hora ya hay otro recorrido con ' . $yaEstan
+                    . ($yaEstan === 1 ? ' persona' : ' personas') . '; el aforo de referencia es ' . $aforo . ' a la vez.';
+            }
+        } elseif ($participantes > $aforo) {
+            $partes[] = $participantes . ' personas superan el aforo de referencia del laboratorio ('
+                . $aforo . '). Se reserva igual; tenlo en cuenta al organizar.';
         }
 
-        $yaEstan = $this->personasEnRecorrido($desde, $hasta);
-
-        if ($yaEstan + $participantes > $aforo) {
-            $caben = max(0, $aforo - $yaEstan);
-
-            throw new BookingException(
-                'A esa hora ya hay un recorrido con ' . $yaEstan . ' personas y caben ' . $caben
-                . ' más: el laboratorio recibe hasta ' . $aforo . ' a la vez. Prueba otra hora.',
-            );
-        }
+        return $partes === [] ? null : implode(' ', $partes);
     }
 
     /**

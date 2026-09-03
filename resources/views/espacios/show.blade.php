@@ -62,7 +62,7 @@
                 <div class="agenda-campo">
                     <label for="participantes">Cuántas personas</label>
                     <input id="participantes" name="participantes" type="number" required
-                           min="1" max="{{ $espacio->capacity ?: 500 }}"
+                           min="1" max="{{ $espacio->esTodoElLaboratorio() ? 500 : ($espacio->capacity ?: 500) }}"
                            value="{{ old('participantes', 1) }}">
                 </div>
 

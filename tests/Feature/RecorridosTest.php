@@ -97,7 +97,7 @@ class RecorridosTest extends TestCase
     }
 
     /** Dos grupos a la vez caben: son los dos recorridos simultáneos de siempre. */
-    public function test_dos_recorridos_a_la_misma_hora_caben_hasta_el_aforo(): void
+    public function test_se_cuenta_cuanta_gente_hay_en_recorrido_a_esa_hora(): void
     {
         $this->recorrido(15);
         $this->recorrido(15);
@@ -105,23 +105,49 @@ class RecorridosTest extends TestCase
         $this->assertSame(30, $this->espacios()->personasEnRecorrido($this->hora('10:00'), $this->hora('11:00')));
     }
 
-    public function test_el_tercer_grupo_que_no_cabe_se_rechaza_diciendo_cuantos_caben(): void
+    /**
+     * El aforo del laboratorio entero es una guía, no un tope.
+     *
+     * Un recorrido de cuarenta y cinco se parte en tres grupos que rotan; eso
+     * lo organiza quien lo lleva. El sistema no lo impide: sugiere los grupos
+     * y deja la nota en la reserva, para que se lea al preparar la visita.
+     */
+    public function test_un_recorrido_grande_entra_y_el_sistema_sugiere_los_grupos(): void
+    {
+        $r = $this->recorrido(45);
+
+        $this->assertSame('confirmada', $r->status);
+        $this->assertStringContainsString('3 grupos', $r->status_reason);
+    }
+
+    /** Y si a esa hora ya hay otro recorrido, se avisa; no se cierra la puerta. */
+    public function test_otro_recorrido_a_la_misma_hora_se_avisa_sin_impedirlo(): void
     {
         $this->recorrido(15);
         $this->recorrido(10);
 
-        $this->expectException(BookingException::class);
-        $this->expectExceptionMessageMatches('/caben 5 más/');
+        $r = $this->recorrido(10);
 
-        $this->recorrido(10);
+        $this->assertSame('confirmada', $r->status);
+        $this->assertStringContainsString('ya hay otro recorrido con 25', $r->status_reason);
     }
 
-    public function test_un_solo_grupo_no_pasa_del_aforo(): void
+    /** Una operación con más gente que el aforo entra, y se dice que se pasa. */
+    public function test_una_operacion_que_pasa_el_aforo_entra_avisando(): void
     {
-        $this->expectException(BookingException::class);
-        $this->expectExceptionMessageMatches('/hasta 30 personas/');
+        $r = $this->espacios()->reservar(
+            $this->alguien(), $this->todo, $this->hora('10:00'), $this->hora('12:00'), 40, [], 'Montaje',
+            EspacioBookingService::OPERACION,
+        );
 
-        $this->recorrido(31);
+        $this->assertTrue($r->esCierreTotal());
+        $this->assertStringContainsString('superan el aforo', $r->status_reason);
+    }
+
+    /** Un grupo que cabe en uno no recibe ninguna nota: no hay nada que organizar. */
+    public function test_un_grupo_pequeno_no_lleva_nota(): void
+    {
+        $this->assertNull($this->recorrido(12)->status_reason);
     }
 
     /** Fuera de la franja, el aforo vuelve a estar libre. */

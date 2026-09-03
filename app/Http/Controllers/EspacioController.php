@@ -133,6 +133,8 @@ class EspacioController extends Controller
             'Reservaste ' . $nombres . ' el ' . $desde->format('d/m/Y')
             . ' de ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i')
             . ' para ' . $reserva->participants . ' persona' . ($reserva->participants > 1 ? 's' : '') . '.'
+            // La sugerencia de grupos, si la hay: es lo que hay que organizar.
+            . ($reserva->status_reason ? ' ' . $reserva->status_reason : '')
         );
     }
 }

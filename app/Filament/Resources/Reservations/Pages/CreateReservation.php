@@ -199,12 +199,15 @@ class CreateReservation extends CreateRecord
                         ->visible(fn ($get) => $get('tipo') === 'espacio' && self::esTodo($get('space_ids')))
                         ->helperText('Un recorrido no bloquea nada: caben 30 personas a la vez, en dos grupos de 15. Cerrarlo entero no deja reservar ni una sala ni una máquina mientras dure.'),
 
-                    Select::make('participantes')
+                    TextInput::make('participantes')
                         ->label('Cuántas personas')
-                        ->options(array_combine(range(1, 30), range(1, 30)))
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(500)
                         ->default(1)
                         ->required(fn ($get) => $get('tipo') === 'espacio')
-                        ->visible(fn ($get) => $get('tipo') === 'espacio'),
+                        ->visible(fn ($get) => $get('tipo') === 'espacio')
+                        ->helperText('Una sala tiene su aforo y no se pasa. El laboratorio entero admite más: un recorrido grande se parte en grupos, y el sistema lo sugiere al crear.'),
 
                     /*
                      * Quiénes del equipo acompañan. Ninguno, uno o todos: una
@@ -322,5 +325,18 @@ class CreateReservation extends CreateRecord
         return $r->status === 'confirmada'
             ? 'Reserva confirmada'
             : 'Reserva anotada como solicitud: queda pendiente del visto bueno.';
+    }
+
+    /** Con la nota del aforo, si la hay: es lo que hay que organizar. */
+    protected function getCreatedNotification(): ?Notification
+    {
+        $aviso = parent::getCreatedNotification();
+        $r = $this->getRecord();
+
+        if ($aviso && $r->status_reason && $r->reservable_type === Space::class) {
+            $aviso->body($r->status_reason)->persistent();
+        }
+
+        return $aviso;
     }
 }
