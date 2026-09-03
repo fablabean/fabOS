@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Reservations\Tables;
 use App\Models\Asset;
 use App\Models\Project;
 use App\Models\Reservation;
+use App\Services\Booking\EliminarReserva;
 use Filament\Actions\Action;
 use App\Services\Projects\ProduccionService;
 use App\Services\Projects\ProjectException;
@@ -15,12 +16,14 @@ use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 
 class ReservationsTable
@@ -279,7 +282,34 @@ class ReservationsTable
                     }),
 
                 EditAction::make()->iconButton()->tooltip('Editar'),
+
+                /*
+                 * Borrar desde la fila. Hasta ahora solo se podia entrando a
+                 * editar, y para limpiar veinte reservas de prueba eso son
+                 * cuarenta clics. Pasa por el mismo servicio que la seleccion
+                 * multiple y que la ficha: devuelve lo comprometido y limpia
+                 * los archivos. Quien puede lo decide la matriz.
+                 */
+                DeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('Borrar')
+                    ->modalHeading('Borrar la reserva')
+                    ->modalDescription('Desaparece del historial. Si retenia FabCoins, se devuelven. Para dejar constancia de que no se uso, mejor cancelarla.')
+                    ->action(function (Reservation $record, DeleteAction $action) {
+                        app(EliminarReserva::class)($record, auth()->user());
+                        $action->success();
+                    }),
             ])
-            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->modalHeading('Borrar las reservas seleccionadas')
+                        ->modalDescription('Desaparecen del historial. Lo que retuvieran en FabCoins se devuelve.')
+                        ->action(function (Collection $records, DeleteBulkAction $action) {
+                            $records->each(fn (Reservation $r) => app(EliminarReserva::class)($r, auth()->user()));
+                            $action->success();
+                        }),
+                ]),
+            ]);
     }
 }
