@@ -232,6 +232,18 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame([$acompana->id], $r->companions->pluck('id')->all());
     }
 
+    /** «Todo el laboratorio» va solo: al elegirlo, los demás se sueltan. */
+    public function test_elegir_todo_el_laboratorio_suelta_los_demas_espacios(): void
+    {
+        $sala = Space::create(['slug' => 'sala', 'name' => 'Sala', 'capacity' => 10, 'is_reservable' => true]);
+        $todo = Space::todoElLaboratorio();
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm(['tipo' => 'espacio'])
+            ->fillForm(['space_ids' => [$sala->id, $todo->id]])
+            ->assertFormSet(['space_ids' => [$todo->id]]);
+    }
+
     /** Dos asesorías a la misma hora para la misma persona: la segunda no entra. */
     public function test_un_choque_de_horario_se_dice_y_no_crea_nada(): void
     {

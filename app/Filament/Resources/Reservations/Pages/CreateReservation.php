@@ -166,6 +166,19 @@ class CreateReservation extends CreateRecord
                         ->live()
                         ->required(fn ($get) => $get('tipo') === 'espacio')
                         ->visible(fn ($get) => $get('tipo') === 'espacio')
+                        // «Todo el laboratorio» va solo: al elegirlo se sueltan
+                        // los demas, y mientras este elegido no entra ninguno
+                        // mas. El servicio lo vuelve a comprobar por si acaso.
+                        ->afterStateUpdated(function ($state, $set) {
+                            $ids = array_values(array_filter((array) $state));
+                            $todo = Space::where('es_todo', true)->value('id');
+
+                            if ($todo && in_array((string) $todo, array_map('strval', $ids), true) && count($ids) > 1) {
+                                $set('space_ids', [$todo]);
+                            }
+                        })
+                        ->disableOptionWhen(fn ($value, $get) => self::esTodo($get('space_ids'))
+                            && ! Space::whereKey($value)->where('es_todo', true)->exists())
                         ->helperText('Uno o varios, en una sola reserva. «Todo el laboratorio» va solo: ya incluye los demás. Fuera de la jornada del equipo queda como solicitud.'),
 
                     /*
