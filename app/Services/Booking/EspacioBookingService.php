@@ -264,7 +264,8 @@ class EspacioBookingService
      *
      * @param  list<Space>  $espacios
      * @param  list<int>  $herramientaIds  se toman en el primer espacio
-     * @param  list<int>  $acompanantesIds
+     * @param  list<int>  $acompanantesIds  quienes acompañan, si van todos a todas
+     * @param  array<int,list<int>>  $acompanantesPorEspacio  espacio => quienes van a ese; manda sobre la lista general
      */
     public function reservarVarios(
         User $user,
@@ -276,11 +277,35 @@ class EspacioBookingService
         ?string $proposito = null,
         ?string $modalidad = null,
         array $acompanantesIds = [],
+        array $acompanantesPorEspacio = [],
     ): Reservation {
         $espacios = collect($espacios)->unique('id')->values();
 
         if ($espacios->isEmpty()) {
             throw new BookingException('Elige al menos un espacio.');
+        }
+
+        /*
+         * Con varias salas, cada una lleva a su gente.
+         *
+         * Una actividad partida en dos salas son dos grupos, y cada grupo
+         * necesita a alguien del equipo en su sala. Si se reparte
+         * acompañantes, ninguna sala puede quedar sin uno: la que se quede
+         * sola es la que se queda sin quien abra la puerta ni enseñe la
+         * maquina. Sin acompañantes en ninguna, la actividad va sin ellos y
+         * eso tambien vale -una charla puede no necesitar a nadie-.
+         */
+        $porEspacio = collect($acompanantesPorEspacio)->map(fn ($ids) => array_values(array_filter(array_map('intval', (array) $ids))));
+
+        if ($espacios->count() > 1 && $porEspacio->flatten()->isNotEmpty()) {
+            $sinNadie = $espacios->filter(fn (Space $e) => empty($porEspacio->get($e->id, [])));
+
+            if ($sinNadie->isNotEmpty()) {
+                throw new BookingException(
+                    'Falta quien acompañe en ' . $sinNadie->pluck('name')->implode(' y ')
+                    . '. Con varias salas, cada una lleva a alguien del equipo; si nadie va a acompañar, deja todas vacías.'
+                );
+            }
         }
 
         if ($espacios->count() > 1 && $espacios->contains(fn (Space $e) => $e->esTodoElLaboratorio())) {
@@ -311,16 +336,23 @@ class EspacioBookingService
             }
         }
 
-        return DB::transaction(function () use ($user, $espacios, $desde, $hasta, $participantes, $herramientaIds, $proposito, $modalidad, $acompanantesIds, $notaConjunta) {
+        return DB::transaction(function () use ($user, $espacios, $desde, $hasta, $participantes, $herramientaIds, $proposito, $modalidad, $acompanantesIds, $notaConjunta, $porEspacio) {
+            $primero = $espacios->first();
+
             $madre = $this->reservar(
-                $user, $espacios->first(), $desde, $hasta, $participantes,
-                $herramientaIds, $proposito, $modalidad, $acompanantesIds,
+                $user, $primero, $desde, $hasta, $participantes,
+                $herramientaIds, $proposito, $modalidad,
+                $porEspacio->get($primero->id) ?? $acompanantesIds,
                 $espacios->count() > 1 ? $notaConjunta : null,
             );
 
-            $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre, $modalidad) {
-                // Sin nota propia: la del conjunto ya esta en la madre.
-                $hija = $this->reservar($user, $espacio, $desde, $hasta, $participantes, [], $proposito, $modalidad, [], '');
+            $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre, $modalidad, $porEspacio, $acompanantesIds) {
+                // Sin nota propia: la del conjunto ya esta en la madre. Con su
+                // propia gente, o con la lista general si no se repartio.
+                $hija = $this->reservar(
+                    $user, $espacio, $desde, $hasta, $participantes, [], $proposito, $modalidad,
+                    $porEspacio->get($espacio->id) ?? $acompanantesIds, '',
+                );
                 $hija->update(['parent_reservation_id' => $madre->id]);
 
                 return $hija;

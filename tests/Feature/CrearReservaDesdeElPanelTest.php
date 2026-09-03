@@ -232,6 +232,36 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame([$acompana->id], $r->companions->pluck('id')->all());
     }
 
+    /** Con varias salas el panel pregunta quién va a cuál, y lo guarda por sala. */
+    public function test_con_varias_salas_se_asigna_quien_va_a_cual(): void
+    {
+        $this->asesorEnJornada();
+        $persona = $this->alguien();
+        $sala = Space::create(['slug' => 'sala', 'name' => 'Sala', 'capacity' => 10, 'is_reservable' => true]);
+        $vr = Space::create(['slug' => 'vr', 'name' => 'Lab. VR', 'type' => 'virtual', 'capacity' => 10, 'is_reservable' => true]);
+
+        $michael = User::create(['name' => 'Michael', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $michael->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+        $juan = User::create(['name' => 'Juan', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $juan->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm(['tipo' => 'espacio', 'user_id' => $persona->id, 'space_ids' => [$sala->id, $vr->id]])
+            ->fillForm([
+                'participantes' => 20,
+                'acompanantes_por_espacio' => [$sala->id => [$michael->id], $vr->id => [$juan->id]],
+                'starts_at' => $this->hora('09:00'), 'ends_at' => $this->hora('11:00'),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $madre = Reservation::whereNull('parent_reservation_id')->firstOrFail();
+        $hija = Reservation::whereNotNull('parent_reservation_id')->firstOrFail();
+
+        $this->assertSame([$michael->id], $madre->companions->pluck('id')->all());
+        $this->assertSame([$juan->id], $hija->companions->pluck('id')->all());
+    }
+
     /** «Todo el laboratorio» va solo: al elegirlo, los demás se sueltan. */
     public function test_elegir_todo_el_laboratorio_suelta_los_demas_espacios(): void
     {

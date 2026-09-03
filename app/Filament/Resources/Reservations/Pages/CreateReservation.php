@@ -20,6 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
@@ -231,7 +232,32 @@ class CreateReservation extends CreateRecord
                         ->options(fn () => User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
                         ->searchable()
                         ->columnSpanFull()
+                        // Con varias salas se pregunta por sala, mas abajo.
+                        ->visible(fn ($get) => $get('tipo') !== 'espacio' || count(array_filter((array) $get('space_ids'))) <= 1)
                         ->helperText('Opcional. Quedan anotados en la reserva y salen en la lista.'),
+
+                    /*
+                     * Con varias salas, quien va a cual. Una actividad
+                     * partida en dos salas son dos grupos, y cada grupo
+                     * necesita a alguien del equipo en SU sala. Si se reparte,
+                     * ninguna puede quedar sin nadie; si no va nadie a
+                     * ninguna, tambien vale.
+                     */
+                    Group::make()
+                        ->columnSpanFull()
+                        ->visible(fn ($get) => $get('tipo') === 'espacio' && count(array_filter((array) $get('space_ids'))) > 1)
+                        ->schema(function ($get) {
+                            $ids = array_filter((array) $get('space_ids'));
+
+                            return Space::whereIn('id', $ids)->orderBy('name')->get()
+                                ->map(fn (Space $e) => Select::make('acompanantes_por_espacio.' . $e->id)
+                                    ->label('Quién acompaña en ' . $e->name)
+                                    ->multiple()
+                                    ->options(fn () => User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                                    ->searchable()
+                                    ->helperText('Si se reparte, cada sala lleva a alguien. Si nadie va a acompañar, deja todas vacías.'))
+                                ->all();
+                        }),
                 ]),
 
             Section::make('Cuándo')
@@ -282,6 +308,7 @@ class CreateReservation extends CreateRecord
                     $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),
                     $desde, $hasta, (int) ($data['participantes'] ?? 1), [], $paraQue,
                     $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
+                    $data['acompanantes_por_espacio'] ?? [],
                 ),
                 'asesoria' => $this->agendarAsesoria($quien, $data['ambito'], $desde, $hasta, $paraQue),
             };

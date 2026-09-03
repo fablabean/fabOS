@@ -59,11 +59,23 @@ class ReservationForm
                             ->required(),
 
                         Select::make('supervisor_id')
-                            ->label('Acompaña')
+                            ->label('Supervisa')
                             ->options(fn () => User::role(User::ROLES_BACKOFFICE)->orderBy('name')->pluck('name', 'id'))
                             ->searchable()
                             ->placeholder('Nadie')
-                            ->helperText('Quien acompaña una reserva con supervisión. Vacío si va por su cuenta.'),
+                            ->helperText('Quien supervisa una reserva que lo exige por certifab. Vacío si va por su cuenta.'),
+
+                        // Los acompañantes se corrigen desde aqui: una reserva
+                        // partida en dos salas puede haber quedado con toda la
+                        // gente en la primera.
+                        Select::make('companions')
+                            ->label('Acompañan del equipo')
+                            ->relationship('companions', 'name', fn ($query) => $query->role(User::ROLES_BACKOFFICE)->orderBy('name'))
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->columnSpanFull()
+                            ->helperText('Ninguno, uno o varios. Salen en la lista junto a quien supervisa.'),
                     ]),
 
                 Section::make('Cuándo')

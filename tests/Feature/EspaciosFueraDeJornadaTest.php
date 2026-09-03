@@ -209,6 +209,63 @@ class EspaciosFueraDeJornadaTest extends TestCase
         $this->assertSame('solicitada', Reservation::where('parent_reservation_id', $madre->id)->value('status'));
     }
 
+    /**
+     * Con varias salas, cada una lleva a su gente.
+     *
+     * Paso de verdad: una actividad en dos salas con dos acompañantes, y los
+     * dos quedaron en la primera. Ahora se dice quién va a cuál, y ninguna
+     * puede quedar sin nadie si se reparte.
+     */
+    public function test_con_varias_salas_cada_una_lleva_a_su_acompanante(): void
+    {
+        $this->colaborador();
+        $michael = $this->colaborador();
+        $juan = $this->colaborador();
+
+        $madre = $this->espacios()->reservarVarios(
+            $this->alguien(), [$this->taller, $this->vr], $this->hora('10:00'), $this->hora('12:00'), 20,
+            [], null, null, [],
+            [$this->taller->id => [$michael->id], $this->vr->id => [$juan->id]],
+        );
+
+        $hija = Reservation::where('parent_reservation_id', $madre->id)->firstOrFail();
+
+        $this->assertSame([$michael->id], $madre->companions->pluck('id')->all());
+        $this->assertSame([$juan->id], $hija->companions->pluck('id')->all());
+    }
+
+    public function test_si_se_reparte_ninguna_sala_queda_sin_acompanante(): void
+    {
+        $this->colaborador();
+        $michael = $this->colaborador();
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessageMatches('/Falta quien acompañe en Lab. VR/');
+
+        $this->espacios()->reservarVarios(
+            $this->alguien(), [$this->taller, $this->vr], $this->hora('10:00'), $this->hora('12:00'), 20,
+            [], null, null, [],
+            [$this->taller->id => [$michael->id], $this->vr->id => []],
+        );
+    }
+
+    /** Sin repartir, la lista general va a todas: sigue valiendo como antes. */
+    public function test_sin_repartir_la_lista_general_va_a_todas_las_salas(): void
+    {
+        $this->colaborador();
+        $michael = $this->colaborador();
+
+        $madre = $this->espacios()->reservarVarios(
+            $this->alguien(), [$this->taller, $this->vr], $this->hora('10:00'), $this->hora('12:00'), 20,
+            [], null, null, [$michael->id],
+        );
+
+        $hija = Reservation::where('parent_reservation_id', $madre->id)->firstOrFail();
+
+        $this->assertSame([$michael->id], $madre->companions->pluck('id')->all());
+        $this->assertSame([$michael->id], $hija->companions->pluck('id')->all());
+    }
+
     public function test_todo_el_laboratorio_no_se_combina_con_otros(): void
     {
         $this->colaborador();
