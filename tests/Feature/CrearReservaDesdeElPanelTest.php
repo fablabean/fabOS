@@ -182,7 +182,7 @@ class CrearReservaDesdeElPanelTest extends TestCase
 
         Livewire::test(CreateReservation::class)
             ->fillForm([
-                'tipo' => 'espacio', 'user_id' => $persona->id, 'space_id' => $sala->id, 'participantes' => 4,
+                'tipo' => 'espacio', 'user_id' => $persona->id, 'space_ids' => [$sala->id], 'participantes' => 4,
                 'starts_at' => $this->hora('09:00'), 'ends_at' => $this->hora('11:00'),
             ])
             ->call('create')
@@ -193,6 +193,43 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame(Space::class, $r->reservable_type);
         $this->assertSame($sala->id, $r->reservable_id);
         $this->assertSame(4, (int) $r->participants);
+    }
+
+    /**
+     * El laboratorio entero se cierra desde el panel, y con quién acompaña.
+     *
+     * Es la reserva rara —una operación que lo toma completo— y por eso no se
+     * pide desde el sitio: allí el laboratorio entero solo es un recorrido.
+     */
+    public function test_cerrar_el_laboratorio_entero_con_acompanantes(): void
+    {
+        $this->asesorEnJornada();
+        $persona = $this->alguien();
+        $todo = Space::todoElLaboratorio();
+        $this->assertNotNull($todo, 'la migración siembra el laboratorio entero');
+
+        $acompana = User::create(['name' => 'Acompaña', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $acompana->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'espacio', 'user_id' => $persona->id, 'space_ids' => [$todo->id],
+                'modalidad' => 'operacion', 'participantes' => 8,
+                'acompanantes' => [$acompana->id],
+                'starts_at' => $this->hora('09:00'), 'ends_at' => $this->hora('12:00'),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $r = Reservation::firstOrFail();
+
+        $this->assertSame('directa', $r->mode, 'la operación toma el laboratorio en exclusiva: no es un recorrido');
+        $this->assertTrue($r->esCierreTotal());
+        $this->assertFalse($r->esRecorrido());
+
+        // Quien acompaña queda anotado. Alguien ajeno al equipo ni siquiera
+        // aparece en la lista: eso lo prueba el servicio en RecorridosTest.
+        $this->assertSame([$acompana->id], $r->companions->pluck('id')->all());
     }
 
     /** Dos asesorías a la misma hora para la misma persona: la segunda no entra. */

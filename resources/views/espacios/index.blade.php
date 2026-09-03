@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Reservar un espacio · fabOS')
 
+@section('styles')
+    .card.recorrido { border-left:3px solid var(--accent); }
+@endsection
+
 @section('content')
     <h1>Reservar un espacio</h1>
 
@@ -27,6 +31,21 @@
     @else
         <div class="cards">
             @foreach ($espacios as $e)
+                @if ($e->esTodoElLaboratorio())
+                    {{-- El recorrido: ocupa el laboratorio entero sin cerrarlo.
+                         Caben treinta a la vez, en grupos de quince, y las
+                         máquinas siguen trabajando. --}}
+                    <a class="card recorrido" href="{{ route('espacios.show', $e) }}">
+                        <span class="pill">Recorrido · hasta {{ $e->capacity ?: 30 }} personas</span>
+                        <span class="n">Recorrido por {{ mb_strtolower($e->name) }}</span>
+                        <span class="m">
+                            En grupos de {{ \App\Services\Booking\EspacioBookingService::GRUPO_DE_RECORRIDO }},
+                            dos a la vez. No interrumpe lo que esté en marcha.
+                        </span>
+                    </a>
+                    @continue
+                @endif
+
                 <a class="card" href="{{ route('espacios.show', $e) }}">
                     <span class="pill">
                         {{ $e->capacity ? 'Hasta ' . $e->capacity . ' personas' : 'Sin aforo fijado' }}

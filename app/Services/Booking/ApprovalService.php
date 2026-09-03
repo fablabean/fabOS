@@ -4,6 +4,7 @@ namespace App\Services\Booking;
 
 use App\Models\Asset;
 use App\Models\Reservation;
+use App\Models\Space;
 use App\Models\User;
 use App\Services\Money\ChargeService;
 use App\Services\Money\QuoteService;
@@ -68,17 +69,25 @@ class ApprovalService
             ? Asset::find($solicitud->reservable_id)
             : null;
 
-        if (! $equipo) {
-            throw new BookingException('El equipo de esa solicitud ya no existe.');
+        // Un espacio también se pide: fuera de la jornada del equipo la sala
+        // no se confirma sola, porque abrirla cuesta horas extras.
+        $espacio = $solicitud->reservable_type === Space::class
+            ? Space::find($solicitud->reservable_id)
+            : null;
+
+        if (! $equipo && ! $espacio) {
+            throw new BookingException('El recurso de esa solicitud ya no existe.');
         }
 
-        if ($equipo->status !== 'operativo') {
+        if ($equipo && $equipo->status !== 'operativo') {
             throw new BookingException(
                 $equipo->name . ' no está operativo: aprobar la solicitud prometería algo que no se puede cumplir.'
             );
         }
 
-        return DB::transaction(function () use ($solicitud, $equipo, $acompanante, $quienAprueba, $abrirJornada) {
+        $nombre = $equipo?->name ?? $espacio->name;
+
+        return DB::transaction(function () use ($solicitud, $equipo, $espacio, $nombre, $acompanante, $quienAprueba, $abrirJornada) {
             // Si hay acompañante y no está en jornada a esa hora, se le programa.
             // El servicio de jornadas valida el tope de extras y lanza si se pasa.
             $yaEnJornada = $acompanante && $this->cobertura
@@ -90,16 +99,35 @@ class ApprovalService
                     $acompanante,
                     $solicitud->starts_at->copy(),
                     $solicitud->ends_at->copy(),
-                    'Apertura por la solicitud #' . $solicitud->id . ' · ' . $equipo->name,
+                    'Apertura por la solicitud #' . $solicitud->id . ' · ' . $nombre,
                     $quienAprueba,
                 );
             }
 
-            $solicitud->update([
-                'status'        => 'confirmada',
-                'supervisor_id' => $acompanante?->id ?? $solicitud->supervisor_id,
-                'status_reason' => 'Aprobada por ' . ($quienAprueba?->name ?? 'la coordinación'),
-            ]);
+            try {
+                $solicitud->update([
+                    'status'        => 'confirmada',
+                    'supervisor_id' => $acompanante?->id ?? $solicitud->supervisor_id,
+                    'status_reason' => 'Aprobada por ' . ($quienAprueba?->name ?? 'la coordinación'),
+                ]);
+
+                // Lo que colgaba de la solicitud -otros espacios, herramientas-
+                // se confirma con ella: la actividad es una.
+                Reservation::where('parent_reservation_id', $solicitud->id)
+                    ->where('status', 'solicitada')
+                    ->get()
+                    ->each(fn (Reservation $hija) => $hija->update(['status' => 'confirmada']));
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Mientras la solicitud esperaba, alguien tomó el espacio de
+                // verdad. La base lo impide; aquí se dice.
+                if (str_contains($e->getMessage(), 'sin_traslape')) {
+                    throw new BookingException(
+                        'Mientras esperaba, alguien más reservó ' . $nombre . ' a esa hora. Recházala con ese motivo.',
+                    );
+                }
+
+                throw $e;
+            }
 
             // El bloque de quien acompaña: su tiempo es un recurso más, y si no
             // se reserva la promesa de acompañamiento es falsa.
@@ -113,20 +141,23 @@ class ApprovalService
                     'mode'            => $solicitud->mode,
                     'starts_at'       => $solicitud->starts_at,
                     'ends_at'         => $solicitud->ends_at,
-                    'purpose'         => 'Acompañamiento en ' . $equipo->name,
+                    'purpose'         => 'Acompañamiento en ' . $nombre,
                 ]);
             }
 
-            $minutos = (int) $solicitud->starts_at->diffInMinutes($solicitud->ends_at);
-            $cotizacion = $this->cotizador->cotizar($solicitud->user, $equipo, $minutos, $acompanante !== null);
+            // Un espacio no se cobra: solo las máquinas tienen tarifa.
+            if ($equipo) {
+                $minutos = (int) $solicitud->starts_at->diffInMinutes($solicitud->ends_at);
+                $cotizacion = $this->cotizador->cotizar($solicitud->user, $equipo, $minutos, $acompanante !== null);
 
-            $solicitud->update(['estimated_cost_minor' => $cotizacion->totalMenor]);
-            $this->cobros->comprometer($solicitud->refresh(), $cotizacion);
+                $solicitud->update(['estimated_cost_minor' => $cotizacion->totalMenor]);
+                $this->cobros->comprometer($solicitud->refresh(), $cotizacion);
+            }
 
             $tz = config('fabos.lab.timezone');
 
             $this->avisos->enviar('reserva.confirmada', $solicitud->user, [
-                'equipo'      => $equipo->name,
+                'equipo'      => $nombre,
                 'fecha'       => $solicitud->starts_at->timezone($tz)->format('d/m/Y'),
                 'inicio'      => $solicitud->starts_at->timezone($tz)->format('H:i'),
                 'fin'         => $solicitud->ends_at->timezone($tz)->format('H:i'),
@@ -155,10 +186,8 @@ class ApprovalService
             'status_reason' => $motivo,
         ]);
 
-        $equipo = Asset::find($solicitud->reservable_id);
-
         $this->avisos->enviar('reserva.rechazada', $solicitud->user, [
-            'equipo' => $equipo?->name ?? 'el equipo',
+            'equipo' => $solicitud->reservable?->name ?? 'el recurso',
             'fecha'  => $solicitud->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i'),
             'motivo' => $motivo,
         ], $solicitud);

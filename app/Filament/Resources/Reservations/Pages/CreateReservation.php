@@ -8,6 +8,7 @@ use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\Space;
 use App\Models\User;
+use App\Models\UserCategory;
 use App\Services\Booking\AsesoriaService;
 use App\Services\Booking\BookingException;
 use App\Services\Booking\BookingService;
@@ -15,6 +16,7 @@ use App\Services\Booking\EspacioBookingService;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -77,7 +79,39 @@ class CreateReservation extends CreateRecord
                             ->mapWithKeys(fn (User $u) => [$u->id => $u->name . ' · ' . $u->email]))
                         ->searchable()
                         ->required()
-                        ->helperText('Se busca por nombre o correo. La reserva queda a su nombre y le llega el aviso.'),
+                        ->helperText('Se busca por nombre o correo. Si no está, se crea aquí mismo con el botón de al lado.')
+                        /*
+                         * Si la persona no existe, se crea sin salir de aqui.
+                         *
+                         * Llama alguien de fuera, se le toma la reserva, y no
+                         * tiene cuenta: pedirle a quien atiende que vaya a
+                         * Personas, la cree y vuelva es el paso en que la
+                         * reserva se anota en un papel. Nace como invitada,
+                         * sin permiso de reservar maquinas por su cuenta —una
+                         * llamada no habilita a nadie—, y con el correo se le
+                         * reutiliza la cuenta si ya la tenia: dos cuentas con
+                         * el mismo correo parten su historial en dos.
+                         */
+                        ->createOptionForm([
+                            TextInput::make('name')->label('Nombre')->required()->maxLength(120),
+                            TextInput::make('email')->label('Correo')->email()->required()->maxLength(160),
+                            TextInput::make('phone')->label('Teléfono')->tel()->maxLength(40),
+                        ])
+                        ->createOptionModalHeading('Nueva persona')
+                        ->createOptionUsing(function (array $data): int {
+                            $correo = mb_strtolower(trim($data['email']));
+
+                            $persona = User::whereRaw('lower(email) = ?', [$correo])->first()
+                                ?? User::create([
+                                    'name'             => trim($data['name']),
+                                    'email'            => $correo,
+                                    'phone'            => $data['phone'] ?? null,
+                                    'status'           => 'activo',
+                                    'user_category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+                                ]);
+
+                            return $persona->id;
+                        }),
 
                     /*
                      * El equipo, con su área delante: «Impresión 3D · Prusa
@@ -124,12 +158,33 @@ class CreateReservation extends CreateRecord
                         ->visible(fn ($get) => $get('tipo') === 'asesoria')
                         ->helperText('Una máquina, o el área en general. Quién atiende lo decide el turno, como en el sitio.'),
 
-                    Select::make('space_id')
-                        ->label('Qué espacio')
-                        ->options(fn () => Space::where('is_reservable', true)->orderBy('name')->pluck('name', 'id'))
+                    Select::make('space_ids')
+                        ->label('Qué espacios')
+                        ->multiple()
+                        ->options(fn () => Space::where('is_reservable', true)->orderByDesc('es_todo')->orderBy('name')->pluck('name', 'id'))
                         ->searchable()
+                        ->live()
                         ->required(fn ($get) => $get('tipo') === 'espacio')
-                        ->visible(fn ($get) => $get('tipo') === 'espacio'),
+                        ->visible(fn ($get) => $get('tipo') === 'espacio')
+                        ->helperText('Uno o varios, en una sola reserva. «Todo el laboratorio» va solo: ya incluye los demás. Fuera de la jornada del equipo queda como solicitud.'),
+
+                    /*
+                     * El laboratorio entero se reserva de dos maneras que no
+                     * se parecen: un recorrido —treinta personas a la vez, en
+                     * grupos, sin cerrar nada— o una operación que lo toma
+                     * completo. Desde el sitio solo se pide recorrido; cerrar
+                     * es de aquí.
+                     */
+                    ToggleButtons::make('modalidad')
+                        ->label('Para qué se toma')
+                        ->options([
+                            EspacioBookingService::RECORRIDO => 'Recorrido',
+                            EspacioBookingService::OPERACION => 'Operación: cerrarlo entero',
+                        ])
+                        ->default(EspacioBookingService::RECORRIDO)
+                        ->inline()
+                        ->visible(fn ($get) => $get('tipo') === 'espacio' && self::esTodo($get('space_ids')))
+                        ->helperText('Un recorrido no bloquea nada: caben 30 personas a la vez, en dos grupos de 15. Cerrarlo entero no deja reservar ni una sala ni una máquina mientras dure.'),
 
                     Select::make('participantes')
                         ->label('Cuántas personas')
@@ -137,6 +192,19 @@ class CreateReservation extends CreateRecord
                         ->default(1)
                         ->required(fn ($get) => $get('tipo') === 'espacio')
                         ->visible(fn ($get) => $get('tipo') === 'espacio'),
+
+                    /*
+                     * Quiénes del equipo acompañan. Ninguno, uno o todos: una
+                     * charla puede no necesitar a nadie y un recorrido de
+                     * treinta lo llevan dos o tres.
+                     */
+                    Select::make('acompanantes')
+                        ->label('Quién acompaña del equipo')
+                        ->multiple()
+                        ->options(fn () => User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                        ->searchable()
+                        ->columnSpanFull()
+                        ->helperText('Opcional. Quedan anotados en la reserva y salen en la lista.'),
                 ]),
 
             Section::make('Cuándo')
@@ -183,9 +251,10 @@ class CreateReservation extends CreateRecord
                 'autonomia' => app(BookingService::class)->reservar(
                     $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue,
                 ),
-                'espacio' => app(EspacioBookingService::class)->reservar(
-                    $quien, Space::findOrFail($data['space_id']), $desde, $hasta,
-                    (int) ($data['participantes'] ?? 1), [], $paraQue,
+                'espacio' => app(EspacioBookingService::class)->reservarVarios(
+                    $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),
+                    $desde, $hasta, (int) ($data['participantes'] ?? 1), [], $paraQue,
+                    $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
                 ),
                 'asesoria' => $this->agendarAsesoria($quien, $data['ambito'], $desde, $hasta, $paraQue),
             };
@@ -195,7 +264,22 @@ class CreateReservation extends CreateRecord
             throw new Halt;
         }
 
+        // Los acompañantes de una asesoría o de un equipo se anotan aquí; los
+        // del espacio ya los anotó su servicio.
+        if ($data['tipo'] !== 'espacio' && ! empty($data['acompanantes'])) {
+            $reserva->companions()->sync(
+                User::role(User::ROLES_BACKOFFICE)->whereIn('id', array_map('intval', $data['acompanantes']))->pluck('id')->all(),
+            );
+        }
+
         return $reserva;
+    }
+
+    private static function esTodo($spaceIds): bool
+    {
+        $ids = array_filter((array) $spaceIds);
+
+        return $ids !== [] && Space::whereIn('id', $ids)->where('es_todo', true)->exists();
     }
 
     private function agendarAsesoria(User $quien, string $ambito, Carbon $desde, Carbon $hasta, ?string $paraQue): Reservation

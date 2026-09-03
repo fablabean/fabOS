@@ -35,7 +35,12 @@
             @endphp
 
             <x-filament::section>
-                <x-slot name="heading">{{ $equipo?->name ?? 'Equipo eliminado' }}</x-slot>
+                <x-slot name="heading">
+                    {{ $equipo?->name ?? $fila['espacio']?->name ?? 'Recurso eliminado' }}
+                    @if ($fila['espacio'])
+                        <span style="font-weight:400;opacity:.7">· espacio{{ $s->esRecorrido() ? ' · recorrido' : '' }}</span>
+                    @endif
+                </x-slot>
                 <x-slot name="description">
                     {{ $s->user?->name }} · {{ $s->user?->email }}
                 </x-slot>
@@ -85,10 +90,15 @@
                     </x-filament::button>
                 </div>
 
-                @if ($fila['candidatos']->isEmpty())
+                @if ($equipo && $fila['candidatos']->isEmpty())
                     <p class="nota">
                         Nadie tiene certifab para este equipo todavía. Se puede aprobar sin
                         acompañante solo si el equipo no lo exige.
+                    </p>
+                @elseif ($fila['espacio'])
+                    <p class="nota">
+                        Aprobar con alguien le programa la jornada: es lo que cuesta abrir fuera
+                        de horario. Sin nadie, el espacio queda confirmado y sin quien lo abra.
                     </p>
                 @else
                     <p class="nota">

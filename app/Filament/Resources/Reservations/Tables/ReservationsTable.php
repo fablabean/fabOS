@@ -57,6 +57,11 @@ class ReservationsTable
 
                 TextColumn::make('supervisor.name')
                     ->label('Acompaña')
+                    // El supervisor que exige el certifab, y además quienes se
+                    // apuntaron a acompañar la actividad.
+                    ->state(fn (Reservation $r) => collect([$r->supervisor?->name])
+                        ->merge($r->companions->pluck('name'))
+                        ->filter()->unique()->implode(', ') ?: null)
                     ->placeholder('—')
                     ->toggleable(),
 

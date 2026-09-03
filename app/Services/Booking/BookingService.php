@@ -64,6 +64,15 @@ class BookingService
         // Si es un grupo de unidades equivalentes, se reserva "una", no la #3.
         $asset = $this->elegirUnidad($asset, $desde, $hasta) ?? $asset;
 
+        // El laboratorio entero puede estar tomado para una operación: en ese
+        // rato no se reserva ni una máquina. Lo que ya estaba reservado se
+        // queda; lo nuevo, no.
+        if (app(EspacioBookingService::class)->hayCierreTotal($desde, $hasta)) {
+            throw new BookingException(
+                'El laboratorio está reservado entero a esa hora para una operación. Elige otra.',
+            );
+        }
+
         $veredicto = $this->eligibility->evaluar($user, $asset, $minutos);
 
         if (! $veredicto->puedeReservar()) {

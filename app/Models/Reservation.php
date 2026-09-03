@@ -50,10 +50,16 @@ class Reservation extends Model
         'asesoria'       => 'Asesoría',
         'con_aprobacion' => 'Con aprobación',
         'solo_solicitud' => 'Solo por solicitud',
+        // Un recorrido ocupa el laboratorio sin cerrarlo: la base no lo
+        // cuenta como solape, y cuántas personas caben a la vez lo suma el
+        // servicio de espacios.
+        'recorrido'      => 'Recorrido',
     ];
 
     /** Estados en los que la reserva ocupa el recurso de verdad. */
     public const BLOQUEANTES = ['confirmada', 'en_curso'];
+
+    public const MODO_RECORRIDO = 'recorrido';
 
     /**
      * Producir no es reservar, aunque ocupe igual. Una produccion es el
@@ -101,6 +107,34 @@ class Reservation extends Model
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    /**
+     * Quiénes del equipo acompañan (§7).
+     *
+     * Distinto del supervisor, que es UNO y lo exige el certifab. Aquí van los
+     * que se apuntan a acompañar una actividad: ninguno, uno, o todos. Un
+     * recorrido de treinta lo llevan dos o tres.
+     */
+    public function companions(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'reservation_companions')->withTimestamps();
+    }
+
+    public function esRecorrido(): bool
+    {
+        return $this->mode === self::MODO_RECORRIDO;
+    }
+
+    /**
+     * El laboratorio entero, tomado en exclusiva. Es la reserva que no deja
+     * reservar ni una sala ni una máquina mientras dure.
+     */
+    public function esCierreTotal(): bool
+    {
+        return $this->reservable_type === Space::class
+            && ! $this->esRecorrido()
+            && (bool) $this->reservable?->es_todo;
     }
 
     /** El equipo sobre el que trata una asesoría; nulo en el resto (§10). */

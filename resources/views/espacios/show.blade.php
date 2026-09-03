@@ -3,12 +3,26 @@
 
 @section('content')
     <p class="rotulo"><a href="{{ route('espacios.index') }}">← Volver a espacios</a></p>
-    <h1>{{ $espacio->name }}</h1>
+    @if ($espacio->esTodoElLaboratorio())
+        {{-- El recorrido: ocupa el laboratorio entero sin cerrarlo. Cerrarlo
+             de verdad -una operación- se programa desde el panel, no desde
+             aquí. --}}
+        <h1>Recorrido por {{ mb_strtolower($espacio->name) }}</h1>
 
-    <p class="help">
-        {{ $espacio->areas->pluck('name')->implode(' · ') ?: 'Sin área asignada' }}
-        @if ($espacio->capacity) · caben {{ $espacio->capacity }} personas @endif
-    </p>
+        <p class="help">
+            Hasta {{ $espacio->capacity ?: 30 }} personas a la vez, en grupos de
+            {{ \App\Services\Booking\EspacioBookingService::GRUPO_DE_RECORRIDO }}: dos recorridos
+            pueden ir en paralelo. No interrumpe lo que esté en marcha —las máquinas siguen
+            trabajando— y alguien del equipo acompaña.
+        </p>
+    @else
+        <h1>{{ $espacio->name }}</h1>
+
+        <p class="help">
+            {{ $espacio->areas->pluck('name')->implode(' · ') ?: 'Sin área asignada' }}
+            @if ($espacio->capacity) · caben {{ $espacio->capacity }} personas @endif
+        </p>
+    @endif
 
     @error('fecha') <p class="msg error">{{ $message }}</p> @enderror
 
@@ -63,10 +77,35 @@
             </div>
 
             @error('participantes') <p class="msg error">{{ $message }}</p> @enderror
+
+            {{-- Varios espacios en una sola reserva: quien monta una feria toma
+                 el taller y la sala de al lado, y pedirlas de a una es dos
+                 formularios por lo mismo. Se cancelan juntas. --}}
+            @if (isset($otros) && $otros->isNotEmpty())
+                <p style="margin:1rem 0 .4rem;font-weight:600">¿También otro espacio, a la misma hora?</p>
+                <div class="herramientas">
+                    @foreach ($otros as $o)
+                        <label class="herramienta">
+                            <input type="checkbox" name="espacios[]" value="{{ $o->id }}"
+                                   @checked(in_array($o->id, old('espacios', [])))>
+                            <span>
+                                <strong>{{ $o->name }}</strong>
+                                @if ($o->capacity) <small style="opacity:.6">· hasta {{ $o->capacity }}</small> @endif
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+                <p class="foot" style="margin-top:.5rem">
+                    Va todo en una sola reserva. Si alguno cae fuera de la jornada del equipo, la reserva
+                    entera queda pendiente del visto bueno.
+                </p>
+            @endif
         </div>
 
         {{-- Las herramientas se toman DENTRO del espacio: es el uso normal del
-             laboratorio, y por eso no se piden sueltas desde el catálogo. --}}
+             laboratorio, y por eso no se piden sueltas desde el catálogo. En un
+             recorrido no se toma nada: se mira. --}}
+        @unless ($espacio->esTodoElLaboratorio())
         <div class="panel">
             <h2 style="margin-top:0">¿Qué vas a necesitar?</h2>
 
@@ -102,8 +141,11 @@
                 </p>
             @endif
         </div>
+        @endunless
 
-        <button type="submit">Reservar el espacio</button>
+        <button type="submit">
+            {{ $espacio->esTodoElLaboratorio() ? 'Reservar el recorrido' : 'Reservar el espacio' }}
+        </button>
     </form>
 
     <style>

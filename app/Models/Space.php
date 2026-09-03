@@ -11,7 +11,7 @@ class Space extends Model
 {
     protected $fillable = [
         'slug', 'name', 'type', 'capacity',
-        'is_reservable', 'is_production_space', 'setup_minutes', 'cleanup_minutes',
+        'is_reservable', 'is_production_space', 'es_todo', 'setup_minutes', 'cleanup_minutes',
     ];
 
     protected function casts(): array
@@ -19,10 +19,29 @@ class Space extends Model
         return [
             'is_reservable'       => 'boolean',
             'is_production_space' => 'boolean',
+            'es_todo'             => 'boolean',
         ];
     }
 
     public const TIPOS = ['fisico' => 'Físico', 'virtual' => 'Virtual'];
+
+    /**
+     * El laboratorio entero, como espacio (§7).
+     *
+     * Se reserva de dos maneras que no se parecen en nada: un **recorrido**
+     * —treinta personas a la vez, en grupos, sin cerrar nada— o una
+     * **operación** que lo toma completo y no deja reservar ni una sala. La
+     * fila la siembra la migración; si alguien la borró, no hay recorridos.
+     */
+    public static function todoElLaboratorio(): ?self
+    {
+        return static::where('es_todo', true)->first();
+    }
+
+    public function esTodoElLaboratorio(): bool
+    {
+        return (bool) $this->es_todo;
+    }
 
     /**
      * Las áreas que ocupan este espacio.

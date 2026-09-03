@@ -26,7 +26,12 @@ class CoverageService
      *
      * @return Collection<int,User>
      */
-    public function enJornada(CarbonInterface $desde, CarbonInterface $hasta): Collection
+    /**
+     * @param  bool  $incluirRemota  contar tambien a quien esta en jornada remota. Vale
+     *                               para lo virtual: una sala de VR la atiende alguien
+     *                               desde casa; una fresadora, no.
+     */
+    public function enJornada(CarbonInterface $desde, CarbonInterface $hasta, bool $incluirRemota = false): Collection
     {
         $tz = config('fabos.lab.timezone');
         $d  = $desde->copy()->setTimezone($tz);
@@ -37,7 +42,7 @@ class CoverageService
             return collect();
         }
 
-        $porPatron = $this->porPatronSemanal($d, $h);
+        $porPatron = $this->porPatronSemanal($d, $h, $incluirRemota);
         $porTurno  = $this->porTurnoProgramado($desde, $hasta);
 
         return $porPatron->merge($porTurno)->unique('id')->values();
@@ -97,9 +102,9 @@ class CoverageService
             ->get();
     }
 
-    public function hayCobertura(CarbonInterface $desde, CarbonInterface $hasta): bool
+    public function hayCobertura(CarbonInterface $desde, CarbonInterface $hasta, bool $incluirRemota = false): bool
     {
-        return $this->enJornada($desde, $hasta)->isNotEmpty();
+        return $this->enJornada($desde, $hasta, $incluirRemota)->isNotEmpty();
     }
 
     /**
@@ -139,7 +144,7 @@ class CoverageService
     }
 
     /** @return Collection<int,User> */
-    private function porPatronSemanal(CarbonInterface $d, CarbonInterface $h): Collection
+    private function porPatronSemanal(CarbonInterface $d, CarbonInterface $h, bool $incluirRemota = false): Collection
     {
         // Un intervalo que cruza la medianoche no puede cubrirse con un solo
         // patrón diario; se resuelve por turno programado.
@@ -153,8 +158,9 @@ class CoverageService
             ->vigenteEn($d)
             ->where('weekday', $d->isoWeekday())
             // Una jornada remota es jornada, pero no cobertura: quien trabaja
-            // desde casa no abre la puerta ni acompana una maquina.
-            ->where('modalidad', WorkSchedule::PRESENCIAL)
+            // desde casa no abre la puerta ni acompana una maquina. Salvo que
+            // lo que se atiende sea virtual, y entonces si cuenta.
+            ->when(! $incluirRemota, fn ($q) => $q->where('modalidad', WorkSchedule::PRESENCIAL))
             ->whereNotIn('user_id', $ausentes)
             ->where('starts_at', '<=', $d->format('H:i:s'))
             ->where('ends_at', '>=', $h->format('H:i:s'))

@@ -137,29 +137,46 @@ class Bandeja extends Page
         $solicitudes = app(ApprovalService::class)->bandeja();
 
         $equipos = Asset::with('area')
-            ->whereIn('id', $solicitudes->pluck('reservable_id'))
+            ->whereIn('id', $solicitudes->where('reservable_type', Asset::class)->pluck('reservable_id'))
+            ->get()
+            ->keyBy('id');
+
+        // Los espacios también se piden: fuera de la jornada del equipo la
+        // sala no se confirma sola, porque abrirla cuesta horas extras.
+        $espacios = \App\Models\Space::query()
+            ->whereIn('id', $solicitudes->where('reservable_type', \App\Models\Space::class)->pluck('reservable_id'))
             ->get()
             ->keyBy('id');
 
         $cobertura = app(CoverageService::class);
         $extras = app(OvertimeService::class);
 
+        // Para un espacio no hay certifab que pedir: la atiende cualquiera del
+        // equipo, y la lista lo dice con sus extras del mes al lado.
+        $personal = User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->get();
+
         return [
-            'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $cobertura, $extras) {
-                $equipo = $equipos[$s->reservable_id] ?? null;
+            'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $espacios, $personal, $cobertura, $extras) {
+                $equipo = $s->reservable_type === Asset::class ? ($equipos[$s->reservable_id] ?? null) : null;
+                $espacio = $s->reservable_type === \App\Models\Space::class ? ($espacios[$s->reservable_id] ?? null) : null;
 
                 // Quién puede atenderla. Se ofrece a TODO el que esté
                 // certificado, no solo a quien esté en jornada: en un sábado
                 // no hay nadie en jornada por definición, y aun así hay que
                 // poder decidir a quién llamar. Al lado de cada nombre, sus
                 // extras del mes, que es el costo real de decir que sí.
-                $candidatos = $equipo ? $cobertura->certificadosPara($equipo) : collect();
+                $candidatos = match (true) {
+                    $equipo !== null  => $cobertura->certificadosPara($equipo),
+                    $espacio !== null => $personal,
+                    default           => collect(),
+                };
 
-                $enJornada = $cobertura->enJornada($s->starts_at, $s->ends_at)->pluck('id');
+                $enJornada = $cobertura->enJornada($s->starts_at, $s->ends_at, incluirRemota: $espacio?->type === 'virtual')->pluck('id');
 
                 return [
                     'reserva'    => $s,
                     'equipo'     => $equipo,
+                    'espacio'    => $espacio,
                     'candidatos' => $candidatos->map(fn (User $u) => [
                         'id'         => $u->id,
                         'nombre'     => $u->name,
