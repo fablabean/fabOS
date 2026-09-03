@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class Reservation extends Model
 {
     protected $fillable = [
-        'reservable_type', 'reservable_id', 'user_id', 'project_id', 'supervisor_id',
+        'reservable_type', 'reservable_id', 'user_id', 'project_id', 'project_task_id', 'supervisor_id',
         'advisory_asset_id', 'advisory_area_id', 'participants', 'parent_reservation_id',
         'status', 'mode', 'is_production', 'starts_at', 'ends_at', 'reinstated_at',
         'checked_in_at', 'checked_out_at',
@@ -54,6 +54,9 @@ class Reservation extends Model
         // cuenta como solape, y cuántas personas caben a la vez lo suma el
         // servicio de espacios.
         'recorrido'      => 'Recorrido',
+        // El tiempo de alguien, apartado para una tarea de proyecto: en esas
+        // horas no se le reparte nada.
+        'proyecto'       => 'Tiempo de proyecto',
     ];
 
     /** Estados en los que la reserva ocupa el recurso de verdad. */
@@ -80,6 +83,17 @@ class Reservation extends Model
     public function evidence(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
         return $this->morphMany(Evidencia::class, 'evidenciable')->orderBy('id');
+    }
+
+    /** La tarea para la que se apartó este tiempo, si es un bloque de proyecto (§11). */
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(ProjectTask::class, 'project_task_id');
+    }
+
+    public function esBloqueDeProyecto(): bool
+    {
+        return $this->mode === 'proyecto';
     }
 
     /** Un proyecto al que se carga esta reserva, si lo hay (§11). */

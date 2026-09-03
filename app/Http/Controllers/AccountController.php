@@ -113,6 +113,9 @@ class AccountController extends Controller
                 ->with(['advisoryAsset', 'user'])
                 ->orderBy('starts_at')
                 ->get(),
+            // El tiempo apartado para proyectos: en esas horas no le toca
+            // nada mas, y conviene verlo junto a lo que si le toca.
+            'bloques'   => app(\App\Services\Projects\TiempoDeProyecto::class)->bloquesDe($user)->load('task'),
             'qr'        => $this->qr,
         ]);
     }

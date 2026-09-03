@@ -87,6 +87,14 @@ class ApprovalService
 
         $nombre = $equipo?->name ?? $espacio->name;
 
+        // Quien va a atender tiene que estar libre: si tiene una asesoria o
+        // tiempo apartado para un proyecto a esa hora, no esta.
+        if ($acompanante && ! app(BookingService::class)->estaLibre(User::class, $acompanante->id, $solicitud->starts_at, $solicitud->ends_at)) {
+            throw new BookingException(
+                $acompanante->name . ' ya tiene algo a esa hora (una asesoría o tiempo apartado para un proyecto). Elige a otra persona.'
+            );
+        }
+
         return DB::transaction(function () use ($solicitud, $equipo, $espacio, $nombre, $acompanante, $quienAprueba, $abrirJornada) {
             // Si hay acompañante y no está en jornada a esa hora, se le programa.
             // El servicio de jornadas valida el tope de extras y lanza si se pasa.

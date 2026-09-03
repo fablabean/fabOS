@@ -11,6 +11,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -158,6 +159,61 @@ class TasksRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                /*
+                 * Apartar tiempo para esta tarea (§10, §11).
+                 *
+                 * Quien lleva un proyecto necesita horas seguidas, y en esas
+                 * horas no puede estar en una asesoria ni acompañando una
+                 * sala. El bloque es una reserva del tiempo de la persona, y
+                 * todo lo que reparte gente ya la respeta. Cada uno aparta el
+                 * suyo; el del equipo lo aparta quien lleva el proyecto.
+                 */
+                Action::make('apartar')
+                    ->label('Apartar tiempo')
+                    ->icon('heroicon-o-clock')
+                    ->color('gray')
+                    ->modalHeading(fn (ProjectTask $record) => 'Apartar tiempo para «' . $record->title . '»')
+                    ->modalDescription('En esas horas no se le asignan asesorías ni acompañamientos. Se puede apartar varias veces para la misma tarea.')
+                    ->schema([
+                        Select::make('para_quien')
+                            ->label('De quién')
+                            ->options(function (ProjectTask $record) {
+                                $p = $record->project;
+                                $gente = collect([$p?->lead])->merge($p?->members?->map->user ?? collect())
+                                    ->push($record->assignedTo)->filter()->unique('id');
+
+                                return $gente->sortBy('name')->mapWithKeys(fn (User $u) => [$u->id => $u->name])->all();
+                            })
+                            ->default(fn (ProjectTask $record) => $record->assigned_to ?? auth()->id())
+                            ->required()
+                            ->helperText('El tuyo lo apartas tú. El de otra persona, solo quien lleva el proyecto.'),
+
+                        DateTimePicker::make('desde')->label('Desde')->seconds(false)->minutesStep(15)->required(),
+                        DateTimePicker::make('hasta')->label('Hasta')->seconds(false)->minutesStep(15)->required()->after('desde'),
+                    ])
+                    ->action(function (ProjectTask $record, array $data) {
+                        // El selector ya entrega UTC: no se vuelve a convertir.
+                        $tz = config('fabos.lab.timezone');
+                        $desde = \Illuminate\Support\Carbon::parse($data['desde'], config('app.timezone'))->setTimezone($tz);
+                        $hasta = \Illuminate\Support\Carbon::parse($data['hasta'], config('app.timezone'))->setTimezone($tz);
+
+                        try {
+                            $bloque = app(\App\Services\Projects\TiempoDeProyecto::class)->apartar(
+                                $record, User::findOrFail($data['para_quien']), $desde, $hasta, auth()->user(),
+                            );
+                        } catch (\App\Services\Booking\BookingException $e) {
+                            Notification::make()->danger()->title('No se pudo apartar')->body($e->getMessage())->persistent()->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()
+                            ->title('Tiempo apartado')
+                            ->body($bloque->reservable?->name . ' queda ocupado el '
+                                . $desde->format('d/m') . ' de ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i') . '.')
+                            ->send();
+                    }),
+
                 Action::make('mover')
                     ->label('Mover')
                     ->icon('heroicon-o-arrows-right-left')

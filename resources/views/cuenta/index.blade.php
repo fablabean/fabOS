@@ -332,6 +332,34 @@
         </div>
     @endif
 
+    {{-- ------------------------------------------- tiempo de proyecto --}}
+    @if ($bloques->isNotEmpty())
+        <h2>Tiempo apartado para proyectos</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                En estas horas no se te asignan asesorías ni acompañamientos. Se aparta desde la
+                tarea, en el proyecto.
+            </p>
+
+            <table>
+                <thead><tr><th>Proyecto</th><th>Tarea</th><th>Cuándo</th></tr></thead>
+                <tbody>
+                @foreach ($bloques as $b)
+                    <tr>
+                        <td>{{ $b->project?->code ?? '—' }}</td>
+                        <td>{{ $b->task?->title ?? '—' }}</td>
+                        <td>
+                            {{ $b->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                            — {{ $b->ends_at->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- ---------------------------------------------------- reservas --}}
     <h2>Mis próximas reservas</h2>
 

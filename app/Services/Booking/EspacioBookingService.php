@@ -179,9 +179,21 @@ class EspacioBookingService
                 // se puede manipular, y una casilla no puede meter a cualquiera
                 // como acompañante del laboratorio.
                 if ($acompanantesIds !== []) {
-                    $reserva->companions()->sync(
-                        User::role(User::ROLES_BACKOFFICE)->whereIn('id', $acompanantesIds)->pluck('id')->all(),
-                    );
+                    $acompanan = User::role(User::ROLES_BACKOFFICE)->whereIn('id', $acompanantesIds)->get();
+
+                    // Y libres a esa hora. Quien tiene una asesoria o tiempo
+                    // apartado para un proyecto no esta: se dice quien y que
+                    // tiene, para que el operador elija a otro.
+                    foreach ($acompanan as $quien) {
+                        if (! $this->libre(User::class, $quien->id, $desde, $hasta)) {
+                            throw new BookingException(
+                                $quien->name . ' ya tiene algo a esa hora (una asesoría o tiempo apartado para un proyecto). '
+                                . 'Elige a otra persona para acompañar.'
+                            );
+                        }
+                    }
+
+                    $reserva->companions()->sync($acompanan->pluck('id')->all());
                 }
 
                 // Cada herramienta, colgada de la reserva del espacio: asi se
