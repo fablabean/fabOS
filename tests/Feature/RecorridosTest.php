@@ -132,16 +132,57 @@ class RecorridosTest extends TestCase
         $this->assertStringContainsString('ya hay otro recorrido con 25', $r->status_reason);
     }
 
-    /** Una operación con más gente que el aforo entra, y se dice que se pasa. */
-    public function test_una_operacion_que_pasa_el_aforo_entra_avisando(): void
+    /** En operación el aforo manda, también en el laboratorio entero. */
+    public function test_una_operacion_no_pasa_del_aforo(): void
     {
-        $r = $this->espacios()->reservar(
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessageMatches('/caben 30/');
+
+        $this->espacios()->reservar(
             $this->alguien(), $this->todo, $this->hora('10:00'), $this->hora('12:00'), 40, [], 'Montaje',
             EspacioBookingService::OPERACION,
         );
+    }
 
-        $this->assertTrue($r->esCierreTotal());
-        $this->assertStringContainsString('superan el aforo', $r->status_reason);
+    // ------------------------------------------------- recorridos en una sala
+
+    /** Una sala también se recorre: sin tope, sin bloquearla, con los grupos sugeridos. */
+    public function test_una_sala_en_recorrido_no_tiene_tope_ni_bloquea(): void
+    {
+        $r = $this->espacios()->reservar(
+            $this->alguien(), $this->taller, $this->hora('10:00'), $this->hora('11:00'), 25, [], null,
+            EspacioBookingService::RECORRIDO,
+        );
+
+        $this->assertTrue($r->esRecorrido());
+        $this->assertStringContainsString('3 grupos de hasta 12', $r->status_reason);
+
+        // Y otra actividad en el taller a la misma hora entra igual.
+        $this->espacios()->reservar($this->alguien(), $this->taller, $this->hora('10:00'), $this->hora('11:00'), 4);
+
+        $this->assertSame(2, Reservation::count());
+    }
+
+    /** Dos salas de a diez para veinte: en operación caben, porque el aforo que cuenta es la suma. */
+    public function test_con_varias_salas_el_aforo_es_la_suma(): void
+    {
+        $vr = Space::create(['slug' => 'vr', 'name' => 'Lab. VR', 'capacity' => 10, 'is_reservable' => true]);
+        $impresion = Space::create(['slug' => '3d', 'name' => 'Lab. Impresión 3D', 'capacity' => 10, 'is_reservable' => true]);
+
+        $madre = $this->espacios()->reservarVarios(
+            $this->alguien(), [$impresion, $vr], $this->hora('10:00'), $this->hora('12:00'), 20,
+        );
+
+        $this->assertSame('confirmada', $madre->status);
+        $this->assertSame(1, Reservation::where('parent_reservation_id', $madre->id)->count());
+
+        // Veinticinco ya no caben ni sumando: se dice con la suma delante.
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessageMatches('/caben 20 personas/');
+
+        $this->espacios()->reservarVarios(
+            $this->alguien(), [$impresion, $vr], $this->hora('14:00'), $this->hora('16:00'), 25,
+        );
     }
 
     /** Un grupo que cabe en uno no recibe ninguna nota: no hay nada que organizar. */

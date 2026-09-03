@@ -81,6 +81,7 @@ class EspacioController extends Controller
             'herramientas.*' => ['integer'],
             'espacios'       => ['array'],
             'espacios.*'     => ['integer'],
+            'modalidad'      => ['nullable', 'in:recorrido,operacion'],
             'proposito'      => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -98,6 +99,8 @@ class EspacioController extends Controller
         $hasta = $desde->copy()->addMinutes((int) $datos['duracion']);
 
         try {
+            // El laboratorio entero solo se recorre desde aqui: cerrarlo es
+            // del panel. Una sala, lo que diga la persona.
             $reserva = $this->espacios->reservarVarios(
                 $request->user(),
                 $espacios,
@@ -106,6 +109,7 @@ class EspacioController extends Controller
                 (int) $datos['participantes'],
                 array_map('intval', $datos['herramientas'] ?? []),
                 $datos['proposito'] ?? null,
+                $space->esTodoElLaboratorio() ? EspacioBookingService::RECORRIDO : ($datos['modalidad'] ?? null),
             );
         } catch (BookingException $e) {
             // El motivo va al campo que lo causó cuando se puede saber: así el

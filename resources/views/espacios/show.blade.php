@@ -62,7 +62,7 @@
                 <div class="agenda-campo">
                     <label for="participantes">Cuántas personas</label>
                     <input id="participantes" name="participantes" type="number" required
-                           min="1" max="{{ $espacio->esTodoElLaboratorio() ? 500 : ($espacio->capacity ?: 500) }}"
+                           min="1" max="500"
                            value="{{ old('participantes', 1) }}">
                 </div>
 
@@ -77,6 +77,23 @@
             </div>
 
             @error('participantes') <p class="msg error">{{ $message }}</p> @enderror
+
+            {{-- Para qué se toma. En recorrido se pasa por ahí: no bloquea la
+                 sala y el aforo es guía. En operación se usa en exclusiva y el
+                 aforo manda. El laboratorio entero solo se recorre desde aquí. --}}
+            @unless ($espacio->esTodoElLaboratorio())
+                <p style="margin:1rem 0 .4rem;font-weight:600">¿Para qué?</p>
+                <div class="herramientas">
+                    <label class="herramienta">
+                        <input type="radio" name="modalidad" value="operacion" @checked(old('modalidad', 'operacion') === 'operacion')>
+                        <span><strong>Usar el espacio</strong> <small style="opacity:.6">· en exclusiva; el aforo manda</small></span>
+                    </label>
+                    <label class="herramienta">
+                        <input type="radio" name="modalidad" value="recorrido" @checked(old('modalidad') === 'recorrido')>
+                        <span><strong>Recorrido</strong> <small style="opacity:.6">· se pasa por ahí; no bloquea nada</small></span>
+                    </label>
+                </div>
+            @endunless
 
             {{-- Varios espacios en una sola reserva: quien monta una feria toma
                  el taller y la sala de al lado, y pedirlas de a una es dos

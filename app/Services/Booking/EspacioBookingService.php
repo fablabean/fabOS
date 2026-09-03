@@ -68,6 +68,7 @@ class EspacioBookingService
         ?string $proposito = null,
         ?string $modalidad = null,
         array $acompanantesIds = [],
+        ?string $notaConjunta = null,
     ): Reservation {
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -82,21 +83,24 @@ class EspacioBookingService
         }
 
         /*
-         * El laboratorio entero se reserva de dos maneras, y hay que decir
-         * cuál. Desde el sitio público solo se pide recorrido; la operación
-         * —cerrarlo todo— se programa desde el panel.
+         * Cualquier espacio se reserva de dos maneras, y hay que decir cuál.
+         *
+         *  · Recorrido: se pasa por ahí. No bloquea el espacio, y el aforo es
+         *    una guía: un grupo grande se parte y rota, y eso lo organiza
+         *    quien lo lleva. El sistema sugiere los grupos.
+         *  · Operación: se usa el espacio, en exclusiva. Aquí el aforo manda:
+         *    no caben más sillas.
+         *
+         * Por defecto una sala se pide para usarla; el laboratorio entero,
+         * para recorrerlo. Cerrar el laboratorio entero es cosa del panel.
          */
-        $esRecorrido = false;
+        $modalidad ??= $espacio->esTodoElLaboratorio() ? self::RECORRIDO : self::OPERACION;
 
-        if ($espacio->esTodoElLaboratorio()) {
-            $modalidad ??= self::RECORRIDO;
-
-            if (! in_array($modalidad, [self::RECORRIDO, self::OPERACION], true)) {
-                throw new BookingException('El laboratorio entero se reserva para un recorrido o para una operación.');
-            }
-
-            $esRecorrido = $modalidad === self::RECORRIDO;
+        if (! in_array($modalidad, [self::RECORRIDO, self::OPERACION], true)) {
+            throw new BookingException('Un espacio se reserva para un recorrido o para una operación.');
         }
+
+        $esRecorrido = $modalidad === self::RECORRIDO;
 
         // Nada se reserva mientras el laboratorio está tomado entero: ni una
         // sala, ni un recorrido. Lo que ya estaba, se queda.
@@ -110,23 +114,23 @@ class EspacioBookingService
             $this->comprobarElCierre($desde, $hasta);
         }
 
-        // El aforo es un dato del espacio, editable desde el backoffice. El
-        // mensaje dice el numero para que quien lo lea sepa si es un limite
-        // real o uno que nadie ha revisado todavia.
-        // El aforo de una sala es un tope: no caben mas sillas. El del
-        // laboratorio entero es una guia -un recorrido de cuarenta y cinco se
-        // parte en tres grupos y entra igual-, y eso se dice mas abajo en vez
-        // de impedirlo.
-        if ($espacio->capacity && $participantes > $espacio->capacity && ! $espacio->esTodoElLaboratorio()) {
+        /*
+         * El aforo es un dato del espacio, editable desde el backoffice. En
+         * operacion manda: el mensaje dice el numero para que quien lo lea
+         * sepa si es un limite real o uno que nadie ha revisado. En recorrido
+         * es guia, y se convierte en una sugerencia de grupos.
+         *
+         * La nota conjunta la trae quien reservo varias salas a la vez: ahi
+         * el aforo que cuenta es la suma, y ya se comprobo.
+         */
+        if ($notaConjunta === null && ! $esRecorrido && $espacio->capacity && $participantes > $espacio->capacity) {
             throw new BookingException(
                 'En ' . $espacio->name . ' caben ' . $espacio->capacity . ' personas, y pediste '
-                . $participantes . '. Si el aforo real es otro, se corrige en Espacios.'
+                . $participantes . '. Para un recorrido no hay tope: elige esa modalidad. Si el aforo real es otro, se corrige en Espacios.'
             );
         }
 
-        $nota = $espacio->esTodoElLaboratorio()
-            ? $this->notaDeAforo($espacio, $participantes, $desde, $hasta, $modalidad ?? self::RECORRIDO)
-            : null;
+        $nota = $notaConjunta ?? ($esRecorrido ? $this->notaDeAforo($espacio, $participantes, $desde, $hasta) : null);
 
         /*
          * Fuera de la jornada del equipo se puede PEDIR, no reservar.
@@ -283,14 +287,40 @@ class EspacioBookingService
             throw new BookingException('«Todo el laboratorio» ya incluye los demás espacios: elígelo solo.');
         }
 
-        return DB::transaction(function () use ($user, $espacios, $desde, $hasta, $participantes, $herramientaIds, $proposito, $modalidad, $acompanantesIds) {
+        /*
+         * Con varias salas, el aforo que cuenta es la SUMA: veinte personas
+         * en dos salas de diez se reparten. Cada sala por separado diria que
+         * no caben, y estaria mirando el problema equivocado.
+         */
+        $esRecorrido = ($modalidad ?? self::OPERACION) === self::RECORRIDO;
+        $conjunto = (int) $espacios->sum(fn (Space $e) => (int) $e->capacity);
+        $notaConjunta = '';
+
+        if ($espacios->count() > 1 && $conjunto > 0) {
+            if (! $esRecorrido && $participantes > $conjunto) {
+                throw new BookingException(
+                    'Entre ' . $espacios->pluck('name')->implode(' y ') . ' caben ' . $conjunto
+                    . ' personas, y pediste ' . $participantes . '. Para un recorrido no hay tope: elige esa modalidad.'
+                );
+            }
+
+            if ($esRecorrido && $participantes > $conjunto) {
+                $grupos = (int) ceil($participantes / $conjunto);
+                $notaConjunta = $participantes . ' personas entre ' . $espacios->count() . ' espacios (aforo conjunto '
+                    . $conjunto . '): se sugiere hacerlo en ' . $grupos . ' grupos, rotando.';
+            }
+        }
+
+        return DB::transaction(function () use ($user, $espacios, $desde, $hasta, $participantes, $herramientaIds, $proposito, $modalidad, $acompanantesIds, $notaConjunta) {
             $madre = $this->reservar(
                 $user, $espacios->first(), $desde, $hasta, $participantes,
                 $herramientaIds, $proposito, $modalidad, $acompanantesIds,
+                $espacios->count() > 1 ? $notaConjunta : null,
             );
 
-            $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre) {
-                $hija = $this->reservar($user, $espacio, $desde, $hasta, $participantes, [], $proposito);
+            $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre, $modalidad) {
+                // Sin nota propia: la del conjunto ya esta en la madre.
+                $hija = $this->reservar($user, $espacio, $desde, $hasta, $participantes, [], $proposito, $modalidad, [], '');
                 $hija->update(['parent_reservation_id' => $madre->id]);
 
                 return $hija;
@@ -368,28 +398,30 @@ class EspacioBookingService
      * persona con los dos datos delante. Para una operacion se dice el aforo
      * a secas: no hay grupos que armar, pero conviene saber que se pasa.
      */
-    public function notaDeAforo(Space $todo, int $participantes, CarbonInterface $desde, CarbonInterface $hasta, string $modalidad): ?string
+    public function notaDeAforo(Space $espacio, int $participantes, CarbonInterface $desde, CarbonInterface $hasta): ?string
     {
-        $aforo = (int) ($todo->capacity ?: 30);
+        // El grupo de un recorrido: quince en el laboratorio entero, y lo
+        // que quepa en una sala si es una sala.
+        $grupo = $espacio->esTodoElLaboratorio()
+            ? self::GRUPO_DE_RECORRIDO
+            : (int) ($espacio->capacity ?: self::GRUPO_DE_RECORRIDO);
+
         $partes = [];
+        $grupos = (int) ceil($participantes / max(1, $grupo));
 
-        if ($modalidad === self::RECORRIDO) {
-            $grupos = (int) ceil($participantes / self::GRUPO_DE_RECORRIDO);
+        if ($grupos > 1) {
+            $partes[] = $participantes . ' personas: se sugiere hacerlo en ' . $grupos . ' grupos de hasta '
+                . $grupo . ($grupos > 2 || ! $espacio->esTodoElLaboratorio() ? ', rotando' : ', en paralelo') . '.';
+        }
 
-            if ($grupos > 1) {
-                $partes[] = $participantes . ' personas: se sugiere hacerlo en ' . $grupos . ' grupos de hasta '
-                    . self::GRUPO_DE_RECORRIDO . ($grupos > 2 ? ', rotando' : ', en paralelo') . '.';
-            }
-
+        if ($espacio->esTodoElLaboratorio()) {
             $yaEstan = $this->personasEnRecorrido($desde, $hasta);
 
             if ($yaEstan > 0) {
                 $partes[] = 'A esa hora ya hay otro recorrido con ' . $yaEstan
-                    . ($yaEstan === 1 ? ' persona' : ' personas') . '; el aforo de referencia es ' . $aforo . ' a la vez.';
+                    . ($yaEstan === 1 ? ' persona' : ' personas') . '; el aforo de referencia es '
+                    . (int) ($espacio->capacity ?: 30) . ' a la vez.';
             }
-        } elseif ($participantes > $aforo) {
-            $partes[] = $participantes . ' personas superan el aforo de referencia del laboratorio ('
-                . $aforo . '). Se reserva igual; tenlo en cuenta al organizar.';
         }
 
         return $partes === [] ? null : implode(' ', $partes);

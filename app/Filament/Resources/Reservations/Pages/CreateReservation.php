@@ -188,16 +188,27 @@ class CreateReservation extends CreateRecord
                      * completo. Desde el sitio solo se pide recorrido; cerrar
                      * es de aquí.
                      */
+                    /*
+                     * Cualquier espacio se toma de dos maneras. En recorrido
+                     * el aforo es guia y no se bloquea nada; en operacion el
+                     * aforo manda y el espacio queda en exclusiva. Con el
+                     * laboratorio entero, operacion es cerrarlo.
+                     */
                     ToggleButtons::make('modalidad')
                         ->label('Para qué se toma')
-                        ->options([
+                        ->options(fn ($get) => [
                             EspacioBookingService::RECORRIDO => 'Recorrido',
-                            EspacioBookingService::OPERACION => 'Operación: cerrarlo entero',
+                            EspacioBookingService::OPERACION => self::esTodo($get('space_ids'))
+                                ? 'Operación: cerrarlo entero'
+                                : 'Operación: usarlo en exclusiva',
                         ])
-                        ->default(EspacioBookingService::RECORRIDO)
+                        ->default(EspacioBookingService::OPERACION)
                         ->inline()
-                        ->visible(fn ($get) => $get('tipo') === 'espacio' && self::esTodo($get('space_ids')))
-                        ->helperText('Un recorrido no bloquea nada: caben 30 personas a la vez, en dos grupos de 15. Cerrarlo entero no deja reservar ni una sala ni una máquina mientras dure.'),
+                        ->live()
+                        ->visible(fn ($get) => $get('tipo') === 'espacio')
+                        ->helperText(fn ($get) => self::esTodo($get('space_ids'))
+                            ? 'Recorrido: no bloquea nada y el aforo es guía (30 a la vez, en grupos de 15). Cerrarlo entero no deja reservar ni una sala ni una máquina mientras dure.'
+                            : 'Recorrido: se pasa por ahí, no bloquea la sala y el aforo es guía. Operación: la sala queda en exclusiva y el aforo manda; con varias salas, manda la suma.'),
 
                     TextInput::make('participantes')
                         ->label('Cuántas personas')
@@ -207,7 +218,7 @@ class CreateReservation extends CreateRecord
                         ->default(1)
                         ->required(fn ($get) => $get('tipo') === 'espacio')
                         ->visible(fn ($get) => $get('tipo') === 'espacio')
-                        ->helperText('Una sala tiene su aforo y no se pasa. El laboratorio entero admite más: un recorrido grande se parte en grupos, y el sistema lo sugiere al crear.'),
+                        ->helperText('En operación el aforo manda (con varias salas, la suma). En recorrido es guía: un grupo grande se parte, y el sistema sugiere los grupos al crear.'),
 
                     /*
                      * Quiénes del equipo acompañan. Ninguno, uno o todos: una
