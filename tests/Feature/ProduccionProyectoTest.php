@@ -83,6 +83,42 @@ class ProduccionProyectoTest extends TestCase
      * programar para conseguirlo —es la misma tabla y la misma restricción—,
      * pero justo por eso conviene fijarlo con una prueba.
      */
+    /**
+     * Una produccion no se presenta, y el barrido de ausencias no la toca.
+     *
+     * Paso de verdad: la impresora llevaba un dia imprimiendo piezas de un
+     * proyecto y el sistema la marco como «no se presento» a los quince
+     * minutos de empezar, porque nadie escaneo un QR. La maquina quedo libre
+     * en el catalogo con la impresion a medias. Nadie escanea para producir:
+     * es el laboratorio corriendo su propia maquina.
+     */
+    public function test_el_barrido_de_ausencias_no_cancela_una_produccion(): void
+    {
+        $equipo = $this->impresora();
+        $persona = $this->persona();
+
+        // Empezo hace una hora y nadie registro llegada.
+        $produccion = app(ProduccionService::class)->programar(
+            $equipo, $persona, now()->subHour(), now()->addHours(5), $this->proyecto(), 'Perro Go2',
+        );
+
+        // Y una reserva normal en las mismas condiciones, para comparar: esa
+        // si se libera, que para eso existe el barrido.
+        $otra = $this->impresora();
+        Certifab::create(['user_id' => $persona->id, 'risk_family_id' => $otra->risk_family_id, 'level' => 'byte']);
+        $normal = \App\Models\Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $otra->id,
+            'user_id' => $persona->id, 'status' => 'confirmada', 'mode' => 'directa',
+            'starts_at' => now()->subHour(), 'ends_at' => now()->addHours(2),
+        ]);
+
+        $liberadas = app(\App\Services\Booking\AttendanceService::class)->liberarAusencias();
+
+        $this->assertSame(1, $liberadas);
+        $this->assertSame('no_show', $normal->refresh()->status);
+        $this->assertSame('confirmada', $produccion->refresh()->status, 'la impresora sigue trabajando: no se suelta');
+    }
+
     public function test_producir_saca_la_maquina_de_la_lista(): void
     {
         $equipo = $this->impresora();

@@ -166,6 +166,11 @@ class AttendanceService
         $pendientes = Reservation::query()
             ->where('status', 'confirmada')
             ->whereNull('checked_in_at')
+            // Una produccion no se presenta: es el laboratorio corriendo su
+            // propia maquina, y nadie escanea un QR para empezar a imprimir.
+            // Este barrido las marcaba como «no se presento» a los quince
+            // minutos y soltaba la maquina con la impresion a medias.
+            ->where('is_production', false)
             ->where('starts_at', '<', $limite)
             ->get();
 

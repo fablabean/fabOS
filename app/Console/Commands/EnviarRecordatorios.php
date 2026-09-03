@@ -35,6 +35,9 @@ class EnviarRecordatorios extends Command
             ->where('reservable_type', Asset::class)
             ->where('status', 'confirmada')
             ->whereNull('checked_in_at')
+            // A una produccion no hay que recordarle que llegue: la corre el
+            // propio laboratorio, sin llegada que registrar.
+            ->where('is_production', false)
             ->whereBetween('starts_at', [$desde, $hasta])
             ->with('user')
             ->get();
