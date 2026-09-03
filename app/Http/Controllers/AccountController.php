@@ -87,23 +87,29 @@ class AccountController extends Controller
             // Las asesorias van aparte porque no reservan una maquina sino el
             // TIEMPO de quien asesora, asi que su `reservable` es una persona.
             // Sin esto, quien pedia una asesoria no la veia en ningun sitio.
+            // Y las de los ultimos dias tambien, validadas o no: quien pidio
+            // tiene que poder decir que no lo atendieron, y ver que la suya
+            // quedo validada.
             'asesorias' => Reservation::query()
                 ->where('user_id', $user->id)
                 ->where('mode', 'asesoria')
-                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
-                ->where('ends_at', '>=', now())
+                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
+                ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
                 ->with(['advisoryAsset.area', 'reservable'])
                 ->orderBy('starts_at')
                 ->get(),
 
             // Y las que ATIENDE, si es del equipo: su agenda del dia depende de
             // esto tanto como de sus propias reservas.
+            // Con los ultimos dias incluidos: la que atendio y se olvido de
+            // validar tiene que seguir a la vista para validarla tarde, en vez
+            // de figurar como no presentada para alguien que si vino.
             'asesoriasQueAtiendo' => Reservation::query()
                 ->where('reservable_type', User::class)
                 ->where('reservable_id', $user->id)
                 ->where('mode', 'asesoria')
-                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
-                ->where('ends_at', '>=', now())
+                ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
+                ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
                 ->with(['advisoryAsset', 'user'])
                 ->orderBy('starts_at')
                 ->get(),

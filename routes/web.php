@@ -155,6 +155,12 @@ Route::middleware('auth')->group(function () {
     // Que avisos quiere recibir cada persona (§15).
     Route::post('/cuenta/avisos', [AccountController::class, 'preferencias'])->name('cuenta.avisos');
 
+    // Quien llego a una asesoria, y quien no (§10). Sin QR: lo dice quien
+    // atiende desde su cuenta, y quien pidio puede decir que no lo atendieron.
+    Route::post('/asesorias/{reservation}/llego', [AsesoriaController::class, 'llego'])->name('asesoria.llego');
+    Route::post('/asesorias/{reservation}/no-vino', [AsesoriaController::class, 'noVino'])->name('asesoria.no_vino');
+    Route::post('/asesorias/{reservation}/no-me-atendieron', [AsesoriaController::class, 'noMeAtendieron'])->name('asesoria.no_me_atendieron');
+
     // Vincular el carne a la cuenta: se hace una vez, ya autenticado.
     Route::post('/cuenta/carnet', [CarnetLoginController::class, 'link'])->name('carnet.link');
 

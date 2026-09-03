@@ -245,14 +245,33 @@
                 usarla, resérvala aparte.
             </p>
 
+            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+
             <table>
-                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th></tr></thead>
+                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th><th></th></tr></thead>
                 <tbody>
                 @foreach ($asesorias as $a)
+                    @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
                     <tr>
                         <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
                         <td>{{ $a->reservable?->name ?? '—' }}</td>
                         <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($a->checked_in_at)
+                                <span class="pill ok">Atendida</span>
+                            @elseif ($a->status === 'confirmada' && now()->greaterThan($tol))
+                                {{-- La otra cara de la validación: si quien atiende
+                                     no ha dicho nada pasada la tolerancia, quien
+                                     pidió puede decir que no lo atendieron. --}}
+                                <form method="POST" action="{{ route('asesoria.no_me_atendieron', $a) }}" style="display:inline"
+                                      onsubmit="return confirm('¿Nadie te atendió? Queda anotado con tu nombre y el de quien debía atenderte.')">
+                                    @csrf
+                                    <button type="submit" class="secundario">No me atendieron</button>
+                                </form>
+                            @elseif ($a->status === 'solicitada')
+                                <span class="pill warn">Pendiente</span>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -265,14 +284,47 @@
         <h2>Asesorías que voy a atender</h2>
 
         <div class="panel">
+            <p class="help" style="margin-top:0">
+                Una asesoría no tiene QR: la llegada la validas tú. Si se te olvidó, se puede
+                validar hasta {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }} días
+                después; si la persona no vino, dilo aquí para que quede anotado.
+            </p>
+
+            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+
             <table>
-                <thead><tr><th>Equipo</th><th>Quién la pidió</th><th>Cuándo</th></tr></thead>
+                <thead><tr><th>Equipo</th><th>Quién la pidió</th><th>Cuándo</th><th></th></tr></thead>
                 <tbody>
                 @foreach ($asesoriasQueAtiendo as $a)
+                    @php
+                        $abre = $a->starts_at->copy()->subMinutes(config('fabos.checkin.antes'));
+                        $tol  = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia'));
+                    @endphp
                     <tr>
                         <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
                         <td>{{ $a->user?->name ?? '—' }}</td>
                         <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($a->checked_in_at)
+                                <span class="pill ok">Validada</span>
+                            @elseif ($a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
+                                <form method="POST" action="{{ route('asesoria.llego', $a) }}" style="display:inline">
+                                    @csrf
+                                    <button type="submit">Llegó</button>
+                                </form>
+                                @if (now()->greaterThan($tol))
+                                    <form method="POST" action="{{ route('asesoria.no_vino', $a) }}" style="display:inline"
+                                          onsubmit="return confirm('¿No vino? Queda como no presentada, con tu nombre.')">
+                                        @csrf
+                                        <button type="submit" class="secundario">No vino</button>
+                                    </form>
+                                @endif
+                            @elseif ($a->status === 'solicitada')
+                                <span class="pill warn">Pendiente</span>
+                            @else
+                                <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>

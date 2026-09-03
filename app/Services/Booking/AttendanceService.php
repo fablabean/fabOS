@@ -171,6 +171,11 @@ class AttendanceService
             // Este barrido las marcaba como «no se presento» a los quince
             // minutos y soltaba la maquina con la impresion a medias.
             ->where('is_production', false)
+            // Una asesoria tampoco se escanea: la llegada la valida quien
+            // atiende, desde su cuenta, y si nadie vino lo marca esa persona.
+            // El barrido las daba por no presentadas a los veinte minutos
+            // aunque la persona estuviera sentada al lado del asesor.
+            ->where('mode', '<>', 'asesoria')
             ->where('starts_at', '<', $limite)
             ->get();
 

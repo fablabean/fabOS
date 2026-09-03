@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Asset;
+use App\Models\Reservation;
+use App\Services\Booking\AsistenciaDeAsesoria;
 use App\Services\Booking\AsesoriaService;
+use App\Services\Booking\BookingException;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,7 +22,49 @@ use Illuminate\Validation\ValidationException;
  */
 class AsesoriaController extends Controller
 {
-    public function __construct(private AsesoriaService $asesorias) {}
+    public function __construct(
+        private AsesoriaService $asesorias,
+        private AsistenciaDeAsesoria $asistencia,
+    ) {}
+
+    // ------------------------------------------- quien llego y quien no
+
+    /** Quien atiende valida que la persona llego. */
+    public function llego(Request $request, Reservation $reservation)
+    {
+        return $this->decidir(fn () => $this->asistencia->llego($reservation, $request->user()), 'Llegada validada.');
+    }
+
+    /** Quien atiende dice que la persona no vino. */
+    public function noVino(Request $request, Reservation $reservation)
+    {
+        return $this->decidir(fn () => $this->asistencia->noVino($reservation, $request->user()), 'Anotado: no se presentó.');
+    }
+
+    /** Quien pidio dice que no lo atendieron. */
+    public function noMeAtendieron(Request $request, Reservation $reservation)
+    {
+        return $this->decidir(
+            fn () => $this->asistencia->noMeAtendieron($reservation, $request->user()),
+            'Anotado. La coordinación lo ve con tu nombre y el de quien debía atenderte.',
+        );
+    }
+
+    /**
+     * Las tres vuelven a Mi cuenta con lo que paso: el mensaje del servicio
+     * ya dice por que no se pudo, y repetirlo aqui seria decirlo dos veces
+     * distinto.
+     */
+    private function decidir(callable $accion, string $bien)
+    {
+        try {
+            $accion();
+        } catch (BookingException $e) {
+            return redirect()->route('home')->withErrors(['asesoria' => $e->getMessage()]);
+        }
+
+        return redirect()->route('home')->with('status', $bien);
+    }
 
     public function show(Request $request, Asset $asset)
     {
