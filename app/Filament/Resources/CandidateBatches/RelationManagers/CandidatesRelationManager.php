@@ -67,6 +67,18 @@ class CandidatesRelationManager extends RelationManager
 
                 TextColumn::make('description')->label('De qué va')->wrap()->limit(120)->placeholder('—'),
 
+                // Lo que trajo la lista y no tenia columna: se lee aqui, como
+                // vino, con el nombre de su columna.
+                TextColumn::make('extras')
+                    ->label('Más datos')
+                    ->state(fn (Candidate $r) => collect($r->extras())->map(fn ($v, $k) => $k . ': ' . $v)->values()->all())
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
+                    ->wrap()
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 TextColumn::make('score')
                     ->label('Nota')
                     ->alignEnd()
@@ -105,6 +117,18 @@ class CandidatesRelationManager extends RelationManager
                         'nota'     => $r->evaluation_note,
                     ])
                     ->schema([
+                        // Todo lo que se sabe del candidato, delante, antes de
+                        // decidir: es para lo que se guardo.
+                        \Filament\Forms\Components\Placeholder::make('lo_que_trae')
+                            ->label('Lo que trae')
+                            ->columnSpanFull()
+                            ->visible(fn (Candidate $record) => $record->extras() !== [] || filled($record->description))
+                            ->content(fn (Candidate $record) => new \Illuminate\Support\HtmlString(
+                                collect(array_filter(['De qué va' => $record->description]) + $record->extras())
+                                    ->map(fn ($v, $k) => '<div style="margin:0 0 .4rem"><strong>' . e($k) . ':</strong> ' . e($v) . '</div>')
+                                    ->implode('')
+                            )),
+
                         Select::make('decision')
                             ->label('Decisión')
                             ->options(Candidate::ESTADOS)

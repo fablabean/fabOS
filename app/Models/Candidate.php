@@ -17,14 +17,14 @@ class Candidate extends Model
 {
     protected $fillable = [
         'batch_id', 'name', 'organization',
-        'contact_name', 'contact_email', 'contact_phone', 'description',
+        'contact_name', 'contact_email', 'contact_phone', 'description', 'extra',
         'status', 'score', 'evaluation_note', 'evaluated_at', 'evaluated_by',
         'project_id', 'position',
     ];
 
     protected function casts(): array
     {
-        return ['evaluated_at' => UtcDateTime::class];
+        return ['evaluated_at' => UtcDateTime::class, 'extra' => 'array'];
     }
 
     public const ESTADOS = [
@@ -46,6 +46,20 @@ class Candidate extends Model
     public function evaluatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'evaluated_by');
+    }
+
+    /**
+     * Lo que trajo la lista y no cabe en las columnas fijas, como pares
+     * «columna: valor», sin los vacíos. Es lo que se lee al evaluar.
+     *
+     * @return array<string,string>
+     */
+    public function extras(): array
+    {
+        return collect($this->extra ?? [])
+            ->filter(fn ($v) => filled($v))
+            ->map(fn ($v) => (string) $v)
+            ->all();
     }
 
     public function estaEvaluado(): bool

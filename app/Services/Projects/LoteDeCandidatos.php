@@ -17,6 +17,260 @@ use Illuminate\Support\Facades\DB;
 class LoteDeCandidatos
 {
     /**
+     * A dónde puede ir cada columna de la lista.
+     *
+     * La nota (1 a 5) no está a propósito: es lo que pone quien evalúa aquí,
+     * y un «puntaje 913» de otra convocatoria no es eso. Va como dato extra,
+     * que es lo que es.
+     */
+    public const DESTINOS = [
+        'name'            => 'Candidato (nombre del proyecto)',
+        'organization'    => 'Organización',
+        'contact_name'    => 'Persona de contacto',
+        'contact_email'   => 'Correo',
+        'contact_phone'   => 'Teléfono',
+        'description'     => 'De qué va',
+        'evaluation_note' => 'Nota de evaluación previa',
+        'extra'           => 'Guardar como dato extra',
+        'ignorar'         => 'No importar',
+    ];
+
+    /**
+     * Palabras con las que suele venir cada cosa en una cabecera. Es una
+     * sugerencia: quien importa la corrige antes de confirmar.
+     *
+     * @var array<string,list<string>>
+     */
+    private const PISTAS = [
+        'name'            => ['proyecto', 'nombre', 'candidato', 'emprendimiento', 'empresa', 'iniciativa', 'titulo', 'título'],
+        'organization'    => ['organizacion', 'organización', 'entidad', 'institucion', 'institución'],
+        'contact_name'    => ['contacto', 'responsable', 'lider', 'líder', 'representante'],
+        'contact_email'   => ['correo', 'email', 'e-mail', 'mail'],
+        'contact_phone'   => ['telefono', 'teléfono', 'celular', 'movil', 'móvil', 'whatsapp'],
+        'description'     => ['resumen', 'descripcion', 'descripción', 'de que va', 'de qué va', 'detalle'],
+        'evaluation_note' => ['sintesis', 'síntesis', 'evaluacion 1', 'evaluación 1', 'concepto', 'observaciones'],
+    ];
+
+    /**
+     * Mira la lista antes de meterla: qué separador trae, si la primera fila
+     * es cabecera, y qué columnas tiene.
+     *
+     * Se acepta lo que exportan Excel y Google Sheets en Colombia -punto y
+     * coma, tabulador, coma, barra- y se respetan las comillas: un resumen
+     * con punto y coma dentro no puede partir la fila.
+     *
+     * @return array{separador:string,cabecera:bool,columnas:list<string>,filas:int,mapa:array<int,string>,muestra:list<list<string>>}
+     */
+    public function analizar(string $texto): array
+    {
+        $lineas = $this->lineasDe($texto);
+
+        if ($lineas === []) {
+            return ['separador' => "\t", 'cabecera' => false, 'columnas' => [], 'filas' => 0, 'mapa' => [], 'muestra' => []];
+        }
+
+        $separador = $this->separadorDe($lineas[0]);
+        $primera = $this->partir($lineas[0], $separador);
+        $cabecera = $this->pareceCabeceraEntera($primera);
+
+        $columnas = $cabecera
+            ? array_map(fn ($c, $i) => $c !== '' ? $c : 'Columna ' . ($i + 1), $primera, array_keys($primera))
+            : array_map(fn ($i) => 'Columna ' . ($i + 1), array_keys($primera));
+
+        $datos = $cabecera ? array_slice($lineas, 1) : $lineas;
+
+        return [
+            'separador' => $separador,
+            'cabecera'  => $cabecera,
+            'columnas'  => array_values($columnas),
+            'filas'     => count($datos),
+            'mapa'      => $this->sugerirMapa(array_values($columnas), $cabecera),
+            'muestra'   => array_map(fn ($l) => $this->partir($l, $separador), array_slice($datos, 0, 3)),
+        ];
+    }
+
+    /**
+     * Mete la lista con las columnas donde quien importa dijo.
+     *
+     * @param  array<int,string>  $mapa  posición de la columna => destino
+     * @return int cuántos entraron
+     */
+    public function importar(CandidateBatch $lote, string $texto, array $mapa, bool $conCabecera): int
+    {
+        $lineas = $this->lineasDe($texto);
+
+        if ($lineas === []) {
+            return 0;
+        }
+
+        $separador = $this->separadorDe($lineas[0]);
+        $columnas = $conCabecera ? $this->partir(array_shift($lineas), $separador) : [];
+
+        $deNombre = array_search('name', $mapa, true);
+
+        if ($deNombre === false) {
+            throw new ProjectException('Alguna columna tiene que ser el nombre del candidato: sin nombre no hay a quién evaluar.');
+        }
+
+        $posicion = (int) $lote->candidates()->max('position');
+        $cuantos = 0;
+
+        foreach ($lineas as $linea) {
+            $campos = $this->partir($linea, $separador);
+            $nombre = trim((string) ($campos[$deNombre] ?? ''));
+
+            if ($nombre === '') {
+                continue;
+            }
+
+            $fila = ['name' => mb_substr($nombre, 0, 255), 'extra' => []];
+
+            foreach ($mapa as $i => $destino) {
+                $valor = trim((string) ($campos[$i] ?? ''));
+
+                if ($destino === 'name' || $destino === 'ignorar' || $valor === '') {
+                    continue;
+                }
+
+                if ($destino === 'extra') {
+                    $fila['extra'][$columnas[$i] ?? 'Columna ' . ($i + 1)] = $valor;
+                } elseif ($destino === 'contact_email') {
+                    $fila[$destino] = filter_var($valor, FILTER_VALIDATE_EMAIL) ? $valor : null;
+                } else {
+                    // Si dos columnas van al mismo sitio, se juntan: mejor
+                    // largo que perdido.
+                    $fila[$destino] = isset($fila[$destino]) ? $fila[$destino] . "\n" . $valor : $valor;
+                }
+            }
+
+            $fila['extra'] = $fila['extra'] ?: null;
+            $fila['position'] = ++$posicion;
+
+            $lote->candidates()->create($fila);
+            $cuantos++;
+        }
+
+        return $cuantos;
+    }
+
+    /**
+     * Qué columna va a dónde, a partir de la cabecera.
+     *
+     * @param  list<string>  $columnas
+     * @return array<int,string>
+     */
+    public function sugerirMapa(array $columnas, bool $cabecera): array
+    {
+        // Sin cabecera, el orden de siempre: nombre, organización, contacto,
+        // correo, descripción, y el resto como extra.
+        if (! $cabecera) {
+            $orden = ['name', 'organization', 'contact_name', 'contact_email', 'description'];
+
+            return array_map(fn ($i) => $orden[$i] ?? 'extra', array_keys($columnas));
+        }
+
+        $mapa = [];
+        $usados = [];
+
+        foreach ($columnas as $i => $columna) {
+            $plano = mb_strtolower(trim($columna));
+            $destino = 'extra';
+
+            foreach (self::PISTAS as $candidato => $pistas) {
+                if (in_array($candidato, $usados, true)) {
+                    continue;
+                }
+
+                foreach ($pistas as $pista) {
+                    if (str_contains($plano, $pista)) {
+                        $destino = $candidato;
+                        break 2;
+                    }
+                }
+            }
+
+            if ($destino !== 'extra') {
+                $usados[] = $destino;
+            }
+
+            $mapa[$i] = $destino;
+        }
+
+        // Sin nombre no hay lista: si nada parecía nombre, la primera columna.
+        if (! in_array('name', $mapa, true) && $mapa !== []) {
+            $mapa[0] = 'name';
+        }
+
+        return $mapa;
+    }
+
+    /** @return list<string> */
+    private function lineasDe(string $texto): array
+    {
+        // El BOM con que Excel marca el UTF-8 se colaba en la primera
+        // cabecera: «﻿Puntaje» no es «Puntaje».
+        $texto = preg_replace('/^\xEF\xBB\xBF/', '', $texto);
+
+        return array_values(array_filter(
+            array_map('rtrim', preg_split('/\r\n|\r|\n/', $texto)),
+            fn ($l) => trim($l) !== '',
+        ));
+    }
+
+    private function separadorDe(string $primera): string
+    {
+        $cuenta = [
+            "\t" => substr_count($primera, "\t"),
+            ';'  => substr_count($primera, ';'),
+            '|'  => substr_count($primera, '|'),
+            ','  => substr_count($primera, ','),
+        ];
+
+        arsort($cuenta);
+
+        return array_key_first($cuenta);
+    }
+
+    /** @return list<string> */
+    private function partir(string $linea, string $separador): array
+    {
+        return array_map('trim', str_getcsv($linea, $separador, '"', '\\'));
+    }
+
+    /**
+     * Si la primera fila es cabecera: ninguna celda parece un correo o un
+     * número largo, y alguna dice cómo se llama una columna.
+     *
+     * @param  list<string>  $celdas
+     */
+    private function pareceCabeceraEntera(array $celdas): bool
+    {
+        $todasPistas = array_merge(...array_values(self::PISTAS));
+
+        foreach ($celdas as $c) {
+            if (filter_var($c, FILTER_VALIDATE_EMAIL) || preg_match('/^\d{3,}$/', $c)) {
+                return false;
+            }
+        }
+
+        foreach ($celdas as $c) {
+            $plano = mb_strtolower($c);
+
+            if ($this->pareceCabecera($c)) {
+                return true;
+            }
+
+            foreach ($todasPistas as $pista) {
+                if (str_contains($plano, $pista)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Mete la lista tal como llega: pegada desde una hoja de cálculo.
      *
      * Se acepta tabulador, punto y coma o barra vertical porque eso es lo que
