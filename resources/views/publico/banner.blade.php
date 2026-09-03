@@ -27,7 +27,7 @@
                     $fondo ? "background-image:url('{$fondo}')" : null,
                 ])->filter()->implode(';');
             @endphp
-            <div class="lamina {{ $i === 0 ? 'activa' : '' }} {{ $l->alineacion === 'centro' ? 'centro' : '' }}"
+            <div class="lamina {{ $i === 0 ? 'activa' : '' }} {{ $l->alineacion === 'centro' ? 'centro' : '' }} {{ $l->fondo_tipo !== 'color' && $l->filtro && $l->filtro !== 'ninguno' ? 'filtro-' . $l->filtro : '' }}"
                  data-lamina="{{ $i }}"
                  style="{{ $estilo }}">
                 @if ($l->esVideo())

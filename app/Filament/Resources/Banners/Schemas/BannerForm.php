@@ -195,12 +195,23 @@ class BannerForm
                          */
                         Slider::make('velo')
                             ->label('Cuánto se oscurece el fondo')
-                            ->range(0, 90)
+                            // Hasta 100: por encima de 70 el velo deja de ser
+                            // solo un degradado y se vuelve una capa entera,
+                            // para las fotos que ni asi dejaban leer.
+                            ->range(0, 100)
                             ->step(5)
                             ->default(70)
                             ->required()
                             ->visible(fn ($get) => $get('fondo_tipo') !== 'color')
-                            ->helperText('Sube esto si el texto cuesta de leer sobre la foto.'),
+                            ->helperText('Sube esto si el texto cuesta de leer sobre la foto. Al máximo, la foto casi desaparece.'),
+
+                        Select::make('filtro')
+                            ->label('Filtro')
+                            ->options(Banner::FILTROS)
+                            ->default('ninguno')
+                            ->required()
+                            ->visible(fn ($get) => $get('fondo_tipo') !== 'color')
+                            ->helperText('Manda la foto al fondo sin retocarla: se prueba y se cambia sin volver a subirla.'),
                     ]),
 
                 Section::make('Botones')

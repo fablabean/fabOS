@@ -119,6 +119,10 @@ decisión tuya
 - [x] QR en la lámina del banner: lleva a un chat de WhatsApp, a un chat de
       Teams con una cuenta concreta, o a una dirección; el enlace lo arma el
       sistema y el mensaje llega ya escrito. En el teléfono se vuelve botón
+- [x] El velo llega a 100 —por encima de 70 se le suma una capa entera, porque
+      un degradado por definición deja zonas claras— y la foto o el video
+      admiten un filtro (blanco y negro, sepia, frío, cálido, desenfoque,
+      contraste) sin retocar el fichero
 - [x] Los botones de la lámina son solo los escritos: sin ellos no sale ninguno.
       Las láminas que salían con los «de siempre» los recibieron escritos, para
       poder borrarlos

@@ -47,18 +47,37 @@
     }
 
     /* El velo. No es decoración: es lo que hace legible el texto. Su fuerza
-       la decide quien sube la foto, porque depende de la foto. */
+       la decide quien sube la foto, porque depende de la foto.
+
+       Hasta 70 es un degradado: oscurece donde va el texto y deja ver la foto
+       por el otro lado. De 70 a 100 se le suma una capa ENTERA que crece
+       hasta cubrirla casi del todo: el degradado, por definición, deja zonas
+       claras, y había fotos que ni al tope dejaban leer. */
     .lamina::after{
         content:"";position:absolute;inset:0;opacity:var(--velo,.7);
+        --solido:min(.9, max(0, calc((var(--velo,.7) - .7) / .3)));
         background:
+            linear-gradient(rgba(12,14,11,var(--solido)), rgba(12,14,11,var(--solido))),
             linear-gradient(100deg, rgba(12,14,11,.96) 0%, rgba(12,14,11,.62) 45%, rgba(12,14,11,.12) 100%),
             linear-gradient(to top, rgba(12,14,11,.85), transparent 55%);
     }
     .lamina.centro::after{
         background:
+            linear-gradient(rgba(12,14,11,var(--solido)), rgba(12,14,11,var(--solido))),
             radial-gradient(85% 75% at 50% 50%, rgba(12,14,11,.82), rgba(12,14,11,.5) 60%, rgba(12,14,11,.25)),
             linear-gradient(to top, rgba(12,14,11,.8), transparent 60%);
     }
+
+    /* ---------- los filtros ----------
+       Sobre la lámina entera, así alcanzan también al video. El desenfoque
+       sangra por los bordes: la lámina se agranda un poco para que el borde
+       difuso quede fuera de la pantalla. */
+    .lamina.filtro-gris{filter:grayscale(1)}
+    .lamina.filtro-sepia{filter:sepia(.8)}
+    .lamina.filtro-frio{filter:sepia(.35) hue-rotate(175deg) saturate(1.3)}
+    .lamina.filtro-calido{filter:sepia(.4) saturate(1.35)}
+    .lamina.filtro-contraste{filter:contrast(1.25) saturate(1.15)}
+    .lamina.filtro-desenfoque{filter:blur(7px);inset:-16px}
 
     /* ---------- el texto ---------- */
     /* `min-width:0` no es cosmética: un elemento flexible mide por defecto lo

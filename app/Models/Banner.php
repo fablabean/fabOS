@@ -33,7 +33,7 @@ class Banner extends Model
     protected $fillable = [
         'position', 'is_active',
         'rotulo', 'titulo', 'texto',
-        'fondo_tipo', 'fondo_color', 'fondo_path', 'poster_path', 'fondo_pos', 'velo',
+        'fondo_tipo', 'fondo_color', 'fondo_path', 'poster_path', 'fondo_pos', 'velo', 'filtro',
         'efecto', 'alineacion',
         'accion_texto', 'accion_url', 'accion2_texto', 'accion2_url',
         'qr_tipo', 'qr_destino', 'qr_mensaje', 'qr_texto',
@@ -77,6 +77,23 @@ class Banner extends Model
     public const ALINEACIONES = [
         'izquierda' => 'A la izquierda',
         'centro'    => 'Centrado',
+    ];
+
+    /**
+     * Filtros sobre la foto o el video.
+     *
+     * Una foto de colores vivos compite con el titular. Esto la manda al
+     * fondo sin retocarla antes de subirla: se prueba y se cambia sin volver
+     * a subir nada. Cada clave es una clase CSS en los estilos del banner.
+     */
+    public const FILTROS = [
+        'ninguno'    => 'Sin filtro',
+        'gris'       => 'Blanco y negro',
+        'sepia'      => 'Sepia',
+        'frio'       => 'Frío',
+        'calido'     => 'Cálido',
+        'desenfoque' => 'Desenfocado',
+        'contraste'  => 'Más contraste',
     ];
 
     /**
