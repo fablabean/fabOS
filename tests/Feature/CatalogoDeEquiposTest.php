@@ -77,17 +77,20 @@ class CatalogoDeEquiposTest extends TestCase
 
     // ---------------------------------------------------------- los tres caminos
 
-    public function test_los_tres_caminos_estan_arriba(): void
+    public function test_los_cuatro_caminos_estan_arriba(): void
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
         $this->get('/reservas')
             ->assertOk()
             ->assertSee('Asesoría')
-            ->assertSee('Producción')
-            ->assertSee('Autonomía')
-            // Producción no es una máquina que se reserve: es un encargo.
-            ->assertSee(route('proyectos.solicitar'), false);
+            ->assertSee('Prototipado asistido')
+            ->assertSee('Hago mi pieza')
+            ->assertSee('Espacio')
+            // El prototipado asistido no es una máquina que se reserve: es un encargo.
+            ->assertSee(route('proyectos.solicitar'), false)
+            // Y cada camino lleva su ilustración.
+            ->assertSee('class="ilus"', false);
     }
 
     // ------------------------------------------------------------ las áreas
@@ -112,7 +115,7 @@ class CatalogoDeEquiposTest extends TestCase
         $this->get('/reservas')
             ->assertOk()
             ->assertSee('Asesoría')
-            ->assertSee('Autonomía')
+            ->assertSee('Hago mi pieza')
             // Ni áreas ni máquinas todavía.
             ->assertDontSee('Elige un área')
             ->assertDontSee('Cortadora láser');
@@ -483,7 +486,7 @@ class CatalogoDeEquiposTest extends TestCase
 
         $this->get('/reservas')
             ->assertOk()
-            ->assertSee('Reserva un espacio')
+            ->assertSee('Reservas un espacio')
             ->assertSee(route('espacios.index'), false);
     }
 

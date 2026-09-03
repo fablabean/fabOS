@@ -41,6 +41,11 @@
     }
     .camino:hover{border-color:var(--accent);transform:translateY(-2px)}
     .camino.puesto{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+    /* La ilustracion de cada camino: un icono de linea, en el color de la
+       marca, que se lee antes que el titulo. Va en linea en el HTML y no como
+       archivo: son cuatro trazos y asi toman el color del tema. */
+    .camino .ilus{display:block;width:3rem;height:3rem;margin-bottom:.8rem;color:var(--accent)}
+    .camino .ilus svg{width:100%;height:100%;display:block}
     .camino b{display:block;font-size:1.15rem;margin-bottom:.35rem}
     .camino span{font-size:.86rem;color:var(--ink-soft);line-height:1.45;display:block}
     .camino .pie{display:block;margin-top:.6rem;font-size:.75rem;color:var(--muted);
@@ -95,7 +100,7 @@
     @endphp
 
     @php
-        $nombreDelModo = ['asesoria' => 'Asesoría', 'autonomia' => 'Autonomía'][$modo] ?? null;
+        $nombreDelModo = ['asesoria' => 'Asesoría', 'autonomia' => 'Hago mi pieza'][$modo] ?? null;
         $nombreDelArea = $areas->firstWhere('slug', $area)['nombre'] ?? null;
     @endphp
 
@@ -109,15 +114,26 @@
             <p class="rotulo">Reservas</p>
             <h1>¿Cómo quieres usar el laboratorio?</h1>
             <p class="lead">
-                Hay tres maneras, y conviene elegir antes de mirar máquinas: cambia lo que
+                Hay cuatro maneras, y conviene elegir antes de mirar máquinas: cambia lo que
                 necesitas y lo que tienes que hacer.
             </p>
         </section>
 
-        {{-- Los tres caminos. Producción sale del catálogo: no es una máquina
-             que se reserve, es un encargo que se propone. --}}
+        {{-- Los cuatro caminos. Cada uno con su ilustración, porque el dibujo
+             se lee antes que el título y a quien llega por primera vez le dice
+             de qué va sin leer. El prototipado asistido sale del catálogo: no
+             es una máquina que se reserve, es un encargo que se propone. Y el
+             espacio es un camino más: antes iba en una línea debajo y nadie
+             lo veía. --}}
         <div class="caminos">
             <a class="camino" href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
+                <span class="ilus" aria-hidden="true">
+                    {{-- Dos personas: una acompaña a la otra. --}}
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="15" r="6"/><path d="M6 40v-4a10 10 0 0 1 10-10h4a10 10 0 0 1 10 10v4"/>
+                        <circle cx="34" cy="17" r="4.5"/><path d="M33 26h2a8 8 0 0 1 8 8v6"/>
+                    </svg>
+                </span>
                 <b>Asesoría</b>
                 <span>Alguien del laboratorio te acompaña en la máquina. No necesitas
                       certifab: es justo para cuando todavía no lo tienes.</span>
@@ -125,26 +141,51 @@
             </a>
 
             <a class="camino" href="{{ route('proyectos.solicitar') }}">
-                <b>Producción</b>
+                <span class="ilus" aria-hidden="true">
+                    {{-- Una impresora sacando una pieza: lo hacemos nosotros. --}}
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="8" y="6" width="32" height="10" rx="2"/><path d="M14 16v6M34 16v6"/>
+                        <path d="M18 22h12l4 8v10H14V30z"/><path d="M14 30h20"/><path d="M24 14v4"/>
+                    </svg>
+                </span>
+                <b>Prototipado asistido</b>
                 <span>No operas tú: nos cuentas qué necesitas y lo fabricamos nosotros.
                       Te respondemos con una propuesta, con precio y plazo.</span>
                 <span class="pie">Propones un proyecto</span>
             </a>
 
             <a class="camino" href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
-                <b>Autonomía</b>
+                <span class="ilus" aria-hidden="true">
+                    {{-- Una pieza y una herramienta: la haces tú. --}}
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 18l14-8 14 8v14l-14 8-14-8z"/><path d="M10 18l14 8 14-8M24 26v14"/>
+                        <path d="M36 8l6 6-4 4-6-6z"/>
+                    </svg>
+                </span>
+                <b>Hago mi pieza</b>
                 <span>Reservas y operas por tu cuenta, en los equipos donde ya tienes
                       certifab.</span>
                 <span class="pie">Reservas la máquina</span>
             </a>
+
+            <a class="camino" href="{{ route('espacios.index') }}">
+                <span class="ilus" aria-hidden="true">
+                    {{-- Una sala con su puerta y su mesa: para el grupo. --}}
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 42V12l18-6v36"/><path d="M24 12h18v30"/><path d="M6 42h36"/>
+                        <path d="M30 22h8M30 28h8"/><circle cx="19" cy="26" r="1.5" fill="currentColor"/>
+                    </svg>
+                </span>
+                <b>Espacio</b>
+                <span>Una sala, un taller o el laboratorio entero, para trabajar en grupo,
+                      dar una clase o hacer un recorrido. Dentro tomas las herramientas
+                      que necesites.</span>
+                <span class="pie">Reservas un espacio</span>
+            </a>
         </div>
 
-        {{-- Reservar un espacio: no es una máquina, es una sala. Es lo que se
-             pide para trabajar en grupo o dar clase. --}}
+        {{-- La franja de hoy, que es lo que decide si una sala se confirma sola. --}}
         <p class="lead" style="margin:-1.4rem 0 2rem">
-            ¿Vas a trabajar en grupo o dar una clase?
-            <a href="{{ route('espacios.index') }}"><strong>Reserva un espacio</strong></a>
-            y toma dentro las herramientas que necesites.
             @if ($franjaHoy)
                 Hoy el laboratorio atiende de <strong>{{ substr($franjaHoy[0], 0, 5) }}</strong>
                 a <strong>{{ substr($franjaHoy[1], 0, 5) }}</strong>.

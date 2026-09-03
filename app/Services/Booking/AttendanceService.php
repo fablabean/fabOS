@@ -196,8 +196,30 @@ class AttendanceService
         return $reserva->refresh();
     }
 
+    /**
+     * Cierra las asesorias que terminaron (§10).
+     *
+     * Una reserva de equipo se cierra al escanear la salida, y eso importa:
+     * se cobra lo que de verdad se uso. Una asesoria no tiene salida que
+     * escanear ni nada que cobrar por minutos: cuando pasa su hora de fin,
+     * termino. Sin esto, la que se valido como «en curso» se quedaba en
+     * curso para siempre.
+     */
+    public function cerrarAsesoriasTerminadas(?Carbon $ahora = null): int
+    {
+        return Reservation::query()
+            ->where('mode', 'asesoria')
+            ->where('status', 'en_curso')
+            ->where('ends_at', '<=', ($ahora ?? now())->copy()->utc())
+            ->update(['status' => 'completada']);
+    }
+
     public function liberarAusencias(?Carbon $hasta = null): int
     {
+        // De paso, lo que ya termino se cierra: es el mismo barrido de cada
+        // cuarto de hora, y la asesoria no tiene otro momento en que cerrarse.
+        $this->cerrarAsesoriasTerminadas($hasta);
+
         $limite = ($hasta ?? now())->copy()->subMinutes(config('fabos.checkin.tolerancia'));
 
         $pendientes = Reservation::query()

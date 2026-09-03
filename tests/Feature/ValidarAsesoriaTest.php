@@ -184,6 +184,20 @@ class ValidarAsesoriaTest extends TestCase
         $this->assertSame('confirmada', $a->fresh()->status, 'sin QR, la ausencia la marca una persona');
     }
 
+    /** Validada y terminada su hora, se cierra sola: nadie escanea una salida. */
+    public function test_una_asesoria_validada_se_completa_sola_al_terminar(): void
+    {
+        $a = $this->asesoria();
+        $this->asistencia()->llego($a, $this->ana, $this->hora('10:05'));
+
+        $this->assertSame('en_curso', $a->fresh()->status);
+
+        $this->travelTo($this->hora('10:50'));
+        app(AttendanceService::class)->liberarAusencias();
+
+        $this->assertSame('completada', $a->fresh()->status);
+    }
+
     // ---------------------------------------------------------- la pantalla
 
     public function test_mi_cuenta_ofrece_validar_a_quien_atiende_y_reportar_a_quien_pidio(): void
