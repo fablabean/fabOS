@@ -135,8 +135,9 @@
                     </svg>
                 </span>
                 <b>Asesoría</b>
-                <span>Alguien del laboratorio te acompaña en la máquina. No necesitas
-                      certifab: es justo para cuando todavía no lo tienes.</span>
+                <span>Recibes una explicación personalizada para que conozcas cómo sacarle
+                      todo el jugo al fablab. No incluye producción de piezas, pero sí te
+                      podemos ayudar a entender cómo es el proceso productivo.</span>
                 <span class="pie">Reservas un acompañamiento</span>
             </a>
 
