@@ -300,6 +300,11 @@ Ver `docs/ASESORIAS.md`.
 - **Validar y dar acceso** desde la ficha de cada persona: un código que se
   dicta en persona y caduca en quince minutos. Es la puerta que no depende del
   correo.
+- **El panel no tiene pantalla de ingreso propia.** Filament trae un formulario
+  de usuario y contraseña, y ahí caía quien cerraba sesión desde el panel o
+  entraba a `/admin` sin sesión: una pantalla que pide una contraseña que nadie
+  tiene. Su ruta de ingreso sigue existiendo —es como Filament sabe a dónde
+  mandar a quien no ha entrado— pero solo redirige a `/ingresar`, la del sitio.
 
 ### Proyectos
 

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Controllers\Auth\IngresoDelPanelController;
 use App\Http\Middleware\RequiereSegundoFactor;
 use App\Models\User;
 use Filament\Navigation\NavigationItem;
@@ -29,7 +30,11 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            // El ingreso es el del sitio, sin contraseñas. El formulario de
+            // Filament pedía una que nadie tiene; ahora /admin/login manda a
+            // /ingresar, y ahí llegan también quien cierra sesión desde el
+            // panel y quien entra a /admin sin haber entrado.
+            ->login(IngresoDelPanelController::class)
             // Barra lateral plegable: en pantallas de trabajo el catálogo
             // de activos necesita todo el ancho disponible.
             ->sidebarCollapsibleOnDesktop()
