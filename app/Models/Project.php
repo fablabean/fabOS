@@ -140,13 +140,6 @@ class Project extends Model
         return $this->status === 'pausado';
     }
 
-    /**
-     * De quién es el encargo. Cambia el trámite, no el trabajo.
-     *
-     * Un área de la propia institución no paga: mueve presupuesto por la venta
-     * interna, un circuito de cuatro manos que no se corre en tres días. Un
-     * estudiante no pasa por nada de eso, y una empresa de fuera tampoco.
-     */
     /** Quién firma: una persona con su cédula, o una empresa con su NIT. */
     public const PERSONAS = [
         'natural'  => 'Persona natural',
@@ -199,6 +192,13 @@ class Project extends Model
         return $this->documents()->where('kind', 'contrato')->latest('id')->first();
     }
 
+    /**
+     * De quién es el encargo. Cambia el trámite, no el trabajo.
+     *
+     * Un área de la propia institución no paga: mueve presupuesto por la venta
+     * interna, un circuito de cuatro manos que no se corre en tres días. Un
+     * estudiante no pasa por nada de eso, y una empresa de fuera tampoco.
+     */
     public const CLIENTES = [
         'interno'    => 'Área o facultad de la Universidad',
         'estudiante' => 'Estudiante',

@@ -612,7 +612,7 @@ class ProjectService
                 'user_id'     => $quien?->id,
                 'author_name' => $quien?->name ?: $proyecto->contact_name,
                 'side'        => 'cliente',
-                'body'        => 'Acepté la propuesta ' . ($proyecto->propuestaVigente()?->etiqueta() ?? '') . '.'
+                'body'        => 'Acepté la propuesta' . (($v = $proyecto->propuestaVigente()?->etiqueta()) ? ' ' . $v : '') . '.'
                     . (filled($nota) ? "\n\n" . $nota : ''),
             ]);
 
