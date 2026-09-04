@@ -25,10 +25,13 @@
     .filtros .btn{align-self:center}
 
     /* ---------- la tabla ---------- */
-    .cuadro{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
+    /* El scroll pasa DENTRO del cuadro: un encabezado pegajoso solo se pega al
+       contenedor que hace scroll, y con la pagina entera moviendose se iba
+       con las filas. Alto de pantalla menos la barra, y el encabezado queda. */
+    .cuadro{overflow:auto;max-height:calc(100vh - 6.5rem);border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
     table.eval{border-collapse:collapse;width:max-content;min-width:100%;font-size:.84rem}
     table.eval th,table.eval td{padding:.55rem .7rem;border-bottom:1px solid var(--rule);vertical-align:top;text-align:left}
-    table.eval th{position:sticky;top:0;background:var(--surface);z-index:1;white-space:nowrap;cursor:pointer;user-select:none;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+    table.eval th{position:sticky;top:0;background:var(--surface);z-index:1;box-shadow:0 1px 0 var(--rule);white-space:nowrap;cursor:pointer;user-select:none;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
     table.eval th[data-orden="asc"]::after{content:" ↑"}
     table.eval th[data-orden="desc"]::after{content:" ↓"}
     table.eval td{max-width:24rem}
@@ -117,7 +120,7 @@
                         @foreach ($columnas as $c)
                             @php
                                 $v = $fila[$c] ?? '';
-                                $largo = in_array($c, ['De qué va', 'Por qué', 'Qué puede hacer el Fablab'], true) || mb_strlen($v) > 60;
+                                $largo = in_array($c, ['Estado actual', 'Por qué', 'Qué puede hacer el Fablab'], true) || mb_strlen($v) > 60;
                             @endphp
                             <td data-col="{{ $c }}" data-v="{{ $v }}"
                                 class="{{ $largo ? 'largo' : 'corto' }} {{ $c === 'Decisión' ? 'decision-' . \Illuminate\Support\Str::slug($v) : '' }}">{{ $v }}</td>

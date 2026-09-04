@@ -58,7 +58,7 @@ class LoteCompartido
             ->all();
 
         $fijas = [
-            'Candidato', 'Organización', 'Contacto', 'Correo', 'Teléfono', 'De qué va',
+            'Candidato', 'Organización', 'Contacto', 'Correo', 'Teléfono', 'Estado actual',
             'Decisión', 'Nota', 'Por qué', 'Qué puede hacer el Fablab', 'Quién evaluó', 'Evaluado el', 'Proyecto',
         ];
 
@@ -71,7 +71,7 @@ class LoteCompartido
                 'Contacto'                  => (string) $c->contact_name,
                 'Correo'                    => (string) $c->contact_email,
                 'Teléfono'                  => (string) $c->contact_phone,
-                'De qué va'                 => (string) $c->description,
+                'Estado actual'                 => (string) $c->description,
                 'Decisión'                  => Candidate::ESTADOS[$c->status] ?? $c->status,
                 'Nota'                      => $c->score ? (string) $c->score : '',
                 'Por qué'                   => (string) $c->evaluation_note,

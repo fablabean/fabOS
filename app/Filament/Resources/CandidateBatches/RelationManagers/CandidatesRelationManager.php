@@ -48,7 +48,7 @@ class CandidatesRelationManager extends RelationManager
                 TextInput::make('contact_email')->label('Correo')->email(),
                 TextInput::make('contact_phone')->label('Teléfono'),
 
-                Textarea::make('description')->label('De qué va')->rows(3)->columnSpanFull(),
+                Textarea::make('description')->label('Estado actual')->rows(3)->columnSpanFull(),
             ]);
     }
 
@@ -73,7 +73,7 @@ class CandidatesRelationManager extends RelationManager
                     ->description(fn (Candidate $r) => $r->organization),
 
                 TextColumn::make('description')
-                    ->label('De qué va')
+                    ->label('Estado actual')
                     ->wrap()
                     ->limit(160)
                     ->tooltip(fn (Candidate $r) => mb_strlen((string) $r->description) > 160 ? $r->description : null)
@@ -156,7 +156,7 @@ class CandidatesRelationManager extends RelationManager
                             ->columnSpanFull()
                             ->visible(fn (Candidate $record) => $record->extras() !== [] || filled($record->description))
                             ->content(fn (Candidate $record) => new \Illuminate\Support\HtmlString(
-                                collect(array_filter(['De qué va' => $record->description]) + $record->extras())
+                                collect(array_filter(['Estado actual' => $record->description]) + $record->extras())
                                     ->map(fn ($v, $k) => '<div style="margin:0 0 .4rem"><strong>' . e($k) . ':</strong> ' . e($v) . '</div>')
                                     ->implode('')
                             )),

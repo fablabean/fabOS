@@ -29,7 +29,7 @@ class LoteDeCandidatos
         'contact_name'    => 'Persona de contacto',
         'contact_email'   => 'Correo',
         'contact_phone'   => 'Teléfono',
-        'description'     => 'De qué va',
+        'description'     => 'Estado actual',
         'evaluation_note' => 'Nota de evaluación previa',
         'extra'           => 'Guardar como dato extra',
         'ignorar'         => 'No importar',
@@ -47,7 +47,7 @@ class LoteDeCandidatos
         'contact_name'    => ['contacto', 'responsable', 'lider', 'líder', 'representante'],
         'contact_email'   => ['correo', 'email', 'e-mail', 'mail'],
         'contact_phone'   => ['telefono', 'teléfono', 'celular', 'movil', 'móvil', 'whatsapp'],
-        'description'     => ['resumen', 'descripcion', 'descripción', 'de que va', 'de qué va', 'detalle'],
+        'description'     => ['resumen', 'descripcion', 'descripción', 'estado actual', 'de que va', 'de qué va', 'detalle'],
         'evaluation_note' => ['sintesis', 'síntesis', 'evaluacion 1', 'evaluación 1', 'concepto', 'observaciones'],
     ];
 
