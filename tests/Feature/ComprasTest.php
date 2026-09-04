@@ -67,8 +67,8 @@ class ComprasTest extends TestCase
         $linea = $this->compras()->agregar($carrito, 'Filamento PLA negro', 4, insumo: $insumo);
 
         $this->assertSame('kg', $linea->unit);
-        $this->assertSame(95_000, $linea->unit_price);
-        $this->assertSame(380_000, $linea->total());
+        $this->assertSame(95_000.0, (float) $linea->unit_price);
+        $this->assertSame(380_000.0, $linea->total());
     }
 
     public function test_el_total_incluye_el_impuesto(): void

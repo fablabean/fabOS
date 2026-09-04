@@ -63,9 +63,7 @@ class PurchaseRequestsTable
                     // De donde sale: quien escribe 1.989.000 y ve 2.366.910 sin
                     // explicacion deja de fiarse de la cifra, y una cifra en la
                     // que no se confia no se usa para decidir.
-                    ->description(fn (PurchaseRequest $r) => $r->impuesto() > 0
-                        ? self::pesos($r->subtotal()) . ' + ' . round($r->tasaDeImpuesto() * 100) . '% de impuesto'
-                        : 'sin impuesto'),
+                    ->description(fn (PurchaseRequest $r) => $r->comoSeCalcula()),
 
                 TextColumn::make('recibido')
                     ->label('Recibido')

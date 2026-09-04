@@ -10,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 /**
@@ -28,17 +29,52 @@ class PurchaseRequestForm
                     ->columns(2)
                     ->schema([
                         Select::make('tax_rate')
-                    ->label('Impuesto')
-                    ->options([
-                        ''     => 'El del laboratorio (' . round((float) config('fabos.money.tax_rate') * 100) . '%)',
-                        '0'    => 'Sin impuesto',
-                        '0.05' => '5%',
-                        '0.19' => '19%',
-                    ])
-                    ->default('')
-                    ->helperText('No todo lleva IVA: unos honorarios o un servicio exento, no. Si no se dice, se usa el del laboratorio.'),
+                            ->label('Impuesto')
+                            ->options([
+                                ''     => 'El del laboratorio (' . round((float) config('fabos.money.tax_rate') * 100) . '%)',
+                                '0'    => 'Sin impuesto',
+                                '0.05' => '5%',
+                                '0.19' => '19%',
+                            ])
+                            ->default('')
+                            /*
+                             * La base guarda 0.0000 y las opciones dicen «0»:
+                             * sin traducir, al abrir una solicitud sin
+                             * impuesto el desplegable la mostraba bien pero
+                             * al guardar decia «impuesto invalido». Se
+                             * recorta al abrir, y lo vacio vuelve a ser nulo.
+                             */
+                            ->formatStateUsing(fn ($state) => $state === null || $state === ''
+                                ? ''
+                                : rtrim(rtrim(number_format((float) $state, 4, '.', ''), '0'), '.'))
+                            ->dehydrateStateUsing(fn ($state) => $state === '' || $state === null ? null : $state)
+                            ->helperText('No todo lleva IVA: unos honorarios o un servicio exento, no. Si no se dice, se usa el del laboratorio.'),
 
-                Select::make('budget_id')
+                        /*
+                         * En que moneda se escribe. Lo de Amazon viene en
+                         * dolares con centavos, y convertir cada linea a mano
+                         * es invitar al error: se escribe como esta y se dice
+                         * a cuantos pesos va el dolar.
+                         */
+                        Select::make('currency')
+                            ->label('Moneda')
+                            ->options(PurchaseRequest::MONEDAS)
+                            ->default('COP')
+                            ->required()
+                            ->live()
+                            ->helperText('Los precios se escriben en esta moneda. El presupuesto sigue en pesos.'),
+
+                        TextInput::make('exchange_rate')
+                            ->label('Pesos por dólar')
+                            ->numeric()
+                            ->minValue(1)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->default(config('fabos.money.usd_rate'))
+                            ->visible(fn (Get $get) => $get('currency') === 'USD')
+                            ->required(fn (Get $get) => $get('currency') === 'USD')
+                            ->helperText('La TRM del día, o la que use compras. Con esto se compara contra el presupuesto.'),
+
+                        Select::make('budget_id')
                             ->label('Presupuesto')
                             ->options(fn () => Budget::where('status', 'vigente')
                                 ->orderByDesc('year')
@@ -137,8 +173,11 @@ class PurchaseRequestForm
                                 TextInput::make('unit_price')
                                     ->label('Precio unitario')
                                     ->numeric()
+                                    ->step(0.01)
+                                    ->minValue(0)
                                     ->default(0)
-                                    ->prefix(config('fabos.money.symbol'))
+                                    // Desde la linea, `../../` es la solicitud.
+                                    ->prefix(fn (Get $get) => $get('../../currency') === 'USD' ? 'US$' : config('fabos.money.symbol'))
                                     ->columnSpan(2),
 
                                 TextInput::make('supplier')

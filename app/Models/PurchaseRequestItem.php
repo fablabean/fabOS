@@ -18,6 +18,8 @@ class PurchaseRequestItem extends Model
         return [
             'quantity'          => 'decimal:3',
             'received_quantity' => 'decimal:3',
+            // Con centavos: un lanyard en Amazon vale US$18,99.
+            'unit_price'        => 'decimal:2',
         ];
     }
 
@@ -31,9 +33,10 @@ class PurchaseRequestItem extends Model
         return $this->belongsTo(Supply::class);
     }
 
-    public function total(): int
+    /** Cantidad por precio, en la moneda de la solicitud. */
+    public function total(): float
     {
-        return (int) round($this->quantity * $this->unit_price);
+        return round((float) $this->quantity * (float) $this->unit_price, 2);
     }
 
     /** Lo que falta por llegar. Nunca negativo: recibir de más no resta. */

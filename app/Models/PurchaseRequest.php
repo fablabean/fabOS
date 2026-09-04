@@ -20,12 +20,19 @@ class PurchaseRequest extends Model
         'status', 'justification', 'notes',
         'submitted_at', 'decided_at', 'decision_reason', 'closed_at',
         'tax_rate', 'cart_url', 'share_token', 'shared_at',
+        'currency', 'exchange_rate',
+    ];
+
+    public const MONEDAS = [
+        'COP' => 'Pesos colombianos',
+        'USD' => 'Dólares',
     ];
 
     protected function casts(): array
     {
         return [
             'tax_rate' => 'decimal:4',
+            'exchange_rate' => 'decimal:2',
             'submitted_at' => UtcDateTime::class,
             'decided_at'   => UtcDateTime::class,
             'closed_at'    => UtcDateTime::class,
@@ -80,10 +87,83 @@ class PurchaseRequest extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /** Subtotal en pesos, sin impuesto. */
+    // ------------------------------------------------------------ la moneda
+
+    /**
+     * En que moneda se escribio la solicitud.
+     *
+     * El presupuesto esta en pesos y ahi se compara todo; pero buena parte de
+     * lo que se compra viene de Amazon, en dolares, y obligar a convertir
+     * cada linea a mano es invitar al error. Se escribe en la moneda del
+     * carrito y se dice a cuantos pesos va: el sistema hace la cuenta.
+     */
+    public function esEnPesos(): bool
+    {
+        return ($this->currency ?? 'COP') === 'COP';
+    }
+
+    public function simbolo(): string
+    {
+        return $this->esEnPesos() ? config('fabos.money.symbol') : 'US$';
+    }
+
+    /** Un monto en la moneda de la solicitud, escrito como se lee aqui. */
+    public function formato(float $monto): string
+    {
+        return $this->simbolo() . number_format($monto, $this->esEnPesos() ? 0 : 2, ',', '.');
+    }
+
+    /** Un monto de la moneda de la solicitud, a pesos enteros. */
+    public function aPesos(float $monto): int
+    {
+        if ($this->esEnPesos()) {
+            return (int) round($monto);
+        }
+
+        return (int) round($monto * (float) ($this->exchange_rate ?? 0));
+    }
+
+    /** Subtotal en la moneda de la solicitud, sin impuesto. */
+    public function subtotalEnMoneda(): float
+    {
+        return round((float) $this->items->sum(fn (PurchaseRequestItem $i) => $i->total()), 2);
+    }
+
+    public function impuestoEnMoneda(): float
+    {
+        return round($this->subtotalEnMoneda() * $this->tasaDeImpuesto(), 2);
+    }
+
+    public function totalEnMoneda(): float
+    {
+        return round($this->subtotalEnMoneda() + $this->impuestoEnMoneda(), 2);
+    }
+
+    /**
+     * De donde sale el total, dicho en una linea. Quien escribe 1.989.000 y
+     * ve 2.366.910 sin explicacion deja de fiarse de la cifra.
+     */
+    public function comoSeCalcula(): string
+    {
+        $partes = [];
+
+        if (! $this->esEnPesos()) {
+            $partes[] = $this->formato($this->subtotalEnMoneda()) . ' × ' . config('fabos.money.symbol') . number_format((float) $this->exchange_rate, 0, ',', '.') . ' por dólar';
+        }
+
+        $partes[] = $this->tasaDeImpuesto() > 0
+            ? ($this->esEnPesos() ? config('fabos.money.symbol') . number_format($this->subtotal(), 0, ',', '.') . ' + ' : '+ ') . round($this->tasaDeImpuesto() * 100) . '% de impuesto'
+            : 'sin impuesto';
+
+        return implode(' ', $partes);
+    }
+
+    // ------------------------------------------------------------ en pesos
+
+    /** Subtotal en pesos, sin impuesto. Es lo que se compara con el presupuesto. */
     public function subtotal(): int
     {
-        return (int) $this->items->sum(fn (PurchaseRequestItem $i) => $i->total());
+        return $this->aPesos($this->subtotalEnMoneda());
     }
 
     /**
@@ -115,14 +195,14 @@ class PurchaseRequest extends Model
      */
     public function totalEstimado(): int
     {
-        return (int) round($this->subtotal() * (1 + $this->tasaDeImpuesto()));
+        return $this->aPesos($this->totalEnMoneda());
     }
 
     /** Lo que ya llegó, valorado al precio con el que se pidió. */
     public function recibidoEnPesos(): int
     {
-        return (int) round(
-            $this->items->sum(fn (PurchaseRequestItem $i) => $i->received_quantity * $i->unit_price)
+        return $this->aPesos(
+            (float) $this->items->sum(fn (PurchaseRequestItem $i) => (float) $i->received_quantity * (float) $i->unit_price)
             * (1 + $this->tasaDeImpuesto())
         );
     }

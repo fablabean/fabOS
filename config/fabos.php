@@ -135,6 +135,11 @@ return [
         // trabaja. Es un supuesto administrable, no una verdad del sistema.
         'tax_rate' => (float) env('LAB_TAX_RATE', 0.19),
 
+        // Pesos por dolar que se propone al abrir una compra en dolares. Es
+        // un SUPUESTO: la TRM cambia a diario y quien pide la corrige. Sirve
+        // para no dejar el campo en blanco.
+        'usd_rate' => (float) env('LAB_USD_RATE', 4100),
+
         // Costo por hora de trabajo del equipo, para costear proyectos. NO es
         // el sueldo de nadie: es una tarifa de referencia del laboratorio, que
         // se congela en cada registro para que subirla no reescriba el costo de

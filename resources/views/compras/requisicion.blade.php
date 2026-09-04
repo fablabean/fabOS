@@ -5,6 +5,9 @@
     $iva = $solicitud->tasaDeImpuesto();
     $tz = config('fabos.lab.timezone');
     $pesos = fn ($v) => $simbolo . number_format((float) $v, 0, ',', '.');
+    // En la moneda de la solicitud: si vino en dólares, se pide en dólares y
+    // al final se dice a cuántos pesos va.
+    $moneda = fn ($v) => $solicitud->formato((float) $v);
     $cantidad = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, ',', '.'), '0'), ',');
     // La misma plantilla sirve la pantalla y el PDF: lo que se ve es lo que se
     // baja. En el PDF no hay botones, y la letra es una que el generador trae
@@ -154,26 +157,32 @@
             </td>
             <td class="num">{{ $cantidad($linea->quantity) }}</td>
             <td>{{ $linea->unit }}</td>
-            <td class="num">{{ $pesos($linea->unit_price) }}</td>
-            <td class="num">{{ $pesos($linea->total()) }}</td>
+            <td class="num">{{ $moneda($linea->unit_price) }}</td>
+            <td class="num">{{ $moneda($linea->total()) }}</td>
         </tr>
     @endforeach
     </tbody>
     <tfoot>
         <tr>
             <td colspan="5" class="num">Subtotal</td>
-            <td class="num">{{ $pesos($solicitud->subtotal()) }}</td>
+            <td class="num">{{ $moneda($solicitud->subtotalEnMoneda()) }}</td>
         </tr>
         @if ($iva > 0)
             <tr>
                 <td colspan="5" class="num">Impuesto estimado ({{ (int) round($iva * 100) }}%)</td>
-                <td class="num">{{ $pesos($solicitud->totalEstimado() - $solicitud->subtotal()) }}</td>
+                <td class="num">{{ $moneda($solicitud->impuestoEnMoneda()) }}</td>
             </tr>
         @endif
         <tr class="total">
-            <td colspan="5" class="num">Total estimado</td>
-            <td class="num">{{ $pesos($solicitud->totalEstimado()) }}</td>
+            <td colspan="5" class="num">Total estimado{{ $solicitud->esEnPesos() ? '' : ' en dólares' }}</td>
+            <td class="num">{{ $moneda($solicitud->totalEnMoneda()) }}</td>
         </tr>
+        @unless ($solicitud->esEnPesos())
+            <tr class="total">
+                <td colspan="5" class="num">En pesos, a {{ $pesos($solicitud->exchange_rate) }} por dólar</td>
+                <td class="num">{{ $pesos($solicitud->totalEstimado()) }}</td>
+            </tr>
+        @endunless
     </tfoot>
 </table>
 

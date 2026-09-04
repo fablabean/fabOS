@@ -53,7 +53,7 @@ class PurchasingService
         PurchaseRequest $solicitud,
         string $descripcion,
         float $cantidad,
-        ?int $precioUnitario = null,
+        ?float $precioUnitario = null,
         ?Supply $insumo = null,
         ?string $unidad = null,
         ?string $proveedor = null,
@@ -250,8 +250,9 @@ class PurchasingService
                     );
 
                     // El último costo conocido sirve para la próxima compra.
+                    // En pesos: la ficha del insumo no sabe de dólares.
                     if ($linea->unit_price > 0) {
-                        $linea->supply->forceFill(['last_cost' => $linea->unit_price])->save();
+                        $linea->supply->forceFill(['last_cost' => $solicitud->aPesos((float) $linea->unit_price)])->save();
                     }
                 }
             }
