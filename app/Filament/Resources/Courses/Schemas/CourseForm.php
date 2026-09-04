@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Courses\Schemas;
 
 use App\Models\Course;
 use App\Services\Media\OptimizadorDeImagen;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -11,6 +12,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class CourseForm
@@ -166,23 +169,70 @@ class CourseForm
                             ->defaultItems(0)
                             ->itemLabel(fn (array $state) => \Illuminate\Support\Str::limit($state['prompt'] ?? '', 60) ?: null)
                             ->collapsed()
+                            /*
+                             * En la base, las opciones son una lista y la
+                             * correcta es un numero. En el formulario, cada
+                             * opcion lleva su marca: se señala la buena sobre
+                             * la propia respuesta, y la marca viaja con ella
+                             * si se reordena. Se traduce al entrar y al salir.
+                             */
+                            ->mutateRelationshipDataBeforeFillUsing(fn (array $data) => self::opcionesParaElFormulario($data))
+                            ->mutateRelationshipDataBeforeCreateUsing(fn (array $data) => self::opcionesParaGuardar($data))
+                            ->mutateRelationshipDataBeforeSaveUsing(fn (array $data) => self::opcionesParaGuardar($data))
                             ->schema([
                                 Textarea::make('prompt')->label('Pregunta')->rows(2)->required(),
                                 ...self::material('examen'),
 
-                                Repeater::make('options')
+                                Repeater::make('opciones')
                                     ->label('Opciones')
-                                    ->simple(TextInput::make('opcion')->required())
+                                    ->addActionLabel('Añadir una opción')
                                     ->minItems(2)
                                     ->defaultItems(3)
-                                    ->helperText('La primera es la número 0.'),
+                                    ->columns(6)
+                                    ->helperText('Marca la correcta. En el examen salen en un orden distinto cada vez, así que no importa cuál va primero.')
+                                    ->schema([
+                                        TextInput::make('texto')
+                                            ->hiddenLabel()
+                                            ->placeholder('Una respuesta')
+                                            ->required()
+                                            ->columnSpan(5),
 
-                                TextInput::make('correct')
-                                    ->label('Cuál es la correcta')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->required()
-                                    ->helperText('El número de la opción, empezando por 0.'),
+                                        /*
+                                         * Una sola correcta, por ahora: al
+                                         * marcar esta se desmarcan las demas.
+                                         * Desde dentro de la fila, `../../`
+                                         * es la lista entera de opciones.
+                                         */
+                                        Checkbox::make('correcta')
+                                            ->label('Correcta')
+                                            ->inline()
+                                            ->live()
+                                            ->afterStateUpdated(function (bool $state, Get $get, Set $set, Checkbox $component) {
+                                                if (! $state) {
+                                                    return;
+                                                }
+
+                                                // La ruta va con puntos: `...opciones.<fila>.correcta`.
+                                                $partes = explode('.', $component->getStatePath());
+                                                $propia = $partes[count($partes) - 2];
+
+                                                foreach (array_keys($get('../../opciones') ?? []) as $fila) {
+                                                    if ((string) $fila !== $propia) {
+                                                        $set('../../opciones.' . $fila . '.correcta', false);
+                                                    }
+                                                }
+                                            })
+                                            ->columnSpan(1),
+                                    ])
+                                    // Sin correcta no hay examen que corregir.
+                                    ->rule(fn () => function (string $attribute, mixed $value, \Closure $fail) {
+                                        $marcadas = collect($value ?? [])->filter(fn ($o) => ! empty($o['correcta']))->count();
+
+                                        if ($marcadas !== 1) {
+                                            $fail('Marca cuál es la respuesta correcta: una, y solo una.');
+                                        }
+                                    })
+                                    ->validationMessages(['min' => 'Una pregunta necesita al menos dos opciones.']),
 
                                 Textarea::make('explanation')
                                     ->label('Por qué')
@@ -200,6 +250,43 @@ class CourseForm
                     ]),
 
             ]);
+    }
+
+    /**
+     * De la base al formulario: la lista y el numero, a filas con su marca.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function opcionesParaElFormulario(array $data): array
+    {
+        $correcta = (int) ($data['correct'] ?? 0);
+
+        $data['opciones'] = collect($data['options'] ?? [])
+            ->values()
+            ->map(fn ($texto, $i) => ['texto' => (string) $texto, 'correcta' => $i === $correcta])
+            ->all();
+
+        return $data;
+    }
+
+    /**
+     * Del formulario a la base: las filas, a la lista y al numero de la
+     * marcada. El orden es el del formulario; en el examen se baraja igual.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function opcionesParaGuardar(array $data): array
+    {
+        $filas = collect($data['opciones'] ?? [])->values();
+
+        $data['options'] = $filas->map(fn ($o) => (string) ($o['texto'] ?? ''))->all();
+        $data['correct'] = max(0, (int) $filas->search(fn ($o) => ! empty($o['correcta'])));
+
+        unset($data['opciones']);
+
+        return $data;
     }
 
     /**

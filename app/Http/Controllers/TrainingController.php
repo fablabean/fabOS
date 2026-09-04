@@ -83,10 +83,18 @@ class TrainingController extends Controller
             'curso'       => $curso,
             // Sin `correct` ni `explanation`: la respuesta buena no puede viajar
             // hasta la pantalla de quien se esta examinando.
+            //
+            // Y las opciones, barajadas. Con el mismo orden siempre, lo que se
+            // aprende es «la segunda», no por que la segunda. Cada opcion
+            // lleva su numero original, que es el que se corrige.
             'preguntas'   => $curso->questions->map(fn ($p) => [
                 'id'       => $p->id,
                 'prompt'   => $p->prompt,
-                'options'  => $p->options,
+                'options'  => collect($p->options)
+                    ->map(fn ($texto, $n) => ['n' => $n, 'texto' => $texto])
+                    ->shuffle()
+                    ->values()
+                    ->all(),
                 'material' => $p->material(),
             ]),
         ]);

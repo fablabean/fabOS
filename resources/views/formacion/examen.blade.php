@@ -25,10 +25,10 @@
                 <p style="margin:0 0 .7rem"><strong>{{ $i + 1 }}.</strong> {{ $p['prompt'] }}</p>
                 @include('formacion._material', ['material' => $p['material']])
 
-                @foreach ($p['options'] as $n => $opcion)
+                @foreach ($p['options'] as $o)
                     <label class="opcion">
-                        <input type="radio" name="respuestas[{{ $p['id'] }}]" value="{{ $n }}" required>
-                        <span>{{ $opcion }}</span>
+                        <input type="radio" name="respuestas[{{ $p['id'] }}]" value="{{ $o['n'] }}" required>
+                        <span>{{ $o['texto'] }}</span>
                     </label>
                 @endforeach
             </div>
