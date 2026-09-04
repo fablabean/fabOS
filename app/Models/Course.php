@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * Un curso de la escalera de formación (§9).
@@ -82,5 +83,38 @@ class Course extends Model
     public function edicionesAbiertas(): HasMany
     {
         return $this->editions()->where('status', 'abierta')->orderBy('starts_on');
+    }
+
+    /** Toda la gente que pasó por el curso, en cualquiera de sus ediciones. */
+    public function inscripciones(): HasManyThrough
+    {
+        return $this->hasManyThrough(Enrollment::class, CourseEdition::class);
+    }
+
+    /**
+     * Si se puede borrar: solo cuando nadie pasó por el.
+     *
+     * Una inscripcion es una persona con su nota, sus intentos de examen y
+     * lo que alguien firmo delante de la maquina. Borrar el curso se lo
+     * llevaria todo, y eso no se borra: se apaga el curso y se queda como
+     * registro. Sus ediciones vacias, en cambio, se van con el.
+     */
+    public function sePuedeBorrar(): bool
+    {
+        return ! $this->inscripciones()->exists();
+    }
+
+    /** Por que no se borra, dicho para quien lo intenta. Null si se puede. */
+    public function porQueNoSeBorra(): ?string
+    {
+        if ($this->sePuedeBorrar()) {
+            return null;
+        }
+
+        $n = $this->inscripciones()->count();
+
+        return $n === 1
+            ? 'Una persona pasó por este curso: no se borra, se apaga.'
+            : "{$n} personas pasaron por este curso: no se borra, se apaga.";
     }
 }
