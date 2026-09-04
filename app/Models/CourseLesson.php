@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TieneMaterialDeApoyo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,7 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CourseLesson extends Model
 {
-    protected $fillable = ['course_id', 'position', 'title', 'body'];
+    use TieneMaterialDeApoyo;
+
+    protected $fillable = ['course_id', 'position', 'title', 'body', 'media_path', 'video_url'];
 
     public function course(): BelongsTo
     {

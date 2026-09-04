@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TieneMaterialDeApoyo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,7 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CourseQuestion extends Model
 {
-    protected $fillable = ['course_id', 'position', 'prompt', 'options', 'correct', 'explanation'];
+    use TieneMaterialDeApoyo;
+
+    protected $fillable = ['course_id', 'position', 'prompt', 'options', 'correct', 'explanation', 'media_path', 'video_url'];
 
     protected function casts(): array
     {

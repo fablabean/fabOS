@@ -11,6 +11,7 @@
     <h1 style="margin-top:1rem">{{ $leccion->title }}</h1>
 
     <div class="panel leccion">
+        @include('formacion._material', ['material' => $leccion->material()])
         {!! nl2br(e($leccion->body)) !!}
     </div>
 

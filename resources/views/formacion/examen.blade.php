@@ -23,6 +23,7 @@
         @foreach ($preguntas as $i => $p)
             <div class="panel">
                 <p style="margin:0 0 .7rem"><strong>{{ $i + 1 }}.</strong> {{ $p['prompt'] }}</p>
+                @include('formacion._material', ['material' => $p['material']])
 
                 @foreach ($p['options'] as $n => $opcion)
                     <label class="opcion">

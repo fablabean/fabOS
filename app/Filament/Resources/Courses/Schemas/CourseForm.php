@@ -141,6 +141,7 @@ class CourseForm
                             ->schema([
                                 TextInput::make('title')->label('Título')->required(),
                                 Textarea::make('body')->label('Contenido')->rows(8)->required(),
+                                ...self::material('teoria'),
                             ]),
                     ]),
 
@@ -167,6 +168,7 @@ class CourseForm
                             ->collapsed()
                             ->schema([
                                 Textarea::make('prompt')->label('Pregunta')->rows(2)->required(),
+                                ...self::material('examen'),
 
                                 Repeater::make('options')
                                     ->label('Opciones')
@@ -198,5 +200,51 @@ class CourseForm
                     ]),
 
             ]);
+    }
+
+    /**
+     * La foto o el video que acompaña una pantalla o una pregunta.
+     *
+     * Dos campos: el fichero que se sube y el enlace a YouTube o Vimeo. Los
+     * tutoriales de una maquina suelen estar ya en YouTube, y subir el video
+     * otra vez es pesado para quien lo sube y para quien lo ve.
+     *
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    private static function material(string $directorio): array
+    {
+        return [
+            FileUpload::make('media_path')
+                ->label('Foto o video')
+                // Disco publico explicito: se enseña a quien esta en el curso,
+                // y el disco por defecto guarda en privado sin avisar.
+                ->disk('public')
+                ->visibility('public')
+                ->directory('cursos/' . $directorio)
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'])
+                ->maxSize(25600)
+                ->helperText('Una foto de la máquina, de la pieza, de la pantalla. O un video corto en MP4 o WebM, por debajo de 10 MB. Una foto se encoge en tu navegador antes de subirla.')
+                // La foto se encoge en el navegador antes de salir; a un video
+                // el recorte no le aplica.
+                ->imageResizeMode('contain')
+                ->imageResizeTargetWidth(2000)
+                ->imageResizeTargetHeight(2000)
+                ->imageResizeUpscale(false)
+                ->saveUploadedFileUsing(function ($file) use ($directorio) {
+                    if (str_starts_with((string) $file->getMimeType(), 'video/')) {
+                        return $file->store('cursos/' . $directorio, 'public');
+                    }
+
+                    return app(OptimizadorDeImagen::class)->guardar($file, 'cursos/' . $directorio);
+                })
+                ->columnSpanFull(),
+
+            TextInput::make('video_url')
+                ->label('O un video de YouTube o Vimeo')
+                ->url()
+                ->placeholder('https://www.youtube.com/watch?v=…')
+                ->helperText('Pega el enlace tal cual. Se incrusta en la pantalla; si además hay foto, la foto va primero.')
+                ->columnSpanFull(),
+        ];
     }
 }

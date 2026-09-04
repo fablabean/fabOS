@@ -84,9 +84,10 @@ class TrainingController extends Controller
             // Sin `correct` ni `explanation`: la respuesta buena no puede viajar
             // hasta la pantalla de quien se esta examinando.
             'preguntas'   => $curso->questions->map(fn ($p) => [
-                'id'      => $p->id,
-                'prompt'  => $p->prompt,
-                'options' => $p->options,
+                'id'       => $p->id,
+                'prompt'   => $p->prompt,
+                'options'  => $p->options,
+                'material' => $p->material(),
             ]),
         ]);
     }
