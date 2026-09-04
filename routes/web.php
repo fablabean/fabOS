@@ -109,6 +109,14 @@ Route::get('/proyectos/{project}/imagen', [SolicitudDeProyectoController::class,
 Route::get('/proyectos/{project}/documentos/{document}', [SolicitudDeProyectoController::class, 'documento'])
     ->name('proyectos.documento');
 
+// La evaluacion de un lote de candidatos, para quien no entra al panel: con
+// el enlace firmado del laboratorio o con la sesion del backoffice. Fuera del
+// grupo con sesion: el enlace llega a gente sin cuenta.
+Route::get('/lotes/{batch}/evaluacion', [\App\Http\Controllers\LoteCompartidoController::class, 'ver'])
+    ->name('lotes.compartido');
+Route::get('/lotes/{batch}/evaluacion.csv', [\App\Http\Controllers\LoteCompartidoController::class, 'csv'])
+    ->name('lotes.compartido.csv');
+
 // La evidencia vive en el disco privado y comprueba ella misma quien pide: la
 // sesion del backoffice, la de quien lo pidio, o el enlace firmado del correo.
 // Fuera del grupo con sesion a proposito, o el enlace del correo redirigiria al

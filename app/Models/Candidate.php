@@ -18,7 +18,7 @@ class Candidate extends Model
     protected $fillable = [
         'batch_id', 'name', 'organization',
         'contact_name', 'contact_email', 'contact_phone', 'description', 'extra',
-        'status', 'score', 'evaluation_note', 'evaluated_at', 'evaluated_by',
+        'status', 'score', 'evaluation_note', 'fablab_note', 'evaluated_at', 'evaluated_by',
         'project_id', 'position',
     ];
 

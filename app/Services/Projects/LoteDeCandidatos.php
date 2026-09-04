@@ -335,6 +335,7 @@ class LoteDeCandidatos
         ?int $nota = null,
         ?string $comentario = null,
         ?User $quien = null,
+        ?string $fablab = null,
     ): Candidate {
         if (! array_key_exists($decision, Candidate::ESTADOS)) {
             throw new ProjectException('Esa decisión no existe.');
@@ -344,6 +345,10 @@ class LoteDeCandidatos
             'status'          => $decision,
             'score'           => $nota,
             'evaluation_note' => $comentario,
+            // Lo que el laboratorio le ofrece si sigue. Iba dentro del porque
+            // con un «Fablab:» delante; en su columna se filtra, se exporta y
+            // pasa al proyecto.
+            'fablab_note'     => $fablab,
             'evaluated_at'    => $decision === 'pendiente' ? null : now(),
             'evaluated_by'    => $decision === 'pendiente' ? null : $quien?->id,
         ]);
@@ -384,6 +389,9 @@ class LoteDeCandidatos
                     $candidato->description,
                     $candidato->evaluation_note
                         ? 'Al evaluarlo: ' . $candidato->evaluation_note
+                        : null,
+                    $candidato->fablab_note
+                        ? 'Lo que puede hacer el Fablab: ' . $candidato->fablab_note
                         : null,
                 ]))) ?: null,
                 'notes'         => 'Viene del lote «' . $candidato->batch->name . '».',

@@ -119,6 +119,15 @@ class CandidatesRelationManager extends RelationManager
                     ->wrap()
                     ->extraCellAttributes(['style' => 'max-width:24rem']),
 
+                // Lo que el laboratorio le ofrece si sigue, en su columna.
+                TextColumn::make('fablab_note')
+                    ->label('Qué puede hacer el Fablab')
+                    ->wrap()
+                    ->limit(140)
+                    ->tooltip(fn (Candidate $r) => mb_strlen((string) $r->fablab_note) > 140 ? $r->fablab_note : null)
+                    ->extraCellAttributes(['style' => 'min-width:14rem;max-width:22rem'])
+                    ->placeholder('—'),
+
                 TextColumn::make('evaluatedBy.name')->label('Quién evaluó')->placeholder('—')->toggleable(),
             ])
             ->filters([
@@ -136,6 +145,7 @@ class CandidatesRelationManager extends RelationManager
                         'decision' => $r->status,
                         'score'    => $r->score,
                         'nota'     => $r->evaluation_note,
+                        'fablab'   => $r->fablab_note,
                     ])
                     ->schema([
                         // Todo lo que se sabe del candidato, delante, antes de
@@ -166,6 +176,13 @@ class CandidatesRelationManager extends RelationManager
                             ->rows(3)
                             ->columnSpanFull()
                             ->helperText('Una decisión sin motivo se discute otra vez dentro de un mes. Y si se acepta, esto pasa al resumen del proyecto.'),
+
+                        Textarea::make('fablab')
+                            ->label('Qué puede hacer el Fablab')
+                            ->rows(2)
+                            ->columnSpanFull()
+                            ->placeholder('Desarrollo de prototipo IoT · Asistencia con IA en entornos virtuales')
+                            ->helperText('Lo que el laboratorio le ofrece si sigue. Aparte del porqué: se filtra, se exporta y pasa al proyecto.'),
                     ])
                     ->action(function (Candidate $record, array $data) {
                         app(LoteDeCandidatos::class)->evaluar(
@@ -174,6 +191,7 @@ class CandidatesRelationManager extends RelationManager
                             $data['score'] ?? null,
                             $data['nota'] ?? null,
                             auth()->user(),
+                            $data['fablab'] ?? null,
                         );
 
                         Notification::make()->success()->title('Evaluado')->send();

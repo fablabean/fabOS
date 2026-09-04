@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CandidateBatches;
 
 use App\Models\CandidateBatch;
+use App\Services\Projects\LoteCompartido;
 use App\Services\Projects\LoteDeCandidatos;
 use App\Services\Projects\ProjectException;
 use Filament\Actions\Action;
@@ -263,6 +264,45 @@ class CandidateBatchesTable
                             ->title($cuantos === 1 ? 'Se creó 1 proyecto' : "Se crearon {$cuantos} proyectos")
                             ->send();
                     }),
+
+                /*
+                 * Compartir la evaluacion con quien no entra al panel: un
+                 * enlace firmado de noventa dias, solo lectura, con la tabla
+                 * completa, filtros, graficas y descarga en CSV. Se actualiza
+                 * solo: lo que se evalue despues aparece ahi.
+                 */
+                Action::make('compartir')
+                    ->label('Compartir')
+                    ->iconButton()
+                    ->tooltip('Compartir la evaluación')
+                    ->icon('heroicon-o-share')
+                    ->color('info')
+                    ->modalHeading(fn (CandidateBatch $r) => 'Compartir «' . $r->name . '»')
+                    ->modalDescription('Quien abra el enlace ve la tabla completa de la evaluación —con filtros, gráficas y descarga en CSV— sin entrar al panel y sin poder cambiar nada. Vale ' . LoteCompartido::DIAS_DEL_ENLACE . ' días y se actualiza solo.')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->schema([
+                        Placeholder::make('enlace')
+                            ->label('El enlace')
+                            ->content(fn (CandidateBatch $record) => new \Illuminate\Support\HtmlString(
+                                '<input type="text" readonly value="' . e(app(LoteCompartido::class)->enlace($record)) . '" '
+                                . 'onclick="this.select();navigator.clipboard&&navigator.clipboard.writeText(this.value)" '
+                                . 'style="width:100%;font-size:.85rem;padding:.5rem;border:1px solid rgba(128,128,128,.4);border-radius:.4rem;background:transparent;color:inherit">'
+                                . '<div style="font-size:.78rem;color:rgb(107 114 128);margin-top:.35rem">Haz clic para copiarlo. Se puede abrir en el navegador para verlo antes de mandarlo.</div>'
+                            )),
+                    ]),
+
+                Action::make('csv')
+                    ->label('CSV')
+                    ->iconButton()
+                    ->tooltip('Descargar la evaluación en CSV')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn (CandidateBatch $record) => response()->streamDownload(
+                        fn () => print(app(LoteCompartido::class)->csv($record)),
+                        \Illuminate\Support\Str::slug($record->name) . '-evaluacion.csv',
+                        ['Content-Type' => 'text/csv; charset=UTF-8'],
+                    )),
 
                 EditAction::make()->iconButton()->tooltip('Editar'),
 
