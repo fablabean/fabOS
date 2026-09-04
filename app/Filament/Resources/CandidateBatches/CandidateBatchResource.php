@@ -97,7 +97,7 @@ class CandidateBatchResource extends Resource
                         ->default(fn () => auth()->id()),
 
                     Textarea::make('description')
-                        ->label('De qué va')
+                        ->label('Descripción')
                         ->rows(3)
                         ->columnSpanFull()
                         ->helperText('Con qué criterio se va a evaluar, si lo hay. Dentro de un mes nadie lo recuerda.'),

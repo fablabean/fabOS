@@ -106,7 +106,7 @@ class ProjectForm
                                 fn ($file) => app(OptimizadorDeImagen::class)
                                     ->guardar($file, 'proyectos/referencia', 'local')
                             )
-                            ->helperText('La que resume de qué va. Sale en el listado y en la propuesta; se puede tomar de las que se mandaron con ella.'),
+                            ->helperText('La que resume el proyecto. Sale en el listado y en la propuesta; se puede tomar de las que se mandaron con ella.'),
 
 
                     ]),
