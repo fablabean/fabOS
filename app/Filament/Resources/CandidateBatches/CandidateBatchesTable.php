@@ -6,6 +6,9 @@ use App\Models\CandidateBatch;
 use App\Services\Projects\LoteDeCandidatos;
 use App\Services\Projects\ProjectException;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -262,7 +265,29 @@ class CandidateBatchesTable
                     }),
 
                 EditAction::make()->iconButton()->tooltip('Editar'),
+
+                /*
+                 * Borrar un lote. Se lleva sus candidatos -son la lista- pero
+                 * no los proyectos que ya salieron de el: esos ya viven
+                 * solos, con su codigo y su equipo. Quien puede lo decide la
+                 * matriz.
+                 */
+                DeleteAction::make()
+                    ->iconButton()
+                    ->tooltip('Borrar el lote')
+                    ->modalHeading(fn (CandidateBatch $r) => 'Borrar «' . $r->name . '»')
+                    ->modalDescription(fn (CandidateBatch $r) => 'Se van sus '
+                        . $r->candidates()->count() . ' candidatos y lo que se anotó al evaluarlos. '
+                        . (($n = $r->candidates()->whereNotNull('project_id')->count()) > 0
+                            ? "Los {$n} proyectos que ya salieron de este lote se quedan: ya viven solos."
+                            : 'Ningún candidato se convirtió en proyecto todavía.')),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->modalHeading('Borrar los lotes seleccionados')
+                        ->modalDescription('Se van con sus candidatos. Los proyectos que ya salieron de ellos se quedan.'),
+                ]),
+            ]);
     }
 }

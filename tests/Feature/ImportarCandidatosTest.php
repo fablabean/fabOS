@@ -159,6 +159,34 @@ class ImportarCandidatosTest extends TestCase
         $this->assertSame('913', $lote->candidates()->where('name', 'Sabbia')->first()->extras()['Puntaje']);
     }
 
+    /** Y un lote se borra desde la lista, con sus candidatos y sin tocar los proyectos que salieron de él. */
+    public function test_un_lote_se_borra_desde_la_lista(): void
+    {
+        $jefa = User::create(['name' => 'Jefa', 'email' => uniqid() . '@lab.co', 'status' => 'activo']);
+        $jefa->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+        $factores = app(TwoFactorService::class);
+        $secreto = $factores->generarSecreto($jefa);
+        $factores->confirmar($jefa, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($jefa->fresh())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $lote = $this->lote();
+        $this->servicio()->importar($lote, self::TABLERO, $this->servicio()->analizar(self::TABLERO)['mapa'], true);
+
+        // Uno ya salio como proyecto: ese se queda.
+        $sabbia = $lote->candidates()->where('name', 'Sabbia')->firstOrFail();
+        $this->servicio()->evaluar($sabbia, 'aceptado', 5, 'Va', $jefa);
+        $proyecto = $this->servicio()->convertir($sabbia->fresh(), $jefa);
+
+        Livewire::test(ListCandidateBatches::class)
+            ->callAction(TestAction::make('delete')->table($lote))
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseMissing('candidate_batches', ['id' => $lote->id]);
+        $this->assertSame(0, \App\Models\Candidate::where('batch_id', $lote->id)->count());
+        $this->assertDatabaseHas('projects', ['id' => $proyecto->id]);
+    }
+
     /** Pegar como antes sigue funcionando: el orden fijo es un mapa más. */
     public function test_pegar_como_antes_sigue_igual(): void
     {
