@@ -58,14 +58,27 @@ class CandidatesRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->defaultSort('position')
             ->columns([
+                /*
+                 * Los anchos, repartidos a mano. Sin esto la nota de
+                 * evaluacion -un parrafo- se comia la tabla entera, y el
+                 * nombre y el resumen quedaban en una columna de ocho remes
+                 * partidos palabra por palabra.
+                 */
                 TextColumn::make('name')
                     ->label('Candidato')
                     ->weight('medium')
                     ->wrap()
                     ->searchable()
+                    ->extraCellAttributes(['style' => 'min-width:14rem'])
                     ->description(fn (Candidate $r) => $r->organization),
 
-                TextColumn::make('description')->label('De qué va')->wrap()->limit(120)->placeholder('—'),
+                TextColumn::make('description')
+                    ->label('De qué va')
+                    ->wrap()
+                    ->limit(160)
+                    ->tooltip(fn (Candidate $r) => mb_strlen((string) $r->description) > 160 ? $r->description : null)
+                    ->extraCellAttributes(['style' => 'min-width:18rem;max-width:26rem'])
+                    ->placeholder('—'),
 
                 // Lo que trajo la lista y no tenia columna: se lee aqui, como
                 // vino, con el nombre de su columna.
@@ -76,6 +89,7 @@ class CandidatesRelationManager extends RelationManager
                     ->limitList(3)
                     ->expandableLimitedList()
                     ->wrap()
+                    ->extraCellAttributes(['style' => 'min-width:12rem;max-width:18rem'])
                     ->placeholder('—')
                     ->toggleable(),
 
@@ -96,7 +110,14 @@ class CandidatesRelationManager extends RelationManager
                         $r->status === 'descartado'   => 'gray',
                         default                       => 'warning',
                     })
-                    ->description(fn (Candidate $r) => $r->evaluation_note),
+                    // La nota, recortada: entera se lee al pasar el raton y al
+                    // abrir «Evaluar», que es donde se decide.
+                    ->description(fn (Candidate $r) => $r->evaluation_note
+                        ? \Illuminate\Support\Str::limit($r->evaluation_note, 140)
+                        : null)
+                    ->tooltip(fn (Candidate $r) => mb_strlen((string) $r->evaluation_note) > 140 ? $r->evaluation_note : null)
+                    ->wrap()
+                    ->extraCellAttributes(['style' => 'max-width:24rem']),
 
                 TextColumn::make('evaluatedBy.name')->label('Quién evaluó')->placeholder('—')->toggleable(),
             ])
