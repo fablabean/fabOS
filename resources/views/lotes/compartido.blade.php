@@ -41,6 +41,19 @@
     table.eval td.decision-aceptado{color:var(--accent);font-weight:600}
     table.eval td.decision-descartado{color:var(--muted)}
     table.eval td.decision-en-lista-de-espera{color:#A45A17;font-weight:600}
+    /* La ficha del candidato: organización y contacto debajo del nombre, en
+       letra menor. Cuatro columnas menos, y se lee como una tarjeta. */
+    table.eval td.candidato{min-width:14rem;max-width:18rem;white-space:normal}
+    table.eval td.candidato b{font-weight:600;color:var(--ink)}
+    .ficha{display:block;font-size:.74rem;line-height:1.4;color:var(--muted);margin-top:.3rem}
+    .ficha a{color:inherit;text-decoration:none}
+    .ficha a:hover{text-decoration:underline}
+    /* En pantalla ancha la columna del candidato se queda al moverse a la
+       derecha; en un teléfono se comería media pantalla y se deja libre. */
+    @media (min-width:48rem){
+        table.eval th:first-child,table.eval td:first-child{position:sticky;left:0;background:var(--surface);z-index:2;box-shadow:1px 0 0 var(--rule)}
+        table.eval th:first-child{z-index:3}
+    }
     .nada{padding:2rem;text-align:center;color:var(--muted)}
 @endsection
 
@@ -105,11 +118,17 @@
         <a class="btn" href="{{ $csv }}">Descargar CSV</a>
     </div>
 
+    @php
+        // Organización y contacto van debajo del nombre, no en columnas
+        // aparte. El CSV sí las lleva sueltas: en Excel se filtran.
+        $ficha = ['Organización', 'Contacto', 'Correo', 'Teléfono'];
+        $visibles = array_values(array_diff($columnas, $ficha));
+    @endphp
     <div class="cuadro">
         <table class="eval" id="tabla">
             <thead>
                 <tr>
-                    @foreach ($columnas as $c)
+                    @foreach ($visibles as $c)
                         <th data-col="{{ $c }}" title="Ordenar por {{ $c }}">{{ $c }}</th>
                     @endforeach
                 </tr>
@@ -117,17 +136,35 @@
             <tbody>
                 @forelse ($filas as $fila)
                     <tr>
-                        @foreach ($columnas as $c)
+                        @foreach ($visibles as $c)
                             @php
                                 $v = $fila[$c] ?? '';
                                 $largo = in_array($c, ['Estado actual', 'Por qué', 'Qué puede hacer el Fablab'], true) || mb_strlen($v) > 60;
                             @endphp
-                            <td data-col="{{ $c }}" data-v="{{ $v }}"
-                                class="{{ $largo ? 'largo' : 'corto' }} {{ $c === 'Decisión' ? 'decision-' . \Illuminate\Support\Str::slug($v) : '' }}">{{ $v }}</td>
+                            @if ($c === 'Candidato')
+                                <td data-col="Candidato" data-v="{{ $v }}" class="candidato">
+                                    <b>{{ $v }}</b>
+                                    @if ($fila['Organización'] !== '')
+                                        <span class="ficha">{{ $fila['Organización'] }}</span>
+                                    @endif
+                                    @if ($fila['Contacto'] !== '')
+                                        <span class="ficha">{{ $fila['Contacto'] }}</span>
+                                    @endif
+                                    @if ($fila['Correo'] !== '')
+                                        <span class="ficha"><a href="mailto:{{ $fila['Correo'] }}">{{ $fila['Correo'] }}</a></span>
+                                    @endif
+                                    @if ($fila['Teléfono'] !== '')
+                                        <span class="ficha"><a href="tel:{{ preg_replace('/\s+/', '', $fila['Teléfono']) }}">{{ $fila['Teléfono'] }}</a></span>
+                                    @endif
+                                </td>
+                            @else
+                                <td data-col="{{ $c }}" data-v="{{ $v }}"
+                                    class="{{ $largo ? 'largo' : 'corto' }} {{ $c === 'Decisión' ? 'decision-' . \Illuminate\Support\Str::slug($v) : '' }}">{{ $v }}</td>
+                            @endif
                         @endforeach
                     </tr>
                 @empty
-                    <tr><td colspan="{{ count($columnas) }}" class="nada">Todavía no hay candidatos en este lote.</td></tr>
+                    <tr><td colspan="{{ count($visibles) }}" class="nada">Todavía no hay candidatos en este lote.</td></tr>
                 @endforelse
             </tbody>
         </table>

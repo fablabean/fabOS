@@ -157,7 +157,16 @@ class LoteCompartidoTest extends TestCase
             ->assertSee('Descargar CSV')
             // Los filtros de lo que se deja contar, y el de decisión.
             ->assertSee('data-filtro="Ruta"', false)
-            ->assertSee('data-filtro="Decisión"', false);
+            ->assertSee('data-filtro="Decisión"', false)
+            // Organización y contacto van debajo del nombre, no en columnas.
+            ->assertDontSee('data-col="Organización"', false)
+            ->assertSee('data-col="Candidato"', false);
+    }
+
+    /** El CSV sí lleva la organización y el contacto en columnas: en Excel se filtran. */
+    public function test_el_csv_conserva_organizacion_y_contacto_en_columnas(): void
+    {
+        $this->assertStringContainsString('Organización;Contacto;Correo;Teléfono', $this->compartido()->csv($this->lote));
     }
 
     public function test_sin_enlace_ni_sesion_no_se_ve(): void
