@@ -29,6 +29,10 @@ class Candidate extends Model
 
     public const ESTADOS = [
         'pendiente'  => 'Sin evaluar',
+        // Evaluado, ni aceptado ni descartado: se queda esperando. Es una
+        // decision -alguien lo miro y decidio no decidir todavia- y por eso
+        // no cuenta como pendiente.
+        'espera'     => 'En lista de espera',
         'aceptado'   => 'Aceptado',
         'descartado' => 'Descartado',
     ];
@@ -82,6 +86,7 @@ class Candidate extends Model
         return match ($this->status) {
             'aceptado'   => 'Aceptado, falta convertirlo',
             'descartado' => 'Descartado',
+            'espera'     => 'En lista de espera',
             default      => 'Sin evaluar',
         };
     }

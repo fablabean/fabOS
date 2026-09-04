@@ -108,6 +108,7 @@ class CandidatesRelationManager extends RelationManager
                         $r->yaEsProyecto()            => 'success',
                         $r->status === 'aceptado'     => 'info',
                         $r->status === 'descartado'   => 'gray',
+                        $r->status === 'espera'       => 'primary',
                         default                       => 'warning',
                     })
                     // La nota, recortada: entera se lee al pasar el raton y al
@@ -169,7 +170,7 @@ class CandidatesRelationManager extends RelationManager
                         Select::make('score')
                             ->label('Qué tan bien encaja')
                             ->options([1 => '1 · nada', 2 => '2', 3 => '3 · regular', 4 => '4', 5 => '5 · mucho'])
-                            ->helperText('Es una nota, no un algoritmo: sirve para ordenar la lista.'),
+                            ->helperText('Es una nota, no un algoritmo: sirve para ordenar la lista. Con nota y sin decidir, queda en lista de espera.'),
 
                         Textarea::make('nota')
                             ->label('Por qué')

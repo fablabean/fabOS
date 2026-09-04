@@ -37,6 +37,7 @@
     table.eval tr[hidden]{display:none}
     table.eval td.decision-aceptado{color:var(--accent);font-weight:600}
     table.eval td.decision-descartado{color:var(--muted)}
+    table.eval td.decision-en-lista-de-espera{color:#A45A17;font-weight:600}
     .nada{padding:2rem;text-align:center;color:var(--muted)}
 @endsection
 

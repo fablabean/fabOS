@@ -75,6 +75,34 @@ class LoteCompartidoTest extends TestCase
         $this->assertStringContainsString('Lo que puede hacer el Fablab: Desarrollo de prototipo IoT', $proyecto->summary);
     }
 
+    // -------------------------------------------------- lista de espera
+
+    /** Con nota y sin decidir, no está «sin evaluar»: está en espera. */
+    public function test_con_nota_y_sin_decidir_queda_en_lista_de_espera(): void
+    {
+        $totem = $this->lote->candidates()->where('name', 'Tótem Inteligente')->firstOrFail();
+
+        $r = app(LoteDeCandidatos::class)->evaluar($totem, 'pendiente', 3, 'Falta ver el modelo de negocio.', $this->jefa);
+
+        $this->assertSame('espera', $r->status);
+        $this->assertSame('En lista de espera', $r->enQueVa());
+        $this->assertTrue($r->estaEvaluado());
+        $this->assertSame($this->jefa->id, $r->evaluated_by, 'alguien lo miró, y queda quién');
+
+        // Y el lote ya no lo cuenta como pendiente.
+        $this->assertSame(0, $this->lote->fresh()->pendientes());
+    }
+
+    /** Sin nota, «sin evaluar» sigue siendo sin evaluar. */
+    public function test_sin_nota_sigue_sin_evaluar(): void
+    {
+        $totem = $this->lote->candidates()->where('name', 'Tótem Inteligente')->firstOrFail();
+
+        $r = app(LoteDeCandidatos::class)->evaluar($totem, 'pendiente', null, null, $this->jefa);
+
+        $this->assertSame('pendiente', $r->status);
+    }
+
     // ------------------------------------------------------------ la tabla
 
     public function test_la_tabla_trae_las_columnas_fijas_y_los_extras_de_todos(): void

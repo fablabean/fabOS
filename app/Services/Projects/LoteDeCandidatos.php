@@ -341,6 +341,12 @@ class LoteDeCandidatos
             throw new ProjectException('Esa decisión no existe.');
         }
 
+        // Con nota puesta, «sin evaluar» ya no es verdad: alguien lo miro.
+        // Si no lo acepto ni lo descarto, lo dejo en espera.
+        if ($decision === 'pendiente' && $nota !== null) {
+            $decision = 'espera';
+        }
+
         $candidato->update([
             'status'          => $decision,
             'score'           => $nota,
