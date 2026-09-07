@@ -42,6 +42,23 @@ final class Settings
         return (bool) Setting::get(self::COBROS_ACTIVOS, false);
     }
 
+    /**
+     * Cobrar en la tienda aunque las reservas sigan sin cobrar (§14).
+     *
+     * Son dos decisiones distintas. Cobrar una reserva depende de tarifas que
+     * todavia se estan decidiendo; cobrar un filamento en la tienda es un
+     * precio que ya esta puesto. Con un solo interruptor, encender la tienda
+     * obligaba a encender las reservas, y la gente compraba «con FabCoins»
+     * sin que se le descontara nada.
+     */
+    public const COBROS_TIENDA = 'cobros.tienda';
+
+    /** La tienda cobra si los cobros generales estan encendidos, o si se encendio ella sola. */
+    public static function cobrosEnTienda(): bool
+    {
+        return self::cobrosActivos() || (bool) Setting::get(self::COBROS_TIENDA, false);
+    }
+
     public static function carnetLoginEnabled(): bool
     {
         return (bool) Setting::get(self::CARNET_LOGIN, false);

@@ -80,7 +80,7 @@ class SalesTable
             ->visible(fn (Sale $r) => $r->status === 'abierta')
             ->requiresConfirmation()
             ->modalHeading('Cobrar esta venta')
-            ->modalDescription(fn (Sale $r) => Settings::cobrosActivos()
+            ->modalDescription(fn (Sale $r) => Settings::cobrosEnTienda()
                 ? 'Se descuenta el saldo del cliente y sale la mercancía del inventario.'
                 : 'Los cobros están apagados: sale la mercancía del inventario, pero no se descuenta saldo.')
             ->action(function (Sale $record) {

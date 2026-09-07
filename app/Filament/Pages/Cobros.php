@@ -34,6 +34,9 @@ class Cobros extends Page
 
     public bool $cobrosActivos = false;
 
+    /** La tienda por su cuenta: un precio puesto se cobra aunque las tarifas sigan en duda. */
+    public bool $cobrosTienda = false;
+
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -53,17 +56,23 @@ class Cobros extends Page
     public function mount(): void
     {
         $this->cobrosActivos = Settings::cobrosActivos();
+        $this->cobrosTienda = (bool) Setting::get(Settings::COBROS_TIENDA, false);
     }
 
     public function save(): void
     {
         Setting::put(Settings::COBROS_ACTIVOS, $this->cobrosActivos, 'finanzas');
+        Setting::put(Settings::COBROS_TIENDA, $this->cobrosTienda, 'finanzas');
+
+        $tienda = $this->cobrosActivos || $this->cobrosTienda;
 
         Notification::make()
-            ->title($this->cobrosActivos ? 'Los cobros quedaron activos' : 'Los cobros quedaron apagados')
+            ->title($this->cobrosActivos ? 'Los cobros quedaron activos' : ($tienda ? 'La tienda cobra; las reservas, no' : 'Los cobros quedaron apagados'))
             ->body($this->cobrosActivos
-                ? 'A partir de ahora reservar compromete saldo y cerrar liquida el consumo.'
-                : 'Las reservas siguen funcionando, pero no mueven saldo.')
+                ? 'A partir de ahora reservar compromete saldo, cerrar liquida el consumo y la tienda descuenta.'
+                : ($tienda
+                    ? 'Comprar en la tienda descuenta saldo. Las reservas siguen funcionando sin moverlo.'
+                    : 'Las reservas y la tienda siguen funcionando, pero no mueven saldo.'))
             ->success()
             ->send();
     }

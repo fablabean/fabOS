@@ -114,6 +114,10 @@
                     <form method="POST" action="{{ route('tienda.pagar') }}">
                         @csrf
                         <button type="submit">Llevármelo con FabCoins</button>
+                        @unless (\App\Support\Settings::cobrosEnTienda())
+                            {{-- Decirlo, en vez de fingir un cobro que no ocurre. --}}
+                            <p class="quien" style="margin:.4rem 0 0">Los cobros están apagados por ahora: no se descuenta saldo.</p>
+                        @endunless
                     </form>
                 @else
                     <a class="btn" href="{{ route('login') }}">Entrar para pagar con FabCoins</a>

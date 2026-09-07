@@ -29,8 +29,11 @@
 
         @unless ($cobrosActivos)
             <p class="help" style="margin:.6rem 0 0">
-                Los cobros todavía están apagados: reservar no descuenta saldo. Las reservas
-                sí guardan lo que habrían costado, para poder revisarlo antes de encenderlo.
+                Los cobros de reservas todavía están apagados: reservar no descuenta saldo. Las
+                reservas sí guardan lo que habrían costado, para poder revisarlo antes de encenderlo.
+                @if (\App\Support\Settings::cobrosEnTienda())
+                    La tienda sí descuenta.
+                @endif
             </p>
         @else
             <p class="help" style="margin:.6rem 0 0">

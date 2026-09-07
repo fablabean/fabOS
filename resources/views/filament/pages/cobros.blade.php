@@ -52,6 +52,29 @@
             @endif
         </x-filament::section>
 
+        {{-- La tienda por su cuenta. Son dos decisiones: cobrar una reserva
+             depende de tarifas en duda; cobrar un filamento es un precio que
+             ya está puesto. Con un solo interruptor la gente compraba «con
+             FabCoins» sin que se le descontara nada. --}}
+        <x-filament::section>
+            <x-slot name="heading">La tienda por su cuenta</x-slot>
+            <x-slot name="description">
+                Los precios de la tienda ya están puestos: no dependen de las tarifas de los
+                equipos. Se puede cobrar ahí sin encender el cobro de las reservas.
+            </x-slot>
+
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" wire:model="cobrosTienda" class="mt-1 h-4 w-4 rounded">
+                <span>
+                    <span class="font-medium">Cobrar en la tienda en {{ config('fabos.currency.name') }}s</span>
+                    <span class="block text-sm text-gray-500 dark:text-gray-400">
+                        Comprar descuenta el saldo de la persona y anular lo devuelve. Si el cobro
+                        general está activo, la tienda cobra de todos modos.
+                    </span>
+                </span>
+            </label>
+        </x-filament::section>
+
             <div>
                 <x-filament::button type="submit">Guardar</x-filament::button>
             </div>

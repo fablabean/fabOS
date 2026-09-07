@@ -132,7 +132,7 @@ class ShopService
                 }
             }
 
-            if (Settings::cobrosActivos() && $total > 0) {
+            if (Settings::cobrosEnTienda() && $total > 0) {
                 $cuenta = $this->libro->cuentaDe($venta->user);
 
                 if ($cuenta->saldoMenor() < $total) {
@@ -203,7 +203,7 @@ class ShopService
                     }
                 }
 
-                if ($venta->total_minor > 0 && Settings::cobrosActivos()) {
+                if ($venta->total_minor > 0 && Settings::cobrosEnTienda()) {
                     $this->libro->transferir(
                         $this->libro->cuentaDeSistema(LedgerAccount::INGRESO),
                         $this->libro->cuentaDe($venta->user),
