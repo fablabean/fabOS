@@ -23,9 +23,9 @@ class ScheduleExceptionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSun;
 
-    protected static ?string $modelLabel = 'Ausencia';
+    protected static ?string $modelLabel = 'Ausencia o bloqueo';
 
-    protected static ?string $pluralModelLabel = 'Ausencias';
+    protected static ?string $pluralModelLabel = 'Ausencias y bloqueos';
 
     protected static ?int $navigationSort = 3;
 

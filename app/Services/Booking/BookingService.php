@@ -399,6 +399,14 @@ class BookingService
             return $persona->name . ' tiene un compromiso en su calendario a esa hora (una clase o una reunión).';
         }
 
+        // Y lo que se bloqueo desde Jornadas: la clase de ingles de los
+        // jueves, una cita. Con el motivo, para que quien elige entienda.
+        if ($bloqueo = $this->coverage->bloqueoDe($persona, $desde, $hasta)) {
+            return $bloqueo->esGeneral()
+                ? 'El laboratorio tiene esa hora bloqueada (' . $bloqueo->motivo() . ').'
+                : $persona->name . ' tiene esa hora bloqueada (' . $bloqueo->motivo() . ').';
+        }
+
         return null;
     }
 

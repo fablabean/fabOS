@@ -45,7 +45,55 @@ class CoverageService
         $porPatron = $this->porPatronSemanal($d, $h, $incluirRemota);
         $porTurno  = $this->porTurnoProgramado($desde, $hasta);
 
-        return $porPatron->merge($porTurno)->unique('id')->values();
+        /*
+         * Y los bloqueos por horas: la clase de ingles de los jueves, una
+         * cita. Se descuentan al final porque valen igual para quien esta
+         * por patron semanal y para quien esta por turno programado. Un
+         * bloqueo sin persona -una reunion de todo el equipo- deja a todo el
+         * mundo fuera en esa franja.
+         */
+        $bloqueos = $this->bloqueosEntre($desde, $hasta);
+
+        if ($bloqueos->contains(fn (ScheduleException $b) => $b->esGeneral())) {
+            return collect();
+        }
+
+        $bloqueados = $bloqueos->pluck('user_id')->filter()->all();
+
+        return $porPatron->merge($porTurno)
+            ->unique('id')
+            ->reject(fn (User $u) => in_array($u->id, $bloqueados, true))
+            ->values();
+    }
+
+    /**
+     * Los bloqueos de franja que tocan este intervalo, de cualquiera.
+     *
+     * @return Collection<int,ScheduleException>
+     */
+    public function bloqueosEntre(CarbonInterface $desde, CarbonInterface $hasta): Collection
+    {
+        $tz = config('fabos.lab.timezone');
+        $d = $desde->copy()->setTimezone($tz);
+        $h = $hasta->copy()->setTimezone($tz);
+
+        return ScheduleException::query()
+            ->whereNotNull('starts_time')
+            ->whereDate('starts_on', '<=', $h->toDateString())
+            ->where(fn ($q) => $q->whereNull('ends_on')->orWhereDate('ends_on', '>=', $d->toDateString()))
+            ->get()
+            ->filter(fn (ScheduleException $b) => $b->ocupa($desde, $hasta))
+            ->values();
+    }
+
+    /**
+     * El bloqueo que tiene esta persona en ese intervalo, si lo tiene: para
+     * decirle a quien la elige a mano por que no.
+     */
+    public function bloqueoDe(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?ScheduleException
+    {
+        return $this->bloqueosEntre($desde, $hasta)
+            ->first(fn (ScheduleException $b) => $b->esGeneral() || (int) $b->user_id === $persona->id);
     }
 
     /**
@@ -184,13 +232,19 @@ class CoverageService
         return User::whereIn('id', $ids)->where('status', 'activo')->get();
     }
 
-    /** @return array<int,int> ids de quienes están ausentes ese día */
+    /**
+     * @return array<int,int> ids de quienes están ausentes ese día ENTERO
+     *
+     * Los bloqueos de una franja no van aqui: quien tiene clase de cuatro a
+     * cinco sigue abriendo el laboratorio el resto del dia.
+     */
     private function ausentesEn(CarbonInterface $dia): array
     {
         return ScheduleException::query()
             ->whereNotNull('user_id')
+            ->whereNull('starts_time')
             ->whereDate('starts_on', '<=', $dia)
-            ->whereDate('ends_on', '>=', $dia)
+            ->where(fn ($q) => $q->whereNull('ends_on')->orWhereDate('ends_on', '>=', $dia))
             ->pluck('user_id')
             ->all();
     }
@@ -199,8 +253,9 @@ class CoverageService
     {
         return ScheduleException::query()
             ->whereNull('user_id')
+            ->whereNull('starts_time')
             ->whereDate('starts_on', '<=', $dia)
-            ->whereDate('ends_on', '>=', $dia)
+            ->where(fn ($q) => $q->whereNull('ends_on')->orWhereDate('ends_on', '>=', $dia))
             ->exists();
     }
 }
