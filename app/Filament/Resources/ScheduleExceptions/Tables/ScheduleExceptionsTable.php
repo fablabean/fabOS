@@ -39,7 +39,7 @@ class ScheduleExceptionsTable
                 TextColumn::make('cuando')
                     ->label('Cuándo')
                     ->state(fn (ScheduleException $r) => $r->cuando())
-                    ->sortable(query: fn (Builder $q, string $direction) => $q->orderBy('starts_on', $direction)),
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('starts_on', $direction)),
 
                 TextColumn::make('note')
                     ->label('Motivo')
@@ -58,10 +58,16 @@ class ScheduleExceptionsTable
                     ->label('Tipo')
                     ->options(ScheduleException::TIPOS),
 
+                /*
+                 * El parametro se llama `$query` a proposito: Filament inyecta
+                 * por nombre, y con otro nombre resuelve del contenedor un
+                 * constructor de consultas sin modelo, que revienta al primer
+                 * `where`. Produccion lo enseno con un 500 en esta lista.
+                 */
                 Filter::make('vigentes')
                     ->label('Solo vigentes')
                     ->default()
-                    ->query(fn (Builder $q) => $q->where(fn (Builder $s) => $s
+                    ->query(fn (Builder $query) => $query->where(fn (Builder $vigente) => $vigente
                         ->whereNull('ends_on')
                         ->orWhereDate('ends_on', '>=', now(config('fabos.lab.timezone'))->toDateString()))),
             ])

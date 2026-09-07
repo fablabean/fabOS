@@ -300,6 +300,44 @@ class BloqueosDeAgendaTest extends TestCase
         $this->assertFalse($this->servicio()->enJornada($d, $h)->contains('id', $ana->id));
     }
 
+    /**
+     * La lista carga, con lo vigente por defecto y lo vencido a un filtro.
+     *
+     * Produccion devolvio un 500 aqui: el filtro llamaba `$q` al parametro y
+     * Filament, que inyecta por nombre, le paso un constructor de consultas
+     * sin modelo. Ninguna prueba abria esta lista.
+     */
+    public function test_la_lista_del_panel_carga_y_filtra_lo_vigente(): void
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+
+        $admin = User::create(['name' => 'Admin', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $admin->assignRole(User::ROL_SUPERADMIN);
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($admin->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $ana = $this->colaborador('Ana');
+        $vigente = $this->claseDeIngles($ana);
+        $vencida = ScheduleException::create([
+            'user_id' => $ana->id, 'kind' => 'vacaciones',
+            'starts_on' => '2026-01-05', 'ends_on' => '2026-01-16',
+        ]);
+
+        $this->get('/admin/schedule-exceptions')->assertOk()->assertSee('Clase de inglés');
+
+        Livewire::test(\App\Filament\Resources\ScheduleExceptions\Pages\ListScheduleExceptions::class)
+            ->assertCanSeeTableRecords([$vigente])
+            ->assertCanNotSeeTableRecords([$vencida])
+            ->sortTable('cuando')
+            ->removeTableFilter('vigentes')
+            ->assertCanSeeTableRecords([$vigente, $vencida]);
+    }
+
     /** Y una ausencia de días enteros se guarda sin horas, como siempre. */
     public function test_una_ausencia_de_dias_se_guarda_sin_horas(): void
     {
