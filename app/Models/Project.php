@@ -76,9 +76,13 @@ class Project extends Model
             ->get()
             ->keyBy('stage');
 
+        // Por la fecha de cierre; si no la tiene —se cerro cambiando el
+        // estado a mano, antes de que el modelo la pusiera solo—, por la
+        // ultima vez que se toco. Seis proyectos cerrados sin fecha dejaban
+        // la tarjeta de cierre en cero con todo el ano trabajado.
         $cerrados = static::query()
             ->where('status', 'cerrado')
-            ->whereYear('closed_at', $ano)
+            ->whereRaw('extract(year from coalesce(closed_at, updated_at)) = ?', [$ano])
             ->selectRaw("count(*) as cuantos, sum($valor) as valor")
             ->first();
 
@@ -611,6 +615,13 @@ class Project extends Model
             // el campo y el costeo seguiria midiendo contra el.
             if ($proyecto->is_internal) {
                 $proyecto->agreed_value = 0;
+            }
+
+            // Cerrar es cerrar, se haga desde la etapa o cambiando el estado
+            // en la ficha: la fecha de cierre queda puesta igual. Sin ella el
+            // embudo no sabia en que ano contarlo.
+            if ($proyecto->status === 'cerrado' && $proyecto->closed_at === null) {
+                $proyecto->closed_at = now();
             }
         });
     }

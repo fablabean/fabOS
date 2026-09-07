@@ -98,6 +98,24 @@ class EmbudoDeProyectosTest extends TestCase
     // ------------------------------------------------------------- la plata
 
     /** Lo acordado manda. */
+    /**
+     * Un cerrado sin fecha de cierre cuenta igual: se cerro cambiando el
+     * estado a mano, antes de que el modelo pusiera la fecha solo. Seis asi
+     * dejaban la tarjeta en cero con todo el ano trabajado.
+     */
+    public function test_un_cerrado_sin_fecha_cuenta_este_ano(): void
+    {
+        $p = $this->proyecto(['stage' => 'cierre', 'status' => 'cerrado']);
+
+        // El modelo le pone la fecha al guardar...
+        $this->assertNotNull($p->fresh()->closed_at);
+
+        // ...y aunque no la tuviera, cuenta por la ultima vez que se toco.
+        Project::whereKey($p->id)->update(['closed_at' => null]);
+
+        $this->assertSame(1, $this->etapa('cierre')['cuantos']);
+    }
+
     public function test_el_valor_sale_de_lo_acordado(): void
     {
         $this->proyecto([

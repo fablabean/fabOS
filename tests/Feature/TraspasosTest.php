@@ -393,6 +393,26 @@ class TraspasosTest extends TestCase
             ->assertSee('Beto');
     }
 
+    /**
+     * Y también cuando ya se puede validar la llegada pero aún no empezó:
+     * el botón de «Llegó» no le quita el sitio al de pasarla.
+     */
+    public function test_se_puede_pasar_hasta_que_empiece(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->colaborador('Beto');
+        $r = $this->asesoria($ana);
+
+        // Diez minutos antes: la ventana de llegada ya abrió.
+        $this->travelTo($r->starts_at->copy()->subMinutes(10));
+
+        $this->actingAs($ana)
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('Llegó')
+            ->assertSee('Pasar a otra persona');
+    }
+
     /** Una asesoría general enseña el área, no un guion. */
     public function test_una_asesoria_general_dice_de_que_area_es(): void
     {
