@@ -31,8 +31,7 @@ class ScheduleExceptionForm
 
         // Se repite si es de franja y hay algun dia marcado: uno al editar,
         // varios al crear.
-        $seRepite = fn (Get $get) => $esFranja($get)
-            && (filled($get('weekday')) || filled(array_filter((array) $get('weekdays'))));
+        $seRepite = fn (Get $get) => $esFranja($get) && filled(array_filter((array) $get('weekdays')));
 
         return $schema
             ->components([
@@ -94,11 +93,14 @@ class ScheduleExceptionForm
                     ->dehydrateStateUsing(fn ($state, Get $get) => $esFranja($get) ? $state : null),
 
                 /*
-                 * Al crear se marcan varios dias: la clase es martes y jueves
-                 * a la misma hora, y pedir el formulario dos veces es poner a
+                 * Se marcan varios dias: la clase es martes y jueves a la
+                 * misma hora, y pedir el formulario dos veces es poner a
                  * alguien de copiadora. Se guarda un bloqueo por dia, igual
                  * que las jornadas, porque cada uno puede cambiar o borrarse
-                 * por su cuenta despues.
+                 * por su cuenta despues. Al editar, el bloqueo se queda con
+                 * su dia y los demas marcados se crean como copias.
+                 *
+                 * No se guarda tal cual: las paginas lo traducen a filas.
                  */
                 CheckboxList::make('weekdays')
                     ->label('Se repite')
@@ -106,22 +108,13 @@ class ScheduleExceptionForm
                     ->columns(4)
                     ->bulkToggleable()
                     ->visible($esFranja)
-                    ->visibleOn('create')
                     ->live()
                     ->dehydrated(false)
-                    ->helperText('Cada semana, los días marcados, entre las fechas de abajo. Se crea un bloqueo por cada día, todos con la misma franja. Sin marcar ninguno, es solo en esas fechas.')
+                    ->afterStateHydrated(fn ($component, ?ScheduleException $record) => $component->state(
+                        $record?->weekday !== null ? [(int) $record->weekday] : [],
+                    ))
+                    ->helperText('Cada semana, los días marcados, entre las fechas de abajo. Un bloqueo por cada día, todos con la misma franja. Sin marcar ninguno, es solo en esas fechas.')
                     ->columnSpanFull(),
-
-                // Al editar se toca UN bloqueo, y aqui el dia es uno solo.
-                Select::make('weekday')
-                    ->label('Se repite')
-                    ->options(collect(WorkSchedule::DIAS)->map(fn ($d) => 'Cada ' . mb_strtolower($d))->all())
-                    ->placeholder('No: solo en esas fechas')
-                    ->visible($esFranja)
-                    ->hiddenOn('create')
-                    ->live()
-                    ->dehydrateStateUsing(fn ($state, Get $get) => $esFranja($get) && filled($state) ? $state : null)
-                    ->helperText('Cada semana, ese día, entre las fechas de abajo. Para más días, crea otro bloqueo.'),
 
                 DatePicker::make('starts_on')
                     ->label(fn (Get $get) => $seRepite($get) ? 'Desde el' : 'Desde')

@@ -308,6 +308,57 @@ class BloqueosDeAgendaTest extends TestCase
         $this->assertTrue($this->servicio()->enJornada($d, $h)->contains('id', $ana->id));
     }
 
+    /**
+     * Al editar también: este bloqueo se queda con su día, los demás marcados
+     * se crean iguales, y volver a guardar no duplica.
+     */
+    public function test_al_editar_se_anaden_dias_sin_duplicar(): void
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+
+        $admin = User::create(['name' => 'Admin', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $admin->assignRole(User::ROL_SUPERADMIN);
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($admin->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $ana = $this->colaborador('Ana');
+        $jueves = $this->claseDeIngles($ana);
+
+        $editar = fn () => Livewire::test(\App\Filament\Resources\ScheduleExceptions\Pages\EditScheduleException::class, ['record' => $jueves->id]);
+
+        // Abre con el jueves marcado.
+        $editar()->assertFormSet(['alcance' => 'franja', 'weekdays' => [4]]);
+
+        // Se marca también el martes: el jueves sigue siendo este registro.
+        $editar()->fillForm(['weekdays' => [2, 4]])->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame(4, (int) $jueves->fresh()->weekday);
+
+        /*
+         * Y las fechas no se mueven. El selector de fecha heredaba la zona
+         * de Bogota del de fecha y hora, y una fecha guardada a medianoche
+         * UTC se abria como el dia anterior: cada guardado la corria un dia
+         * hacia atras, y las copias nacian con fechas distintas al original.
+         */
+        $this->assertSame('2026-09-01', $jueves->fresh()->starts_on->toDateString());
+        $this->assertSame('2026-11-30', $jueves->fresh()->ends_on->toDateString());
+        $this->assertSame([2, 4], ScheduleException::where('user_id', $ana->id)->orderBy('weekday')->pluck('weekday')->map(fn ($d) => (int) $d)->all());
+
+        // Guardar otra vez con lo mismo no duplica.
+        $editar()->fillForm(['weekdays' => [2, 4]])->call('save')->assertHasNoFormErrors();
+        $this->assertSame(2, ScheduleException::where('user_id', $ana->id)->count());
+
+        // Sin días marcados, pasa a ser puntual.
+        $editar()->fillForm(['weekdays' => []])->call('save')->assertHasNoFormErrors();
+        $this->assertNull($jueves->fresh()->weekday);
+        $this->assertTrue($jueves->fresh()->esDeFranja());
+    }
+
     /** Sin días marcados, la franja vale solo en esas fechas: un registro, sin repetición. */
     public function test_una_franja_sin_dias_marcados_es_puntual(): void
     {

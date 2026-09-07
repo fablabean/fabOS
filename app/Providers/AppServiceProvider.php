@@ -91,6 +91,19 @@ class AppServiceProvider extends ServiceProvider
             fn (DateTimePicker $campo) => $campo->timezone(config('fabos.lab.timezone')),
         );
 
+        /*
+         * Pero una FECHA no tiene hora que convertir, y el selector de solo
+         * fecha hereda del de fecha y hora. Con la zona de Bogota, una fecha
+         * guardada —que nace a medianoche UTC— se abria como el dia anterior
+         * a las siete de la tarde, y al guardar se escribia el dia anterior.
+         * Cada vez que alguien abria y guardaba una jornada, un bloqueo o un
+         * entregable, la fecha retrocedia un dia. Se deja en la zona de la
+         * aplicacion, que es la que Filament trae para las fechas solas.
+         */
+        \Filament\Forms\Components\DatePicker::configureUsing(
+            fn (\Filament\Forms\Components\DatePicker $campo) => $campo->timezone(config('app.timezone')),
+        );
+
         // La identidad del laboratorio se administra desde el backoffice y pisa
         // a `.env`: cambiar el nombre no debería exigir entrar por SSH (§19).
         LabSettings::aplicar();
