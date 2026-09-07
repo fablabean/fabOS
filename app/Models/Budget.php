@@ -119,7 +119,7 @@ class Budget extends Model
                 // se vendio de insumos de esa area.
                 $q->whereHas('items.supply', fn ($i) => $i->where('area_id', $this->area_id));
             })
-            ->with(['items', 'adjustments'])
+            ->with('items')
             ->get()
             ->sum(fn (Sale $v) => (int) ($v->total_minor ?: $v->totalMenor()));
 
