@@ -97,6 +97,28 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'proyecto.novedades',
+                'name'         => 'Novedades en tu proyecto',
+                'description'  => 'A quien pidió el proyecto, cuando alguien del laboratorio pulsa «Avisar que hay novedades».',
+                'is_essential' => true,
+                'subject'      => 'Novedades en {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Hay novedades en tu proyecto «{proyecto}»: {quien} actualizó
+                    la conversación.
+
+                    {mensaje}
+
+                    Entra y míralo completo aquí:
+
+                    {enlace}
+
+                    Si tienes cuenta en fabOS, también lo encuentras en
+                    Mi cuenta → Mis proyectos, y ahí mismo puedes responder.
+                    TXT,
+            ],
+            [
                 'key'          => 'proyecto.aceptada',
                 'name'         => 'Propuesta aceptada',
                 'description'  => 'A quien acepta una propuesta, cuando no hay traslado presupuestal de por medio.',

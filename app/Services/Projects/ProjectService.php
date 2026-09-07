@@ -2,6 +2,7 @@
 
 namespace App\Services\Projects;
 
+use App\Models\NotificationLog;
 use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Models\ProjectDocument;
@@ -570,6 +571,78 @@ class ProjectService
         }
 
         return $comentario;
+    }
+
+    /**
+     * Le dice a quien pidió el proyecto que hay novedades, y por dónde verlas.
+     *
+     * Lo que responde el laboratorio en la conversación no avisaba a nadie: se
+     * escribía en el panel y quien pidió el proyecto solo lo veía si se le
+     * ocurría entrar. Un comentario que nadie lee es igual que no haberlo
+     * escrito, y quien lo escribió se queda esperando una respuesta que no va
+     * a llegar.
+     *
+     * Es un botón y no un aviso automático por cada comentario a propósito:
+     * el laboratorio a veces escribe tres respuestas seguidas, o una nota
+     * interna, y tres correos en cinco minutos enseñan a ignorar el cuarto.
+     * Quien responde decide cuándo vale la pena avisar, y con qué texto.
+     *
+     * Con cuenta o sin ella: el enlace firmado abre la propuesta y la
+     * conversación sin tener que entrar, igual que el de la propuesta.
+     *
+     * @throws ProjectException si el proyecto no tiene a quién escribirle
+     */
+    public function avisarNovedades(Project $proyecto, User $quien, ?string $mensaje = null): NotificationLog
+    {
+        $correo = $proyecto->correoDeLaPropuesta();
+
+        if (blank($correo)) {
+            throw new ProjectException('Este proyecto no tiene correo de contacto: anótalo en la ficha y vuelve a intentar.');
+        }
+
+        $variables = [
+            'proyecto' => $proyecto->name,
+            'codigo'   => $proyecto->code,
+            'quien'    => $quien->name,
+            'mensaje'  => trim((string) $mensaje),
+            'enlace'   => URL::temporarySignedRoute(
+                'proyectos.propuesta',
+                now()->addDays(60),
+                ['project' => $proyecto->id],
+            ),
+        ];
+
+        $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+        $aviso = $destinatario
+            ? $this->avisos->enviar('proyecto.novedades', $destinatario, $variables, $proyecto)
+            : $this->avisos->enviarSinCuenta(
+                'proyecto.novedades',
+                $correo,
+                $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                $variables,
+                $proyecto,
+            );
+
+        if (! $aviso || $aviso->status !== 'enviado') {
+            throw new ProjectException(
+                'El aviso no salió' . ($aviso?->reason ? ': ' . mb_strtolower($aviso->reason) : '') . '.'
+            );
+        }
+
+        return $aviso;
+    }
+
+    /** Cuándo se avisó por última vez de novedades, para no avisar dos veces lo mismo. */
+    public function ultimoAvisoDeNovedades(Project $proyecto): ?NotificationLog
+    {
+        return NotificationLog::query()
+            ->where('key', 'proyecto.novedades')
+            ->where('reference_type', Project::class)
+            ->where('reference_id', $proyecto->id)
+            ->where('status', 'enviado')
+            ->latest('id')
+            ->first();
     }
 
     /**

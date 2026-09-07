@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\RelationManagers;
 
+use App\Filament\Resources\Projects\Actions\AvisarNovedades;
 use App\Models\ProjectComment;
 use App\Services\Projects\ProjectService;
 use Filament\Actions\CreateAction;
@@ -69,6 +70,11 @@ class CommentsRelationManager extends RelationManager
                         $data['body'],
                         auth()->user(),
                     )),
+
+                // Responder aqui no avisa a nadie: quien pidio el proyecto solo
+                // lo veia si se le ocurria entrar. Este boton se lo cuenta.
+                AvisarNovedades::make()
+                    ->record(fn () => $this->getOwnerRecord()),
             ])
             ->recordActions([DeleteAction::make()])
             ->toolbarActions([]);

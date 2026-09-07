@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Pages;
 
+use App\Filament\Resources\Projects\Actions\AvisarNovedades;
 use App\Filament\Resources\Projects\ProjectResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -13,6 +14,7 @@ class EditProject extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            AvisarNovedades::make(),
             DeleteAction::make(),
         ];
     }
