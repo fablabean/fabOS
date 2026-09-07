@@ -11,7 +11,7 @@ class Space extends Model
 {
     protected $fillable = [
         'slug', 'name', 'type', 'capacity',
-        'is_reservable', 'is_production_space', 'es_todo', 'setup_minutes', 'cleanup_minutes',
+        'is_reservable', 'is_production_space', 'es_todo', 'shares_seats', 'setup_minutes', 'cleanup_minutes',
     ];
 
     protected function casts(): array
@@ -20,7 +20,20 @@ class Space extends Model
             'is_reservable'       => 'boolean',
             'is_production_space' => 'boolean',
             'es_todo'             => 'boolean',
+            'shares_seats'        => 'boolean',
         ];
+    }
+
+    /**
+     * Se comparte por puestos: cada reserva toma los que pide y la sala se
+     * llena por aforo, en vez de cerrarse con la primera (§7).
+     *
+     * Es lo que pide una sala de computo. El taller o la sala de corte
+     * siguen siendo exclusivos: una actividad no convive con otra.
+     */
+    public function seComparte(): bool
+    {
+        return (bool) $this->shares_seats && ! $this->esTodoElLaboratorio();
     }
 
     public const TIPOS = ['fisico' => 'Físico', 'virtual' => 'Virtual'];

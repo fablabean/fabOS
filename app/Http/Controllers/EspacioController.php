@@ -115,7 +115,7 @@ class EspacioController extends Controller
             // El motivo va al campo que lo causó cuando se puede saber: así el
             // error aparece junto a lo que hay que cambiar.
             throw ValidationException::withMessages([
-                str_contains($e->getMessage(), 'caben') ? 'participantes' : 'fecha' => $e->getMessage(),
+                str_contains($e->getMessage(), 'caben') || str_contains($e->getMessage(), 'puesto') ? 'participantes' : 'fecha' => $e->getMessage(),
             ]);
         }
 

@@ -130,6 +130,19 @@ class EspacioBookingService
             );
         }
 
+        /*
+         * Un espacio que se comparte por puestos no se cierra con la primera
+         * reserva: cada una toma los puestos que pide, y la sala se llena por
+         * aforo. Se comprueba aqui para decirlo bien, y otra vez dentro de la
+         * transaccion, con el espacio bloqueado, para que dos personas
+         * pidiendo a la vez no tomen las dos el ultimo puesto.
+         */
+        $compartida = $espacio->seComparte() && ! $esRecorrido;
+
+        if ($compartida) {
+            $this->exigirPuestos($espacio, $participantes, $desde, $hasta);
+        }
+
         $nota = $notaConjunta ?? ($esRecorrido ? $this->notaDeAforo($espacio, $participantes, $desde, $hasta) : null);
 
         /*
@@ -159,7 +172,12 @@ class EspacioBookingService
         $herramientas = $this->comprobarHerramientas($espacio, $herramientaIds, $desde, $hasta);
 
         try {
-            return DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta) {
+            return DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta, $compartida) {
+                if ($compartida) {
+                    Space::whereKey($espacio->id)->lockForUpdate()->first();
+                    $this->exigirPuestos($espacio, $participantes, $desde, $hasta);
+                }
+
                 $reserva = Reservation::create([
                     'reservable_type' => Space::class,
                     'reservable_id'   => $espacio->id,
@@ -171,6 +189,7 @@ class EspacioBookingService
                     'starts_at'       => $desde,
                     'ends_at'         => $hasta,
                     'participants'    => $participantes,
+                    'shares_seats'    => $compartida,
                     'purpose'         => $proposito,
                     'status_reason'   => $motivo,
                 ]);
@@ -491,6 +510,47 @@ class EspacioBookingService
                 . ($ocupadas === 1 ? ' reserva' : ' reservas') . ' de espacios o recorridos. Cancélalas primero, o elige otra hora.',
             );
         }
+    }
+
+    /**
+     * Cuantos puestos quedan en un espacio compartido a esa hora.
+     *
+     * Se suman los participantes de todo lo que ya esta en pie sobre el
+     * espacio en ese rato —compartido o no: una reserva anterior a que la
+     * sala se compartiera sigue ocupando lo suyo— y se restan del aforo.
+     * Nulo si el espacio no se comparte o no tiene aforo.
+     */
+    public function puestosLibres(Space $espacio, CarbonInterface $desde, CarbonInterface $hasta): ?int
+    {
+        if (! $espacio->seComparte() || ! $espacio->capacity) {
+            return null;
+        }
+
+        $ocupados = (int) $this->solapadas(Space::class, $espacio->id, $desde, $hasta)
+            ->where('mode', '<>', Reservation::MODO_RECORRIDO)
+            ->sum('participants');
+
+        return max(0, (int) $espacio->capacity - $ocupados);
+    }
+
+    /**
+     * @throws BookingException si no caben
+     */
+    private function exigirPuestos(Space $espacio, int $participantes, CarbonInterface $desde, CarbonInterface $hasta): void
+    {
+        $libres = $this->puestosLibres($espacio, $desde, $hasta);
+
+        if ($libres === null || $participantes <= $libres) {
+            return;
+        }
+
+        $tz = config('fabos.lab.timezone');
+
+        throw new BookingException(
+            'En ' . $espacio->name . ($libres === 1 ? ' queda 1 puesto' : ' quedan ' . $libres . ' puestos') . ' de '
+            . $espacio->capacity . ' entre las ' . $desde->copy()->timezone($tz)->format('H:i') . ' y las '
+            . $hasta->copy()->timezone($tz)->format('H:i') . ', y pediste ' . $participantes . '. Elige otra hora o menos personas.'
+        );
     }
 
     private function solapadas(string $tipo, int $id, CarbonInterface $desde, CarbonInterface $hasta): \Illuminate\Database\Eloquent\Builder

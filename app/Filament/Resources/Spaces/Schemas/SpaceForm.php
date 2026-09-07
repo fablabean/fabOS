@@ -55,6 +55,16 @@ class SpaceForm
                             ->label('Espacio de producción')
                             ->helperText('Donde se asesora, se monta y corren los trabajos.'),
 
+                        /*
+                         * Una sala de computo no se cierra porque alguien
+                         * tome un puesto; el taller si, porque una actividad
+                         * no convive con otra. Lo dice cada espacio.
+                         */
+                        Toggle::make('shares_seats')
+                            ->label('Se comparte por puestos')
+                            ->helperText('Varias reservas caben a la vez hasta el aforo: cada una toma los puestos que pide. Apagado, la primera reserva toma la sala entera.')
+                            ->columnSpanFull(),
+
                         TextInput::make('setup_minutes')
                             ->label('Preparación (min)')
                             ->numeric()->default(0)

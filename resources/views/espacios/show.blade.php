@@ -21,6 +21,9 @@
         <p class="help">
             {{ $espacio->areas->pluck('name')->implode(' · ') ?: 'Sin área asignada' }}
             @if ($espacio->capacity) · caben {{ $espacio->capacity }} personas @endif
+            @if ($espacio->seComparte())
+                · se comparte por puestos: varias reservas caben a la vez, cada una toma los que pide
+            @endif
         </p>
     @endif
 
