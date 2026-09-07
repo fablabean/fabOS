@@ -27,18 +27,20 @@ class CalendarioController extends Controller
     {
         $quien = $request->user();
 
-        // La suya, o la que atiende. Una reserva dice quién, cuándo y para
-        // qué: no es de nadie más.
+        $reservation->load(['reservable', 'user', 'advisoryAsset', 'advisoryArea', 'companions']);
+
+        // La suya, la que atiende o acompaña, o —si es del equipo del
+        // laboratorio— cualquiera: quien lleva la operacion se apunta en su
+        // agenda lo que va a pasar en el laboratorio. Para el resto, una
+        // reserva dice quién, cuándo y para qué: no es de nadie más.
         abort_unless(
             $reservation->user_id === $quien->id
-                || ($reservation->reservable_type === User::class
-                    && $reservation->reservable_id === $quien->id),
+                || $reservation->laAtiende($quien)
+                || $quien->hasAnyRole(User::ROLES_BACKOFFICE),
             403,
         );
 
-        $reservation->load(['reservable', 'user', 'advisoryAsset', 'advisoryArea']);
-
-        return response($this->calendario->deUnaReserva($reservation))
+        return response($this->calendario->deUnaReserva($reservation, $quien))
             ->header('Content-Type', 'text/calendar; charset=utf-8')
             ->header('Content-Disposition', 'attachment; filename="reserva-' . $reservation->id . '.ics"');
     }

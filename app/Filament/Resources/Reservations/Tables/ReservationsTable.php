@@ -319,6 +319,22 @@ class ReservationsTable
                             ->send();
                     }),
 
+                /*
+                 * Llevarsela al calendario propio. Mientras no haya
+                 * sincronizacion de vuelta, quien va viendo lo que entra se
+                 * apunta a mano lo que le interesa; el archivo lleva el nombre
+                 * de quien reservo, para que en la agenda se sepa de quien es
+                 * la hora.
+                 */
+                Action::make('calendario')
+                    ->label('Añadir a mi calendario')
+                    ->iconButton()
+                    ->tooltip('Añadir a mi calendario')
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('gray')
+                    ->visible(fn (Reservation $r) => in_array($r->status, ['solicitada', 'confirmada', 'en_curso'], true))
+                    ->url(fn (Reservation $r) => route('calendario.reserva', $r)),
+
                 EditAction::make()->iconButton()->tooltip('Editar'),
 
                 /*

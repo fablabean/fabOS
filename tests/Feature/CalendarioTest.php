@@ -86,6 +86,77 @@ class CalendarioTest extends TestCase
         $respuesta->assertHeader('content-type', 'text/calendar; charset=utf-8');
     }
 
+    /**
+     * Quien es del equipo del laboratorio se lleva cualquiera, con el nombre
+     * de quien reservó: «Cortadora láser» a secas en la agenda de la
+     * coordinación no dice de quién es la hora.
+     */
+    public function test_el_equipo_del_laboratorio_se_lleva_cualquier_reserva_con_el_nombre(): void
+    {
+        $r = $this->reserva($this->persona('Daniel Estudiante'), $this->equipo());
+
+        $coordinadora = $this->persona('Coordinadora');
+        $coordinadora->assignRole(\Spatie\Permission\Models\Role::findOrCreate(User::ROL_CONSULTOR, 'web'));
+
+        $ics = $this->actingAs($coordinadora)
+            ->get(route('calendario.reserva', $r))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Cortadora láser · Daniel Estudiante', $ics);
+        $this->assertStringContainsString('Reservó Daniel Estudiante.', $ics);
+    }
+
+    /** Y quien acompaña la reserva también, aunque no sea suya. */
+    public function test_quien_acompana_se_la_lleva(): void
+    {
+        $acompana = $this->persona('Ana Acompaña');
+        $r = $this->reserva($this->persona('Daniel Estudiante'), $this->equipo());
+        $r->update(['supervisor_id' => $acompana->id]);
+
+        $ics = $this->actingAs($acompana)
+            ->get(route('calendario.reserva', $r->fresh()))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Daniel Estudiante', $ics);
+    }
+
+    /** Para quien reservó, el evento sigue sin su propio nombre: sobra. */
+    public function test_para_quien_reservo_el_titulo_es_el_equipo(): void
+    {
+        $quien = $this->persona('Daniel Estudiante');
+        $r = $this->reserva($quien, $this->equipo());
+
+        $ics = $this->actingAs($quien)->get(route('calendario.reserva', $r))->getContent();
+
+        $this->assertStringContainsString('SUMMARY:Cortadora láser', $ics);
+        $this->assertStringNotContainsString('Daniel Estudiante', $ics);
+    }
+
+    /** En el panel, cada fila tiene el botón. */
+    public function test_la_lista_del_panel_tiene_el_boton(): void
+    {
+        $r = $this->reserva($this->persona(), $this->equipo());
+
+        $admin = $this->persona('Admin');
+        $admin->assignRole(\Spatie\Permission\Models\Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+
+        $servicio = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($admin->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Reservations\Pages\ListReservations::class)
+            ->assertActionVisible(\Filament\Actions\Testing\TestAction::make('calendario')->table($r))
+            ->assertActionHasUrl(
+                \Filament\Actions\Testing\TestAction::make('calendario')->table($r),
+                route('calendario.reserva', $r),
+            );
+    }
+
     /** Una reserva dice quién, cuándo y para qué: no es de nadie más. */
     public function test_la_reserva_de_otra_persona_no_se_descarga(): void
     {

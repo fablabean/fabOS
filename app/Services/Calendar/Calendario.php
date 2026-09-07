@@ -25,9 +25,9 @@ use Illuminate\Support\Collection;
 class Calendario
 {
     /** Un solo evento, para descargar. */
-    public function deUnaReserva(Reservation $reserva): string
+    public function deUnaReserva(Reservation $reserva, ?User $paraQuien = null): string
     {
-        return $this->envolver([$this->evento($reserva)]);
+        return $this->envolver([$this->evento($reserva, $paraQuien)]);
     }
 
     /**
@@ -57,14 +57,31 @@ class Calendario
             ? ($reserva->sobreQue() ?? 'Asesoría')
             : ($reserva->reservable?->name ?? 'Reserva');
 
+        // Si el calendario es de otra persona —quien acompaña, o alguien del
+        // equipo que se apunta lo que va a pasar—, el evento lleva el nombre
+        // de quien reservó: «Cortadora láser» a secas, en la agenda de la
+        // coordinación, no dice de quién es la hora.
+        $deOtro = $paraQuien && ! $atiende && $reserva->user_id !== $paraQuien->id;
+        $persona = $reserva->user?->name ?? 'alguien';
+
         $titulo = $reserva->esAsesoria()
-            ? ($atiende ? 'Asesoría · ' . $que : 'Asesoría de ' . $que)
+            ? ($atiende || $deOtro ? 'Asesoría · ' . $que : 'Asesoría de ' . $que)
             : $que;
+
+        if ($deOtro) {
+            $titulo .= ' · ' . $persona;
+        }
 
         $descripcion = collect([
             $reserva->purpose,
-            $atiende ? 'Atiendes a ' . ($reserva->user?->name ?? 'alguien') . '.' : null,
-            $reserva->esAsesoria() && ! $atiende
+            $atiende ? 'Atiendes a ' . $persona . '.' : null,
+            $deOtro
+                ? ($reserva->esAsesoria() ? 'La pidió ' : 'Reservó ') . $persona . '.'
+                : null,
+            $deOtro && $reserva->esAsesoria()
+                ? 'La atiende ' . ($reserva->reservable?->name ?? 'el equipo') . '.'
+                : null,
+            $reserva->esAsesoria() && ! $atiende && ! $deOtro
                 ? 'Te acompaña ' . ($reserva->reservable?->name ?? 'el equipo') . '.'
                 : null,
         ])->filter()->implode(' ');

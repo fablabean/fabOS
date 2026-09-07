@@ -278,6 +278,9 @@
                             @elseif ($a->status === 'solicitada')
                                 <span class="pill warn">Pendiente</span>
                             @endif
+                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
+                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -402,6 +405,9 @@
                             @else
                                 <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
                             @endif
+                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
+                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -452,6 +458,7 @@
                             @else
                                 @include('cuenta._pasar', ['reserva' => $r, 'candidatos' => $candidatos->get($r->id)])
                             @endif
+                            <br><a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
                         </td>
                     </tr>
                 @endforeach
