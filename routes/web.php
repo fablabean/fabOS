@@ -81,7 +81,8 @@ Route::post('/tienda/carrito/vaciar', [TiendaPublicaController::class, 'vaciar']
 // Pedir cotizacion no exige cuenta: se crea al vuelo, como en el formulario de
 // proyectos. Pagar si, porque el saldo es de alguien.
 Route::post('/tienda/cotizar', [TiendaPublicaController::class, 'cotizar'])
-    ->middleware('throttle:10,60')
+    // Por IP, y el campus entero comparte una: ver el formulario de proyectos.
+    ->middleware('throttle:40,60')
     ->name('tienda.cotizar');
 Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
     ->middleware('auth')
@@ -90,9 +91,15 @@ Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
 // Pedir un proyecto desde la web (§11). Sin sesion: lo que se pierde hoy son
 // las ideas que llegan un domingo y nunca se anotan. El limite de intentos es
 // lo unico que separa un formulario abierto de un buzon de spam.
+//
+// Pero el limite cuenta por direccion IP, y TODA la universidad sale a
+// internet con la misma; ademas cuenta los intentos que fallan la validacion.
+// Con seis por hora, dos personas corrigiendo un archivo rechazado dejaban al
+// campus entero con un 429 hasta la hora siguiente. Contra el spam ya esta la
+// trampa para robots del formulario; esto solo tiene que frenar a un script.
 Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'create'])->name('proyectos.solicitar');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
-    ->middleware('throttle:6,60')
+    ->middleware('throttle:40,60')
     ->name('proyectos.solicitar.store');
 
 // La propuesta con que se responde. Se entra por el enlace firmado del correo o
@@ -125,7 +132,8 @@ Route::get('/lotes/{batch}/evaluacion.csv', [\App\Http\Controllers\LoteCompartid
 Route::get('/proyectos/evidencia/{evidencia}', [ProjectBoardController::class, 'evidencia'])
     ->name('proyectos.evidencia');
 Route::post('/proyectos/{project}/comentar', [SolicitudDeProyectoController::class, 'comentar'])
-    ->middleware('throttle:20,60')
+    // Por IP, y el campus entero comparte una: ver el formulario de proyectos.
+    ->middleware('throttle:60,60')
     ->name('proyectos.comentar');
 
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
