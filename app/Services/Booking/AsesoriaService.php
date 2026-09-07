@@ -3,7 +3,6 @@
 namespace App\Services\Booking;
 
 use App\Models\Area;
-use App\Services\Calendar\AgendaExterna;
 use App\Models\Asset;
 use App\Models\AssetAdvisor;
 use App\Models\Reservation;
@@ -31,7 +30,6 @@ class AsesoriaService
     public function __construct(
         private CoverageService $cobertura,
         private BookingService $reservas,
-        private AgendaExterna $agenda,
     ) {}
 
     /**
@@ -88,16 +86,16 @@ class AsesoriaService
             // Nadie se asesora a sí mismo: si quien pide es del equipo, se
             // busca a otra persona.
             ->when($solicitante, fn (Collection $c) => $c->where('id', '!=', $solicitante->id))
-            ->filter(fn (User $u) => $this->reservas->estaLibre(User::class, $u->id, $desde, $hasta))
             /*
-             * Y lo que tiene fuera de fabOS: una clase, una reunión.
+             * Libre aqui Y fuera de fabOS: una clase o una reunión del
+             * calendario que pegó en su cuenta ocupan igual que una reserva.
              *
-             * Sin esto se ofrecían horas a las que quien asesora no podía ir, y
-             * el choque se descubría cuando ya había alguien esperando. Solo
-             * cuenta para quien haya pegado su calendario: quien no lo hizo
-             * sigue como antes.
+             * Sin lo de fuera se ofrecían horas a las que quien asesora no
+             * podía ir, y el choque se descubría cuando ya había alguien
+             * esperando. Solo cuenta para quien haya pegado su calendario:
+             * quien no lo hizo sigue como antes.
              */
-            ->filter(fn (User $u) => ! $this->agenda->ocupadoEn($u, $desde, $hasta))
+            ->filter(fn (User $u) => $this->reservas->personaLibre($u, $desde, $hasta))
             ->values();
     }
 

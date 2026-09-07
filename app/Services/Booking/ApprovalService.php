@@ -87,12 +87,15 @@ class ApprovalService
 
         $nombre = $equipo?->name ?? $espacio->name;
 
-        // Quien va a atender tiene que estar libre: si tiene una asesoria o
-        // tiempo apartado para un proyecto a esa hora, no esta.
-        if ($acompanante && ! app(BookingService::class)->estaLibre(User::class, $acompanante->id, $solicitud->starts_at, $solicitud->ends_at)) {
-            throw new BookingException(
-                $acompanante->name . ' ya tiene algo a esa hora (una asesoría o tiempo apartado para un proyecto). Elige a otra persona.'
-            );
+        // Quien va a atender tiene que estar libre: si tiene una asesoria,
+        // tiempo apartado para un proyecto o una clase en su calendario a esa
+        // hora, no esta.
+        $ocupado = $acompanante
+            ? app(BookingService::class)->porQueNoEstaLibre($acompanante, $solicitud->starts_at, $solicitud->ends_at)
+            : null;
+
+        if ($ocupado) {
+            throw new BookingException($ocupado . ' Elige a otra persona.');
         }
 
         return DB::transaction(function () use ($solicitud, $equipo, $espacio, $nombre, $acompanante, $quienAprueba, $abrirJornada) {

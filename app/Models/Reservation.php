@@ -168,6 +168,67 @@ class Reservation extends Model
         return $this->mode === 'asesoria';
     }
 
+    /** Las propuestas de pasarle esta atencion a otra persona (§10). */
+    public function transfers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ReservationTransfer::class);
+    }
+
+    /** La propuesta que esta esperando respuesta, si la hay: nunca hay mas de una. */
+    public function traspasoPendiente(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ReservationTransfer::class)->where('status', ReservationTransfer::PENDIENTE);
+    }
+
+    /**
+     * Si esta persona es quien atiende esta reserva.
+     *
+     * Son tres maneras distintas de «atender», y conviene tenerlas en un solo
+     * sitio: quien asesora es el `reservable`; quien acompana una maquina es
+     * el `supervisor`; quien acompana un espacio esta entre los `companions`.
+     */
+    public function laAtiende(User $quien): bool
+    {
+        if ($this->esAsesoria()) {
+            return $this->reservable_type === User::class && (int) $this->reservable_id === $quien->id;
+        }
+
+        if ($this->reservable_type === Asset::class) {
+            return (int) $this->supervisor_id === $quien->id;
+        }
+
+        if ($this->reservable_type === Space::class) {
+            return $this->companions->contains('id', $quien->id);
+        }
+
+        return false;
+    }
+
+    /**
+     * De que se trata, para decirlo en una linea a quien la atiende.
+     *
+     * Una asesoria es sobre una maquina o un area; un acompanamiento es en una
+     * maquina o en un espacio.
+     */
+    public function queAtiende(): string
+    {
+        if ($this->esAsesoria()) {
+            return 'Asesoría de ' . ($this->sobreQue() ?? 'un equipo');
+        }
+
+        return 'Acompañamiento en ' . ($this->reservable?->name ?? 'el laboratorio');
+    }
+
+    /** El area a la que pertenece lo que se atiende, si se sabe. */
+    public function areaDeLoQueAtiende(): ?Area
+    {
+        if ($this->esAsesoria()) {
+            return $this->advisoryAsset?->area ?? $this->advisoryArea;
+        }
+
+        return $this->reservable_type === Asset::class ? $this->reservable?->area : null;
+    }
+
     /**
      * Sobre qué trata la asesoría, para decirlo en una línea.
      *

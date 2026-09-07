@@ -16,6 +16,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrainingController;
+use App\Http\Controllers\TraspasoController;
 use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\EnlaceCortoController;
@@ -173,6 +174,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/asesorias/{reservation}/llego', [AsesoriaController::class, 'llego'])->name('asesoria.llego');
     Route::post('/asesorias/{reservation}/no-vino', [AsesoriaController::class, 'noVino'])->name('asesoria.no_vino');
     Route::post('/asesorias/{reservation}/no-me-atendieron', [AsesoriaController::class, 'noMeAtendieron'])->name('asesoria.no_me_atendieron');
+
+    // Pasarle a otra persona del equipo lo que a uno le toca atender (§10).
+    // Proponer no cambia nada: la reserva cambia de manos solo cuando la otra
+    // persona acepta.
+    Route::post('/atencion/{reservation}/pasar', [TraspasoController::class, 'proponer'])->name('traspaso.proponer');
+    Route::post('/traspasos/{transfer}/aceptar', [TraspasoController::class, 'aceptar'])->name('traspaso.aceptar');
+    Route::post('/traspasos/{transfer}/rechazar', [TraspasoController::class, 'rechazar'])->name('traspaso.rechazar');
+    Route::post('/traspasos/{transfer}/retirar', [TraspasoController::class, 'retirar'])->name('traspaso.retirar');
 
     // Vincular el carne a la cuenta: se hace una vez, ya autenticado.
     Route::post('/cuenta/carnet', [CarnetLoginController::class, 'link'])->name('carnet.link');

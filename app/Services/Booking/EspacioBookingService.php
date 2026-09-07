@@ -181,15 +181,15 @@ class EspacioBookingService
                 if ($acompanantesIds !== []) {
                     $acompanan = User::role(User::ROLES_BACKOFFICE)->whereIn('id', $acompanantesIds)->get();
 
-                    // Y libres a esa hora. Quien tiene una asesoria o tiempo
-                    // apartado para un proyecto no esta: se dice quien y que
-                    // tiene, para que el operador elija a otro.
+                    // Y libres a esa hora. Quien tiene una asesoria, tiempo
+                    // apartado para un proyecto o una clase en su calendario
+                    // no esta: se dice quien y que tiene, para que el
+                    // operador elija a otro.
                     foreach ($acompanan as $quien) {
-                        if (! $this->libre(User::class, $quien->id, $desde, $hasta)) {
-                            throw new BookingException(
-                                $quien->name . ' ya tiene algo a esa hora (una asesoría o tiempo apartado para un proyecto). '
-                                . 'Elige a otra persona para acompañar.'
-                            );
+                        $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta);
+
+                        if ($ocupado) {
+                            throw new BookingException($ocupado . ' Elige a otra persona para acompañar.');
                         }
                     }
 

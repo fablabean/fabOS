@@ -166,6 +166,12 @@ grep -q '^APP_KEY=base64' .env || $ARTISAN key:generate --force
 
 $ARTISAN migrate --force
 
+# Las plantillas de aviso que hayan aparecido con el codigo nuevo. El seeder
+# solo crea las que faltan: los textos que el laboratorio corrigio a mano se
+# quedan como estan. Sin esto, un aviso nuevo se anotaba como «omitido: la
+# plantilla no existe» y nadie se enteraba.
+$ARTISAN db:seed --class=NotificationTemplateSeeder --force
+
 # Los permisos de las secciones del panel. No es una migracion a proposito:
 # una migracion corre una vez, y esto tiene que volver a correr cada vez que
 # aparece una seccion o una accion nueva. No pisa lo que el laboratorio haya

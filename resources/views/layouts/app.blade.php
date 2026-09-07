@@ -97,6 +97,19 @@
             border:0;border-radius:4px;
         }
         button:hover{filter:brightness(1.08)}
+        /* El boton de la accion menor: al lado del principal, sin competir con el. */
+        button.secundario{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+        button.secundario:hover{border-color:var(--accent);filter:none}
+        /* Un desplegable pequeno para las acciones que necesitan un dato mas:
+           se abre en la misma fila y no se lleva a la persona a otra pantalla. */
+        details.plegable{display:inline-block;text-align:left}
+        details.plegable>summary{cursor:pointer;font-weight:600;color:var(--accent);list-style:none}
+        details.plegable>summary::-webkit-details-marker{display:none}
+        details.plegable[open]>summary{margin-bottom:.4rem}
+        details.plegable form{display:flex;flex-direction:column;gap:.4rem;min-width:16rem;
+            padding:.7rem;border:1px solid var(--rule);border-radius:4px;background:var(--ground)}
+        details.plegable form label{margin:0}
+        details.plegable form button{margin-top:.2rem;align-self:flex-start}
         .msg{font-size:.9rem;padding:.7rem .9rem;border-radius:4px;margin-bottom:1.2rem;
              border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
         .msg.error{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,transparent)}

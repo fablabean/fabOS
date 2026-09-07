@@ -78,6 +78,66 @@ tanto la asesoría como el acompañamiento reservan a la persona.
 Tampoco puede una misma persona pedir dos asesorías simultáneas: dejaría
 plantado a uno de los dos asesores.
 
+### Y lo que tiene fuera de fabOS
+
+Cada persona del equipo puede pegar en *Mi cuenta* la dirección de su
+calendario publicado (Outlook, Google). Lo que haya ahí —una clase, una
+reunión— **ocupa igual que una reserva**, y se mira en todos los sitios donde
+se compromete el tiempo de alguien:
+
+- al ofrecer franjas de asesoría;
+- al elegir acompañante para una máquina que lo exige, automático o a mano
+  desde la bandeja;
+- al apuntar acompañantes en un espacio;
+- al pasarle una atención a otra persona.
+
+La comprobación vive en un solo sitio, `BookingService::personaLibre`, para que
+no vuelva a pasar lo de antes: las asesorías miraban el calendario y los
+acompañamientos no, y a la misma persona que no se le ofrecía una asesoría a
+las 10:00 se le ponía a acompañar la láser a las 10:00.
+
+Ante la duda, libre: un calendario que no responde no deja al laboratorio sin
+poder agendar. Y llega con retraso —Outlook regenera la dirección cada pocas
+horas—, así que una reunión creada esta mañana puede no contar hasta la tarde.
+
+## Pasarla a otra persona
+
+Una asesoría o un acompañamiento quedan a nombre de alguien concreto. Si ese
+día no puede, se lo **propone a un compañero desde Mi cuenta**, con un motivo
+si quiere.
+
+La regla que lo sostiene: **nadie recibe una atención sin haber dicho que sí.**
+
+| | |
+|---|---|
+| Proponer | No cambia nada. Sigue a nombre de quien la tenía, que la ve con la propuesta pendiente al lado y puede retirarla. |
+| Aceptar | Recién ahí cambia de manos. Se avisa a quien la pasó y a quien la pidió (*«antes te atendía Ana, ahora Beto»*). |
+| Rechazar | Se queda como estaba, y quien la propuso se entera con el motivo. |
+
+A quién se le puede pasar: a cualquiera del equipo con rol de backoffice,
+activo, que no sea quien la pidió. En una asesoría, la lista pone primero a
+quienes están declarados para ese equipo o esa área, pero no los limita a
+ellos: quien sabe de la máquina sin estar declarado también puede ayudar un
+día.
+
+Lo que se comprueba, tanto al proponer como al aceptar —porque entre una cosa
+y otra pudo cambiar—: que la atención siga confirmada y por venir, y que quien
+la recibe esté libre a esa hora, aquí y en su calendario de fuera. Si al
+aceptar ya no lo está, la propuesta se queda pendiente y se le dice por qué.
+
+Según qué sea, cambiar de manos es distinto:
+
+- **asesoría**: la reserva es del tiempo de quien asesora, y se cambia de quién
+  es ese tiempo;
+- **acompañamiento en una máquina**: se cambia el supervisor de la reserva y
+  el bloque aparte que reservaba su tiempo, para que quien la soltó vuelva a
+  estar libre y quien la tomó quede ocupado;
+- **acompañamiento en un espacio**: se cambia un nombre por otro en la lista
+  de acompañantes.
+
+Solo se pasa lo confirmado y por venir. Una que ya empezó, una solicitada o
+una cancelada no se pasan.
+
 ## Qué ve cada quien
 
 | Dónde | Qué |
@@ -85,7 +145,7 @@ plantado a uno de los dos asesores.
 | Tarjetas de *Reservar* | Un icono de birrete en cada equipo con asesor declarado |
 | Ficha del equipo | El texto completo, con o sin certifab |
 | Catálogo público | También **antes de ingresar**: quien llega sin cuenta es quien más la necesita |
-| *Mi cuenta* | Las que pidió, y —si es del equipo— las que le toca atender |
+| *Mi cuenta* | Las que pidió, y —si es del equipo— las que le toca atender y los acompañamientos, con el área de cada una, lo que le proponen y la opción de pasarlas |
 | *Operación → Asesorías* | El reparto acumulado y el historial |
 
 **La asesoría se ofrece también a quien ya puede reservar.** Estar habilitado no
@@ -112,6 +172,12 @@ Son **dos, a dos personas distintas**:
 
 - `asesoria.confirmada` — a quien la pide, con el nombre de quien la atiende.
 - `asesoria.asignada` — a quien la atiende, con quién la pidió y para qué.
+
+Y los del traspaso:
+
+- `traspaso.propuesto` — a quien se la proponen, con quién, cuándo y por qué.
+- `traspaso.aceptado` / `traspaso.rechazado` — a quien la propuso.
+- `atencion.reasignada` — a quien la pidió, cuando cambia quién lo atiende.
 
 ## Qué mirar en *Operación → Asesorías*
 

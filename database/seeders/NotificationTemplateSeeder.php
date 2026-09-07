@@ -205,6 +205,84 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'traspaso.propuesto',
+                'name'         => 'Te proponen atender algo',
+                'description'  => 'A alguien del equipo, cuando un compañero quiere pasarle una asesoría o un acompañamiento.',
+                'is_essential' => true,
+                'subject'      => '{de} quiere pasarte: {que}, el {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {de} te propone quedarte con esto:
+
+                    Qué: {que}
+                    Área: {area}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Para: {para_quien}
+                    Por qué te la pasa: {nota}
+
+                    Sigue a nombre de {de} hasta que aceptes. Entra a tu cuenta
+                    y di si puedes o no: si no respondes, se queda como estaba.
+                    TXT,
+            ],
+            [
+                'key'          => 'traspaso.aceptado',
+                'name'         => 'Aceptaron lo que pasaste',
+                'description'  => 'A quien propuso pasar una atención, cuando el compañero acepta.',
+                'is_essential' => true,
+                'subject'      => '{a} se queda con {que} del {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {a} aceptó. Ya no está a tu nombre:
+
+                    Qué: {que}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Para: {para_quien}
+
+                    A {para_quien} ya le avisamos quién lo atiende ahora.
+                    TXT,
+            ],
+            [
+                'key'          => 'traspaso.rechazado',
+                'name'         => 'No aceptaron lo que pasaste',
+                'description'  => 'A quien propuso pasar una atención, cuando el compañero dice que no puede.',
+                'is_essential' => true,
+                'subject'      => '{a} no puede con {que} del {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {a} no puede quedarse con esto, así que sigue a tu nombre:
+
+                    Qué: {que}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Para: {para_quien}
+                    Lo que dijo: {motivo}
+
+                    Puedes proponérselo a otra persona desde tu cuenta, o avisar
+                    a la coordinación.
+                    TXT,
+            ],
+            [
+                'key'          => 'atencion.reasignada',
+                'name'         => 'Cambió quien te atiende',
+                'description'  => 'A quien pidió una asesoría o una reserva acompañada, cuando la persona que lo atiende cambia.',
+                'is_essential' => true,
+                'subject'      => 'Cambio: te atiende {ahora} el {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Un cambio en tu cita del {fecha}:
+
+                    Qué: {que}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Antes te atendía: {antes}
+                    Ahora te atiende: {ahora}
+
+                    La hora y el lugar siguen iguales. No tienes que hacer nada.
+                    TXT,
+            ],
+            [
                 'key'          => 'reserva.confirmada',
                 'name'         => 'Reserva confirmada',
                 'description'  => 'Se envía al reservar un equipo, cuando la reserva queda confirmada.',

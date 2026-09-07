@@ -294,4 +294,90 @@ class AgendaExternaTest extends TestCase
             Carbon::parse('2026-08-24 12:45', $tz),
         ));
     }
+
+    /**
+     * Y tampoco se le asigna un acompañamiento encima de su clase.
+     *
+     * Las asesorías ya miraban el calendario de fuera; los acompañamientos
+     * no. A la misma persona que no se le ofrecía una asesoría a las 10:00 se
+     * le podía poner a acompañar la láser a las 10:00.
+     */
+    public function test_una_reunion_tambien_quita_a_esa_persona_de_los_acompanantes(): void
+    {
+        Http::fake(['*' => Http::response($this->ics(
+            $this->evento('1', '20260824T150000Z', '20260824T160000Z'),
+        ))]);
+
+        $area = Area::create(['slug' => 'corte', 'name' => 'Corte láser']);
+        $familia = \App\Models\RiskFamily::create([
+            'area_id' => $area->id, 'slug' => 'laser', 'name' => 'Láser',
+            'required_course_level' => 'byte', 'requires_companion' => true,
+        ]);
+
+        $equipo = Asset::create([
+            'area_id' => $area->id, 'risk_family_id' => $familia->id, 'name' => 'Cortadora', 'kind' => 'fijo',
+            'status' => 'operativo', 'is_reservable' => true,
+            'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+
+        $ana = $this->persona();
+
+        WorkSchedule::create([
+            'user_id' => $ana->id, 'weekday' => 1,
+            'starts_at' => '08:00', 'ends_at' => '18:00',
+            'break_minutes' => 60, 'modalidad' => WorkSchedule::PRESENCIAL,
+            'effective_from' => '2026-01-01',
+        ]);
+
+        \App\Models\Certifab::create(['user_id' => $ana->id, 'risk_family_id' => $familia->id, 'level' => 'mega']);
+
+        $tz = config('fabos.lab.timezone');
+        $reservas = app(\App\Services\Booking\BookingService::class);
+
+        // 10:00–11:00 en Bogotá: tiene clase.
+        $this->assertEmpty($reservas->acompanantesDisponibles(
+            $equipo, Carbon::parse('2026-08-24 10:00', $tz), Carbon::parse('2026-08-24 11:00', $tz),
+        ));
+
+        $this->assertStringContainsString(
+            'compromiso en su calendario',
+            $reservas->porQueNoEstaLibre($ana, Carbon::parse('2026-08-24 10:00', $tz), Carbon::parse('2026-08-24 11:00', $tz)),
+        );
+
+        // A las 12:00, sí.
+        $this->assertCount(1, $reservas->acompanantesDisponibles(
+            $equipo, Carbon::parse('2026-08-24 12:00', $tz), Carbon::parse('2026-08-24 13:00', $tz),
+        ));
+    }
+
+    /** Ni elegida a mano desde la bandeja de solicitudes. */
+    public function test_al_aprobar_a_mano_tampoco_se_le_pone_encima_de_su_clase(): void
+    {
+        Http::fake(['*' => Http::response($this->ics(
+            $this->evento('1', '20260824T150000Z', '20260824T160000Z'),
+        ))]);
+
+        $area = Area::create(['slug' => 'corte', 'name' => 'Corte láser']);
+
+        $equipo = Asset::create([
+            'area_id' => $area->id, 'name' => 'Cortadora', 'kind' => 'fijo',
+            'status' => 'operativo', 'is_reservable' => true,
+            'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+
+        $ana = $this->persona();
+        $tz = config('fabos.lab.timezone');
+
+        $solicitud = \App\Models\Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id,
+            'user_id' => User::create(['name' => 'Beto', 'email' => uniqid() . '@test.co', 'status' => 'activo'])->id,
+            'mode' => 'solo_solicitud', 'status' => 'solicitada',
+            'starts_at' => Carbon::parse('2026-08-24 10:00', $tz), 'ends_at' => Carbon::parse('2026-08-24 11:00', $tz),
+        ]);
+
+        $this->expectException(\App\Services\Booking\BookingException::class);
+        $this->expectExceptionMessage('compromiso en su calendario');
+
+        app(\App\Services\Booking\ApprovalService::class)->aprobar($solicitud, $ana);
+    }
 }

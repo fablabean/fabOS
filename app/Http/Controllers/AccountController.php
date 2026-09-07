@@ -25,6 +25,7 @@ class AccountController extends Controller
         private QrRenderer $qr,
         private LedgerService $libro,
         private NotificationService $avisos,
+        private \App\Services\Booking\TraspasoDeAtencion $traspasos,
     ) {}
 
     public function show(Request $request)
@@ -95,7 +96,7 @@ class AccountController extends Controller
                 ->where('mode', 'asesoria')
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
                 ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
-                ->with(['advisoryAsset.area', 'reservable'])
+                ->with(['advisoryAsset.area', 'advisoryArea', 'reservable'])
                 ->orderBy('starts_at')
                 ->get(),
 
@@ -104,20 +105,81 @@ class AccountController extends Controller
             // Con los ultimos dias incluidos: la que atendio y se olvido de
             // validar tiene que seguir a la vista para validarla tarde, en vez
             // de figurar como no presentada para alguien que si vino.
-            'asesoriasQueAtiendo' => Reservation::query()
+            'asesoriasQueAtiendo' => $asesoriasQueAtiendo = Reservation::query()
                 ->where('reservable_type', User::class)
                 ->where('reservable_id', $user->id)
                 ->where('mode', 'asesoria')
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
                 ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
-                ->with(['advisoryAsset', 'user'])
+                ->with(['advisoryAsset.area', 'advisoryArea', 'user', 'traspasoPendiente.to'])
                 ->orderBy('starts_at')
                 ->get(),
+
+            // Los acompanamientos que le tocan: una maquina que exige a
+            // alguien al lado, o un espacio donde se apunto a acompanar. No
+            // se veian en ningun sitio fuera del panel, y son tan parte de su
+            // dia como las asesorias.
+            'acompanamientos' => $acompanamientos = $this->acompanamientosDe($user),
+
+            // Con quien podria cambiar cada una, y lo que le proponen a el.
+            'candidatos' => $asesoriasQueAtiendo->merge($acompanamientos)
+                ->filter(fn (Reservation $r) => $r->status === 'confirmada' && $r->starts_at->isFuture() && ! $r->traspasoPendiente)
+                ->mapWithKeys(fn (Reservation $r) => [$r->id => $this->traspasos->candidatos($r, $user)]),
+            'traspasosRecibidos' => $this->traspasosPara($user),
             // El tiempo apartado para proyectos: en esas horas no le toca
             // nada mas, y conviene verlo junto a lo que si le toca.
             'bloques'   => app(\App\Services\Projects\TiempoDeProyecto::class)->bloquesDe($user)->load('task'),
             'qr'        => $this->qr,
         ]);
+    }
+
+    /**
+     * Lo que esta persona acompana, por venir: maquinas y espacios juntos.
+     *
+     * @return \Illuminate\Support\Collection<int,Reservation>
+     */
+    private function acompanamientosDe(User $user): \Illuminate\Support\Collection
+    {
+        $vigentes = ['confirmada', 'en_curso'];
+
+        $enMaquinas = Reservation::query()
+            ->where('reservable_type', Asset::class)
+            ->where('supervisor_id', $user->id)
+            ->whereIn('status', $vigentes)
+            ->where('ends_at', '>=', now())
+            ->with(['user', 'traspasoPendiente.to'])
+            ->get()
+            ->each(fn (Reservation $r) => $r->setRelation('reservable', Asset::with('area')->find($r->reservable_id)));
+
+        $enEspacios = Reservation::query()
+            ->where('reservable_type', \App\Models\Space::class)
+            ->whereHas('companions', fn ($q) => $q->where('users.id', $user->id))
+            ->whereIn('status', $vigentes)
+            ->where('ends_at', '>=', now())
+            ->with(['user', 'companions', 'traspasoPendiente.to'])
+            ->get()
+            ->each(fn (Reservation $r) => $r->setRelation('reservable', \App\Models\Space::find($r->reservable_id)));
+
+        return $enMaquinas->merge($enEspacios)->sortBy('starts_at')->values();
+    }
+
+    /**
+     * Lo que le proponen a esta persona y sigue esperando su respuesta.
+     *
+     * @return \Illuminate\Support\Collection<int,\App\Models\ReservationTransfer>
+     */
+    private function traspasosPara(User $user): \Illuminate\Support\Collection
+    {
+        return \App\Models\ReservationTransfer::query()
+            ->pendientes()
+            ->where('to_user_id', $user->id)
+            ->with(['from', 'reservation.user', 'reservation.advisoryAsset.area', 'reservation.advisoryArea', 'reservation.reservable'])
+            ->get()
+            // Una propuesta sobre algo que ya paso o se cancelo no tiene
+            // sentido responderla: se deja de ofrecer, sin mas.
+            ->filter(fn ($t) => $t->reservation && $t->reservation->status === 'confirmada' && $t->reservation->starts_at->isFuture())
+            ->sortBy(fn ($t) => $t->reservation->starts_at)
+            ->values();
     }
 
     /** Guarda qué avisos quiere recibir esta persona (§15). */

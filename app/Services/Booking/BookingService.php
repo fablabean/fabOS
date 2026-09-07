@@ -42,6 +42,7 @@ class BookingService
         private ChargeService $cobros,
         private NotificationService $avisos,
         private WaitlistService $espera,
+        private \App\Services\Calendar\AgendaExterna $agenda,
     ) {}
 
     /**
@@ -234,7 +235,7 @@ class BookingService
     {
         return $this->coverage
             ->acompanantesPara($asset, $desde, $hasta)
-            ->filter(fn (User $u) => $this->estaLibre(User::class, $u->id, $desde, $hasta))
+            ->filter(fn (User $u) => $this->personaLibre($u, $desde, $hasta))
             ->values();
     }
 
@@ -367,6 +368,38 @@ class BookingService
             ->where('starts_at', '<', $hasta->copy()->utc())
             ->where('ends_at', '>', $desde->copy()->utc())
             ->exists();
+    }
+
+    /**
+     * Si a esta persona se le puede apartar esa hora.
+     *
+     * Dos cosas la ocupan, y las dos cuentan igual: lo que ya tiene aqui —una
+     * asesoria, un acompanamiento, tiempo de proyecto— y lo que tiene fuera,
+     * en el calendario que pego en su cuenta. Antes solo las asesorias miraban
+     * el calendario de fuera: a la misma persona se le podia asignar un
+     * acompanamiento justo encima de su clase.
+     */
+    public function personaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta): bool
+    {
+        return $this->porQueNoEstaLibre($persona, $desde, $hasta) === null;
+    }
+
+    /**
+     * Por que no se le puede apartar esa hora, dicho para una persona; o nulo
+     * si esta libre. Quien elige a mano a alguien necesita saber que tiene,
+     * no solo que no se puede.
+     */
+    public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?string
+    {
+        if (! $this->estaLibre(User::class, $persona->id, $desde, $hasta)) {
+            return $persona->name . ' ya tiene algo a esa hora (una asesoría, un acompañamiento o tiempo apartado para un proyecto).';
+        }
+
+        if ($this->agenda->ocupadoEn($persona, $desde, $hasta)) {
+            return $persona->name . ' tiene un compromiso en su calendario a esa hora (una clase o una reunión).';
+        }
+
+        return null;
     }
 
     /** La restricción EXCLUDE de PostgreSQL viaja con este nombre. */

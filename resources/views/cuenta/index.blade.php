@@ -253,7 +253,14 @@
                 @foreach ($asesorias as $a)
                     @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
                     <tr>
-                        <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
+                        <td>
+                            {{-- Una general no tiene máquina: decir «—» obligaba a
+                                 adivinar de qué iba. --}}
+                            {{ $a->sobreQue() ?? '—' }}
+                            @if ($area = $a->areaDeLoQueAtiende())
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
+                            @endif
+                        </td>
                         <td>{{ $a->reservable?->name ?? '—' }}</td>
                         <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
                         <td style="text-align:right;white-space:nowrap">
@@ -279,7 +286,59 @@
         </div>
     @endif
 
-    {{-- Para quien es del equipo: lo que le toca atender. --}}
+    {{-- Para quien es del equipo: lo que le proponen y lo que le toca atender. --}}
+    @if ($traspasosRecibidos->isNotEmpty())
+        <h2>Me proponen atender</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                Alguien del equipo quiere pasarte una atención suya. Sigue a su nombre hasta que
+                aceptes: si no puedes, recházala y se queda como estaba.
+            </p>
+
+            @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror
+
+            <table>
+                <thead><tr><th>Qué</th><th>Quién te la pasa</th><th>Cuándo</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($traspasosRecibidos as $t)
+                    @php $r = $t->reservation; @endphp
+                    <tr>
+                        <td>
+                            {{ $r->queAtiende() }}
+                            @if ($area = $r->areaDeLoQueAtiende())
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
+                            @endif
+                            <br><span class="help" style="margin:0;font-size:.82rem">Para {{ $r->user?->name ?? '—' }}</span>
+                        </td>
+                        <td>
+                            {{ $t->from?->name ?? '—' }}
+                            @if ($t->note)
+                                <br><span class="help" style="margin:0;font-size:.82rem">«{{ $t->note }}»</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                            — {{ $r->ends_at->timezone($tz)->format('H:i') }}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            <form method="POST" action="{{ route('traspaso.aceptar', $t) }}" style="display:inline">
+                                @csrf
+                                <button type="submit" style="margin-top:0;padding:.35rem .7rem;font-size:.85rem">Acepto</button>
+                            </form>
+                            <form method="POST" action="{{ route('traspaso.rechazar', $t) }}" style="display:inline"
+                                  onsubmit="return confirm('¿No puedes? Se queda a nombre de quien te la propuso, y se le avisa.')">
+                                @csrf
+                                <button type="submit" class="secundario" style="margin-top:0;padding:.35rem .7rem;font-size:.85rem">No puedo</button>
+                            </form>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     @if ($asesoriasQueAtiendo->isNotEmpty())
         <h2>Asesorías que voy a atender</h2>
 
@@ -287,13 +346,15 @@
             <p class="help" style="margin-top:0">
                 Una asesoría no tiene QR: la llegada la validas tú. Si se te olvidó, se puede
                 validar hasta {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }} días
-                después; si la persona no vino, dilo aquí para que quede anotado.
+                después; si la persona no vino, dilo aquí para que quede anotado. Si ese día no
+                puedes, pásasela a alguien del equipo: queda a su nombre cuando acepte.
             </p>
 
             @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+            @if ($traspasosRecibidos->isEmpty()) @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror @endif
 
             <table>
-                <thead><tr><th>Equipo</th><th>Quién la pidió</th><th>Cuándo</th><th></th></tr></thead>
+                <thead><tr><th>Sobre qué</th><th>Quién la pidió</th><th>Cuándo</th><th></th></tr></thead>
                 <tbody>
                 @foreach ($asesoriasQueAtiendo as $a)
                     @php
@@ -301,9 +362,22 @@
                         $tol  = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia'));
                     @endphp
                     <tr>
-                        <td>{{ $a->advisoryAsset?->name ?? '—' }}</td>
-                        <td>{{ $a->user?->name ?? '—' }}</td>
-                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                        <td>
+                            {{ $a->sobreQue() ?? '—' }}
+                            @if ($area = $a->areaDeLoQueAtiende())
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $a->user?->name ?? '—' }}
+                            @if ($a->purpose)
+                                <br><span class="help" style="margin:0;font-size:.82rem">«{{ $a->purpose }}»</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $a->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                            — {{ $a->ends_at->timezone($tz)->format('H:i') }}
+                        </td>
                         <td style="text-align:right;white-space:nowrap">
                             @if ($a->checked_in_at)
                                 <span class="pill ok">Validada</span>
@@ -321,8 +395,62 @@
                                 @endif
                             @elseif ($a->status === 'solicitada')
                                 <span class="pill warn">Pendiente</span>
+                            @elseif ($a->traspasoPendiente || $candidatos->has($a->id))
+                                {{-- Confirmada y todavía lejos: es el momento de
+                                     pasarla si ese día no se puede. --}}
+                                @include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
                             @else
                                 <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    {{-- Y los acompañamientos: una máquina que exige a alguien al lado, o
+         un espacio donde se apuntó a acompañar. --}}
+    @if ($acompanamientos->isNotEmpty())
+        <h2>Acompañamientos que voy a hacer</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                Te toca estar ahí. Si ese día no puedes, pásaselo a alguien del equipo: sigue a
+                tu nombre hasta que acepte.
+            </p>
+
+            @if ($traspasosRecibidos->isEmpty() && $asesoriasQueAtiendo->isEmpty()) @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror @endif
+
+            <table>
+                <thead><tr><th>Dónde</th><th>A quién</th><th>Cuándo</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($acompanamientos as $r)
+                    <tr>
+                        <td>
+                            {{ $r->reservable?->name ?? '—' }}
+                            @if ($area = $r->areaDeLoQueAtiende())
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
+                            @elseif ($r->esRecorrido())
+                                <br><span class="help" style="margin:0;font-size:.82rem">Recorrido</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $r->user?->name ?? '—' }}
+                            @if ($r->purpose)
+                                <br><span class="help" style="margin:0;font-size:.82rem">«{{ $r->purpose }}»</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                            — {{ $r->ends_at->timezone($tz)->format('H:i') }}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($r->status === 'en_curso')
+                                <span class="pill ok">En curso</span>
+                            @else
+                                @include('cuenta._pasar', ['reserva' => $r, 'candidatos' => $candidatos->get($r->id)])
                             @endif
                         </td>
                     </tr>
@@ -446,8 +574,9 @@
         <p style="margin:0 0 .3rem"><strong>Tu calendario de la Universidad</strong></p>
         <p class="help" style="margin-top:0">
             Si pegas aquí tu calendario publicado de Outlook, fabOS mira si ya tienes algo a
-            esa hora y <strong>deja de ofrecer esa franja</strong> para asesorías. Es de solo
-            lectura: no escribe nada en tu calendario, ni podría.
+            esa hora y <strong>deja de ofrecer esa franja</strong>: ni asesorías, ni
+            acompañamientos, ni traspasos de otra persona. Es de solo lectura: no escribe nada
+            en tu calendario, ni podría.
         </p>
 
         @if (auth()->user()->external_calendar_url)
