@@ -504,6 +504,73 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'curso', 'codigo', 'enlace', 'habilita'],
             ],
             [
+                'key'          => 'practica.agendada',
+                'name'         => 'Práctica agendada',
+                'description'  => 'A quien pidió hora para la prueba práctica de un curso.',
+                'is_essential' => true,
+                'subject'      => 'Tu prueba práctica de {curso}: {fecha} a las {inicio}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Ya tienes hora para la prueba práctica de {curso}:
+
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Dónde: {lugar}
+                    Te evalúa: {evaluador}
+
+                    Es lo único que queda para tu certifab: alguien del equipo te ve
+                    hacerlo delante de la máquina. Llega unos minutos antes.
+
+                    Si no vas a poder, cancélala desde tu cuenta y pide otra hora:
+                    esa hora le sirve a alguien más.
+                    TXT,
+            ],
+            [
+                'key'          => 'practica.citada',
+                'name'         => 'Citación a la prueba práctica',
+                'description'  => 'A quien la coordinación cita a la prueba práctica de un curso, con hora y evaluador.',
+                'is_essential' => true,
+                'subject'      => 'Te esperamos para la prueba práctica de {curso}: {fecha} a las {inicio}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Te citamos a la prueba práctica de {curso}:
+
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Dónde: {lugar}
+                    Te evalúa: {evaluador}
+
+                    {nota}
+
+                    Es lo único que queda para tu certifab. Si esa hora no te
+                    sirve, cancélala desde tu cuenta y elige otra de las
+                    disponibles.
+                    TXT,
+            ],
+            [
+                'key'          => 'practica.asignada',
+                'name'         => 'Te asignaron una prueba práctica',
+                'description'  => 'A quien va a evaluar la práctica de un curso.',
+                'is_essential' => true,
+                'subject'      => 'Evalúas la práctica de {estudiante} el {fecha}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Te toca ver la prueba práctica de un curso:
+
+                    Curso: {curso} ({nivel})
+                    Cuándo: {fecha}, de {inicio} a {fin}
+                    Quién: {estudiante}
+
+                    Queda reservado en tu agenda. Cuando la vea hacerlo, la
+                    coordinación firma la práctica en el panel y con eso sale
+                    el certifab.
+
+                    Si no vas a poder, pásasela a alguien del equipo desde tu
+                    cuenta.
+                    TXT,
+            ],
+            [
                 'key'          => 'encargo.cotizado',
                 'name'         => 'Cotización de un encargo',
                 'description'  => 'Se envía al cotizar un trabajo pedido a la tienda.',

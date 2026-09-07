@@ -331,7 +331,30 @@ class TrainingService
             'practical_notes'     => $notas,
         ]);
 
+        // La hora que sostenia la practica se cierra: la persona vino.
+        app(PracticaService::class)->cerrarAlFirmar($inscripcion);
+
         return $inscripcion->refresh();
+    }
+
+    /**
+     * Firma la practica y, si ya no falta nada, aprueba de una vez.
+     *
+     * La firma ES la decision: pedir otro clic para «aprobar» era pedir lo
+     * mismo dos veces, y entre uno y otro la persona se quedaba sin certifab
+     * sin que nadie lo notara.
+     *
+     * @throws TrainingException
+     */
+    public function firmarPracticaYAprobar(Enrollment $inscripcion, User $quienEvalua, ?string $notas = null): Enrollment
+    {
+        $inscripcion = $this->registrarPractica($inscripcion, $quienEvalua, $notas);
+
+        if ($inscripcion->queFaltaParaAprobar() === null) {
+            return $this->aprobar($inscripcion, porQuien: $quienEvalua);
+        }
+
+        return $inscripcion;
     }
 
     /** Familias de riesgo que una persona tendría habilitadas al aprobar. */

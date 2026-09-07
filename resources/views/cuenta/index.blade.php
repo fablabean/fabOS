@@ -165,6 +165,27 @@
                                 @if ($falta = $inscripcion->queFaltaParaAprobar())
                                     <div class="quien">{{ $falta }}</div>
                                 @endif
+
+                                {{-- La práctica se pide aquí, no por correo: el
+                                     sistema ofrece las horas en que alguien del
+                                     área puede verla. --}}
+                                @if ($practica = $inscripcion->practicaAgendada())
+                                    <div class="quien" style="margin-top:.3rem">
+                                        <strong>Práctica agendada:</strong>
+                                        {{ $practica->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                                        con {{ $practica->reservable?->name ?? 'el equipo' }}
+                                        · <a href="{{ route('calendario.reserva', $practica) }}">Añadir a mi calendario</a>
+                                        <form method="POST" action="{{ route('reservas.cancel', $practica) }}" style="display:inline"
+                                              onsubmit="return confirm('¿Cancelar la práctica? Podrás pedir otra hora.')">
+                                            @csrf
+                                            <button type="submit" class="secundario" style="margin:0 0 0 .3rem;padding:.15rem .5rem;font-size:.78rem">Cancelar</button>
+                                        </form>
+                                    </div>
+                                @elseif ($inscripcion->puedeAgendarPractica())
+                                    <div class="quien" style="margin-top:.3rem">
+                                        <a href="{{ route('formacion.practica', $inscripcion) }}"><strong>Agendar la prueba práctica →</strong></a>
+                                    </div>
+                                @endif
                             @endif
                         </td>
                         <td>
@@ -366,6 +387,9 @@
                     @endphp
                     <tr>
                         <td>
+                            @if ($a->esPractica())
+                                <span class="pill warn" style="margin:0 .3rem 0 0">Práctica</span>
+                            @endif
                             {{ $a->sobreQue() ?? '—' }}
                             @if ($area = $a->areaDeLoQueAtiende())
                                 <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
@@ -373,7 +397,7 @@
                         </td>
                         <td>
                             {{ $a->user?->name ?? '—' }}
-                            @if ($a->purpose)
+                            @if ($a->purpose && ! $a->esPractica())
                                 <br><span class="help" style="margin:0;font-size:.82rem">«{{ $a->purpose }}»</span>
                             @endif
                         </td>
@@ -383,7 +407,12 @@
                         </td>
                         <td style="text-align:right;white-space:nowrap">
                             @if ($a->checked_in_at)
-                                <span class="pill ok">Validada</span>
+                                <span class="pill ok">{{ $a->esPractica() ? 'Firmada' : 'Validada' }}</span>
+                            @elseif ($a->esPractica() && $a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
+                                {{-- Una practica no se valida aqui: la firma la
+                                     coordinacion en el panel, y esa firma da el
+                                     certifab. --}}
+                                <span class="help" style="margin:0;font-size:.82rem">Se firma en el panel, en la edición del curso</span>
                             @elseif ($a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
                                 <form method="POST" action="{{ route('asesoria.llego', $a) }}" style="display:inline">
                                     @csrf

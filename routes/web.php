@@ -270,6 +270,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:20,60')
         ->name('formacion.calificar');
 
+    // La prueba practica se pide como una asesoria: las horas en que alguien
+    // del area puede verla, y el sistema elige a quien le toca (§9).
+    Route::get('/formacion/mi/{enrollment}/practica', [TrainingController::class, 'practica'])->name('formacion.practica');
+    Route::post('/formacion/mi/{enrollment}/practica', [TrainingController::class, 'agendarPractica'])->name('formacion.practica.agendar');
+
     Route::post('/formacion/{edition}/inscribirme', [TrainingController::class, 'inscribir'])->name('formacion.inscribir');
     Route::post('/formacion/inscripcion/{enrollment}/retirar', [TrainingController::class, 'retirar'])->name('formacion.retirar');
 

@@ -100,6 +100,22 @@ Ante la duda, libre: un calendario que no responde no deja al laboratorio sin
 poder agendar. Y llega con retraso —Outlook regenera la dirección cada pocas
 horas—, así que una reunión creada esta mañana puede no contar hasta la tarde.
 
+## La prueba práctica de un curso va por aquí
+
+Quien aprueba el examen teórico de un curso con práctica pide hora para la
+prueba presencial **desde su cuenta**, con la misma pantalla de las asesorías:
+las horas en que alguien del **área del curso** puede verla, y el sistema
+elige a quién le toca con el mismo turno. Es una reserva del tiempo de quien
+evalúa, con modo `practica`, que sabe de qué inscripción viene.
+
+La coordinación también puede **citar** a la persona desde la edición del
+curso, con hora y evaluador concretos; y quien evalúa la ve en su cuenta y
+puede pasársela a un compañero como cualquier atención.
+
+La firma sigue siendo de una persona, en el panel, y por ahora la dan
+administradores y superadmin. Firmar cierra la hora reservada y, si ya no
+falta nada, **otorga el certifab en el mismo acto**.
+
 ## Pasarla a otra persona
 
 Una asesoría o un acompañamiento quedan a nombre de alguien concreto. Si ese

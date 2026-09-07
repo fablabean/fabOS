@@ -105,13 +105,15 @@ class AccountController extends Controller
             // Con los ultimos dias incluidos: la que atendio y se olvido de
             // validar tiene que seguir a la vista para validarla tarde, en vez
             // de figurar como no presentada para alguien que si vino.
+            // Y las practicas de curso que le toca evaluar: reservan su tiempo
+            // igual que una asesoria, y se ven en la misma lista.
             'asesoriasQueAtiendo' => $asesoriasQueAtiendo = Reservation::query()
                 ->where('reservable_type', User::class)
                 ->where('reservable_id', $user->id)
-                ->where('mode', 'asesoria')
+                ->whereIn('mode', ['asesoria', 'practica'])
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
                 ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
-                ->with(['advisoryAsset.area', 'advisoryArea', 'user', 'traspasoPendiente.to'])
+                ->with(['advisoryAsset.area', 'advisoryArea', 'enrollment.edition.course', 'user', 'traspasoPendiente.to'])
                 ->orderBy('starts_at')
                 ->get(),
 
@@ -173,7 +175,7 @@ class AccountController extends Controller
         return \App\Models\ReservationTransfer::query()
             ->pendientes()
             ->where('to_user_id', $user->id)
-            ->with(['from', 'reservation.user', 'reservation.advisoryAsset.area', 'reservation.advisoryArea', 'reservation.reservable'])
+            ->with(['from', 'reservation.user', 'reservation.advisoryAsset.area', 'reservation.advisoryArea', 'reservation.enrollment.edition.course', 'reservation.reservable'])
             ->get()
             // Una propuesta sobre algo que ya paso o se cancelo no tiene
             // sentido responderla: se deja de ofrecer, sin mas.

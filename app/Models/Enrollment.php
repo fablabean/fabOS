@@ -45,6 +45,42 @@ class Enrollment extends Model
         return $this->theory_passed_at !== null;
     }
 
+    /** Si el examen ya no estorba: no hay, o esta aprobado. */
+    public function teoriaLista(): bool
+    {
+        return ! ($this->edition?->course?->tieneExamen()) || $this->teoriaAprobada();
+    }
+
+    /** Las reservas de prueba practica que vienen de esta inscripcion (§9). */
+    public function practicas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Reservation::class)->where('mode', 'practica');
+    }
+
+    /** La practica que esta en pie, si la hay: agendada y por venir. */
+    public function practicaAgendada(): ?Reservation
+    {
+        return $this->practicas()
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('ends_at', '>=', now())
+            ->orderBy('starts_at')
+            ->with('reservable')
+            ->first();
+    }
+
+    /**
+     * Si ya puede pedir hora para la practica: sigue inscrita, el curso la
+     * exige, la teoria esta lista, no esta firmada y no hay otra en pie.
+     */
+    public function puedeAgendarPractica(): bool
+    {
+        return $this->status === 'inscrito'
+            && (bool) $this->edition?->course?->requires_practical
+            && $this->teoriaLista()
+            && ! $this->practicaAprobada()
+            && $this->practicaAgendada() === null;
+    }
+
     public function practicaAprobada(): bool
     {
         return $this->practical_passed_at !== null;

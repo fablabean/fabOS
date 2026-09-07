@@ -14,8 +14,18 @@
         @if ($resultado['aprobado'])
             <p style="margin:.8rem 0 0">
                 @if ($falta = $inscripcion->queFaltaParaAprobar())
-                    {{ $falta }} Habla con el equipo del laboratorio para agendarla: es lo
-                    único que queda para tu certifab.
+                    {{ $falta }}
+                    @if ($inscripcion->puedeAgendarPractica())
+                        Es lo único que queda para tu certifab:
+                        <a href="{{ route('formacion.practica', $inscripcion) }}"><strong>agenda la prueba práctica →</strong></a>
+                    @elseif ($practica = $inscripcion->practicaAgendada())
+                        Ya la tienes agendada: el {{ $practica->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}
+                        a las {{ $practica->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}
+                        con {{ $practica->reservable?->name ?? 'el equipo' }}.
+                    @else
+                        Habla con el equipo del laboratorio para agendarla: es lo único que queda
+                        para tu certifab.
+                    @endif
                 @else
                     Ya está todo. Tu certifab queda registrado.
                 @endif

@@ -259,7 +259,7 @@ class TraspasoDeAtencion
     /** El cambio de manos, según qué sea. */
     private function cambiarDeManos(Reservation $reserva, User $de, User $a): void
     {
-        if ($reserva->esAsesoria()) {
+        if ($reserva->esAtencionPersonal()) {
             $reserva->update([
                 'reservable_id' => $a->id,
                 'status_reason' => 'Pasada por ' . $de->name . ' a ' . $a->name,
@@ -298,7 +298,7 @@ class TraspasoDeAtencion
     /** @return Collection<int,int> ids de quienes están declarados para lo que trata la asesoría */
     private function declaradosPara(Reservation $reserva): Collection
     {
-        if (! $reserva->esAsesoria()) {
+        if (! $reserva->esAtencionPersonal()) {
             return collect();
         }
 

@@ -200,6 +200,11 @@ return [
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),
     ],
 
+    'formacion' => [
+        // Cuanto dura la prueba practica de un curso, delante de la maquina.
+        'practica_minutos' => (int) env('PRACTICA_MINUTOS', 60),
+    ],
+
     /**
      * Proyectos por encargo.
      *

@@ -17,7 +17,7 @@ class Reservation extends Model
 {
     protected $fillable = [
         'reservable_type', 'reservable_id', 'user_id', 'project_id', 'project_task_id', 'supervisor_id',
-        'advisory_asset_id', 'advisory_area_id', 'participants', 'parent_reservation_id',
+        'advisory_asset_id', 'advisory_area_id', 'enrollment_id', 'participants', 'parent_reservation_id',
         'status', 'mode', 'is_production', 'starts_at', 'ends_at', 'reinstated_at',
         'checked_in_at', 'checked_out_at',
         'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
@@ -57,6 +57,9 @@ class Reservation extends Model
         // El tiempo de alguien, apartado para una tarea de proyecto: en esas
         // horas no se le reparte nada.
         'proyecto'       => 'Tiempo de proyecto',
+        // La prueba presencial de un curso: como una asesoria, reserva el
+        // tiempo de quien evalua, y viene de una inscripcion.
+        'practica'       => 'Evaluación práctica',
     ];
 
     /** Estados en los que la reserva ocupa el recurso de verdad. */
@@ -168,6 +171,28 @@ class Reservation extends Model
         return $this->mode === 'asesoria';
     }
 
+    /** La prueba presencial de un curso (§9). */
+    public function esPractica(): bool
+    {
+        return $this->mode === 'practica';
+    }
+
+    /**
+     * Reserva el tiempo de una persona del equipo para atender a alguien:
+     * una asesoria o una practica. Es lo que se ve en «lo que atiendo», lo
+     * que se pasa a un companero y lo que va al calendario con ese titulo.
+     */
+    public function esAtencionPersonal(): bool
+    {
+        return $this->esAsesoria() || $this->esPractica();
+    }
+
+    /** La inscripcion de la que viene una practica (§9). */
+    public function enrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class);
+    }
+
     /** Las propuestas de pasarle esta atencion a otra persona (§10). */
     public function transfers(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -189,7 +214,7 @@ class Reservation extends Model
      */
     public function laAtiende(User $quien): bool
     {
-        if ($this->esAsesoria()) {
+        if ($this->esAtencionPersonal()) {
             return $this->reservable_type === User::class && (int) $this->reservable_id === $quien->id;
         }
 
@@ -212,6 +237,10 @@ class Reservation extends Model
      */
     public function queAtiende(): string
     {
+        if ($this->esPractica()) {
+            return 'Evaluación práctica de ' . ($this->sobreQue() ?? 'un curso');
+        }
+
         if ($this->esAsesoria()) {
             return 'Asesoría de ' . ($this->sobreQue() ?? 'un equipo');
         }
@@ -222,7 +251,7 @@ class Reservation extends Model
     /** El area a la que pertenece lo que se atiende, si se sabe. */
     public function areaDeLoQueAtiende(): ?Area
     {
-        if ($this->esAsesoria()) {
+        if ($this->esAtencionPersonal()) {
             return $this->advisoryAsset?->area ?? $this->advisoryArea;
         }
 
@@ -237,6 +266,11 @@ class Reservation extends Model
      */
     public function sobreQue(): ?string
     {
+        if ($this->esPractica()) {
+            return $this->enrollment?->edition?->course?->name
+                ?? ($this->advisoryArea ? 'Curso de ' . $this->advisoryArea->name : null);
+        }
+
         return $this->advisoryAsset?->name
             ?? ($this->advisoryArea ? 'General de ' . $this->advisoryArea->name : null);
     }

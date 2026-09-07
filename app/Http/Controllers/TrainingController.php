@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Services\Training\TrainingException;
 use App\Services\Training\TrainingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * La formación vista desde fuera (§9).
@@ -120,6 +121,70 @@ class TrainingController extends Controller
             'curso'       => $enrollment->edition?->course,
             'resultado'   => $resultado,
         ]);
+    }
+
+    /**
+     * Pedir hora para la prueba practica (§9).
+     *
+     * La misma pantalla de las asesorias: solo aparecen horas en las que
+     * alguien del area del curso puede verla de verdad.
+     */
+    public function practica(Request $request, Enrollment $enrollment)
+    {
+        abort_unless($enrollment->user_id === $request->user()->id, 403);
+
+        $curso = $enrollment->edition?->course;
+
+        abort_unless($curso?->requires_practical, 404);
+
+        if (! $enrollment->puedeAgendarPractica()) {
+            return redirect()->route('home')->withErrors([
+                'inscripcion' => $enrollment->practicaAgendada()
+                    ? 'Ya tienes una práctica agendada.'
+                    : ($enrollment->teoriaLista() ? 'Esta práctica ya no se puede agendar.' : 'Primero aprueba el examen teórico.'),
+            ]);
+        }
+
+        $practicas = app(\App\Services\Training\PracticaService::class);
+
+        return view('reservas.asesoria', [
+            'rotulo'      => 'Prueba práctica',
+            'titulo'      => $curso->name,
+            'explicacion' => 'Ya aprobaste la teoría. Falta que alguien del equipo te vea hacerlo delante de la '
+                . 'máquina: es lo único que queda para tu certifab. Elige una hora y el sistema te asigna a '
+                . 'quien puede evaluarte.',
+            'accion'      => route('formacion.practica.agendar', $enrollment),
+            'volver'      => route('home'),
+            'boton'       => 'Agendar la práctica',
+            'sinMotivo'   => true,
+            'franjas'     => $practicas->franjas($enrollment)->groupBy(fn (array $f) => $f['inicio']->toDateString()),
+            'minutos'     => $practicas->minutos(),
+        ]);
+    }
+
+    public function agendarPractica(Request $request, Enrollment $enrollment)
+    {
+        abort_unless($enrollment->user_id === $request->user()->id, 403);
+
+        $datos = $request->validate(['inicio' => ['required', 'date']]);
+
+        $inicio = Carbon::parse($datos['inicio'], config('fabos.lab.timezone'));
+
+        if ($inicio->isPast()) {
+            return back()->withErrors(['inicio' => 'Esa hora ya pasó. Elige otra.']);
+        }
+
+        try {
+            $reserva = app(\App\Services\Training\PracticaService::class)->agendar($enrollment, $inicio);
+        } catch (TrainingException $e) {
+            return back()->withErrors(['inicio' => $e->getMessage()]);
+        }
+
+        return redirect()->route('home')->with(
+            'status',
+            'Práctica agendada para el ' . $inicio->format('d/m/Y') . ' a las ' . $inicio->format('H:i')
+            . ' con ' . $reserva->reservable->name . '. Te llegó un correo con los detalles.',
+        );
     }
 
     public function inscribir(Request $request, CourseEdition $edition)

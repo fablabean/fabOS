@@ -53,9 +53,11 @@ class Calendario
             && $reserva->reservable_type === User::class
             && $reserva->reservable_id === $paraQuien->id;
 
-        $que = $reserva->esAsesoria()
+        $que = $reserva->esAtencionPersonal()
             ? ($reserva->sobreQue() ?? 'Asesoría')
             : ($reserva->reservable?->name ?? 'Reserva');
+
+        $tipo = $reserva->esPractica() ? 'Práctica' : 'Asesoría';
 
         // Si el calendario es de otra persona —quien acompaña, o alguien del
         // equipo que se apunta lo que va a pasar—, el evento lleva el nombre
@@ -64,8 +66,8 @@ class Calendario
         $deOtro = $paraQuien && ! $atiende && $reserva->user_id !== $paraQuien->id;
         $persona = $reserva->user?->name ?? 'alguien';
 
-        $titulo = $reserva->esAsesoria()
-            ? ($atiende || $deOtro ? 'Asesoría · ' . $que : 'Asesoría de ' . $que)
+        $titulo = $reserva->esAtencionPersonal()
+            ? ($atiende || $deOtro ? $tipo . ' · ' . $que : $tipo . ' de ' . $que)
             : $que;
 
         if ($deOtro) {
@@ -74,15 +76,15 @@ class Calendario
 
         $descripcion = collect([
             $reserva->purpose,
-            $atiende ? 'Atiendes a ' . $persona . '.' : null,
+            $atiende ? ($reserva->esPractica() ? 'Evalúas a ' : 'Atiendes a ') . $persona . '.' : null,
             $deOtro
-                ? ($reserva->esAsesoria() ? 'La pidió ' : 'Reservó ') . $persona . '.'
+                ? ($reserva->esAtencionPersonal() ? 'La pidió ' : 'Reservó ') . $persona . '.'
                 : null,
-            $deOtro && $reserva->esAsesoria()
+            $deOtro && $reserva->esAtencionPersonal()
                 ? 'La atiende ' . ($reserva->reservable?->name ?? 'el equipo') . '.'
                 : null,
-            $reserva->esAsesoria() && ! $atiende && ! $deOtro
-                ? 'Te acompaña ' . ($reserva->reservable?->name ?? 'el equipo') . '.'
+            $reserva->esAtencionPersonal() && ! $atiende && ! $deOtro
+                ? ($reserva->esPractica() ? 'Te evalúa ' : 'Te acompaña ') . ($reserva->reservable?->name ?? 'el equipo') . '.'
                 : null,
         ])->filter()->implode(' ');
 

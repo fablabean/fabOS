@@ -1,8 +1,18 @@
 @extends('layouts.app')
-@section('title', 'Pedir asesoría · ' . $titulo . ' · fabOS')
+@section('title', ($rotulo ?? 'Pedir asesoría') . ' · ' . $titulo . ' · fabOS')
+
+{{-- La misma pantalla sirve para pedir una asesoría y para agendar la prueba
+     práctica de un curso: en las dos se elige una hora en la que alguien del
+     equipo puede atender de verdad. Cambian el rótulo, el botón y si se
+     pregunta el motivo. --}}
+@php
+    $rotulo = $rotulo ?? 'Asesoría';
+    $boton = $boton ?? 'Pedir la asesoría';
+    $sinMotivo = $sinMotivo ?? false;
+@endphp
 
 @section('content')
-    <p class="rotulo">Asesoría</p>
+    <p class="rotulo">{{ $rotulo }}</p>
     <h1>{{ $titulo }}</h1>
 
     <p class="help">{{ $explicacion }} Dura {{ $minutos }} minutos.</p>
@@ -13,7 +23,7 @@
         <div class="panel">
             <h2 style="margin-top:0">No hay horas disponibles</h2>
             <p class="help">
-                Quienes asesoran no tienen huecos en los próximos días.
+                Quienes atienden no tienen huecos en los próximos días.
                 Vuelve a mirar mañana, o escribe a la coordinación del laboratorio.
             </p>
             <p class="foot"><a href="{{ $volver }}">← Volver</a></p>
@@ -54,14 +64,16 @@
             </div>
 
             <div class="panel">
-                <label for="motivo">¿Qué quieres hacer? <small style="opacity:.6">(opcional)</small></label>
-                <textarea id="motivo" name="motivo" rows="3" maxlength="500"
-                          placeholder="Cortar unas piezas de MDF para un prototipo…"></textarea>
-                <p class="help">
-                    Decirlo antes ayuda a quien te atienda a llegar preparado.
-                </p>
+                @unless ($sinMotivo)
+                    <label for="motivo">¿Qué quieres hacer? <small style="opacity:.6">(opcional)</small></label>
+                    <textarea id="motivo" name="motivo" rows="3" maxlength="500"
+                              placeholder="Cortar unas piezas de MDF para un prototipo…"></textarea>
+                    <p class="help">
+                        Decirlo antes ayuda a quien te atienda a llegar preparado.
+                    </p>
+                @endunless
 
-                <button type="submit">Pedir la asesoría</button>
+                <button type="submit">{{ $boton }}</button>
             </div>
         </form>
     @endif
