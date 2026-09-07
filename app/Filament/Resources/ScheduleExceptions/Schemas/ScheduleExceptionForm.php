@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ScheduleExceptions\Schemas;
 
 use App\Models\ScheduleException;
 use App\Models\WorkSchedule;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
@@ -27,6 +28,11 @@ class ScheduleExceptionForm
     public static function configure(Schema $schema): Schema
     {
         $esFranja = fn (Get $get) => $get('alcance') === 'franja';
+
+        // Se repite si es de franja y hay algun dia marcado: uno al editar,
+        // varios al crear.
+        $seRepite = fn (Get $get) => $esFranja($get)
+            && (filled($get('weekday')) || filled(array_filter((array) $get('weekdays'))));
 
         return $schema
             ->components([
@@ -87,28 +93,49 @@ class ScheduleExceptionForm
                     ->after('starts_time')
                     ->dehydrateStateUsing(fn ($state, Get $get) => $esFranja($get) ? $state : null),
 
+                /*
+                 * Al crear se marcan varios dias: la clase es martes y jueves
+                 * a la misma hora, y pedir el formulario dos veces es poner a
+                 * alguien de copiadora. Se guarda un bloqueo por dia, igual
+                 * que las jornadas, porque cada uno puede cambiar o borrarse
+                 * por su cuenta despues.
+                 */
+                CheckboxList::make('weekdays')
+                    ->label('Se repite')
+                    ->options(WorkSchedule::DIAS)
+                    ->columns(4)
+                    ->bulkToggleable()
+                    ->visible($esFranja)
+                    ->visibleOn('create')
+                    ->live()
+                    ->dehydrated(false)
+                    ->helperText('Cada semana, los días marcados, entre las fechas de abajo. Se crea un bloqueo por cada día, todos con la misma franja. Sin marcar ninguno, es solo en esas fechas.')
+                    ->columnSpanFull(),
+
+                // Al editar se toca UN bloqueo, y aqui el dia es uno solo.
                 Select::make('weekday')
                     ->label('Se repite')
                     ->options(collect(WorkSchedule::DIAS)->map(fn ($d) => 'Cada ' . mb_strtolower($d))->all())
                     ->placeholder('No: solo en esas fechas')
                     ->visible($esFranja)
+                    ->hiddenOn('create')
                     ->live()
                     ->dehydrateStateUsing(fn ($state, Get $get) => $esFranja($get) && filled($state) ? $state : null)
-                    ->helperText('Cada semana, ese día, entre las fechas de abajo.'),
+                    ->helperText('Cada semana, ese día, entre las fechas de abajo. Para más días, crea otro bloqueo.'),
 
                 DatePicker::make('starts_on')
-                    ->label(fn (Get $get) => filled($get('weekday')) && $esFranja($get) ? 'Desde el' : 'Desde')
+                    ->label(fn (Get $get) => $seRepite($get) ? 'Desde el' : 'Desde')
                     ->required()
                     ->default(now()),
 
                 DatePicker::make('ends_on')
-                    ->label(fn (Get $get) => filled($get('weekday')) && $esFranja($get) ? 'Hasta el' : 'Hasta')
+                    ->label(fn (Get $get) => $seRepite($get) ? 'Hasta el' : 'Hasta')
                     ->afterOrEqual('starts_on')
                     // Una ausencia de dias tiene fin; un bloqueo que se repite
                     // puede no tenerlo todavia: «hasta nuevo aviso».
-                    ->required(fn (Get $get) => ! ($esFranja($get) && filled($get('weekday'))))
-                    ->placeholder(fn (Get $get) => $esFranja($get) && filled($get('weekday')) ? 'hasta nuevo aviso' : null)
-                    ->helperText(fn (Get $get) => $esFranja($get) && filled($get('weekday'))
+                    ->required(fn (Get $get) => ! $seRepite($get))
+                    ->placeholder(fn (Get $get) => $seRepite($get) ? 'hasta nuevo aviso' : null)
+                    ->helperText(fn (Get $get) => $seRepite($get)
                         ? 'La fecha en que termina el semestre, el curso, lo que sea. Vacío es hasta nuevo aviso.'
                         : null),
 

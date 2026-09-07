@@ -274,6 +274,7 @@ class BloqueosDeAgendaTest extends TestCase
 
         $ana = $this->colaborador('Ana');
 
+        // Martes y jueves, a la misma hora: un bloqueo por cada dia marcado.
         Livewire::test(CreateScheduleException::class)
             ->fillForm([
                 'user_id'     => $ana->id,
@@ -281,7 +282,7 @@ class BloqueosDeAgendaTest extends TestCase
                 'alcance'     => 'franja',
                 'starts_time' => '16:00',
                 'ends_time'   => '17:00',
-                'weekday'     => 4,
+                'weekdays'    => [2, 4],
                 'starts_on'   => '2026-09-01',
                 'ends_on'     => '2026-11-30',
                 'note'        => 'Clase de inglés',
@@ -289,15 +290,61 @@ class BloqueosDeAgendaTest extends TestCase
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $bloqueo = ScheduleException::where('user_id', $ana->id)->firstOrFail();
+        $bloqueos = ScheduleException::where('user_id', $ana->id)->orderBy('weekday')->get();
 
-        $this->assertTrue($bloqueo->seRepite());
-        $this->assertSame(4, (int) $bloqueo->weekday);
-        $this->assertStringStartsWith('16:00', $bloqueo->starts_time);
-        $this->assertSame('Cada jueves de 16:00 a 17:00, desde el 01/09/2026 hasta el 30/11/2026', $bloqueo->cuando());
+        $this->assertCount(2, $bloqueos);
+        $this->assertSame([2, 4], $bloqueos->pluck('weekday')->map(fn ($d) => (int) $d)->all());
+        $this->assertTrue($bloqueos->every(fn (ScheduleException $b) => $b->seRepite()));
+        $this->assertStringStartsWith('16:00', $bloqueos->first()->starts_time);
+        $this->assertSame('Cada jueves de 16:00 a 17:00, desde el 01/09/2026 hasta el 30/11/2026', $bloqueos->last()->cuando());
 
         [$d, $h] = $this->franja(self::JUEVES, '16:00', '17:00');
         $this->assertFalse($this->servicio()->enJornada($d, $h)->contains('id', $ana->id));
+
+        [$d, $h] = $this->franja('2026-09-08', '16:00', '17:00'); // martes
+        $this->assertFalse($this->servicio()->enJornada($d, $h)->contains('id', $ana->id));
+
+        [$d, $h] = $this->franja('2026-09-09', '16:00', '17:00'); // miércoles
+        $this->assertTrue($this->servicio()->enJornada($d, $h)->contains('id', $ana->id));
+    }
+
+    /** Sin días marcados, la franja vale solo en esas fechas: un registro, sin repetición. */
+    public function test_una_franja_sin_dias_marcados_es_puntual(): void
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+
+        $admin = User::create(['name' => 'Admin', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $admin->assignRole(User::ROL_SUPERADMIN);
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($admin->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $ana = $this->colaborador('Ana');
+
+        Livewire::test(CreateScheduleException::class)
+            ->fillForm([
+                'user_id'     => $ana->id,
+                'kind'        => 'permiso',
+                'alcance'     => 'franja',
+                'starts_time' => '10:00',
+                'ends_time'   => '11:30',
+                'weekdays'    => [],
+                'starts_on'   => '2026-09-02',
+                'ends_on'     => '2026-09-02',
+                'note'        => 'Cita médica',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $bloqueo = ScheduleException::where('user_id', $ana->id)->sole();
+
+        $this->assertNull($bloqueo->weekday);
+        $this->assertTrue($bloqueo->esDeFranja());
+        $this->assertSame('El 02/09/2026, de 10:00 a 11:30', $bloqueo->cuando());
     }
 
     /**
