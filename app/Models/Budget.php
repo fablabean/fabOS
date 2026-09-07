@@ -67,7 +67,7 @@ class Budget extends Model
     {
         return $this->requests()
             ->whereIn('status', self::COMPROMETEN)
-            ->with('items')
+            ->with(['items', 'adjustments'])
             ->get()
             ->sum(fn (PurchaseRequest $s) => $s->pendienteEnPesos());
     }
@@ -96,7 +96,7 @@ class Budget extends Model
 
         return $this->requests()
             ->whereIn('status', ['recibida_parcial', 'recibida'])
-            ->with('items')
+            ->with(['items', 'adjustments'])
             ->get()
             ->sum(fn (PurchaseRequest $s) => $s->recibidoEnPesos());
     }
@@ -119,7 +119,7 @@ class Budget extends Model
                 // se vendio de insumos de esa area.
                 $q->whereHas('items.supply', fn ($i) => $i->where('area_id', $this->area_id));
             })
-            ->with('items')
+            ->with(['items', 'adjustments'])
             ->get()
             ->sum(fn (Sale $v) => (int) ($v->total_minor ?: $v->totalMenor()));
 

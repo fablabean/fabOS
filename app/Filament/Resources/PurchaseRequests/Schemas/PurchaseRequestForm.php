@@ -4,11 +4,13 @@ namespace App\Filament\Resources\PurchaseRequests\Schemas;
 
 use App\Models\Budget;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestAdjustment;
 use App\Models\Supply;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -189,6 +191,65 @@ class PurchaseRequestForm
                                     ->url()
                                     ->columnSpan(1)
                                     ->helperText('Del producto'),
+                            ]),
+                    ]),
+
+                /*
+                 * Lo que el proveedor resta o suma sobre el pedido entero.
+                 * Las lineas sumaban bien y aun asi la cuenta no daba: el
+                 * descuento de Amazon, el envio, un cargo de importacion. No
+                 * son lineas con cantidad y precio, y meterlas como si lo
+                 * fueran era mentir para que cuadrara.
+                 */
+                Section::make('Descuentos y cobros adicionales')
+                    ->description('Lo que el proveedor resta o suma sobre el pedido entero: el descuento de Amazon, el envío, un cargo de importación. Se escriben en positivo; el tipo pone el signo.')
+                    ->collapsible()
+                    ->collapsed(fn (?PurchaseRequest $record) => ! $record || $record->adjustments()->doesntExist())
+                    ->schema([
+                        Repeater::make('adjustments')
+                            ->label('')
+                            ->relationship()
+                            ->orderColumn('sort')
+                            ->addActionLabel('Añadir un descuento o un cobro')
+                            ->columns(12)
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state) => $state['description'] ?? null)
+                            ->disabled(fn (?PurchaseRequest $record) => $record && ! $record->esEditable())
+                            ->schema([
+                                Select::make('kind')
+                                    ->label('Tipo')
+                                    ->options(PurchaseRequestAdjustment::TIPOS)
+                                    ->default(PurchaseRequestAdjustment::DESCUENTO)
+                                    ->required()
+                                    ->live()
+                                    ->columnSpan(3)
+                                    // Un descuento del proveedor casi siempre
+                                    // baja la base del impuesto; un envio o un
+                                    // cargo de importacion casi nunca lo lleva.
+                                    ->afterStateUpdated(fn ($state, callable $set) => $set('applies_tax', $state === PurchaseRequestAdjustment::DESCUENTO)),
+
+                                TextInput::make('description')
+                                    ->label('Qué es')
+                                    ->required()
+                                    ->maxLength(160)
+                                    ->columnSpan(4)
+                                    ->placeholder('Descuento de Amazon · Envío · Cargo de importación'),
+
+                                TextInput::make('amount')
+                                    ->label('Valor')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->required()
+                                    ->prefix(fn (Get $get) => $get('../../currency') === 'USD' ? 'US$' : config('fabos.money.symbol'))
+                                    ->columnSpan(3),
+
+                                Toggle::make('applies_tax')
+                                    ->label('Lleva impuesto')
+                                    ->default(true)
+                                    ->inline(false)
+                                    ->columnSpan(2)
+                                    ->helperText('Si cuenta para la base del IVA.'),
                             ]),
                     ]),
             ]);

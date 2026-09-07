@@ -59,7 +59,7 @@ class PurchaseRequestsTable
                     ->label('Total estimado')
                     ->alignEnd()
                     ->weight('medium')
-                    ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing('items')->totalEstimado()))
+                    ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing(['items', 'adjustments'])->totalEstimado()))
                     // De donde sale: quien escribe 1.989.000 y ve 2.366.910 sin
                     // explicacion deja de fiarse de la cifra, y una cifra en la
                     // que no se confia no se usa para decidir.
@@ -68,7 +68,7 @@ class PurchaseRequestsTable
                 TextColumn::make('recibido')
                     ->label('Recibido')
                     ->alignEnd()
-                    ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing('items')->recibidoEnPesos())),
+                    ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing(['items', 'adjustments'])->recibidoEnPesos())),
 
                 TextColumn::make('submitted_at')
                     ->label('Enviada')

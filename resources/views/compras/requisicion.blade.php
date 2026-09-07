@@ -167,6 +167,19 @@
             <td colspan="5" class="num">Subtotal</td>
             <td class="num">{{ $moneda($solicitud->subtotalEnMoneda()) }}</td>
         </tr>
+        {{-- Lo que el proveedor resta o suma sobre el pedido entero: sin
+             esto, compras ve un total que no es el del carrito. --}}
+        @foreach ($solicitud->adjustments as $ajuste)
+            <tr>
+                <td colspan="5" class="num">
+                    {{ $ajuste->description }}
+                    @if ($iva > 0 && ! $ajuste->applies_tax)
+                        <span class="enlace">(sin impuesto)</span>
+                    @endif
+                </td>
+                <td class="num">{{ $ajuste->esDescuento() ? '−' : '+' }} {{ $moneda(abs((float) $ajuste->amount)) }}</td>
+            </tr>
+        @endforeach
         @if ($iva > 0)
             <tr>
                 <td colspan="5" class="num">Impuesto estimado ({{ (int) round($iva * 100) }}%)</td>

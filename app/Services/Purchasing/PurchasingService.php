@@ -76,6 +76,43 @@ class PurchasingService
         ]);
     }
 
+    /**
+     * Un descuento o un cobro adicional sobre el pedido entero (§13).
+     *
+     * El descuento de Amazon, el envío, un cargo de importación: no son
+     * líneas con cantidad y precio, y meterlas como si lo fueran era mentir
+     * para que cuadrara. Se escriben en positivo; el tipo pone el signo.
+     *
+     * @throws PurchasingException si la solicitud ya no admite cambios
+     */
+    public function ajustar(
+        PurchaseRequest $solicitud,
+        string $tipo,
+        string $descripcion,
+        float $monto,
+        ?bool $llevaImpuesto = null,
+    ): \App\Models\PurchaseRequestAdjustment {
+        $this->exigirEditable($solicitud);
+
+        if (! array_key_exists($tipo, \App\Models\PurchaseRequestAdjustment::TIPOS)) {
+            throw new PurchasingException('Un ajuste es un descuento o un cobro adicional.');
+        }
+
+        if ($monto <= 0) {
+            throw new PurchasingException('El valor del ajuste debe ser mayor que cero: el signo lo pone el tipo.');
+        }
+
+        return $solicitud->adjustments()->create([
+            'kind'        => $tipo,
+            'description' => $descripcion,
+            'amount'      => $monto,
+            // Un descuento del proveedor baja la base del impuesto; un envío o
+            // un cargo de importación casi nunca lo lleva.
+            'applies_tax' => $llevaImpuesto ?? ($tipo === \App\Models\PurchaseRequestAdjustment::DESCUENTO),
+            'sort'        => (int) $solicitud->adjustments()->max('sort') + 1,
+        ]);
+    }
+
     /** Sugiere el carrito de reposición: todo lo que está bajo mínimos. */
     public function llenarConLoQueFalta(PurchaseRequest $solicitud): int
     {
@@ -148,7 +185,7 @@ class PurchasingService
             throw new PurchasingException('Ese presupuesto no está vigente.');
         }
 
-        $solicitud->load('items');
+        $solicitud->load(['items', 'adjustments']);
         $costo = $solicitud->totalEstimado();
 
         if ($costo > $presupuesto->disponible()) {

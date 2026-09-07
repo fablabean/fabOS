@@ -62,6 +62,12 @@ class PurchaseRequest extends Model
         return $this->hasMany(PurchaseRequestItem::class);
     }
 
+    /** Los descuentos y cobros adicionales sobre el pedido entero (§13). */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(PurchaseRequestAdjustment::class)->orderBy('sort')->orderBy('id');
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -129,14 +135,56 @@ class PurchaseRequest extends Model
         return round((float) $this->items->sum(fn (PurchaseRequestItem $i) => $i->total()), 2);
     }
 
+    // ----------------------------------------- descuentos y cobros adicionales
+
+    /**
+     * Lo que el proveedor resta o suma sobre el pedido entero.
+     *
+     * Las lineas sumaban bien y aun asi la cuenta no daba: Amazon aplica un
+     * descuento sobre el pedido, cobra el envio aparte, a veces un cargo de
+     * importacion. Nada de eso tiene cantidad ni precio unitario.
+     */
+    public function descuentosEnMoneda(): float
+    {
+        return round((float) $this->adjustments
+            ->filter(fn (PurchaseRequestAdjustment $a) => $a->esDescuento())
+            ->sum(fn (PurchaseRequestAdjustment $a) => abs((float) $a->amount)), 2);
+    }
+
+    public function cobrosEnMoneda(): float
+    {
+        return round((float) $this->adjustments
+            ->reject(fn (PurchaseRequestAdjustment $a) => $a->esDescuento())
+            ->sum(fn (PurchaseRequestAdjustment $a) => abs((float) $a->amount)), 2);
+    }
+
+    /** Cobros menos descuentos: lo que los ajustes le hacen al subtotal. */
+    public function ajustesEnMoneda(): float
+    {
+        return round($this->cobrosEnMoneda() - $this->descuentosEnMoneda(), 2);
+    }
+
+    /**
+     * Sobre que se calcula el impuesto.
+     *
+     * Un descuento del proveedor baja la base; un cargo de importacion no la
+     * sube, porque no lleva IVA. Cada ajuste dice si cuenta o no.
+     */
+    public function baseGravableEnMoneda(): float
+    {
+        return round($this->subtotalEnMoneda() + (float) $this->adjustments
+            ->filter(fn (PurchaseRequestAdjustment $a) => $a->applies_tax)
+            ->sum(fn (PurchaseRequestAdjustment $a) => $a->conSigno()), 2);
+    }
+
     public function impuestoEnMoneda(): float
     {
-        return round($this->subtotalEnMoneda() * $this->tasaDeImpuesto(), 2);
+        return round(max(0, $this->baseGravableEnMoneda()) * $this->tasaDeImpuesto(), 2);
     }
 
     public function totalEnMoneda(): float
     {
-        return round($this->subtotalEnMoneda() + $this->impuestoEnMoneda(), 2);
+        return round(max(0, $this->subtotalEnMoneda() + $this->ajustesEnMoneda() + $this->impuestoEnMoneda()), 2);
     }
 
     /**
@@ -154,6 +202,14 @@ class PurchaseRequest extends Model
         $partes[] = $this->tasaDeImpuesto() > 0
             ? ($this->esEnPesos() ? config('fabos.money.symbol') . number_format($this->subtotal(), 0, ',', '.') . ' + ' : '+ ') . round($this->tasaDeImpuesto() * 100) . '% de impuesto'
             : 'sin impuesto';
+
+        if ($this->descuentosEnMoneda() > 0) {
+            $partes[] = '− ' . $this->formato($this->descuentosEnMoneda()) . ' de descuento';
+        }
+
+        if ($this->cobrosEnMoneda() > 0) {
+            $partes[] = '+ ' . $this->formato($this->cobrosEnMoneda()) . ' de cobros adicionales';
+        }
 
         return implode(' ', $partes);
     }
@@ -198,13 +254,26 @@ class PurchaseRequest extends Model
         return $this->aPesos($this->totalEnMoneda());
     }
 
-    /** Lo que ya llegó, valorado al precio con el que se pidió. */
+    /**
+     * Lo que ya llegó, valorado al precio con el que se pidió.
+     *
+     * En proporción a lo pedido: si llegó la mitad del valor de las líneas,
+     * se da por ejecutada la mitad del total, con su parte del impuesto, del
+     * descuento y del envío. Cuando llega todo, lo recibido es el total
+     * exacto, y no queda un envío «pendiente» para siempre.
+     */
     public function recibidoEnPesos(): int
     {
-        return $this->aPesos(
-            (float) $this->items->sum(fn (PurchaseRequestItem $i) => (float) $i->received_quantity * (float) $i->unit_price)
-            * (1 + $this->tasaDeImpuesto())
-        );
+        $pedido = $this->subtotalEnMoneda();
+
+        if ($pedido <= 0) {
+            return 0;
+        }
+
+        $llegado = (float) $this->items->sum(fn (PurchaseRequestItem $i) => (float) $i->received_quantity * (float) $i->unit_price);
+        $fraccion = min(1, $llegado / $pedido);
+
+        return $this->aPesos(round($this->totalEnMoneda() * $fraccion, 2));
     }
 
     /** Lo que sigue comprometido: pedido menos recibido. */

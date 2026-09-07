@@ -76,6 +76,6 @@ class PurchaseRequestController extends Controller
 
     private function cargada(PurchaseRequest $solicitud): PurchaseRequest
     {
-        return $solicitud->load(['items.supply', 'budget', 'area', 'project', 'requestedBy', 'approvedBy']);
+        return $solicitud->load(['items.supply', 'adjustments', 'budget', 'area', 'project', 'requestedBy', 'approvedBy']);
     }
 }
