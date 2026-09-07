@@ -30,17 +30,21 @@ class SoportesDeSolicitud
 {
     public const MAXIMO = 5;
 
-    /** En kilobytes, como los espera el validador. */
-    public const TAMANO_MAXIMO = 10240;
+    /** En kilobytes, como los espera el validador: 50 MB, que un STL detallado se los toma. */
+    public const TAMANO_MAXIMO = 51200;
 
     /**
-     * Lo que se acepta. Imágenes para enseñar, documentos para detallar.
-     * Deliberadamente corto: cada formato de más es una superficie de más.
+     * Lo que se acepta. Imágenes para enseñar, documentos para detallar, y
+     * los archivos con los que de verdad se fabrica: modelos, vectores y un
+     * comprimido con todo junto. Fuera queda lo ejecutable: cada formato de
+     * más es una superficie de más, y esos no explican ningún proyecto.
      */
     public const TIPOS = [
-        'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic',
-        'pdf', 'dxf', 'stl', 'step', 'stp',
+        'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'svg',
+        'pdf', 'txt', 'md', 'csv',
+        'dxf', 'stl', 'step', 'stp', '3mf', 'obj', 'gcode', 'ai', 'eps',
         'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'zip', 'rar', '7z',
     ];
 
     private const DIRECTORIO = 'proyectos/soportes';

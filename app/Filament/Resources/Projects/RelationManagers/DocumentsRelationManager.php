@@ -46,10 +46,15 @@ class DocumentsRelationManager extends RelationManager
 
                 TextInput::make('title')->label('Título')->required(),
 
+                // De cualquier tipo: aqui van planos, modelos STL, un ZIP con
+                // todo el trabajo, no solo PDF. El tope era 10 MB, que un
+                // modelo detallado se pasa sin esfuerzo, y el campo decia
+                // «no se pudo subir» sin explicar por que.
                 FileUpload::make('file_path')
                     ->label('Archivo')
                     ->directory('proyectos')
-                    ->maxSize(10240)
+                    ->maxSize(102400)
+                    ->helperText('Cualquier tipo: PDF, STL, DXF, ZIP, imágenes… Hasta 100 MB.')
                     ->columnSpanFull(),
 
                 TextInput::make('url')
