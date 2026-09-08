@@ -167,6 +167,27 @@ class User extends Authenticatable implements FilamentUser
         return $this->two_factor_confirmed_at !== null;
     }
 
+    /**
+     * El cargo, para ponerlo al lado del nombre: el rol en el panel si lo
+     * tiene, y si no, su categoria. «Ana Pérez · Practicante».
+     */
+    public function cargo(): ?string
+    {
+        $roles = $this->roles
+            ->pluck('name')
+            ->map(fn (string $r) => self::ROLES[$r] ?? ucfirst($r))
+            ->implode(', ');
+
+        return $roles ?: $this->category?->name;
+    }
+
+    public function etiquetaConCargo(): string
+    {
+        $cargo = $this->cargo();
+
+        return $cargo ? $this->name . ' · ' . $cargo : $this->name;
+    }
+
     public function certifabs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Certifab::class);

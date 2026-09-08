@@ -60,7 +60,7 @@ class ReservationForm
 
                         Select::make('supervisor_id')
                             ->label('Supervisa')
-                            ->options(fn () => User::role(User::ROLES_BACKOFFICE)->orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
                             ->placeholder('Nadie')
                             ->helperText('Quien supervisa una reserva que lo exige por certifab. Vacío si va por su cuenta.'),

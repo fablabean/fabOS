@@ -142,7 +142,7 @@ class EnrollmentsRelationManager extends RelationManager
             ->schema([
                 Select::make('user_id')
                     ->label('Persona')
-                    ->options(fn () => User::where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                     ->searchable()
                     ->required(),
             ])

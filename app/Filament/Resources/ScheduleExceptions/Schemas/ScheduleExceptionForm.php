@@ -37,9 +37,10 @@ class ScheduleExceptionForm
             ->components([
                 Select::make('user_id')
                     ->label('Persona')
-                    ->relationship('user', 'name')
+                    // Con el cargo al lado, y buscando dentro de la etiqueta:
+                    // escribir «practicante» deja solo a los practicantes.
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                     ->searchable()
-                    ->preload()
                     ->placeholder('Todo el laboratorio')
                     ->helperText('Sin persona aplica a todo el laboratorio: un festivo, un cierre, una reunión de todo el equipo.'),
 

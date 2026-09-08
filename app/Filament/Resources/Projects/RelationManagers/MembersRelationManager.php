@@ -40,7 +40,7 @@ class MembersRelationManager extends RelationManager
 
                 Select::make('user_id')
                     ->label('Si tiene cuenta')
-                    ->options(fn () => User::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                     ->searchable(),
 
                 TextInput::make('external_name')

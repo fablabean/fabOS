@@ -229,7 +229,7 @@ class CreateReservation extends CreateRecord
                     Select::make('acompanantes')
                         ->label('Quién acompaña del equipo')
                         ->multiple()
-                        ->options(fn () => User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                        ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                         ->searchable()
                         ->columnSpanFull()
                         // Con varias salas se pregunta por sala, mas abajo.
@@ -253,7 +253,7 @@ class CreateReservation extends CreateRecord
                                 ->map(fn (Space $e) => Select::make('acompanantes_por_espacio.' . $e->id)
                                     ->label('Quién acompaña en ' . $e->name)
                                     ->multiple()
-                                    ->options(fn () => User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                                     ->searchable()
                                     ->helperText('Si se reparte, cada sala lleva a alguien. Si nadie va a acompañar, deja todas vacías.'))
                                 ->all();

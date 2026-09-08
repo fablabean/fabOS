@@ -34,7 +34,7 @@ class SaleForm
                     ->schema([
                         Select::make('user_id')
                             ->label('Cliente')
-                            ->options(fn () => User::where('status', 'activo')->orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                             ->searchable()
                             ->required()
                             ->live()

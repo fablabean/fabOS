@@ -41,7 +41,7 @@ class JornadasTest extends TestCase
     public function test_marcar_varios_dias_crea_una_jornada_por_dia(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         Livewire::test(CreateWorkSchedule::class)
             ->fillForm([
@@ -65,7 +65,7 @@ class JornadasTest extends TestCase
     public function test_un_solo_dia_sigue_funcionando(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         Livewire::test(CreateWorkSchedule::class)
             ->fillForm([
@@ -90,7 +90,7 @@ class JornadasTest extends TestCase
     public function test_no_duplica_un_dia_que_ya_tiene_jornada_vigente(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         WorkSchedule::create([
             'user_id' => $persona->id, 'weekday' => 1,
@@ -119,7 +119,7 @@ class JornadasTest extends TestCase
     public function test_una_jornada_vencida_no_bloquea_la_nueva(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         WorkSchedule::create([
             'user_id' => $persona->id, 'weekday' => 1,
@@ -146,7 +146,7 @@ class JornadasTest extends TestCase
     public function test_la_salida_no_puede_ser_antes_de_la_entrada(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         Livewire::test(CreateWorkSchedule::class)
             ->fillForm([
@@ -164,7 +164,7 @@ class JornadasTest extends TestCase
     public function test_hace_falta_marcar_al_menos_un_dia(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         Livewire::test(CreateWorkSchedule::class)
             ->fillForm([
@@ -188,7 +188,7 @@ class JornadasTest extends TestCase
     public function test_editar_una_jornada_no_toca_las_de_otros_dias(): void
     {
         $this->jefa();
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         foreach ([1, 2] as $dia) {
             WorkSchedule::create([
@@ -294,7 +294,7 @@ class JornadasTest extends TestCase
 
     public function test_una_jornada_nace_presencial(): void
     {
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
         $this->jornadasDe($persona, [1]);
 
         $this->assertSame(WorkSchedule::PRESENCIAL, WorkSchedule::first()->modalidad);
@@ -308,7 +308,7 @@ class JornadasTest extends TestCase
      */
     public function test_una_jornada_remota_no_abre_el_laboratorio(): void
     {
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         WorkSchedule::create([
             'user_id' => $persona->id, 'weekday' => 1,
@@ -324,7 +324,7 @@ class JornadasTest extends TestCase
 
     public function test_una_jornada_presencial_si_lo_abre(): void
     {
-        $persona = User::factory()->create(['status' => 'activo']);
+        $persona = tap(User::factory()->create(['status' => 'activo']))->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
 
         WorkSchedule::create([
             'user_id' => $persona->id, 'weekday' => 1,

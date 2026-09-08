@@ -34,7 +34,7 @@ class CourseEditionForm
 
                         Select::make('instructor_id')
                             ->label('Instructor')
-                            ->options(fn () => User::whereHas('roles')->orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable(),
 
                         Select::make('space_id')->label('Dónde')->relationship('space', 'name'),

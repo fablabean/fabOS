@@ -164,7 +164,7 @@ class ProjectForm
 
                         Select::make('requested_by')
                             ->label('Si ya tiene cuenta')
-                            ->options(fn () => User::orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                             ->searchable(),
                     ]),
 
@@ -173,7 +173,7 @@ class ProjectForm
                     ->schema([
                         Select::make('lead_id')
                             ->label('Responsable')
-                            ->options(fn () => User::whereHas('roles')->orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
                             ->helperText('El laboratorio responde como institución, pero siempre recae en una persona. Sin responsable el proyecto no avanza de etapa.'),
 

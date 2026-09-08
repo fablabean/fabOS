@@ -27,9 +27,8 @@ class CertifabForm
                     ->schema([
                         Select::make('user_id')
                             ->label('Persona')
-                            ->relationship('user', 'name')
-                            ->searchable(['name', 'email'])
-                            ->preload()
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
+                            ->searchable()
                             ->required()
                             ->columnSpanFull(),
 

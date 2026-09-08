@@ -16,7 +16,9 @@ class ShiftAssignmentForm
         return $schema
             ->components([
                 Select::make('user_id')
-                    ->relationship('user', 'name')
+                    ->label('Persona')
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
+                    ->searchable()
                     ->required(),
                 DateTimePicker::make('starts_at')
                     ->required(),

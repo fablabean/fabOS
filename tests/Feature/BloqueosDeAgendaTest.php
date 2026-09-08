@@ -54,6 +54,10 @@ class BloqueosDeAgendaTest extends TestCase
     {
         $u = User::create(['name' => $nombre, 'email' => uniqid() . '@test.co', 'status' => 'activo']);
 
+        // Del equipo de verdad: el selector de persona del panel solo lista
+        // a quien tiene rol.
+        $u->assignRole(Role::findOrCreate(User::ROL_CONSULTOR, 'web'));
+
         foreach ([1, 2, 3, 4, 5] as $dia) {
             WorkSchedule::create([
                 'user_id' => $u->id, 'weekday' => $dia,

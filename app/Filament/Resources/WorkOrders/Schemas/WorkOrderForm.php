@@ -64,7 +64,7 @@ class WorkOrderForm
 
                         Select::make('assigned_to')
                             ->label('A cargo de')
-                            ->options(fn () => User::whereHas('roles')->orderBy('name')->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable(),
                     ]),
 

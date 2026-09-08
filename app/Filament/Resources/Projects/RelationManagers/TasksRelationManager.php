@@ -56,7 +56,7 @@ class TasksRelationManager extends RelationManager
 
                 Select::make('assigned_to')
                     ->label('A cargo de')
-                    ->options(fn () => User::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                     ->searchable(),
 
                 DatePicker::make('starts_on')

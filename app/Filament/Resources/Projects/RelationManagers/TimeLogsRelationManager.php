@@ -39,7 +39,7 @@ class TimeLogsRelationManager extends RelationManager
             ->components([
                 Select::make('user_id')
                     ->label('Quién')
-                    ->options(fn () => User::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                     ->searchable(),
 
                 TextInput::make('external_name')

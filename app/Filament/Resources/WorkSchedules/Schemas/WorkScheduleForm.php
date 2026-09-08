@@ -19,9 +19,8 @@ class WorkScheduleForm
             ->components([
                 Select::make('user_id')
                     ->label('Persona')
-                    ->relationship('user', 'name')
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                     ->searchable()
-                    ->preload()
                     ->required(),
 
                 // Una jornada es una fila por día, porque cada día puede tener

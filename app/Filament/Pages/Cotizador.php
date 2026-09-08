@@ -104,7 +104,7 @@ class Cotizador extends Page
                             ->label('Para quién')
                             ->live()
                             ->searchable()
-                            ->options(fn () => User::orderBy('name')->limit(200)->pluck('name', 'id'))
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                             ->helperText('El factor de su categoría cambia el precio del tiempo, no el del material.'),
                     ]),
 
