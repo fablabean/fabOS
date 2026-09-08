@@ -175,8 +175,11 @@ class EnrollmentsRelationManager extends RelationManager
             ->label('Citar a la práctica')
             ->icon('heroicon-o-calendar-days')
             ->color('info')
+            // Sin el examen aprobado no hay practica que citar: se evalua
+            // sobre lo que la teoria ya explico.
             ->visible(fn (Enrollment $r) => $r->status === 'inscrito'
                 && $r->edition?->course?->requires_practical
+                && $r->teoriaLista()
                 && ! $r->practicaAprobada()
                 && $r->practicaAgendada() === null
                 && auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
@@ -291,10 +294,14 @@ class EnrollmentsRelationManager extends RelationManager
             ->label('Firmar la práctica')
             ->icon('heroicon-o-hand-thumb-up')
             ->color('warning')
+            // La firma quien la tiene asignada, que es quien estuvo delante
+            // de la maquina; sin nadie asignado, la coordinacion. Y solo con
+            // el examen ya aprobado.
             ->visible(fn (Enrollment $r) => $r->edition?->course?->requires_practical
+                && $r->teoriaLista()
                 && ! $r->practicaAprobada()
                 && $r->status !== 'retirado'
-                && auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+                && $r->puedeEvaluarLaPractica(auth()->user()))
             ->modalDescription(function (Enrollment $r) {
                 if (! $r->teoriaLista()) {
                     return 'Todavía no ha aprobado el examen teórico.';
@@ -345,6 +352,7 @@ class EnrollmentsRelationManager extends RelationManager
             // queda para los cursos sin practica, y para el raro caso de una
             // practica firmada que se quedo sin aprobar.
             ->visible(fn (Enrollment $r) => $r->status === 'inscrito'
+                && $r->teoriaLista()
                 && ! ($r->edition?->course?->requires_practical && ! $r->practicaAprobada()))
             // Decir que falta antes de pulsar, y no despues de un error: el
             // certifab exige los pasos que ese curso declare.
@@ -383,7 +391,9 @@ class EnrollmentsRelationManager extends RelationManager
             ->label('No aprobar')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
-            ->visible(fn (Enrollment $r) => $r->status === 'inscrito')
+            // En un curso con practica, reprobarla es de quien la evaluo.
+            ->visible(fn (Enrollment $r) => $r->status === 'inscrito'
+                && (! $r->edition?->course?->requires_practical || $r->puedeEvaluarLaPractica(auth()->user())))
             ->schema([
                 TextInput::make('nota')->label('Nota')->numeric()->minValue(0)->maxValue(5),
                 Textarea::make('comentario')

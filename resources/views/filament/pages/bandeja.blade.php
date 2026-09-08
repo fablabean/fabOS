@@ -64,11 +64,18 @@
                         <label for="acom-{{ $s->id }}">Quién la atiende</label>
                         <select id="acom-{{ $s->id }}" wire:model="acompanante.{{ $s->id }}">
                             <option value="">Nadie: no hace falta acompañamiento</option>
+                            {{-- Quien ya tiene algo a esa hora se ve, pero no
+                                 se puede elegir: se dice antes, no después
+                                 como un error. --}}
                             @foreach ($fila['candidatos'] as $c)
-                                <option value="{{ $c['id'] }}">
+                                <option value="{{ $c['id'] }}" @disabled($c['ocupado'])>
                                     {{ $c['nombre'] }}
-                                    — {{ $c['en_jornada'] ? 'en jornada' : 'habría que abrirle el día' }}
-                                    · {{ $c['extras_mes'] }} de {{ $topeMes }} h extras este mes
+                                    @if ($c['ocupado'])
+                                        — ocupado: {{ \Illuminate\Support\Str::after($c['ocupado'], $c['nombre'] . ' ') }}
+                                    @else
+                                        — {{ $c['en_jornada'] ? 'en jornada' : 'habría que abrirle el día' }}
+                                        · {{ $c['extras_mes'] }} de {{ $topeMes }} h extras este mes
+                                    @endif
                                 </option>
                             @endforeach
                         </select>

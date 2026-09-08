@@ -69,6 +69,40 @@ class Enrollment extends Model
     }
 
     /**
+     * Quien tiene asignada la practica: el evaluador de la que esta en pie,
+     * o de la ultima que hubo. Nulo si nunca se agendo una.
+     */
+    public function evaluadorAsignado(): ?User
+    {
+        $practica = $this->practicaAgendada()
+            ?? $this->practicas()->whereNotIn('status', ['cancelada', 'rechazada'])->orderByDesc('starts_at')->with('reservable')->first();
+
+        $evaluador = $practica?->reservable;
+
+        return $evaluador instanceof User ? $evaluador : null;
+    }
+
+    /**
+     * Si esta persona puede firmar o reprobar la practica: quien la tiene
+     * asignada. Sin nadie asignado —una practica que se vio sin agendar—,
+     * un administrador o superadmin.
+     */
+    public function puedeEvaluarLaPractica(?User $quien): bool
+    {
+        if (! $quien) {
+            return false;
+        }
+
+        $asignado = $this->evaluadorAsignado();
+
+        if ($asignado) {
+            return $asignado->id === $quien->id;
+        }
+
+        return $quien->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]);
+    }
+
+    /**
      * Si ya puede pedir hora para la practica: sigue inscrita, el curso la
      * exige, la teoria esta lista, no esta firmada y no hay otra en pie.
      */

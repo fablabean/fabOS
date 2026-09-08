@@ -133,6 +133,38 @@ class BandejaTest extends TestCase
             ->assertSee('habría que abrirle el día');
     }
 
+    /**
+     * Quien ya tiene algo a esa hora se ve, pero no se puede elegir, y se
+     * dice que tiene: antes de elegir, no despues como un error.
+     */
+    public function test_quien_esta_ocupado_a_esa_hora_se_ofrece_como_ocupado(): void
+    {
+        $admin = $this->persona(User::ROL_ADMINISTRADOR);
+        $equipo = $this->humanoide();
+        $solicitud = $this->solicitudDeSabado($equipo, $this->persona());
+
+        $libre = $this->persona(User::ROL_CONSULTOR);
+        $ocupado = $this->persona(User::ROL_PRACTICANTE);
+
+        foreach ([$libre, $ocupado] as $u) {
+            Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'giga']);
+        }
+
+        // A esa misma hora ya atiende una asesoria.
+        Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $ocupado->id,
+            'user_id' => $this->persona()->id, 'mode' => 'asesoria', 'status' => 'confirmada',
+            'starts_at' => $solicitud->starts_at, 'ends_at' => $solicitud->starts_at->copy()->addHour(),
+        ]);
+
+        $html = $this->entra($admin)->get('/admin/bandeja')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<option value="' . $ocupado->id . '"[^>]*disabled/', $html, 'el ocupado no se puede elegir');
+        $this->assertMatchesRegularExpression('/<option value="' . $libre->id . '"\s*>/', $html, 'el libre sí');
+        $this->assertStringContainsString('ocupado: ya tiene algo a esa hora', $html);
+        $this->assertStringContainsString('habría que abrirle el día', $html);
+    }
+
     public function test_aprobar_desde_la_bandeja_confirma_y_abre_la_jornada(): void
     {
         $admin = $this->persona(User::ROL_ADMINISTRADOR);

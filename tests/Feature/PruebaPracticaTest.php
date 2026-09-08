@@ -303,12 +303,12 @@ class PruebaPracticaTest extends TestCase
     /** Firmar da el certifab en el mismo acto, y cierra la hora reservada. */
     public function test_firmar_la_practica_otorga_el_certifab_y_cierra_la_reserva(): void
     {
-        $this->evaluador('Michael');
-        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $michael = $this->evaluador('Michael');
         $i = $this->conTeoria();
         $reserva = app(PracticaService::class)->agendar($i, $this->hora('10:00'));
 
-        $this->entra($admin);
+        // La firma quien la tiene asignada: Michael, que fue quien la vio.
+        $this->entra($michael);
 
         Livewire::test(EnrollmentsRelationManager::class, [
             'ownerRecord' => $this->edicion,
@@ -320,7 +320,7 @@ class PruebaPracticaTest extends TestCase
         $i->refresh();
 
         $this->assertTrue($i->practicaAprobada());
-        $this->assertSame($admin->id, $i->practical_by);
+        $this->assertSame($michael->id, $i->practical_by);
         $this->assertSame('aprobado', $i->status);
         $this->assertNotNull($i->certificate_code);
         $this->assertDatabaseHas('certifabs', ['user_id' => $i->user_id, 'level' => 'kilo']);
@@ -343,7 +343,58 @@ class PruebaPracticaTest extends TestCase
             ->assertActionHidden(TestAction::make('aprobar')->table($i));
     }
 
-    /** Por ahora firman administradores y superadmin: un consultor no ve el botón. */
+    /**
+     * Con la practica asignada, la firma o la reprueba solo quien la tiene:
+     * ni un administrador. Sin nadie asignado, la coordinacion.
+     */
+    public function test_solo_quien_tiene_asignada_la_practica_la_firma_o_la_reprueba(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->conTeoria();
+        app(PracticaService::class)->agendar($i, $this->hora('10:00'));
+
+        $this->entra($admin);
+
+        Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion,
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->assertActionHidden(TestAction::make('practica')->table($i))
+            ->assertActionHidden(TestAction::make('reprobar')->table($i));
+
+        // Y por el servicio tampoco: quitar el boton no basta.
+        try {
+            app(TrainingService::class)->registrarPractica($i, $admin);
+            $this->fail('no debía dejar firmar');
+        } catch (TrainingException $e) {
+            $this->assertStringContainsString('Michael', $e->getMessage());
+        }
+
+        // Sin practica agendada —se vio sin cita— firma la coordinacion.
+        $sinCita = $this->conTeoria();
+        $this->assertTrue($sinCita->puedeEvaluarLaPractica($admin));
+        $this->assertFalse($sinCita->puedeEvaluarLaPractica($michael->fresh()), 'un consultor no asignado, no');
+    }
+
+    /** Sin el examen aprobado no hay nada que citar, firmar ni aprobar. */
+    public function test_sin_examen_aprobado_no_se_cita_ni_se_firma_ni_se_aprueba(): void
+    {
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->inscrito();
+
+        $this->entra($admin);
+
+        Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion,
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->assertActionHidden(TestAction::make('citar')->table($i))
+            ->assertActionHidden(TestAction::make('practica')->table($i))
+            ->assertActionHidden(TestAction::make('aprobar')->table($i));
+    }
+
+    /** Un consultor que no tiene la practica asignada no ve el botón. */
     public function test_un_consultor_no_puede_firmar(): void
     {
         $consultor = $this->evaluador('Consultor');

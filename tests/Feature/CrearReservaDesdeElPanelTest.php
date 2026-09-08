@@ -109,11 +109,17 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $asesor = $this->asesorEnJornada();
         $persona = $this->alguien();
 
+        // La hora se elige entre las que tienen cupo, como en el sitio: no se
+        // escribe una para descubrir despues que nadie podia.
+        $franjas = app(\App\Services\Booking\AsesoriaService::class)->franjasDisponibles($this->equipo, $persona);
+        $this->assertNotEmpty($franjas);
+        $franja = $franjas->first()['inicio'];
+
         Livewire::test(CreateReservation::class)
             ->fillForm([
                 'tipo' => 'asesoria', 'user_id' => $persona->id,
                 'ambito' => 'asset:' . $this->equipo->id,
-                'starts_at' => $this->hora('10:00'), 'ends_at' => $this->hora('10:45'),
+                'franja' => $franja->format('Y-m-d H:i'),
                 'proposito' => 'Revisar el diseño antes de cortar',
             ])
             ->call('create')
@@ -126,6 +132,18 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame($persona->id, $r->user_id);
         $this->assertSame($asesor->id, $r->reservable_id, 'el asesor lo elige el turno, no quien crea');
         $this->assertSame($this->equipo->id, $r->advisory_asset_id);
+        $this->assertTrue($r->starts_at->equalTo($franja), 'la hora es la de la franja elegida');
+        $this->assertSame((int) config('fabos.asesorias.minutos', 45), (int) $r->starts_at->diffInMinutes($r->ends_at));
+
+        // Y una hora que no esta en la lista no se acepta.
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'asesoria', 'user_id' => $persona->id,
+                'ambito' => 'asset:' . $this->equipo->id,
+                'franja' => '2026-08-24 03:00',
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['franja']);
     }
 
     public function test_un_equipo_por_su_cuenta_pasa_por_las_reglas_de_reserva(): void
@@ -312,7 +330,7 @@ class CrearReservaDesdeElPanelTest extends TestCase
 
         $datos = [
             'tipo' => 'asesoria', 'user_id' => $persona->id, 'ambito' => 'asset:' . $this->equipo->id,
-            'starts_at' => $this->hora('10:00'), 'ends_at' => $this->hora('10:45'),
+            'franja' => app(\App\Services\Booking\AsesoriaService::class)->franjasDisponibles($this->equipo, $persona)->first()['inicio']->format('Y-m-d H:i'),
         ];
 
         Livewire::test(CreateReservation::class)->fillForm($datos)->call('create')->assertHasNoFormErrors();
@@ -330,7 +348,7 @@ class CrearReservaDesdeElPanelTest extends TestCase
         Livewire::test(CreateReservation::class)
             ->fillForm([
                 'tipo' => 'asesoria', 'user_id' => $persona->id, 'ambito' => 'asset:' . $this->equipo->id,
-                'starts_at' => $this->hora('10:00'), 'ends_at' => $this->hora('10:45'),
+                'franja' => app(\App\Services\Booking\AsesoriaService::class)->franjasDisponibles($this->equipo, $persona)->first()['inicio']->format('Y-m-d H:i'),
             ])
             ->call('create')
             ->assertHasNoFormErrors();

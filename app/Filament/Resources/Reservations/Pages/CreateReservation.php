@@ -155,9 +155,43 @@ class CreateReservation extends CreateRecord
                             return $areas->union($equipos)->all();
                         })
                         ->searchable()
+                        ->live()
                         ->required(fn ($get) => $get('tipo') === 'asesoria')
                         ->visible(fn ($get) => $get('tipo') === 'asesoria')
                         ->helperText('Una máquina, o el área en general. Quién atiende lo decide el turno, como en el sitio.'),
+
+                    /*
+                     * La hora de una asesoria se elige entre las que alguien
+                     * puede atender de verdad, igual que en el sitio: no se
+                     * escribe una para descubrir despues que nadie podia.
+                     */
+                    Select::make('franja')
+                        ->label('Cuándo')
+                        ->options(function ($get) {
+                            $ambito = self::ambitoDe($get('ambito'));
+
+                            if (! $ambito) {
+                                return [];
+                            }
+
+                            $solicitante = $get('user_id') ? User::find($get('user_id')) : null;
+
+                            return app(AsesoriaService::class)
+                                ->franjasDisponibles($ambito, $solicitante, (int) config('fabos.asesorias.dias_vista', 7))
+                                ->mapWithKeys(fn (array $f) => [
+                                    $f['inicio']->format('Y-m-d H:i') => ucfirst(rtrim($f['inicio']->locale('es')->isoFormat('ddd'), '.'))
+                                        . ' ' . $f['inicio']->format('d/m') . ' · ' . $f['inicio']->format('H:i') . '–' . $f['fin']->format('H:i')
+                                        . ($f['cuantos'] > 1 ? ' · ' . $f['cuantos'] . ' pueden' : ''),
+                                ])
+                                ->all();
+                        })
+                        ->searchable()
+                        ->required(fn ($get) => $get('tipo') === 'asesoria')
+                        ->visible(fn ($get) => $get('tipo') === 'asesoria')
+                        ->placeholder(fn ($get) => $get('ambito') ? 'Elige una hora con cupo' : 'Primero elige sobre qué')
+                        ->helperText('Solo horas en las que alguien declarado puede atender, de '
+                            . (int) config('fabos.asesorias.minutos', 45) . ' minutos, en los próximos '
+                            . (int) config('fabos.asesorias.dias_vista', 7) . ' días.'),
 
                     Select::make('space_ids')
                         ->label('Qué espacios')
@@ -263,17 +297,23 @@ class CreateReservation extends CreateRecord
             Section::make('Cuándo')
                 ->columns(2)
                 ->schema([
+                    // Para una asesoria la hora se elige arriba, entre las que
+                    // tienen cupo; estos dos son para equipos y espacios.
                     DateTimePicker::make('starts_at')
                         ->label('Empieza')
                         ->seconds(false)
                         ->minutesStep(15)
-                        ->required(),
+                        ->live(onBlur: true)
+                        ->required(fn ($get) => $get('tipo') !== 'asesoria')
+                        ->visible(fn ($get) => $get('tipo') !== 'asesoria'),
 
                     DateTimePicker::make('ends_at')
                         ->label('Termina')
                         ->seconds(false)
                         ->minutesStep(15)
-                        ->required()
+                        ->live(onBlur: true)
+                        ->required(fn ($get) => $get('tipo') !== 'asesoria')
+                        ->visible(fn ($get) => $get('tipo') !== 'asesoria')
                         ->after('starts_at')
                         ->helperText('Lo que se cobra es lo que de verdad se use: esto es lo que se aparta.'),
 
@@ -302,8 +342,16 @@ class CreateReservation extends CreateRecord
          * cayo en ella el dia que nacio.
          */
         $tz = config('fabos.lab.timezone');
-        $desde = Carbon::parse($data['starts_at'], config('app.timezone'))->setTimezone($tz);
-        $hasta = Carbon::parse($data['ends_at'], config('app.timezone'))->setTimezone($tz);
+
+        if ($data['tipo'] === 'asesoria') {
+            // La franja viene de la lista, ya en hora de pared del laboratorio.
+            $desde = Carbon::parse($data['franja'], $tz);
+            $hasta = $desde->copy()->addMinutes((int) config('fabos.asesorias.minutos', 45));
+        } else {
+            $desde = Carbon::parse($data['starts_at'], config('app.timezone'))->setTimezone($tz);
+            $hasta = Carbon::parse($data['ends_at'], config('app.timezone'))->setTimezone($tz);
+        }
+
         $quien = User::findOrFail($data['user_id']);
         $paraQue = $data['proposito'] ?? null;
 
@@ -335,6 +383,18 @@ class CreateReservation extends CreateRecord
         }
 
         return $reserva;
+    }
+
+    /** «asset:12» o «area:3» → el equipo o el area; nulo si no hay nada elegido. */
+    private static function ambitoDe(?string $ambito): Asset|Area|null
+    {
+        if (blank($ambito) || ! str_contains($ambito, ':')) {
+            return null;
+        }
+
+        [$clase, $id] = explode(':', $ambito, 2);
+
+        return $clase === 'area' ? Area::find($id) : Asset::find($id);
     }
 
     private static function esTodo($spaceIds): bool

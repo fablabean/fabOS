@@ -325,6 +325,14 @@ class TrainingService
             );
         }
 
+        // La firma quien la tiene asignada: es quien estuvo delante de la
+        // maquina. Sin nadie asignado, la coordinacion.
+        if (! $inscripcion->puedeEvaluarLaPractica($quienEvalua)) {
+            throw new TrainingException(
+                'La práctica la firma ' . ($inscripcion->evaluadorAsignado()?->name ?? 'quien la evaluó') . ', que fue quien la vio.'
+            );
+        }
+
         $inscripcion->update([
             'practical_passed_at' => now(),
             'practical_by'        => $quienEvalua->id,

@@ -116,6 +116,30 @@ La firma sigue siendo de una persona, en el panel, y por ahora la dan
 administradores y superadmin. Firmar cierra la hora reservada y, si ya no
 falta nada, **otorga el certifab en el mismo acto**.
 
+## Elegir una hora: la lista de horas libres
+
+Donde alguien del laboratorio asigna tiempo de una persona, la regla es la
+misma: **no se escribe una hora para descubrir después que choca; se elige
+entre las que están libres.** Tres piezas, y conviene reutilizarlas en vez de
+volver a escribir la comprobación:
+
+| Pieza | Qué responde |
+|---|---|
+| `AsesoriaService::franjasDisponibles($ámbito, $solicitante, $días, $minutos)` | Las franjas en que **alguien** declarado para un equipo o un área puede atender, con cuántos pueden en cada una. Es lo que ve quien pide una asesoría o una práctica desde su cuenta, y el panel al crear una asesoría. |
+| `AsesoriaService::franjasDe($persona, $solicitante, $días, $minutos)` | Las franjas en que **una persona concreta** está libre: en jornada presencial, sin nada reservado ni bloqueado, fuera de su descanso, solo por venir. Es lo que se ofrece al citar a una práctica con un evaluador ya elegido. |
+| `BookingService::porQueNoEstaLibre($persona, $desde, $hasta)` | Para una hora ya fijada, si la persona puede o por qué no, en una frase: una asesoría o acompañamiento, tiempo de proyecto, su calendario de fuera, un bloqueo de agenda, su descanso. Nulo si está libre. Es lo que anota la bandeja al lado de cada candidato, y lo que dice el error cuando alguien intenta igual. |
+
+Las tres cuentan lo mismo —reservas, calendario externo, bloqueos, descanso—
+porque las tres pasan por `BookingService::personaLibre`. Si aparece otra cosa
+que ocupe a una persona, se añade ahí y todas las pantallas lo ven.
+
+Para ofrecer las horas en un formulario del panel, la forma que ya funciona es
+un `Select` cuyas opciones salen de `franjasDe` o `franjasDisponibles`, con la
+clave `Y-m-d H:i` en hora de pared del laboratorio y una etiqueta como
+«Mar 08/09 · 17:00–18:00». Se parsea con `Carbon::parse($valor, $tz)`. Una
+hora que no esté en la lista no pasa la validación, así que el choque no llega
+a ocurrir.
+
 ## Pasarla a otra persona
 
 Una asesoría o un acompañamiento quedan a nombre de alguien concreto. Si ese

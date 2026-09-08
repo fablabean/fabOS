@@ -87,6 +87,17 @@ class CursoConExamenTest extends TestCase
         ]);
     }
 
+    /** Alguien de la coordinacion: sin practica agendada, es quien puede firmarla. */
+    private function coordinador(): User
+    {
+        $u = User::create([
+            'name' => 'Coordinación', 'email' => uniqid() . '@lab.co', 'status' => 'activo',
+        ]);
+        $u->assignRole(\Spatie\Permission\Models\Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+
+        return $u->fresh();
+    }
+
     private function inscribir(): Enrollment
     {
         return Enrollment::create([
@@ -180,7 +191,7 @@ class CursoConExamenTest extends TestCase
     public function test_la_practica_la_firma_una_persona(): void
     {
         $inscripcion = $this->inscribir();
-        $instructor = $this->alguien();
+        $instructor = $this->coordinador();
 
         $this->formacion()->calificarExamen($inscripcion, $this->respuestas());
         $this->formacion()->registrarPractica($inscripcion->fresh(), $instructor, 'Niveló la cama sin ayuda.');
@@ -305,7 +316,7 @@ class CursoConExamenTest extends TestCase
         $inscripcion = $this->inscribir();
 
         $this->formacion()->calificarExamen($inscripcion, $this->respuestas());
-        $this->formacion()->registrarPractica($inscripcion->fresh(), $this->alguien());
+        $this->formacion()->registrarPractica($inscripcion->fresh(), $this->coordinador());
         $aprobada = $this->formacion()->aprobar($inscripcion->fresh());
 
         $this->assertSame('aprobado', $aprobada->status);

@@ -149,6 +149,7 @@ class Bandeja extends Page
             ->keyBy('id');
 
         $cobertura = app(CoverageService::class);
+        $reservas = app(\App\Services\Booking\BookingService::class);
         $extras = app(OvertimeService::class);
 
         // Para un espacio no hay certifab que pedir: la atiende cualquiera del
@@ -156,7 +157,7 @@ class Bandeja extends Page
         $personal = User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->get();
 
         return [
-            'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $espacios, $personal, $cobertura, $extras) {
+            'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $espacios, $personal, $cobertura, $extras, $reservas) {
                 $equipo = $s->reservable_type === Asset::class ? ($equipos[$s->reservable_id] ?? null) : null;
                 $espacio = $s->reservable_type === \App\Models\Space::class ? ($espacios[$s->reservable_id] ?? null) : null;
 
@@ -181,6 +182,9 @@ class Bandeja extends Page
                         'id'         => $u->id,
                         'nombre'     => $u->name,
                         'en_jornada' => $enJornada->contains($u->id),
+                        // Si esta libre a esa hora, y si no, por que: se
+                        // dice antes de elegir, no despues como un error.
+                        'ocupado'    => $reservas->porQueNoEstaLibre($u, $s->starts_at, $s->ends_at),
                         'extras_mes' => round($extras->minutosMes($u, $s->starts_at->copy()) / 60, 1),
                     ]),
                 ];
