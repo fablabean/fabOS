@@ -102,6 +102,7 @@ class ProjectsTable
                         'contrato',
                         'brief'     => 'warning',
                         'ejecucion' => 'primary',
+                        'pago'      => 'danger',
                         default     => 'success',
                     }),
 

@@ -131,7 +131,7 @@ class AccountController extends Controller
 
             // Con quien podria cambiar cada una, y lo que le proponen a el.
             'candidatos' => $asesoriasQueAtiendo->merge($acompanamientos)
-                ->filter(fn (Reservation $r) => $r->status === 'confirmada' && $r->starts_at->isFuture() && ! $r->traspasoPendiente)
+                ->filter(fn (Reservation $r) => $r->status === 'confirmada' && $r->ends_at->isFuture() && ! $r->traspasoPendiente)
                 ->mapWithKeys(fn (Reservation $r) => [$r->id => $this->traspasos->candidatos($r, $user)]),
             'traspasosRecibidos' => $this->traspasosPara($user),
             // El tiempo apartado para proyectos: en esas horas no le toca
@@ -185,7 +185,7 @@ class AccountController extends Controller
             ->get()
             // Una propuesta sobre algo que ya paso o se cancelo no tiene
             // sentido responderla: se deja de ofrecer, sin mas.
-            ->filter(fn ($t) => $t->reservation && $t->reservation->status === 'confirmada' && $t->reservation->starts_at->isFuture())
+            ->filter(fn ($t) => $t->reservation && $t->reservation->status === 'confirmada' && $t->reservation->ends_at->isFuture())
             ->sortBy(fn ($t) => $t->reservation->starts_at)
             ->values();
     }

@@ -116,6 +116,30 @@ class EmbudoDeProyectosTest extends TestCase
         $this->assertSame(1, $this->etapa('cierre')['cuantos']);
     }
 
+    /**
+     * Entregado y a la espera del pago: ni en ejecucion ni cerrado. Sin esta
+     * etapa esos proyectos se contaban como en marcha o desaparecian.
+     */
+    public function test_falta_el_pago_es_una_etapa_con_su_tarjeta(): void
+    {
+        $p = $this->proyecto(['stage' => 'ejecucion', 'lead_id' => \App\Models\User::factory()->create()->id]);
+
+        $movido = app(\App\Services\Projects\ProjectService::class)->moverA($p, 'pago');
+
+        $this->assertSame('pago', $movido->stage);
+        $this->assertSame('activo', $movido->status, 'no se cierra sin cobrar');
+        $this->assertNull($movido->closed_at);
+        $this->assertSame('Falta el pago', Project::ETAPAS['pago']);
+        $this->assertSame('Entregado', $movido->estadoParaElCliente()['titulo']);
+        $this->assertSame(100, $movido->avance(), 'entregado es trabajo terminado');
+
+        $this->assertSame(1, $this->etapa('pago')['cuantos']);
+        $this->assertSame(0, $this->etapa('ejecucion')['cuantos']);
+
+        // Y de ahi al cierre, con su informe como siempre.
+        $this->assertStringContainsString('informe', app(\App\Services\Projects\ProjectService::class)->queFalta($movido) ?? '');
+    }
+
     public function test_el_valor_sale_de_lo_acordado(): void
     {
         $this->proyecto([

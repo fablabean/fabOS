@@ -86,6 +86,13 @@ class ProjectService
             'porque'    => 'Las tareas son las que dan el avance y el cronograma. Sin ellas el proyecto avanza a ojo.',
             'como'      => 'Se crean en Tareas y se mueven en el tablero.',
         ],
+        'pago' => [
+            'documento' => null,
+            'campo'     => null,
+            'que'       => 'El trabajo entregado, a la espera del pago',
+            'porque'    => 'Ya no hay nada que fabricar, pero no se cierra sin cobrar: aquí se ve qué está entregado y pendiente de plata.',
+            'como'      => 'Se mueve a esta etapa al entregar; al llegar el pago, se cierra con el informe.',
+        ],
         'cierre' => [
             'documento' => 'informe',
             'campo'     => 'closing_notes',
@@ -114,6 +121,9 @@ class ProjectService
         ],
         'ejecucion' => [
             'explicacion' => 'El brief es lo que fija qué se entrega. Fabricar sin él es fabricar a ciegas.',
+        ],
+        'pago' => [
+            'explicacion' => 'A la espera del pago se pasa desde la ejecución, cuando el trabajo ya se entregó.',
         ],
         'cierre' => [
             'explicacion' => 'Cerrar sin informe deja el proyecto sin memoria: dentro de un año nadie sabrá qué se entregó.',

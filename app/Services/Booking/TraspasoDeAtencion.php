@@ -209,8 +209,11 @@ class TraspasoDeAtencion
             );
         }
 
-        if ($reserva->starts_at->isPast()) {
-            throw new BookingException('Esa hora ya llegó: ya no se puede pasar.');
+        // Hasta que termine, no hasta que empiece: en una asesoria de VR la
+        // persona llega preguntando por diseño, y quien la recibio tiene que
+        // poder pasarsela ahi mismo a quien sabe de eso.
+        if ($reserva->ends_at->isPast()) {
+            throw new BookingException('Esa atención ya terminó: ya no se puede pasar.');
         }
 
         if ($contarLaPendiente && $reserva->traspasoPendiente()->exists()) {
@@ -235,7 +238,9 @@ class TraspasoDeAtencion
             throw new BookingException($a->name . ' no es del equipo del laboratorio.');
         }
 
-        $ocupado = $this->reservas->porQueNoEstaLibre($a, $reserva->starts_at, $reserva->ends_at);
+        // Lo que queda de la atencion: si ya empezo, desde ahora hasta que termine.
+        $desde = $reserva->starts_at->isPast() ? now() : $reserva->starts_at;
+        $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $reserva->ends_at);
 
         if ($ocupado) {
             throw new BookingException($ocupado . ' Elige a otra persona.');

@@ -43,6 +43,11 @@ class Project extends Model
         'contrato'  => 'Contrato',
         'brief'     => 'Brief',
         'ejecucion' => 'En ejecución',
+        // Entregado, y a la espera de que llegue la plata: no esta en
+        // ejecucion —ya no hay nada que fabricar— ni cerrado —no se cierra
+        // sin cobrar—. Sin esta etapa, esos proyectos se contaban como en
+        // marcha o desaparecian del embudo.
+        'pago'      => 'Falta el pago',
         'cierre'    => 'Cerrado',
     ];
 
@@ -238,6 +243,10 @@ class Project extends Model
 
         if ($this->stage === 'cierre' || $this->status === 'cerrado') {
             return ['titulo' => 'Cerrado', 'detalle' => 'El trabajo se entregó.'];
+        }
+
+        if ($this->stage === 'pago') {
+            return ['titulo' => 'Entregado', 'detalle' => 'El trabajo se entregó; falta el pago para cerrarlo.'];
         }
 
         if ($this->stage === 'ejecucion') {
@@ -563,7 +572,7 @@ class Project extends Model
         $tareas = $this->tasks;
 
         if ($tareas->isEmpty()) {
-            return $this->stage === 'cierre' ? 100 : 0;
+            return in_array($this->stage, ['pago', 'cierre'], true) ? 100 : 0;
         }
 
         return (int) round($tareas->avg(fn (ProjectTask $t) => $t->status === 'hecha' ? 100 : $t->progress));

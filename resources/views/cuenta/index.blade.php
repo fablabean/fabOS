@@ -430,7 +430,7 @@
                                 @endif
                                 {{-- Ya se puede validar la llegada, pero todavía no
                                      empezó: hasta ese momento se puede pasar. --}}
-                                @if ($a->starts_at->isFuture() && ($a->traspasoPendiente || $candidatos->has($a->id)))
+                                @if ($a->ends_at->isFuture() && ($a->traspasoPendiente || $candidatos->has($a->id)))
                                     <br>@include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
                                 @endif
                             @elseif ($a->status === 'solicitada')

@@ -413,6 +413,36 @@ class TraspasosTest extends TestCase
             ->assertSee('Pasar a otra persona');
     }
 
+    /**
+     * Ya empezada, todavia se pasa: en una asesoria de VR la persona llega
+     * preguntando por diseño, y quien la recibio se la pasa ahi mismo a
+     * quien sabe de eso. Terminada, ya no.
+     */
+    public function test_se_pasa_tambien_ya_empezada_hasta_que_termine(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $r = $this->asesoria($ana);
+
+        // Diez minutos despues de empezar.
+        $this->travelTo($r->starts_at->copy()->addMinutes(10));
+
+        $this->actingAs($ana)->get(route('home'))->assertOk()->assertSee('Pasar a otra persona');
+
+        $t = $this->traspasos()->proponer($r, $ana, $beto, 'Es de diseño, mejor tú');
+        $this->traspasos()->aceptar($t, $beto);
+
+        $this->assertSame($beto->id, $r->fresh()->reservable_id);
+
+        // Terminada, ya no: Beto no puede devolvérsela a Ana.
+        $this->travelTo($r->ends_at->copy()->addMinute());
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessage('ya terminó');
+
+        $this->traspasos()->proponer($r->fresh(), $beto, $ana);
+    }
+
     /** Una asesoría general enseña el área, no un guion. */
     public function test_una_asesoria_general_dice_de_que_area_es(): void
     {
