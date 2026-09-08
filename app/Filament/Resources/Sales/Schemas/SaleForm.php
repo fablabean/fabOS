@@ -37,6 +37,10 @@ class SaleForm
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                             ->searchable()
                             ->required()
+                            // Si no tiene cuenta, se crea aqui mismo, ya validada.
+                            ->createOptionForm(\App\Filament\Componentes\NuevaPersona::formulario())
+                            ->createOptionModalHeading('Nueva persona')
+                            ->createOptionUsing(fn (array $data): int => \App\Filament\Componentes\NuevaPersona::crear($data)->id)
                             ->live()
                             ->helperText(function ($state) use ($moneda, $unidades) {
                                 $persona = $state ? User::find($state) : null;

@@ -129,7 +129,7 @@ class ProjectForm
                         TextInput::make('organization')->label('Organización'),
                         TextInput::make('contact_name')->label('Persona de contacto'),
                         TextInput::make('contact_email')->label('Correo')->email(),
-                        TextInput::make('contact_phone')->label('Teléfono'),
+                        \App\Filament\Componentes\CampoDeTelefono::make('contact_phone'),
 
                         /*
                          * Quien firma. Un contrato se firma con alguien

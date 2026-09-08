@@ -93,26 +93,9 @@ class CreateReservation extends CreateRecord
                          * reutiliza la cuenta si ya la tenia: dos cuentas con
                          * el mismo correo parten su historial en dos.
                          */
-                        ->createOptionForm([
-                            TextInput::make('name')->label('Nombre')->required()->maxLength(120),
-                            TextInput::make('email')->label('Correo')->email()->required()->maxLength(160),
-                            TextInput::make('phone')->label('Teléfono')->tel()->maxLength(40),
-                        ])
+                        ->createOptionForm(\App\Filament\Componentes\NuevaPersona::formulario())
                         ->createOptionModalHeading('Nueva persona')
-                        ->createOptionUsing(function (array $data): int {
-                            $correo = mb_strtolower(trim($data['email']));
-
-                            $persona = User::whereRaw('lower(email) = ?', [$correo])->first()
-                                ?? User::create([
-                                    'name'             => trim($data['name']),
-                                    'email'            => $correo,
-                                    'phone'            => $data['phone'] ?? null,
-                                    'status'           => 'activo',
-                                    'user_category_id' => UserCategory::where('slug', 'invitado')->value('id'),
-                                ]);
-
-                            return $persona->id;
-                        }),
+                        ->createOptionUsing(fn (array $data): int => \App\Filament\Componentes\NuevaPersona::crear($data)->id),
 
                     /*
                      * El equipo, con su área delante: «Impresión 3D · Prusa

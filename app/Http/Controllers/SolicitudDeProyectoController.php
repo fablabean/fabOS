@@ -71,6 +71,7 @@ class SolicitudDeProyectoController extends Controller
             'nombre'       => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
             'telefono'     => ['nullable', 'string', 'max:40'],
+            'telefono_indicativo' => ['nullable', 'string', 'max:6'],
             'organizacion' => ['nullable', 'string', 'max:160'],
 
             // Quien firma: lo que el contrato necesita, pedido de una vez.
@@ -108,6 +109,9 @@ class SolicitudDeProyectoController extends Controller
             'soportes.*.max'       => 'Cada archivo puede pesar hasta ' . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB.',
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
         ]);
+
+        // El telefono llega en dos partes y se guarda como una: «+57 3001234567».
+        $datos['telefono'] = \App\Support\Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);
 
         // La categoría manda sobre lo que diga el formulario: quien ya entró no
         // elige su propio trámite.

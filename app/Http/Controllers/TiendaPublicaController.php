@@ -196,9 +196,13 @@ class TiendaPublicaController extends Controller
             'nombre'       => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
             'telefono'     => ['nullable', 'string', 'max:40'],
+            'telefono_indicativo' => ['nullable', 'string', 'max:6'],
             'organizacion' => ['nullable', 'string', 'max:160'],
             'cliente'      => [Rule::requiredIf(! $identificado?->category), Rule::in(array_keys(\App\Models\Project::CLIENTES))],
         ]);
+
+        // El telefono llega en dos partes y se guarda como una: «+57 3001234567».
+        $datos['telefono'] = \App\Support\Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);
 
         $lineas = $this->carrito->lineas();
 

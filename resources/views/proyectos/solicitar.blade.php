@@ -240,11 +240,7 @@
             </p>
 
             <div class="dos">
-                <label>
-                    Teléfono
-                    <input type="text" name="telefono" maxlength="40"
-                           value="{{ old('telefono', $usuario->phone) }}">
-                </label>
+                @include('partials.telefono', ['valor' => $usuario->phone])
 
                 <label>
                     Organización
@@ -265,10 +261,7 @@
                     <span class="foot">Con este correo se crea tu cuenta y entras sin contraseña.</span>
                 </label>
 
-                <label>
-                    Teléfono
-                    <input type="text" name="telefono" maxlength="40" value="{{ old('telefono') }}">
-                </label>
+                @include('partials.telefono', ['valor' => null])
 
                 <label>
                     Organización

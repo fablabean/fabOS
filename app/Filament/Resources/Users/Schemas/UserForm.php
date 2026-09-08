@@ -21,7 +21,7 @@ class UserForm
                         TextInput::make('name')->label('Nombre')->required()->maxLength(255),
                         TextInput::make('email')->label('Correo')->email()->required()->maxLength(255),
                         TextInput::make('document_number')->label('Documento')->maxLength(255),
-                        TextInput::make('phone')->label('Teléfono')->tel()->maxLength(255),
+                        \App\Filament\Componentes\CampoDeTelefono::make('phone'),
                     ]),
 
                 Section::make('Categoría y acceso')

@@ -46,7 +46,7 @@ class CandidatesRelationManager extends RelationManager
                 TextInput::make('organization')->label('Organización'),
                 TextInput::make('contact_name')->label('Contacto'),
                 TextInput::make('contact_email')->label('Correo')->email(),
-                TextInput::make('contact_phone')->label('Teléfono'),
+                \App\Filament\Componentes\CampoDeTelefono::make('contact_phone'),
 
                 Textarea::make('description')->label('Estado actual')->rows(3)->columnSpanFull(),
             ]);

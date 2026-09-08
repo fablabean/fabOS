@@ -164,10 +164,7 @@
                                 <input type="email" name="correo" required maxlength="180" value="{{ old('correo') }}">
                                 <span class="foot">Con este correo se crea tu cuenta y sigues el pedido desde ahí.</span>
                             </label>
-                            <label>
-                                Teléfono
-                                <input type="text" name="telefono" maxlength="40" value="{{ old('telefono') }}">
-                            </label>
+                            @include('partials.telefono', ['valor' => null])
                             <label>
                                 Organización
                                 <input type="text" name="organizacion" maxlength="160" value="{{ old('organizacion') }}">

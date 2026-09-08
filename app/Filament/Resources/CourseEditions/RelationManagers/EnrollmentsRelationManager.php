@@ -144,7 +144,11 @@ class EnrollmentsRelationManager extends RelationManager
                     ->label('Persona')
                     ->options(fn () => \App\Filament\Componentes\SelectorDePersona::personas())
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    // Si no tiene cuenta, se crea aqui mismo, ya validada.
+                    ->createOptionForm(\App\Filament\Componentes\NuevaPersona::formulario())
+                    ->createOptionModalHeading('Nueva persona')
+                    ->createOptionUsing(fn (array $data): int => \App\Filament\Componentes\NuevaPersona::crear($data)->id),
             ])
             ->action(function (array $data, RelationManager $livewire) {
                 try {
