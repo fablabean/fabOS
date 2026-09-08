@@ -190,7 +190,11 @@ class EnrollmentsRelationManager extends RelationManager
                     ->seconds(false)
                     ->minutesStep(15)
                     ->required()
-                    ->minDate(now()),
+                    // Como texto y en la hora del laboratorio: el navegador
+                    // compara el minimo con la hora de pared que se escribe,
+                    // y `now()` a secas llegaba en UTC, cinco horas adelante:
+                    // a las cuatro de la tarde no dejaba citar para las cinco.
+                    ->minDate(fn () => now(config('fabos.lab.timezone'))->format('Y-m-d H:i')),
 
                 Select::make('evaluador_id')
                     ->label('Quién la evalúa')

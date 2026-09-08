@@ -375,6 +375,38 @@ class PruebaPracticaTest extends TestCase
         $this->assertStringContainsString('Michael', $aviso->body);
     }
 
+    /**
+     * Citar para dentro de un rato, por la tarde. El minimo del campo llegaba
+     * en UTC, cinco horas adelante: a las cuatro de la tarde no dejaba citar
+     * para las cinco.
+     */
+    public function test_se_puede_citar_para_dentro_de_un_rato(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->conTeoria();
+
+        $this->travelTo(Carbon::parse('2026-08-24 16:36', config('fabos.lab.timezone')));
+        $this->entra($admin);
+
+        $accion = Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion,
+            'pageClass'   => EditCourseEdition::class,
+        ]);
+
+        $accion->callAction(TestAction::make('citar')->table($i), [
+            'inicio'       => '2026-08-24 17:00',
+            'evaluador_id' => $michael->id,
+        ])->assertHasNoActionErrors();
+
+        $this->assertSame('17:00', $i->fresh()->practicaAgendada()->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i'));
+
+        // Y el minimo que se le da al navegador es la hora de pared de aqui,
+        // no la de UTC.
+        $this->assertSame('2026-08-24 16:36', now(config('fabos.lab.timezone'))->format('Y-m-d H:i'));
+        $this->assertNotSame(now(config('fabos.lab.timezone'))->format('Y-m-d H:i'), now()->format('Y-m-d H:i'));
+    }
+
     /** Citar a alguien que ya tiene algo a esa hora se rechaza, y se dice qué tiene. */
     public function test_no_se_cita_con_quien_esta_ocupado(): void
     {
