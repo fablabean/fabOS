@@ -80,7 +80,7 @@ class VistaPreviaDeArchivosTest extends TestCase
 
         $this->get(route('panel.archivo', ['ruta' => $ruta]))
             ->assertOk()
-            ->assertHeader('Content-Disposition', 'inline')
+            ->assertHeader('Content-Disposition', 'inline; filename="' . basename($ruta) . '"')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
@@ -131,6 +131,46 @@ class VistaPreviaDeArchivosTest extends TestCase
         // Y es lo que el campo de subida usa.
         $campo = ArchivoPrivado::previsualizar(FileUpload::make('file_path'));
         $this->assertNotNull($campo);
+    }
+
+    /** Un ZIP se descarga con el nombre con que llegó; una foto se abre en línea. */
+    public function test_los_archivos_se_descargan_con_su_nombre(): void
+    {
+        $zip = 'proyectos/evidencia/' . uniqid() . '.zip';
+        Storage::disk('local')->put($zip, 'PK' . str_repeat('0', 100));
+        $this->entra($this->delEquipo());
+
+        $this->get(ArchivoPrivado::url($zip, 'kitek+ziewa_stls.zip', descargar: true))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="kitek+ziewa_stls.zip"');
+
+        // Sin pedir descarga, un archivo que no es imagen se descarga igual.
+        $this->get(ArchivoPrivado::url($zip))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="' . basename($zip) . '"');
+
+        // Una foto se abre, y con «descargar» se baja con su nombre.
+        $foto = $this->foto();
+        $this->get(ArchivoPrivado::url($foto, 'pieza-rota.webp'))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'inline; filename="pieza-rota.webp"');
+        $this->get(ArchivoPrivado::url($foto, 'pieza-rota.webp', descargar: true))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="pieza-rota.webp"');
+
+        // Un nombre con trampa se limpia.
+        $this->get(ArchivoPrivado::url($foto, '../x"y.webp'))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'inline; filename="..xy.webp"');
+    }
+
+    /** El campo de subida ofrece descargar y abrir. */
+    public function test_el_campo_ofrece_descargar_y_abrir(): void
+    {
+        $campo = ArchivoPrivado::previsualizar(FileUpload::make('file_path'));
+
+        $this->assertTrue($campo->isDownloadable());
+        $this->assertTrue($campo->isOpenable());
     }
 
     /** La ficha del proyecto carga con una imagen de referencia en el disco privado. */

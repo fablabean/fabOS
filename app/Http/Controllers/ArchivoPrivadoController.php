@@ -35,14 +35,19 @@ class ArchivoPrivadoController extends Controller
 
         $mime = (string) $disco->mimeType($ruta);
 
-        return $disco->response($ruta, basename($ruta), [
+        // Con el nombre con que llego, si se sabe: «kitek+ziewa_stls.zip» y
+        // no el aleatorio con que se guardo. Sin barras ni comillas, que el
+        // nombre viene de la direccion y podria traer cualquier cosa.
+        $nombre = trim(str_replace(['/', '\\', '"'], '', (string) $request->query('nombre', ''))) ?: basename($ruta);
+
+        // Se descarga cuando se pide, o cuando no es una imagen: un archivo
+        // subido por cualquiera desde un formulario publico, servido en
+        // linea, es una pagina que se ejecuta en nuestro dominio.
+        $descargar = $request->boolean('descargar') || ! str_starts_with($mime, 'image/');
+
+        return $disco->response($ruta, $nombre, [
             'Cache-Control' => 'private, max-age=600',
-            // Solo las imagenes se abren en linea: un archivo subido por
-            // cualquiera desde un formulario publico, servido en linea, es
-            // una pagina que se ejecuta en nuestro dominio.
-            'Content-Disposition' => str_starts_with($mime, 'image/')
-                ? 'inline'
-                : 'attachment; filename="' . addslashes(basename($ruta)) . '"',
+            'Content-Disposition' => ($descargar ? 'attachment' : 'inline') . '; filename="' . $nombre . '"',
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

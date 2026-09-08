@@ -24,9 +24,39 @@ class ArchivoPrivado
 
     public static function previsualizar(FileUpload $campo): FileUpload
     {
-        return $campo->getUploadedFileUsing(
-            fn (string $file, string|array|null $storedFileNames) => self::vistaPrevia($file, $storedFileNames),
-        );
+        return $campo
+            ->getUploadedFileUsing(
+                fn (string $file, string|array|null $storedFileNames) => self::vistaPrevia($file, $storedFileNames),
+            )
+            // Descargar y abrir, desde el mismo campo. Un ZIP con los STL
+            // del cliente no sirve de nada si solo se puede mirar el nombre.
+            ->downloadable()
+            ->getDownloadableFileUrlUsing(
+                fn (string $file, string|array|null $storedFileNames) => self::permitida($file)
+                    ? self::url($file, self::nombreDe($file, $storedFileNames), descargar: true)
+                    : null,
+            )
+            ->openable()
+            ->getOpenableFileUrlUsing(
+                fn (string $file, string|array|null $storedFileNames) => self::permitida($file)
+                    ? self::url($file, self::nombreDe($file, $storedFileNames))
+                    : null,
+            );
+    }
+
+    /** La direccion de un archivo, para verlo o para descargarlo con su nombre. */
+    public static function url(string $file, ?string $nombre = null, bool $descargar = false): string
+    {
+        return route('panel.archivo', array_filter([
+            'ruta'      => $file,
+            'nombre'    => $nombre,
+            'descargar' => $descargar ? 1 : null,
+        ]));
+    }
+
+    private static function nombreDe(string $file, string|array|null $storedFileNames): ?string
+    {
+        return is_array($storedFileNames) ? ($storedFileNames[$file] ?? null) : $storedFileNames;
     }
 
     /**
@@ -42,13 +72,13 @@ class ArchivoPrivado
             return null;
         }
 
-        $nombre = is_array($storedFileNames) ? ($storedFileNames[$file] ?? null) : $storedFileNames;
+        $nombre = self::nombreDe($file, $storedFileNames);
 
         return [
             'name' => $nombre ?: basename($file),
             'size' => $disco->size($file),
             'type' => $disco->mimeType($file) ?: null,
-            'url'  => route('panel.archivo', ['ruta' => $file]),
+            'url'  => self::url($file, $nombre),
         ];
     }
 
