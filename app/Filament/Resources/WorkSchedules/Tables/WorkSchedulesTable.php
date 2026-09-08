@@ -43,7 +43,7 @@ class WorkSchedulesTable
 
                 TextColumn::make('break_minutes')
                     ->label('Descanso')
-                    ->formatStateUsing(fn ($state) => $state . ' min')
+                    ->formatStateUsing(fn ($state, $record) => $record->descansoTexto())
                     ->tooltip('Sin este dato no se puede saber si la jornada roza el tope semanal'),
 
                 TextColumn::make('efectivas')

@@ -80,6 +80,19 @@ class WorkScheduleForm
                     ->required()
                     ->default(60),
 
+                /*
+                 * A que hora es. Con esto el almuerzo deja de ofrecerse para
+                 * asesorias y de recibir acompanamientos; sin esto, el descanso
+                 * solo descuenta horas, como antes. Es hora de pared, como la
+                 * entrada y la salida.
+                 */
+                TimePicker::make('break_starts_at')
+                    ->timezone(config('app.timezone'))
+                    ->label('Descanso desde las')
+                    ->seconds(false)
+                    ->placeholder('sin hora fija')
+                    ->helperText('Con hora, ese rato queda fuera: no se ofrece para asesorías ni se asignan acompañamientos. Vacío, el descanso solo descuenta horas.'),
+
                 Radio::make('modalidad')
                     ->label('Modalidad')
                     ->options(WorkSchedule::MODALIDADES)

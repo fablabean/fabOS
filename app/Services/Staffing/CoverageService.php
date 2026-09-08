@@ -212,10 +212,33 @@ class CoverageService
             ->whereNotIn('user_id', $ausentes)
             ->where('starts_at', '<=', $d->format('H:i:s'))
             ->where('ends_at', '>=', $h->format('H:i:s'))
+            ->get()
+            // El descanso, si la jornada dice a que hora es, deja a la
+            // persona fuera en ese rato: el almuerzo no se ofrece para
+            // asesorias ni se le asignan acompanamientos.
+            ->reject(fn (WorkSchedule $j) => $j->descansoOcupa($d, $h))
             ->pluck('user_id')
             ->unique();
 
         return User::whereIn('id', $ids)->where('status', 'activo')->get();
+    }
+
+    /**
+     * La jornada cuyo descanso pisa ese intervalo, si la hay: para decirle a
+     * quien elige a mano por que no.
+     */
+    public function descansoDe(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?WorkSchedule
+    {
+        $tz = config('fabos.lab.timezone');
+        $d = $desde->copy()->setTimezone($tz);
+
+        return WorkSchedule::query()
+            ->where('user_id', $persona->id)
+            ->vigenteEn($d)
+            ->where('weekday', $d->isoWeekday())
+            ->whereNotNull('break_starts_at')
+            ->get()
+            ->first(fn (WorkSchedule $j) => $j->descansoOcupa($desde, $hasta));
     }
 
     /** @return Collection<int,User> */

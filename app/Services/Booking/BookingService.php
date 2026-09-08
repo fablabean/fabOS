@@ -407,6 +407,13 @@ class BookingService
                 : $persona->name . ' tiene esa hora bloqueada (' . $bloqueo->motivo() . ').';
         }
 
+        // Y el descanso de su jornada, si dijo a que hora es.
+        if ($jornada = $this->coverage->descansoDe($persona, $desde, $hasta)) {
+            [$inicio, $fin] = $jornada->descanso();
+
+            return $persona->name . ' está en su descanso a esa hora (de ' . $inicio . ' a ' . $fin . ').';
+        }
+
         return null;
     }
 
