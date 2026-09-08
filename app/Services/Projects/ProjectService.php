@@ -276,7 +276,12 @@ class ProjectService
                     'email'            => $correo,
                     'phone'            => $datos['telefono'] ?? null,
                     'status'           => 'activo',
-                    'user_category_id' => UserCategory::where('slug', 'invitado')->value('id'),
+                    // Con la categoria que eligio al pedir —estudiante,
+                    // profesor, externo—, pendiente de que alguien la
+                    // confirme. Sin eleccion, invitado: lo que queda cuando
+                    // nadie dijo nada.
+                    'user_category_id'   => $datos['categoria_id'] ?? UserCategory::where('slug', 'invitado')->value('id'),
+                    'category_confirmed' => false,
                 ]);
             }
 

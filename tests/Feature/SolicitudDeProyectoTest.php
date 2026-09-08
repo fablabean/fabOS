@@ -1105,7 +1105,7 @@ class SolicitudDeProyectoTest extends TestCase
     {
         $this->get(route('proyectos.solicitar'))
             ->assertOk()
-            ->assertSee('¿Cuál es tu rol?')
+            ->assertSee('¿Quién eres?')
             ->assertSee('Cómo funciona para un estudiante')
             ->assertSee('Cómo funciona para una organización de fuera')
             ->assertSee('Cómo se paga un encargo interno');
@@ -1312,5 +1312,99 @@ class SolicitudDeProyectoTest extends TestCase
         $this->travel(2)->minutes();
 
         $this->get($enlace)->assertForbidden();
+    }
+
+    // ------------------------------------------------- la categoria de quien pide
+
+    /** Las categorias de verdad, con su tramite al lado. Invitado no es una opcion. */
+    private function categorias(): void
+    {
+        foreach ([
+            ['estudiante', 'Estudiante', 'estudiante'],
+            ['profesor', 'Profesor', 'interno'],
+            ['colaborador', 'Colaborador', 'interno'],
+            ['externo', 'Externo', 'externo'],
+        ] as [$slug, $nombre, $tramite]) {
+            UserCategory::firstOrCreate(['slug' => $slug], [
+                'name' => $nombre, 'can_reserve' => true, 'rate_factor' => 1, 'client_kind' => $tramite,
+            ]);
+        }
+    }
+
+    /**
+     * Sin sesion se pregunta QUIEN es, no como se tramita: un profesor no
+     * sabe que su encargo «es interno», pero si sabe que es profesor. De la
+     * categoria sale el tramite, y con ella nace la cuenta.
+     */
+    public function test_sin_sesion_se_elige_la_categoria_y_de_ahi_sale_el_tramite(): void
+    {
+        $this->categorias();
+
+        $this->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('¿Quién eres?')
+            ->assertSee('Profesor')
+            ->assertSee('Colaborador')
+            ->assertSee('data-tramite="interno"', false)
+            ->assertDontSee('value="invitado"', false);
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'   => null,
+            'categoria' => 'profesor',
+        ]))->assertRedirect();
+
+        $p = Project::first();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->assertSame('interno', $p->client_kind, 'un profesor tramita como la Universidad');
+        $this->assertSame('profesor', $persona->category?->slug, 'la cuenta nace con su categoría');
+        $this->assertFalse((bool) $persona->category_confirmed, 'pendiente de que alguien la confirme');
+    }
+
+    public function test_un_estudiante_tramita_como_estudiante(): void
+    {
+        $this->categorias();
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'   => null,
+            'categoria' => 'estudiante',
+        ]))->assertRedirect();
+
+        $this->assertSame('estudiante', Project::first()->client_kind);
+        $this->assertSame('estudiante', User::where('email', 'steban@ejemplo.co')->firstOrFail()->category?->slug);
+    }
+
+    /** Invitado no se elige, y una categoria inventada tampoco. */
+    public function test_invitado_no_es_una_opcion(): void
+    {
+        $this->categorias();
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud(['cliente' => null, 'categoria' => 'invitado']))
+            ->assertSessionHasErrors('categoria');
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud(['cliente' => null, 'categoria' => 'marciano']))
+            ->assertSessionHasErrors('categoria');
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud(['cliente' => null]))
+            ->assertSessionHasErrors('categoria');
+
+        $this->assertDatabaseCount('projects', 0);
+    }
+
+    /** A quien ya tenia cuenta no se le cambia la categoria por lo que diga el formulario. */
+    public function test_una_cuenta_que_ya_existia_conserva_su_categoria(): void
+    {
+        $this->categorias();
+
+        $ya = User::create([
+            'name' => 'Steban Gómez', 'email' => 'steban@ejemplo.co', 'status' => 'activo',
+            'user_category_id' => UserCategory::where('slug', 'externo')->value('id'), 'category_confirmed' => true,
+        ]);
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud(['cliente' => null, 'categoria' => 'profesor']))
+            ->assertRedirect();
+
+        $this->assertSame('externo', $ya->fresh()->category->slug);
+        $this->assertTrue((bool) $ya->fresh()->category_confirmed);
+        // El tramite de ESTE encargo si es el que dijo, porque no entro con su cuenta.
+        $this->assertSame('interno', Project::first()->client_kind);
     }
 }

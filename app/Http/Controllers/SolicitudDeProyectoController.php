@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Models\UserCategory;
 use App\Services\Notifications\NotificationService;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
@@ -38,7 +39,22 @@ class SolicitudDeProyectoController extends Controller
             // preguntárselo sería dejar que se equivoque en una respuesta que
             // el sistema ya tiene.
             'tramite' => $usuario?->category?->tramiteDeCliente(),
+            // A quien no, se le ofrecen las categorias de verdad —estudiante,
+            // profesor, colaborador, externo—: de ahi sale el tramite, y la
+            // cuenta nace con esa categoria. «Invitado» no es una opcion: es
+            // lo que queda cuando nadie eligio.
+            'categorias' => self::categoriasParaElegir(),
         ]);
+    }
+
+    /** @return \Illuminate\Support\Collection<int,UserCategory> */
+    public static function categoriasParaElegir(): \Illuminate\Support\Collection
+    {
+        return UserCategory::query()
+            ->where('slug', '<>', 'invitado')
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
     }
 
     public function store(Request $request)
@@ -64,7 +80,14 @@ class SolicitudDeProyectoController extends Controller
             'razon_social'   => ['nullable', 'string', 'max:180', Rule::requiredIf(fn () => $request->input('persona') === 'juridica')],
             'representante'  => ['nullable', 'string', 'max:120'],
             'direccion'      => ['nullable', 'string', 'max:200'],
-            'cliente'      => [Rule::requiredIf(! $request->user()?->category), Rule::in(array_keys(Project::CLIENTES))],
+            // Sin sesion se elige la categoria, y de ella sale el tramite. El
+            // tramite suelto se sigue aceptando por si algo viejo lo manda.
+            'categoria'    => [
+                Rule::requiredIf(! $identificado && ! $request->filled('cliente')),
+                'nullable',
+                Rule::exists('user_categories', 'slug')->where(fn ($q) => $q->where('slug', '<>', 'invitado')),
+            ],
+            'cliente'      => ['nullable', Rule::in(array_keys(Project::CLIENTES))],
             'para_cuando'  => ['nullable', 'date', 'after:today'],
 
             'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
@@ -82,7 +105,7 @@ class SolicitudDeProyectoController extends Controller
             'para_cuando.after'    => 'Esa fecha ya pasó.',
             'soportes.max'         => 'Como mucho ' . SoportesDeSolicitud::MAXIMO . ' archivos.',
             'soportes.*.mimes'     => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos o documentos de oficina.',
-            'soportes.*.max'       => 'Cada archivo puede pesar hasta 10 MB.',
+            'soportes.*.max'       => 'Cada archivo puede pesar hasta ' . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB.',
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
         ]);
 
@@ -90,6 +113,14 @@ class SolicitudDeProyectoController extends Controller
         // elige su propio trámite.
         if ($tramite = $identificado?->category?->tramiteDeCliente()) {
             $datos['cliente'] = $tramite;
+        }
+
+        // Sin sesion, la categoria elegida dice el tramite y con ella nace la
+        // cuenta, pendiente de que alguien del laboratorio la confirme.
+        if (! $identificado && filled($datos['categoria'] ?? null)) {
+            $categoria = UserCategory::where('slug', $datos['categoria'])->firstOrFail();
+            $datos['cliente'] = $categoria->tramiteDeCliente();
+            $datos['categoria_id'] = $categoria->id;
         }
 
         $datos['cliente'] ??= 'externo';

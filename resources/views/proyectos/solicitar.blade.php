@@ -99,15 +99,29 @@
                 tramita como <strong>{{ mb_strtolower(\App\Models\Project::CLIENTES[$tramite]) }}</strong>.
             </p>
         @else
+            {{-- Se pregunta la CATEGORÍA de la persona, no el trámite: un
+                 profesor no sabe que su encargo «se tramita como interno», pero
+                 sí sabe que es profesor. El trámite sale de la categoría, y la
+                 cuenta que se crea nace ya con ella, pendiente de confirmar. --}}
             <label>
-                ¿Cuál es tu rol?
-                <select name="cliente" id="cliente" required>
-                    @foreach (\App\Models\Project::CLIENTES as $clave => $nombre)
-                        <option value="{{ $clave }}" @selected(old('cliente') === $clave)>{{ $nombre }}</option>
+                ¿Quién eres?
+                <select name="categoria" id="cliente" required>
+                    <option value="" disabled @selected(! old('categoria'))>Elige una opción</option>
+                    @foreach ($categorias as $categoria)
+                        <option value="{{ $categoria->slug }}"
+                                data-tramite="{{ $categoria->tramiteDeCliente() }}"
+                                @selected(old('categoria') === $categoria->slug)>
+                            {{ $categoria->name }}
+                            · {{ match ($categoria->tramiteDeCliente()) {
+                                'estudiante' => 'se acuerda contigo y se arranca',
+                                'interno'    => 'de la Universidad; si mueve presupuesto, va por traslado',
+                                default      => 'de fuera: cotización y contrato',
+                            } }}
+                        </option>
                     @endforeach
                 </select>
                 <span class="foot">
-                    Cambia el trámite, no el trabajo. Si ya tienes cuenta,
+                    Cambia el trámite y las condiciones, no el trabajo. Si ya tienes cuenta,
                     <a href="{{ route('login') }}">entra</a> y lo tomamos de tu categoría.
                 </span>
             </label>
@@ -393,7 +407,12 @@
             }
 
             function ajustar() {
-                const rol = cliente ? cliente.value : (fijo ? fijo.value : null);
+                // El desplegable lista categorias; el tramite viene en cada
+                // opcion. Con sesion, el tramite ya esta fijo.
+                const opcion = cliente ? cliente.selectedOptions[0] : null;
+                const rol = opcion
+                    ? (opcion.dataset.tramite || opcion.value || null)
+                    : (fijo ? fijo.value : null);
 
                 bloques.forEach(function (b) {
                     b.hidden = b.dataset.rol !== rol;
