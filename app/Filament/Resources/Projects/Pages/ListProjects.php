@@ -4,9 +4,12 @@ namespace App\Filament\Resources\Projects\Pages;
 
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Filament\Resources\Projects\Widgets\EmbudoDeProyectos;
+use App\Models\Project;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListProjects extends ListRecords
 {
@@ -26,6 +29,36 @@ class ListProjects extends ListRecords
 
             CreateAction::make(),
         ];
+    }
+
+    /**
+     * Pestañas por tipo de cliente: estudiantes, la Universidad, de fuera.
+     *
+     * Son tres tramites distintos —un estudiante no firma contrato, un area
+     * de la Universidad pasa por traslado presupuestal— y quien administra
+     * mira uno a la vez. Un filtro escondido en el desplegable obligaba a
+     * tres clics cada vez; una pestaña es uno, y dice cuantos hay.
+     */
+    public function getTabs(): array
+    {
+        $cuenta = fn (?string $tipo) => Project::query()
+            ->where('status', 'activo')
+            ->when($tipo, fn ($q) => $q->where('client_kind', $tipo))
+            ->count();
+
+        $pestanas = ['todos' => Tab::make('Todos')->badge($cuenta(null))];
+
+        foreach ([
+            'estudiante' => 'Estudiantes',
+            'interno'    => 'Universidad',
+            'externo'    => 'De fuera',
+        ] as $tipo => $nombre) {
+            $pestanas[$tipo] = Tab::make($nombre)
+                ->badge($cuenta($tipo))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('client_kind', $tipo));
+        }
+
+        return $pestanas;
     }
 
     /**

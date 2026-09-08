@@ -65,6 +65,39 @@ class BackofficeProyectosTest extends TestCase
         ]);
     }
 
+    /**
+     * Pestañas por tipo de cliente: un clic, y dice cuantos hay. Son tres
+     * tramites distintos y quien administra mira uno a la vez.
+     */
+    public function test_el_listado_se_filtra_por_tipo_de_cliente_con_una_pestana(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+
+        $estudiante = $this->proyecto($admin);
+        $estudiante->update(['client_kind' => 'estudiante']);
+        $universidad = $this->proyecto($admin);
+        $universidad->update(['client_kind' => 'interno']);
+        $externo = $this->proyecto($admin);
+        $externo->update(['client_kind' => 'externo']);
+
+        $this->entra($admin);
+
+        Livewire::test(ListProjects::class)
+            ->assertCanSeeTableRecords([$estudiante, $universidad, $externo])
+            ->set('activeTab', 'estudiante')
+            ->assertCanSeeTableRecords([$estudiante])
+            ->assertCanNotSeeTableRecords([$universidad, $externo])
+            ->set('activeTab', 'interno')
+            ->assertCanSeeTableRecords([$universidad])
+            ->assertCanNotSeeTableRecords([$estudiante, $externo]);
+
+        $this->entra($admin)->get('/admin/projects')
+            ->assertOk()
+            ->assertSee('Estudiantes')
+            ->assertSee('Universidad')
+            ->assertSee('De fuera');
+    }
+
     public function test_el_listado_de_proyectos_carga(): void
     {
         $admin = $this->conRol(User::ROL_ADMINISTRADOR);
