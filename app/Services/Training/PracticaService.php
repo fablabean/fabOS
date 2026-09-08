@@ -64,6 +64,24 @@ class PracticaService
     }
 
     /**
+     * Las horas en que un evaluador concreto puede ver la practica, para
+     * ofrecerlas al citar desde el panel: se elige una, no se adivina.
+     *
+     * @return array<string,string>  «2026-09-08 17:00» => «Mar 08/09 · 17:00–18:00»
+     */
+    public function horasDe(User $evaluador, Enrollment $inscripcion, int $dias = 7): array
+    {
+        return $this->asesorias
+            ->franjasDe($evaluador, $inscripcion->user, $dias, $this->minutos())
+            ->mapWithKeys(fn (array $f) => [
+                $f['inicio']->format('Y-m-d H:i') => ucfirst(rtrim($f['inicio']->locale('es')->isoFormat('ddd'), '.'))
+                    . ' ' . $f['inicio']->format('d/m')
+                    . ' · ' . $f['inicio']->format('H:i') . '–' . $f['fin']->format('H:i'),
+            ])
+            ->all();
+    }
+
+    /**
      * La persona pide hora, y el sistema elige quien la ve.
      *
      * @throws TrainingException

@@ -417,10 +417,43 @@ class PruebaPracticaTest extends TestCase
 
         $this->assertSame('17:00', $i->fresh()->practicaAgendada()->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i'));
 
-        // Y el minimo que se le da al navegador es la hora de pared de aqui,
-        // no la de UTC.
-        $this->assertSame('2026-08-24 16:36', now(config('fabos.lab.timezone'))->format('Y-m-d H:i'));
-        $this->assertNotSame(now(config('fabos.lab.timezone'))->format('Y-m-d H:i'), now()->format('Y-m-d H:i'));
+    }
+
+    /**
+     * Las horas que se ofrecen al citar son las libres de esa persona: en
+     * jornada, sin nada reservado, fuera de su descanso, y solo por venir.
+     */
+    public function test_al_citar_se_ofrecen_solo_las_horas_libres_del_evaluador(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+
+        // Ya tiene una practica a las 10 y su almuerzo es de 12 a 13.
+        app(PracticaService::class)->agendar($this->conTeoria(), $this->hora('10:00'));
+        WorkSchedule::where('user_id', $michael->id)->update(['break_starts_at' => '12:00']);
+
+        $horas = app(PracticaService::class)->horasDe($michael, $i, dias: 1);
+
+        $this->assertArrayHasKey('2026-08-24 09:00', $horas);
+        $this->assertArrayNotHasKey('2026-08-24 10:00', $horas, 'ya tiene una práctica');
+        $this->assertArrayNotHasKey('2026-08-24 12:00', $horas, 'es su almuerzo');
+        $this->assertArrayHasKey('2026-08-24 13:00', $horas);
+        $this->assertArrayNotHasKey('2026-08-24 06:00', $horas, 'antes de su jornada');
+        $this->assertSame('Lun 24/08 · 13:00–14:00', $horas['2026-08-24 13:00']);
+
+        // Y una hora que no esta en la lista no se acepta desde el panel.
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $this->entra($admin);
+
+        Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion,
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->callAction(TestAction::make('citar')->table($i), [
+                'evaluador_id' => $michael->id,
+                'inicio'       => '2026-08-24 12:00',
+            ])
+            ->assertHasActionErrors(['inicio']);
     }
 
     /** Citar a alguien que ya tiene algo a esa hora se rechaza, y se dice qué tiene. */

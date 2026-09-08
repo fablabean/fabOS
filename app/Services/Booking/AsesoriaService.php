@@ -312,6 +312,54 @@ class AsesoriaService
         return $franjas;
     }
 
+    /**
+     * Las horas en que UNA persona concreta puede atender, de aqui a unos dias.
+     *
+     * Es lo que necesita quien cita a mano desde el panel: eligio a quien
+     * evalua, y en vez de escribir una hora y descubrir despues que choca,
+     * ve las que de verdad estan libres —en jornada presencial, sin nada
+     * reservado ni bloqueado, fuera de su descanso— y elige una.
+     *
+     * @return Collection<int,array{inicio:CarbonInterface,fin:CarbonInterface}>
+     */
+    public function franjasDe(User $quien, ?User $solicitante = null, int $dias = 7, ?int $minutos = null): Collection
+    {
+        $minutos = $minutos ?? (int) config('fabos.asesorias.minutos', 45);
+        $tz = config('fabos.lab.timezone');
+        $ahora = Carbon::now($tz);
+
+        $franjas = collect();
+
+        for ($i = 0; $i < $dias; $i++) {
+            $dia = $ahora->copy()->addDays($i)->startOfDay();
+            $atendido = $this->cobertura->franjaAtendida($dia);
+
+            if (! $atendido) {
+                continue;
+            }
+
+            [$abre, $cierra] = $atendido;
+
+            $inicio = $dia->copy()->setTimeFromTimeString($abre);
+            $fin    = $dia->copy()->setTimeFromTimeString($cierra);
+
+            while ($inicio->copy()->addMinutes($minutos)->lessThanOrEqualTo($fin)) {
+                $hasta = $inicio->copy()->addMinutes($minutos);
+
+                if ($inicio->greaterThan($ahora)
+                    && $this->cobertura->enJornada($inicio, $hasta)->contains('id', $quien->id)
+                    && $this->reservas->personaLibre($quien, $inicio, $hasta)
+                    && ! ($solicitante && $this->tieneAlgoALaMismaHora($solicitante, $inicio, $hasta))) {
+                    $franjas->push(['inicio' => $inicio->copy(), 'fin' => $hasta->copy()]);
+                }
+
+                $inicio->addMinutes($minutos);
+            }
+        }
+
+        return $franjas;
+    }
+
     /** Este equipo admite asesorias porque hay alguien declarado (§10). */
     public function seAsesora(Asset|Area $ambito): bool
     {

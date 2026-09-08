@@ -185,17 +185,13 @@ class EnrollmentsRelationManager extends RelationManager
                 ? 'Le llega un correo con la hora y quién la evalúa. Queda reservado el tiempo de esa persona.'
                 : 'Todavía no ha aprobado el examen teórico: la práctica se evalúa sobre eso.')
             ->schema([
-                DateTimePicker::make('inicio')
-                    ->label('Cuándo')
-                    ->seconds(false)
-                    ->minutesStep(15)
-                    ->required()
-                    // Como texto y en la hora del laboratorio: el navegador
-                    // compara el minimo con la hora de pared que se escribe,
-                    // y `now()` a secas llegaba en UTC, cinco horas adelante:
-                    // a las cuatro de la tarde no dejaba citar para las cinco.
-                    ->minDate(fn () => now(config('fabos.lab.timezone'))->format('Y-m-d H:i')),
-
+                /*
+                 * Primero quien, y despues cuando: la hora no se adivina, se
+                 * elige entre las que esa persona tiene libres de verdad —en
+                 * jornada, sin nada reservado ni bloqueado, fuera de su
+                 * descanso—. Antes se escribia una hora a mano y el choque
+                 * aparecia despues, como un error.
+                 */
                 Select::make('evaluador_id')
                     ->label('Quién la evalúa')
                     ->options(function (RelationManager $livewire) {
@@ -211,7 +207,41 @@ class EnrollmentsRelationManager extends RelationManager
                             ->all();
                     })
                     ->searchable()
+                    // En vivo: al cambiar de evaluador cambia la lista de
+                    // horas. Si la hora elegida ya no esta en la lista nueva,
+                    // la validacion lo dice al enviar.
+                    ->live()
                     ->required(),
+
+                Select::make('inicio')
+                    ->label('Cuándo')
+                    ->options(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
+                        $evaluador = $get('evaluador_id') ? User::find($get('evaluador_id')) : null;
+
+                        return $evaluador ? app(PracticaService::class)->horasDe($evaluador, $record) : [];
+                    })
+                    ->searchable()
+                    ->required()
+                    // Sin evaluador la lista esta vacia y el marcador lo dice;
+                    // no se deshabilita, porque un campo deshabilitado no
+                    // viaja con el formulario.
+                    ->placeholder(fn (\Filament\Schemas\Components\Utilities\Get $get) => blank($get('evaluador_id'))
+                        ? 'Primero elige quién la evalúa'
+                        : 'Elige una hora libre')
+                    ->helperText(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
+                        if (blank($get('evaluador_id'))) {
+                            return null;
+                        }
+
+                        $evaluador = User::find($get('evaluador_id'));
+                        $cuantas = $evaluador ? count(app(PracticaService::class)->horasDe($evaluador, $record)) : 0;
+
+                        return $cuantas > 0
+                            ? 'Solo horas en que esa persona está libre, de ' . app(PracticaService::class)->minutos()
+                                . ' minutos, en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7) . ' días.'
+                            : 'Esa persona no tiene horas libres en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7)
+                                . ' días. Prueba con otra.';
+                    }),
 
                 Textarea::make('nota')
                     ->label('Algo que decirle')
@@ -221,7 +251,8 @@ class EnrollmentsRelationManager extends RelationManager
                     ->helperText('Va en el correo. Opcional.'),
             ])
             ->action(function (Enrollment $record, array $data) {
-                $inicio = Carbon::parse($data['inicio'], config('app.timezone'))->setTimezone(config('fabos.lab.timezone'));
+                // La hora viene de la lista, ya en hora de pared del laboratorio.
+                $inicio = Carbon::parse($data['inicio'], config('fabos.lab.timezone'));
 
                 try {
                     $reserva = app(PracticaService::class)->citar(
