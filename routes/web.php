@@ -174,8 +174,11 @@ Route::middleware('auth')->group(function () {
 
     // Lo del disco privado que el panel enseña como vista previa (§11).
     // Con sesion del backoffice, y solo de los directorios de proyectos.
-    Route::get('/panel/archivo/{ruta}', [\App\Http\Controllers\ArchivoPrivadoController::class, 'ver'])
-        ->where('ruta', '.*')
+    //
+    // La ruta va como parametro de consulta y no en la direccion a proposito:
+    // nginx sirve por su cuenta todo lo que termine en .webp, .jpg o .png, y
+    // una direccion que acabara en el nombre del archivo nunca llegaria aqui.
+    Route::get('/panel/archivo', [\App\Http\Controllers\ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
     Route::post('/salir', [LoginCodeController::class, 'logout'])->name('logout');

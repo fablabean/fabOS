@@ -119,7 +119,7 @@ class VistaPreviaDeArchivosTest extends TestCase
 
         $vista = ArchivoPrivado::vistaPrevia($ruta, ['proyectos/otra.webp' => 'x', $ruta => 'pieza-rota.webp']);
 
-        $this->assertStringContainsString('/panel/archivo/proyectos/soportes/', $vista['url']);
+        $this->assertStringContainsString('/panel/archivo?ruta=proyectos%2Fsoportes%2F', $vista['url']);
         $this->assertSame(Storage::disk('local')->size($ruta), $vista['size']);
         $this->assertStringStartsWith('image/', $vista['type']);
         $this->assertSame('pieza-rota.webp', $vista['name']);
@@ -149,6 +149,6 @@ class VistaPreviaDeArchivosTest extends TestCase
             ->assertOk();
 
         // La vista previa de esa ruta sale por el panel, no por /storage.
-        $this->assertStringContainsString('/panel/archivo/', ArchivoPrivado::vistaPrevia($ruta)['url']);
+        $this->assertStringContainsString('/panel/archivo?ruta=', ArchivoPrivado::vistaPrevia($ruta)['url']);
     }
 }

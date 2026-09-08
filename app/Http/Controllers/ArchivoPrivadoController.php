@@ -16,9 +16,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class ArchivoPrivadoController extends Controller
 {
-    public function ver(Request $request, string $ruta)
+    public function ver(Request $request)
     {
         $quien = $request->user();
+        $ruta = (string) $request->query('ruta', '');
 
         abort_unless(
             $quien && $quien->status === 'activo'
