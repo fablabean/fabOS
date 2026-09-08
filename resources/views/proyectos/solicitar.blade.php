@@ -13,6 +13,14 @@
                 Tu solicitud es la <strong>{{ session('recibido') }}</strong>. Te mandamos
                 un correo con ese código.
             </p>
+            @if (session('aviso'))
+                {{-- Un área que pidió antes de lo que tarda un traslado
+                     presupuestal: se le dice aquí, donde todavía puede
+                     ajustar la fecha o confirmar que no mueve presupuesto. --}}
+                <p style="border-left:3px solid var(--warn);padding-left:.7rem">
+                    <strong>Ojo con la fecha.</strong> {{ session('aviso') }}
+                </p>
+            @endif
             <p class="help" style="margin-bottom:0">
                 Ahora alguien del laboratorio la va a mirar: si cabe, con qué máquinas y
                 cuánto tomaría. Cuando tengamos una propuesta te llega por correo, con un
@@ -143,8 +151,10 @@
             <h3>Cómo se paga un encargo interno</h3>
             <p class="help" style="margin-top:0">
                 No hay factura: hay un traslado de presupuesto entre áreas. Pasa por
-                cuatro manos antes de que llegue un peso, y por eso pedimos al menos
-                {{ (int) config('fabos.proyectos.dias_minimos_interno') }} días calendario.
+                cuatro manos antes de que llegue un peso, y por eso, si el encargo mueve
+                presupuesto, hacen falta al menos
+                {{ (int) config('fabos.proyectos.dias_presupuesto') }} días calendario. Si no lo
+                mueve, la fecha puede ser antes.
             </p>
 
             <ol class="pasos">
@@ -371,11 +381,14 @@
             const aviso = document.getElementById('aviso-fecha');
             const bloques = document.querySelectorAll('.condiciones');
 
-            const dias = {{ (int) config('fabos.proyectos.dias_minimos_interno') }};
+            // Los dias que se exigen a cada tipo de cliente, y los que tarda
+            // el traslado presupuestal de la Universidad.
+            const minimos = @json(config('fabos.proyectos.dias_minimos'));
+            const presupuesto = {{ (int) config('fabos.proyectos.dias_presupuesto') }};
 
-            function minimo() {
+            function enDias(n) {
                 const d = new Date();
-                d.setDate(d.getDate() + dias);
+                d.setDate(d.getDate() + n);
                 return d.toISOString().slice(0, 10);
             }
 
@@ -388,16 +401,34 @@
 
                 if (!fecha) return;
 
-                if (rol === 'interno') {
-                    fecha.min = minimo();
-                    aviso.textContent = 'Al menos ' + dias + ' días calendario: el traslado presupuestal no se corre más rápido.';
+                const dias = minimos[rol] || 0;
+
+                if (dias > 0) {
+                    fecha.min = enDias(dias);
                 } else {
                     fecha.removeAttribute('min');
+                }
+
+                if (rol === 'interno') {
+                    // No se le exige minimo, porque no todo encargo interno
+                    // mueve presupuesto. Pero si lo mueve, el traslado tiene
+                    // sus tiempos, y conviene saberlo antes de pedir.
+                    const antes = fecha.value && fecha.value < enDias(presupuesto);
+                    aviso.textContent = (antes ? 'Ojo: ' : '')
+                        + 'si el proyecto exige presupuesto, hay que cumplir los tiempos de la Universidad: '
+                        + 'el traslado presupuestal necesita al menos ' + presupuesto + ' días calendario. '
+                        + 'Sin presupuesto de por medio, puede ser antes.';
+                } else if (dias > 0) {
+                    aviso.textContent = 'Al menos ' + dias + ' días calendario' + (rol === 'externo'
+                        ? ': hay cotización, contrato y compra de material.'
+                        : '.') + ' Opcional, pero cambia mucho lo que se puede proponer.';
+                } else {
                     aviso.textContent = 'Opcional, pero cambia mucho lo que se puede proponer.';
                 }
             }
 
             if (cliente) cliente.addEventListener('change', ajustar);
+            if (fecha) fecha.addEventListener('change', ajustar);
             ajustar();
         })();
 

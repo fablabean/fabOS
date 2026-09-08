@@ -218,8 +218,23 @@ return [
      * y sus días, o dejará el enlace vacío y el aviso saldrá sin él.
      */
     'proyectos' => [
-        // Días calendario de anticipación que necesita un encargo interno.
-        'dias_minimos_interno' => (int) env('PROYECTO_DIAS_MINIMOS_INTERNO', 15),
+        /*
+         * Dias calendario de anticipacion que se exigen al pedir, por tipo de
+         * cliente. A uno de fuera, dos semanas: hay cotizacion, contrato y
+         * compra de material. A un estudiante, tres dias: se acuerda y se
+         * arranca. A un area de la Universidad no se le exige minimo, porque
+         * no todo encargo interno mueve presupuesto; pero se le avisa de que
+         * si lo mueve, el traslado tiene sus propios tiempos.
+         */
+        'dias_minimos' => [
+            'externo'    => (int) env('PROYECTO_DIAS_MINIMOS_EXTERNO', 15),
+            'estudiante' => (int) env('PROYECTO_DIAS_MINIMOS_ESTUDIANTE', 3),
+            'interno'    => (int) env('PROYECTO_DIAS_MINIMOS_INTERNO', 0),
+        ],
+
+        // Lo que tarda el traslado presupuestal de la Universidad, para
+        // avisarle a un area que pide antes de eso.
+        'dias_presupuesto' => (int) env('PROYECTO_DIAS_PRESUPUESTO', 15),
 
         // El formulario de pedido con que arranca el traslado presupuestal.
         'formulario_venta_interna' => env('PROYECTO_FORMULARIO_VENTA_INTERNA'),

@@ -367,29 +367,63 @@ class SolicitudDeProyectoTest extends TestCase
      * Prometer una fecha más cercana sería prometer lo que el trámite no puede
      * cumplir, y el «no» llegaría tarde y peor.
      */
-    public function test_un_encargo_interno_necesita_quince_dias(): void
+    public function test_un_encargo_de_fuera_necesita_quince_dias(): void
     {
         $this->post(route('proyectos.solicitar.store'), $this->solicitud([
-            'cliente'     => 'interno',
+            'cliente'     => 'externo',
             'para_cuando' => now()->addDays(5)->toDateString(),
         ]))->assertSessionHasErrors('para_cuando');
 
         $this->assertDatabaseCount('projects', 0);
-    }
 
-    public function test_con_los_quince_dias_el_encargo_interno_pasa(): void
-    {
         $this->post(route('proyectos.solicitar.store'), $this->solicitud([
-            'cliente'     => 'interno',
+            'cliente'     => 'externo',
             'para_cuando' => now()->addDays(20)->toDateString(),
         ]))->assertRedirect();
 
-        $this->assertSame('interno', Project::first()->client_kind);
+        $this->assertSame('externo', Project::first()->client_kind);
     }
 
-    /** A un estudiante o a alguien de fuera ese plazo no le aplica. */
-    public function test_a_un_estudiante_no_se_le_pide_ese_plazo(): void
+    /**
+     * A un area de la Universidad no se le exige minimo: no todo encargo
+     * interno mueve presupuesto. Pero si lo mueve, el traslado tiene sus
+     * tiempos, y se le dice al pedir.
+     */
+    public function test_un_encargo_interno_puede_ser_antes_pero_se_le_avisa_del_presupuesto(): void
     {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'interno',
+            'para_cuando' => now()->addDays(5)->toDateString(),
+        ]))
+            ->assertRedirect()
+            ->assertSessionHas('aviso', fn (?string $m) => $m && str_contains($m, 'presupuesto') && str_contains($m, '15 días'));
+
+        $p = Project::first();
+
+        $this->assertSame('interno', $p->client_kind);
+        $this->assertStringContainsString('traslado presupuestal', (string) $p->notes);
+
+        // Y la pantalla lo enseña junto al «recibido».
+        $this->get(route('proyectos.solicitar'))->assertSee('tiempos de la Universidad');
+
+        // Con tiempo de sobra, no hay aviso.
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'interno',
+            'correo'      => 'otra@ejemplo.co',
+            'para_cuando' => now()->addDays(20)->toDateString(),
+        ]))
+            ->assertRedirect()
+            ->assertSessionMissing('aviso');
+    }
+
+    /** Un estudiante pide con tres dias; con menos, no. */
+    public function test_un_estudiante_necesita_tres_dias(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'cliente'     => 'estudiante',
+            'para_cuando' => now()->addDays(2)->toDateString(),
+        ]))->assertSessionHasErrors('para_cuando');
+
         $this->post(route('proyectos.solicitar.store'), $this->solicitud([
             'cliente'     => 'estudiante',
             'para_cuando' => now()->addDays(3)->toDateString(),

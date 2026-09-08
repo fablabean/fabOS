@@ -99,17 +99,35 @@ class SolicitudDeProyectoController extends Controller
         // que paga, líder que recibe, traslado de Planeación- que no se corre
         // en tres días. Prometer una fecha más cercana sería prometer algo que
         // el trámite no puede cumplir, y el «no» llegaría tarde y peor.
-        $dias = (int) config('fabos.proyectos.dias_minimos_interno');
+        //
+        // Pero no todo encargo interno mueve presupuesto, asi que a un area no
+        // se le exige un minimo: se le avisa. A uno de fuera si —dos semanas:
+        // cotizacion, contrato, compra de material— y a un estudiante, tres
+        // dias. Cada tipo tiene su plazo en la configuracion.
+        $minimos = (array) config('fabos.proyectos.dias_minimos', []);
+        $dias = (int) ($minimos[$datos['cliente']] ?? 0);
+        $fecha = filled($datos['para_cuando'] ?? null)
+            ? \Illuminate\Support\Carbon::parse($datos['para_cuando'])
+            : null;
 
-        if ($datos['cliente'] === 'interno'
-            && filled($datos['para_cuando'] ?? null)
-            && \Illuminate\Support\Carbon::parse($datos['para_cuando'])->lt(now()->addDays($dias)->startOfDay())) {
+        if ($dias > 0 && $fecha && $fecha->lt(now()->addDays($dias)->startOfDay())) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'para_cuando' => "Un encargo de un área de la Universidad necesita al menos {$dias} días "
-                    . 'calendario: su traslado presupuestal pasa por el formulario de pedido, el visto bueno '
-                    . 'de dos líderes y Planeación. Si es urgente, escríbenos y lo miramos.',
+                'para_cuando' => $datos['cliente'] === 'externo'
+                    ? "Un encargo de fuera necesita al menos {$dias} días calendario: hay cotización, "
+                        . 'contrato y compra de material. Si es urgente, escríbenos y lo miramos.'
+                    : "Necesitamos al menos {$dias} días calendario para poder cumplir. "
+                        . 'Si es urgente, escríbenos y lo miramos.',
             ]);
         }
+
+        $presupuesto = (int) config('fabos.proyectos.dias_presupuesto');
+
+        $avisoPresupuesto = $datos['cliente'] === 'interno' && $fecha
+            && $fecha->lt(now()->addDays($presupuesto)->startOfDay())
+            ? 'Si el proyecto exige presupuesto, hay que cumplir los tiempos de la Universidad: el '
+                . "traslado presupuestal necesita al menos {$presupuesto} días calendario y pasa por el "
+                . 'formulario de pedido, dos líderes y Planeación. Sin presupuesto de por medio, la fecha puede mantenerse.'
+            : null;
 
         if ($identificado) {
             $datos['nombre'] = $identificado->name;
@@ -118,6 +136,16 @@ class SolicitudDeProyectoController extends Controller
         }
 
         $proyecto = $this->proyectos->solicitarDesdeLaWeb($datos);
+
+        // El aviso queda en la ficha: quien evalue el encargo tiene que ver
+        // que la fecha pedida no da para un traslado presupuestal.
+        if ($avisoPresupuesto) {
+            $proyecto->update(['notes' => trim(
+                ($proyecto->notes ? $proyecto->notes . "\n\n" : '')
+                . 'Pedido para el ' . $fecha->format('d/m/Y') . ', con menos de ' . $presupuesto
+                . ' días: no da para un traslado presupuestal. Se le avisó al pedir.',
+            )]);
+        }
 
         // Los soportes van después de crear el proyecto: si algo falla al
         // guardarlos, la solicitud ya está anotada. Perder la idea por un
@@ -134,7 +162,8 @@ class SolicitudDeProyectoController extends Controller
 
         return redirect()
             ->route('proyectos.solicitar')
-            ->with('recibido', $proyecto->code);
+            ->with('recibido', $proyecto->code)
+            ->with('aviso', $avisoPresupuesto);
     }
 
     /**
