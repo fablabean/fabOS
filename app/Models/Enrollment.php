@@ -69,6 +69,52 @@ class Enrollment extends Model
     }
 
     /**
+     * Una practica cuya hora ya paso y nadie firmo ni dijo que no vino.
+     *
+     * No desaparece: queda a la vista hasta que quien la evaluo la firme o
+     * la marque como no presentada. Una cita que se esfuma sin rastro es
+     * una persona que cree que aprobo y un evaluador que cree que no.
+     */
+    public function practicaSinValidar(): ?Reservation
+    {
+        if ($this->practicaAprobada()) {
+            return null;
+        }
+
+        return $this->practicas()
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('ends_at', '<', now())
+            ->orderByDesc('starts_at')
+            ->with('reservable')
+            ->first();
+    }
+
+    /**
+     * Si la firma lleva mas de un dia habil pendiente.
+     *
+     * Una evaluacion puede alargarse y firmarse despues; un dia habil es un
+     * plazo razonable para hacerlo. Pasado, no cambia nada —sigue faltando
+     * la firma—, pero se enseña en rojo para que no se olvide.
+     */
+    public function firmaAtrasada(): bool
+    {
+        $practica = $this->practicaSinValidar();
+
+        if (! $practica) {
+            return false;
+        }
+
+        $limite = $practica->ends_at->copy()->addDay();
+
+        // Un sabado o un domingo no cuentan: el dia habil siguiente es el lunes.
+        while ($limite->isWeekend()) {
+            $limite->addDay();
+        }
+
+        return now()->greaterThan($limite);
+    }
+
+    /**
      * Quien tiene asignada la practica: el evaluador de la que esta en pie,
      * o de la ultima que hubo. Nulo si nunca se agendo una.
      */
@@ -112,7 +158,10 @@ class Enrollment extends Model
             && (bool) $this->edition?->course?->requires_practical
             && $this->teoriaLista()
             && ! $this->practicaAprobada()
-            && $this->practicaAgendada() === null;
+            && $this->practicaAgendada() === null
+            // Mientras falte la firma de una que ya presento, no pide otra:
+            // la cierra quien la evaluo, firmando o diciendo que no vino.
+            && $this->practicaSinValidar() === null;
     }
 
     public function practicaAprobada(): bool
@@ -135,6 +184,12 @@ class Enrollment extends Model
         }
 
         if ($curso?->requires_practical && ! $this->practicaAprobada()) {
+            // Ya la presento y falta la firma: decirlo, y decir de quien.
+            if ($pendiente = $this->practicaSinValidar()) {
+                return 'Presentaste la práctica el ' . $pendiente->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m')
+                    . ': falta que ' . ($pendiente->reservable?->name ?? 'quien te evaluó') . ' la firme.';
+            }
+
             return 'Falta la evaluación presencial, delante de la máquina.';
         }
 

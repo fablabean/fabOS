@@ -152,6 +152,53 @@ class PracticaService
     }
 
     /**
+     * La persona no vino a la practica. Lo dice quien la tenia asignada.
+     *
+     * La cita queda como no presentada —con quien lo dijo— y la persona
+     * puede pedir otra hora. Sin esto, una practica sin firmar se quedaba
+     * en el aire: ni aprobada ni cerrada.
+     *
+     * @throws TrainingException
+     */
+    public function noVino(Enrollment $inscripcion, User $quien, ?string $nota = null): Reservation
+    {
+        $practica = $inscripcion->practicaSinValidar() ?? $inscripcion->practicaAgendada();
+
+        if (! $practica) {
+            throw new TrainingException('No hay una práctica agendada que cerrar.');
+        }
+
+        if (! $inscripcion->puedeEvaluarLaPractica($quien)) {
+            throw new TrainingException(
+                'Eso lo dice ' . ($inscripcion->evaluadorAsignado()?->name ?? 'quien la evaluaba') . ', que era quien la esperaba.'
+            );
+        }
+
+        if ($practica->starts_at->isFuture()) {
+            throw new TrainingException('Esa práctica todavía no ha empezado.');
+        }
+
+        $practica->update([
+            'status'        => 'no_show',
+            'status_reason' => trim('No se presentó a la práctica, según ' . $quien->name . ($nota ? '. ' . $nota : '')),
+        ]);
+
+        if ($inscripcion->user) {
+            $tz = config('fabos.lab.timezone');
+
+            $this->avisos->enviar('practica.no_asistio', $inscripcion->user, [
+                'curso'     => $inscripcion->edition?->course?->name ?? 'el curso',
+                'fecha'     => $practica->starts_at->timezone($tz)->format('d/m/Y'),
+                'inicio'    => $practica->starts_at->timezone($tz)->format('H:i'),
+                'evaluador' => $quien->name,
+                'nota'      => $nota ?: '',
+            ], $practica);
+        }
+
+        return $practica->refresh();
+    }
+
+    /**
      * Firmada la practica, la reserva que la sostenia se cierra: la persona
      * vino, y quien evaluo ya no tiene esa hora pendiente.
      */

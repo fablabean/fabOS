@@ -548,6 +548,24 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'practica.no_asistio',
+                'name'         => 'No se presentó a la práctica',
+                'description'  => 'A quien tenía agendada la prueba práctica de un curso y no llegó.',
+                'is_essential' => true,
+                'subject'      => 'No llegaste a tu prueba práctica de {curso}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tenías agendada la prueba práctica de {curso} el {fecha} a las
+                    {inicio}, y {evaluador} anotó que no llegaste.
+
+                    {nota}
+
+                    No pasa nada: entra a tu cuenta y pide otra hora. Es lo único
+                    que queda para tu certifab.
+                    TXT,
+            ],
+            [
                 'key'          => 'practica.asignada',
                 'name'         => 'Te asignaron una prueba práctica',
                 'description'  => 'A quien va a evaluar la práctica de un curso.',

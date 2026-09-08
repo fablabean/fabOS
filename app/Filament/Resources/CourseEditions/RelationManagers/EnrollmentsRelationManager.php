@@ -86,16 +86,33 @@ class EnrollmentsRelationManager extends RelationManager
                             return 'Firmada';
                         }
 
+                        // La cita paso y nadie dijo nada: no desaparece, se
+                        // queda a la vista hasta que se firme o se cierre.
+                        if ($sinValidar = $r->practicaSinValidar()) {
+                            return 'Falta la firma · ' . $sinValidar->starts_at->timezone($tz)->format('d/m H:i');
+                        }
+
                         if ($agendada = $r->practicaAgendada()) {
                             return 'Agendada ' . $agendada->starts_at->timezone($tz)->format('d/m H:i');
                         }
 
                         return $r->teoriaLista() ? 'Por agendar' : 'Espera el examen';
                     })
-                    ->color(fn (Enrollment $r) => $r->practicaAprobada() ? 'success' : ($r->practicaAgendada() ? 'info' : 'gray'))
+                    // Pendiente de firma va en ambar; pasado un dia habil sin
+                    // firmar, en rojo. Sigue faltando la firma, no otra cosa.
+                    ->color(fn (Enrollment $r) => $r->practicaAprobada()
+                        ? 'success'
+                        : ($r->practicaSinValidar()
+                            ? ($r->firmaAtrasada() ? 'danger' : 'warning')
+                            : ($r->practicaAgendada() ? 'info' : 'gray')))
                     ->description(function (Enrollment $r) use ($tz) {
                         if ($r->practicaAprobada()) {
                             return 'Por ' . ($r->practicalBy?->name ?? '—') . ' el ' . $r->practical_passed_at?->timezone($tz)->format('d/m/Y');
+                        }
+
+                        if ($sinValidar = $r->practicaSinValidar()) {
+                            return ($sinValidar->reservable?->name ?? 'Quien la evaluaba') . ' la firma, o dice que no vino.'
+                                . ($r->firmaAtrasada() ? ' Lleva más de un día hábil.' : '');
                         }
 
                         return $r->practicaAgendada()?->reservable?->name;
@@ -127,6 +144,7 @@ class EnrollmentsRelationManager extends RelationManager
             ->recordActions([
                 self::citar(),
                 self::firmarPractica(),
+                self::noVino(),
                 self::aprobar(),
                 self::reprobar(),
                 self::retirar(),
@@ -342,6 +360,44 @@ class EnrollmentsRelationManager extends RelationManager
                         ? 'Le llegó el certificado por correo.'
                         : ($inscripcion->queFaltaParaAprobar() ?? 'Ya se puede aprobar.'))
                     ->send();
+            });
+    }
+
+    /**
+     * La persona no vino a la practica. Lo dice quien la esperaba: la cita
+     * queda como no presentada y la persona puede pedir otra hora.
+     */
+    private static function noVino(): Action
+    {
+        return Action::make('no_vino')
+            ->label('No vino')
+            ->icon('heroicon-o-user-minus')
+            ->color('gray')
+            ->visible(fn (Enrollment $r) => $r->status === 'inscrito'
+                && ! $r->practicaAprobada()
+                && ($p = $r->practicaSinValidar() ?? $r->practicaAgendada()) !== null
+                && $p->starts_at->isPast()
+                && $r->puedeEvaluarLaPractica(auth()->user()))
+            ->requiresConfirmation()
+            ->modalHeading(fn (Enrollment $r) => ($r->user?->name ?? 'La persona') . ' no vino a la práctica')
+            ->modalDescription('Queda anotado con tu nombre, se le avisa, y puede pedir otra hora.')
+            ->schema([
+                Textarea::make('nota')
+                    ->label('Algo que decirle')
+                    ->rows(2)
+                    ->maxLength(300)
+                    ->helperText('Va en el correo. Opcional.'),
+            ])
+            ->action(function (Enrollment $record, array $data) {
+                try {
+                    app(PracticaService::class)->noVino($record, auth()->user(), $data['nota'] ?? null);
+                } catch (TrainingException $e) {
+                    Notification::make()->danger()->title('No se pudo anotar')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('Anotado: no se presentó')->body('Puede pedir otra hora desde su cuenta.')->send();
             });
     }
 

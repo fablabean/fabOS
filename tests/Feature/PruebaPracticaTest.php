@@ -394,6 +394,57 @@ class PruebaPracticaTest extends TestCase
             ->assertActionHidden(TestAction::make('aprobar')->table($i));
     }
 
+    /**
+     * Una practica que paso sin firma no desaparece: el barrido de ausencias
+     * no la toca, el panel la enseña como «sin validar», y la cierra quien la
+     * esperaba diciendo que no vino. Entonces la persona puede pedir otra.
+     */
+    public function test_una_practica_sin_firmar_no_desaparece_y_la_cierra_quien_la_esperaba(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->conTeoria();
+        $practica = app(PracticaService::class)->agendar($i, $this->hora('10:00'));
+
+        // Pasa la hora, y el barrido de ausencias corre.
+        $this->travelTo($this->hora('12:00'));
+        app(\App\Services\Booking\AttendanceService::class)->liberarAusencias();
+
+        $this->assertSame('confirmada', $practica->fresh()->status, 'el barrido no la toca');
+        $this->assertSame($practica->id, $i->fresh()->practicaSinValidar()?->id);
+        $this->assertFalse($i->fresh()->puedeAgendarPractica(), 'mientras falte la firma no pide otra');
+        $this->assertFalse($i->fresh()->firmaAtrasada(), 'todavia dentro del dia habil');
+        $this->assertStringContainsString('falta que Michael la firme', $i->fresh()->queFaltaParaAprobar());
+
+        // Y a la persona se lo dice su cuenta.
+        $this->actingAs($i->user)->get(route('home'))->assertOk()->assertSee('falta que Michael la firme');
+
+        // Pasado un dia habil sin firmar, sigue faltando la firma, en rojo.
+        $this->travelTo($this->hora('12:00')->addDays(2));
+        $this->assertTrue($i->fresh()->firmaAtrasada());
+
+        // El panel lo dice, y el boton de «no vino» es de Michael, no del admin.
+        $this->entra($admin);
+        Livewire::test(EnrollmentsRelationManager::class, ['ownerRecord' => $this->edicion, 'pageClass' => EditCourseEdition::class])
+            ->assertTableColumnStateSet('practica', 'Falta la firma · 24/08 10:00', $i)
+            ->assertActionHidden(TestAction::make('no_vino')->table($i));
+
+        $this->entra($michael);
+        Livewire::test(EnrollmentsRelationManager::class, ['ownerRecord' => $this->edicion, 'pageClass' => EditCourseEdition::class])
+            ->assertActionVisible(TestAction::make('practica')->table($i))
+            ->callAction(TestAction::make('no_vino')->table($i), ['nota' => 'Te esperé media hora.'])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('no_show', $practica->fresh()->status);
+        $this->assertStringContainsString('Michael', $practica->fresh()->status_reason);
+        $this->assertNull($i->fresh()->practicaSinValidar());
+        $this->assertTrue($i->fresh()->puedeAgendarPractica(), 'puede pedir otra hora');
+
+        $aviso = NotificationLog::where('key', 'practica.no_asistio')->where('user_id', $i->user_id)->firstOrFail();
+        $this->assertSame('enviado', $aviso->status);
+        $this->assertStringContainsString('Te esperé media hora', $aviso->body);
+    }
+
     /** Un consultor que no tiene la practica asignada no ve el botón. */
     public function test_un_consultor_no_puede_firmar(): void
     {

@@ -234,7 +234,10 @@ class AttendanceService
             // atiende, desde su cuenta, y si nadie vino lo marca esa persona.
             // El barrido las daba por no presentadas a los veinte minutos
             // aunque la persona estuviera sentada al lado del asesor.
-            ->where('mode', '<>', 'asesoria')
+            // Y una practica de curso tampoco: la firma quien la evaluo, o
+            // dice que no vino. Si el barrido la cerrara solo, desapareceria
+            // de la ficha sin que nadie dijera que paso.
+            ->whereNotIn('mode', ['asesoria', 'practica'])
             ->where('starts_at', '<', $limite)
             ->get();
 
