@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -84,9 +85,12 @@ class UsersTable
                     ->trueLabel('Solo confirmadas')
                     ->falseLabel('Pendientes de confirmar'),
             ])
+            // Iconos, no textos: tres acciones con rotulo se comian media
+            // fila. El ojo abre la ficha con todo el historial de la persona.
             ->recordActions([
+                ViewAction::make()->iconButton()->tooltip('Ver la ficha: proyectos, reservas, cursos, certifabs y saldo'),
                 self::validarYDarAcceso(),
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Editar'),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
@@ -107,6 +111,8 @@ class UsersTable
     {
         return Action::make('validar')
             ->label('Validar y dar acceso')
+            ->iconButton()
+            ->tooltip('Validar y dar acceso')
             ->icon('heroicon-o-identification')
             ->color('primary')
             ->modalHeading(fn (User $record) => 'Dar acceso a ' . $record->name)
