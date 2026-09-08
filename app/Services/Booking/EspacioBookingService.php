@@ -171,6 +171,14 @@ class EspacioBookingService
 
         $herramientas = $this->comprobarHerramientas($espacio, $herramientaIds, $desde, $hasta);
 
+        /*
+         * Una persona no pide dos veces lo mismo. Una solicitud no bloquea el
+         * espacio —esta esperando decision— y por eso la restriccion de la
+         * base no la frena: alguien pulso quince veces «pedir» y la bandeja
+         * amanecio con quince solicitudes iguales. Se dice que ya la tiene.
+         */
+        $this->exigirQueNoLoTengaYa($user, Space::class, $espacio->id, $espacio->name, $desde, $hasta);
+
         try {
             return DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta, $compartida) {
                 if ($compartida) {
@@ -550,6 +558,37 @@ class EspacioBookingService
             'En ' . $espacio->name . ($libres === 1 ? ' queda 1 puesto' : ' quedan ' . $libres . ' puestos') . ' de '
             . $espacio->capacity . ' entre las ' . $desde->copy()->timezone($tz)->format('H:i') . ' y las '
             . $hasta->copy()->timezone($tz)->format('H:i') . ', y pediste ' . $participantes . '. Elige otra hora o menos personas.'
+        );
+    }
+
+    /**
+     * @throws BookingException si la persona ya tiene una reserva o una
+     *                          solicitud de ese recurso que pisa la franja
+     */
+    public function exigirQueNoLoTengaYa(User $user, string $tipo, int $id, string $nombre, CarbonInterface $desde, CarbonInterface $hasta): void
+    {
+        $previa = Reservation::query()
+            ->where('user_id', $user->id)
+            ->where('reservable_type', $tipo)
+            ->where('reservable_id', $id)
+            ->whereIn('status', ['solicitada', ...Reservation::BLOQUEANTES])
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->orderBy('starts_at')
+            ->first();
+
+        if (! $previa) {
+            return;
+        }
+
+        $tz = config('fabos.lab.timezone');
+
+        throw new BookingException(
+            'Ya tienes ' . ($previa->status === 'solicitada' ? 'una solicitud' : 'una reserva') . ' de ' . $nombre
+            . ' a esa hora: el ' . $previa->starts_at->timezone($tz)->format('d/m') . ' de '
+            . $previa->starts_at->timezone($tz)->format('H:i') . ' a ' . $previa->ends_at->timezone($tz)->format('H:i')
+            . ($previa->status === 'solicitada' ? ', esperando decisión de la coordinación' : '')
+            . '. Si quieres cambiarla, cancélala primero desde tu cuenta.'
         );
     }
 

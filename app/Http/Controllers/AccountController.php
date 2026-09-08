@@ -76,14 +76,20 @@ class AccountController extends Controller
             // direccion no tiene otra forma de saber si sirve.
             'agenda'    => app(\App\Services\Calendar\AgendaExterna::class)->resumen($user),
 
+            // Equipos Y espacios, con las solicitudes que esperan decision.
+            // Solo se listaban los equipos: quien pedia una sala no la veia
+            // en ningun sitio, creia que no habia quedado, y volvia a pedirla.
+            // Sin las hijas: las herramientas y salas que cuelgan de otra
+            // reserva van con ella.
             'reservas'  => Reservation::query()
                 ->where('user_id', $user->id)
-                ->where('reservable_type', Asset::class)
+                ->whereIn('reservable_type', [Asset::class, \App\Models\Space::class])
+                ->whereNull('parent_reservation_id')
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
                 ->where('ends_at', '>=', now())
+                ->with('reservable')
                 ->orderBy('starts_at')
-                ->get()
-                ->each(fn (Reservation $r) => $r->setRelation('reservable', Asset::find($r->reservable_id))),
+                ->get(),
 
             // Las asesorias van aparte porque no reservan una maquina sino el
             // TIEMPO de quien asesora, asi que su `reservable` es una persona.

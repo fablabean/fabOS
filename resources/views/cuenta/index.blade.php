@@ -543,19 +543,29 @@
     @else
         <div class="panel">
             <table>
-                <thead><tr><th>Equipo</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead>
+                <thead><tr><th>Qué</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead>
                 <tbody>
                 @foreach ($reservas as $r)
+                    @php $esEspacio = $r->reservable_type === \App\Models\Space::class; @endphp
                     <tr>
-                        <td>{{ $r->reservable?->name ?? '—' }}</td>
+                        <td>
+                            {{ $r->reservable?->name ?? '—' }}
+                            <br><span class="help" style="margin:0;font-size:.82rem">
+                                {{ $esEspacio ? ($r->esRecorrido() ? 'Recorrido' : 'Espacio') : 'Equipo' }}
+                                @if ($esEspacio && $r->participants > 1) · {{ $r->participants }} personas @endif
+                            </span>
+                        </td>
                         <td>
                             {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}
                             — {{ $r->ends_at->timezone($tz)->format('H:i') }}
                         </td>
                         <td>
-                            <span class="pill {{ $r->status === 'confirmada' ? 'ok' : 'warn' }}">
+                            <span class="pill {{ in_array($r->status, ['confirmada', 'en_curso'], true) ? 'ok' : 'warn' }}">
                                 {{ \App\Models\Reservation::ESTADOS[$r->status] ?? $r->status }}
                             </span>
+                            @if ($r->status === 'solicitada')
+                                <br><span class="help" style="margin:0;font-size:.82rem">Esperando decisión de la coordinación</span>
+                            @endif
                         </td>
                         <td style="text-align:right;white-space:nowrap">
                             {{-- Validar la llegada desde aquí: hasta ahora había
@@ -565,6 +575,15 @@
                                 ·
                             @endif
                             <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
+                            {{-- Cancelar desde aquí: sin esto, quien pedía una
+                                 sala y quería cambiarla volvía a pedirla. --}}
+                            @if (in_array($r->status, ['solicitada', 'confirmada'], true) && $r->starts_at->isFuture())
+                                <form method="POST" action="{{ route('reservas.cancel', $r) }}" style="display:inline"
+                                      onsubmit="return confirm('¿Cancelar? Esa hora queda libre para alguien más.')">
+                                    @csrf
+                                    <button type="submit" class="secundario" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.78rem">Cancelar</button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

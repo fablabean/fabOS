@@ -136,6 +136,11 @@ class BookingService
 
         // Lo que costaría. Se guarda siempre, aunque el cobro esté apagado: así
         // el día que se encienda ya hay histórico con el que contrastar.
+        // Una persona no pide dos veces lo mismo: una solicitud no bloquea el
+        // equipo y la base no la frena, y catorce iguales en dos segundos
+        // llenaron la bandeja. Se dice que ya la tiene.
+        app(EspacioBookingService::class)->exigirQueNoLoTengaYa($user, Asset::class, $asset->id, $asset->name, $desde, $hasta);
+
         $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null);
 
         try {
