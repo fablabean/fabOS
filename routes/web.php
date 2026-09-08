@@ -172,6 +172,12 @@ Route::middleware('auth')->group(function () {
     // Panel de la persona: certifabs, reservas y carne.
     Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('home');
 
+    // Lo del disco privado que el panel enseña como vista previa (§11).
+    // Con sesion del backoffice, y solo de los directorios de proyectos.
+    Route::get('/panel/archivo/{ruta}', [\App\Http\Controllers\ArchivoPrivadoController::class, 'ver'])
+        ->where('ruta', '.*')
+        ->name('panel.archivo');
+
     Route::post('/salir', [LoginCodeController::class, 'logout'])->name('logout');
 
     // Que avisos quiere recibir cada persona (§15).

@@ -47,7 +47,7 @@ class CampoDeEvidencia
 
                 TextInput::make('caption')->label('Qué es o qué se ve'),
 
-                FileUpload::make('file_path')
+                ArchivoPrivado::previsualizar(FileUpload::make('file_path'))
                     ->label(fn (Get $get) => $get('kind') === 'archivo' ? 'Archivo' : 'Foto')
                     ->visible(fn (Get $get) => in_array($get('kind'), Evidencia::SE_SUBEN, true))
                     ->columnSpanFull()

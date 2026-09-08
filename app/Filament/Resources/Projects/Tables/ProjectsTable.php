@@ -226,7 +226,7 @@ class ProjectsTable
                         DatePicker::make('starts_on')->label('Arranca')->live(onBlur: true),
                         DatePicker::make('due_on')->label('Se entrega')->live(onBlur: true),
 
-                        FileUpload::make('imagenes')
+                        \App\Filament\Componentes\ArchivoPrivado::previsualizar(FileUpload::make('imagenes'))
                             ->label('Imágenes de la propuesta')
                             ->multiple()
                             ->reorderable()

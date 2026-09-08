@@ -90,7 +90,7 @@ class ProjectForm
                             ->rows(2)
                             ->columnSpanFull(),
 
-                        FileUpload::make('reference_image_path')
+                        \App\Filament\Componentes\ArchivoPrivado::previsualizar(FileUpload::make('reference_image_path'))
                             ->label('Imagen de referencia')
                             ->image()
                             ->maxSize(20480)

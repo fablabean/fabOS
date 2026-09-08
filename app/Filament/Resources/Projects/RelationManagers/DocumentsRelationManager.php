@@ -50,7 +50,7 @@ class DocumentsRelationManager extends RelationManager
                 // todo el trabajo, no solo PDF. El tope era 10 MB, que un
                 // modelo detallado se pasa sin esfuerzo, y el campo decia
                 // «no se pudo subir» sin explicar por que.
-                FileUpload::make('file_path')
+                \App\Filament\Componentes\ArchivoPrivado::previsualizar(FileUpload::make('file_path'))
                     ->label('Archivo')
                     ->directory('proyectos')
                     ->maxSize(102400)
