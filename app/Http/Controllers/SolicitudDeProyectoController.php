@@ -234,6 +234,12 @@ class SolicitudDeProyectoController extends Controller
 
             // Quien llega por el correo acepta con un enlace firmado también:
             // sin sesión, el POST no tendría cómo demostrar quién es.
+            // Responder tambien funciona desde el enlace del correo: sin
+            // sesion, el POST necesita la firma igual que aceptar.
+            'urlComentar' => $firmado
+                ? URL::temporarySignedRoute('proyectos.comentar', now()->addDays(30), ['project' => $project->id])
+                : route('proyectos.comentar', $project),
+
             'urlAceptar' => URL::temporarySignedRoute(
                 'proyectos.aceptar',
                 now()->addDays(60),
@@ -286,22 +292,52 @@ class SolicitudDeProyectoController extends Controller
     {
         abort_unless($this->puedeVerla($request, $project), 403);
 
-        // Aceptada ya no se discute por aquí. Quitar el formulario de la
-        // pantalla no basta: el enlace seguiría aceptando el envío, y lo que
-        // se ajuste después del sí tiene que quedar en el contrato.
-        if ($project->estaAceptado() && ! $request->user()?->hasAnyRole(User::ROLES_BACKOFFICE)) {
+        // Un proyecto cerrado o descartado ya no conversa: lo que haya que
+        // decir es otro proyecto. Aceptado si: el laboratorio sigue haciendo
+        // preguntas durante la ejecucion —«mandanos el vectorial»— y esta es
+        // la unica puerta por la que el cliente responde con archivos. Lo
+        // que cambie el acuerdo va al contrato; una respuesta no lo cambia.
+        if ($project->estaCerrado() && ! $request->user()?->hasAnyRole(User::ROLES_BACKOFFICE)) {
             return back()->withErrors([
-                'aceptar' => 'La propuesta ya está aceptada. Si algo cambió, escríbele a quien lleva el proyecto.',
+                'aceptar' => 'Este proyecto ya está cerrado. Si necesitas algo más, pídelo como un proyecto nuevo.',
             ]);
         }
 
         $datos = $request->validate([
-            'body' => ['required', 'string', 'min:3', 'max:2000'],
+            // Con archivos, el texto puede faltar: mandar el plano ya dice algo.
+            'body'       => [Rule::requiredIf(! $request->hasFile('soportes')), 'nullable', 'string', 'min:3', 'max:2000'],
+            'soportes'   => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
+            'soportes.*' => [
+                'file',
+                'max:' . SoportesDeSolicitud::TAMANO_MAXIMO,
+                'mimes:' . implode(',', SoportesDeSolicitud::TIPOS),
+            ],
+        ], [
+            'body.required'    => 'Escribe algo o adjunta un archivo.',
+            'soportes.max'     => 'Como mucho ' . SoportesDeSolicitud::MAXIMO . ' archivos por respuesta.',
+            'soportes.*.mimes' => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos, modelos o comprimidos.',
+            'soportes.*.max'   => 'Cada archivo puede pesar hasta ' . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB.',
         ]);
+
+        /*
+         * Lo adjunto se suma a los soportes del proyecto, no se queda pegado
+         * al comentario: es lo que el laboratorio necesita para trabajar, y
+         * desde la ficha se convierte en documento del proyecto con un clic.
+         * En el hilo queda dicho que archivos llegaron con esta respuesta.
+         */
+        $archivos = collect($request->file('soportes', []))->filter();
+        $guardados = $archivos->isNotEmpty() ? $this->soportes->guardar($project, $archivos->all()) : 0;
+
+        $texto = trim((string) ($datos['body'] ?? ''));
+
+        if ($guardados > 0) {
+            $nombres = $archivos->take($guardados)->map(fn ($a) => $a->getClientOriginalName())->implode(', ');
+            $texto = trim($texto . "\n\nAdjuntó: " . $nombres . '.');
+        }
 
         $this->proyectos->comentar(
             $project,
-            $datos['body'],
+            $texto,
             $request->user(),
             $project->contact_name,
         );

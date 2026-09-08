@@ -571,7 +571,9 @@ class Project extends Model
 
     public function estaCerrado(): bool
     {
-        return $this->stage === 'cierre' || in_array($this->status, ['perdido', 'descartado'], true);
+        // Cerrado por etapa o por estado: cambiar el estado a «cerrado» en la
+        // ficha cierra tanto como pasar la etapa a «cierre».
+        return $this->stage === 'cierre' || in_array($this->status, ['cerrado', 'perdido', 'descartado'], true);
     }
 
     /** Quién pide, tenga cuenta o no. */

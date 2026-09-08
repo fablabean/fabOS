@@ -914,7 +914,12 @@ class SolicitudDeProyectoTest extends TestCase
      * del sí invita a renegociar por la puerta de atrás, y lo que cambie a
      * partir de ahora tiene que quedar en el contrato.
      */
-    public function test_aceptada_ya_no_se_comenta(): void
+    /**
+     * Aceptada, ya no se renegocia desde el recuadro de la propuesta; pero se
+     * sigue pudiendo responder: el laboratorio pregunta durante la ejecucion
+     * —«mandanos el vectorial»— y esta es la puerta por la que llega.
+     */
+    public function test_aceptada_se_sigue_respondiendo_pero_no_renegociando(): void
     {
         $p = $this->conPropuesta();
         $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
@@ -924,12 +929,112 @@ class SolicitudDeProyectoTest extends TestCase
         $this->actingAs($persona)
             ->get(route('proyectos.propuesta', $p))
             ->assertOk()
-            ->assertDontSee('¿Algo que decir?');
+            ->assertDontSee('¿Seguimos?')
+            ->assertSee('Responder');
 
-        // Y el enlace tampoco lo acepta: quitar el formulario no basta.
+        $this->actingAs($persona)
+            ->post(route('proyectos.comentar', $p), ['body' => 'Aquí va el vectorial que pidieron.'])
+            ->assertRedirect();
+
+        $this->assertSame(2, $p->fresh()->comments->count(), 'la aceptacion y la respuesta');
+    }
+
+    /** Un proyecto cerrado ya no conversa. */
+    public function test_cerrado_ya_no_se_comenta(): void
+    {
+        $p = $this->conPropuesta();
+        $p->update(['status' => 'cerrado']);
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertDontSee('Enviar respuesta');
+
         $this->actingAs($persona)
             ->post(route('proyectos.comentar', $p), ['body' => 'Cambio de idea.'])
             ->assertSessionHasErrors('aceptar');
+    }
+
+    /**
+     * Lo que pasaba en el laboratorio: alguien del equipo pedia el archivo
+     * vectorial desde el panel, sin propuesta todavia, y quien pidio no tenia
+     * por donde mandarlo. Ahora responde con archivos, y esos archivos se
+     * suman a los soportes del proyecto.
+     */
+    public function test_se_responde_con_archivos_y_se_suman_a_los_soportes(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        // Sin propuesta aun, la pagina ya deja responder.
+        $this->actingAs($persona)
+            ->get(route('proyectos.propuesta', $p))
+            ->assertOk()
+            ->assertSee('Responder')
+            ->assertSee('Enviar respuesta');
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.comentar', $p), [
+                'body'     => 'Aquí va el diseño y el MDF es de 3 mm.',
+                'soportes' => [
+                    UploadedFile::fake()->create('logo.svg', 40, 'image/svg+xml'),
+                    UploadedFile::fake()->create('diseno.pdf', 200, 'application/pdf'),
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $p->refresh();
+
+        $this->assertCount(2, $p->evidence, 'los archivos quedan como soportes del proyecto');
+        $this->assertSame('cliente', $p->comments->first()->side);
+        $this->assertStringContainsString('Adjuntó: logo.svg, diseno.pdf.', $p->comments->first()->body);
+
+        // Y se ven en «Lo que adjuntaste».
+        $this->actingAs($persona)->get(route('proyectos.propuesta', $p))->assertSee('logo.svg')->assertSee('diseno.pdf');
+    }
+
+    /** Solo archivos, sin texto, tambien vale: mandar el plano ya dice algo. */
+    public function test_se_puede_responder_solo_con_archivos(): void
+    {
+        Storage::fake('local');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+        $persona = User::where('email', 'steban@ejemplo.co')->firstOrFail();
+
+        $this->actingAs($persona)
+            ->post(route('proyectos.comentar', $p), [
+                'soportes' => [UploadedFile::fake()->create('pieza.stl', 500, 'model/stl')],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertStringStartsWith('Adjuntó: pieza.stl', $p->fresh()->comments->first()->body);
+
+        // Sin nada de nada, no.
+        $this->actingAs($persona)->post(route('proyectos.comentar', $p), [])->assertSessionHasErrors('body');
+    }
+
+    /** Desde el enlace del correo, sin sesion, tambien se responde. */
+    public function test_se_responde_desde_el_enlace_firmado(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud());
+        $p = Project::first();
+
+        // Se entra por el enlace firmado y se toma la direccion firmada de responder.
+        $enlace = URL::temporarySignedRoute('proyectos.propuesta', now()->addDays(60), ['project' => $p->id]);
+        $html = $this->get($enlace)->assertOk()->getContent();
+
+        preg_match('#action="([^"]*proyectos/' . $p->id . '/comentar[^"]*)"#', $html, $m);
+        $this->assertNotEmpty($m, 'el formulario de responder lleva la direccion firmada');
+
+        $this->post(html_entity_decode($m[1]), ['body' => 'Respondo desde el correo.'])->assertRedirect();
+
+        $this->assertSame('Respondo desde el correo.', $p->fresh()->comments->first()->body);
     }
 
     /**

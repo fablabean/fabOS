@@ -238,6 +238,39 @@
         </div>
     @endif
 
+    {{-- Responder, con archivos. El laboratorio pregunta desde el panel —«mándanos
+         el vectorial», «¿de qué grosor es el MDF?»— y quien pidió no tenía por
+         dónde contestar salvo cuando había una propuesta que aceptar. Lo que
+         adjunta se suma a los soportes del proyecto. --}}
+    @unless ($proyecto->estaCerrado())
+        <div class="panel" id="responder">
+            <h2 style="margin-top:0">Responder</h2>
+            <p class="help" style="margin-top:0">
+                Si te preguntaron algo o te pidieron un archivo, aquí va. Lo que adjuntes queda
+                con el proyecto, en «Lo que adjuntaste».
+            </p>
+
+            @error('body') <p class="msg error">{{ $message }}</p> @enderror
+            @error('soportes') <p class="msg error">{{ $message }}</p> @enderror
+            @error('soportes.*') <p class="msg error">{{ $message }}</p> @enderror
+
+            <form method="POST" action="{{ $urlComentar }}" enctype="multipart/form-data">
+                @csrf
+                <textarea name="body" rows="3" maxlength="2000"
+                          placeholder="Tu respuesta. Puede ir sola o con archivos.">{{ old('body') }}</textarea>
+
+                <label style="margin-top:.6rem">
+                    Archivos <small style="opacity:.6">(opcional, hasta {{ \App\Services\Projects\SoportesDeSolicitud::MAXIMO }})</small>
+                    <input type="file" name="soportes[]" multiple
+                           accept=".{{ implode(',.', \App\Services\Projects\SoportesDeSolicitud::TIPOS) }}">
+                    <span class="foot">Fotos, planos, PDF, modelos STL o un ZIP con todo. Hasta {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::TAMANO_MAXIMO, 1024) }} MB cada uno.</span>
+                </label>
+
+                <button type="submit" style="margin-top:.8rem">Enviar respuesta</button>
+            </form>
+        </div>
+    @endunless
+
     {{-- Aceptar desde la misma página donde se lee. Obligar a responder el
          correo para decir que sí dejaría la aceptación fuera del sistema, que
          es donde no sirve de nada. --}}
@@ -263,7 +296,7 @@
                          aceptar es una respuesta legítima, y sin este botón la
                          única salida sería aceptar o callarse. --}}
                     <button type="submit" id="solo-comentar" class="secundario" hidden
-                            formaction="{{ route('proyectos.comentar', $proyecto) }}"
+                            formaction="{{ $urlComentar }}"
                             formnovalidate>
                         Enviar comentarios sin aceptar
                     </button>
