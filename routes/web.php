@@ -219,6 +219,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->name('reservas.show');
     Route::post('/reservar/{asset}', [ReservationController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('reservas.cancel');
+    // Cambiar cuantas personas van a un espacio, sin cancelar y volver a pedir.
+    Route::post('/reservas/{reservation}/personas', [ReservationController::class, 'personas'])->name('reservas.personas');
 
     // Llevarse una reserva al calendario propio: un archivo suelto, que es una
     // foto. Para que se mantenga al dia esta la suscripcion.

@@ -583,6 +583,21 @@
                                     @csrf
                                     <button type="submit" class="secundario" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.78rem">Cancelar</button>
                                 </form>
+                                {{-- Cuántas personas, sin cancelar y volver a
+                                     pedir: reservar para diez y ser dos es lo
+                                     normal. --}}
+                                @if ($esEspacio && ! $r->esRecorrido())
+                                    <br>
+                                    <details class="plegable" style="margin-top:.3rem">
+                                        <summary style="font-size:.85rem">Cambiar personas</summary>
+                                        <form method="POST" action="{{ route('reservas.personas', $r) }}">
+                                            @csrf
+                                            <label for="personas-{{ $r->id }}">Cuántas van</label>
+                                            <input id="personas-{{ $r->id }}" name="participantes" type="number" min="1" max="500" required value="{{ $r->participants }}">
+                                            <button type="submit">Guardar</button>
+                                        </form>
+                                    </details>
+                                @endif
                             @endif
                         </td>
                     </tr>

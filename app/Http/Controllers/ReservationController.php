@@ -170,6 +170,27 @@ class ReservationController extends Controller
         return redirect()->route('reservas.index')->with('status', $mensaje);
     }
 
+    /**
+     * Cambiar cuantas personas van a un espacio, sin perder la reserva.
+     *
+     * Reservar para diez y despues ser dos es lo normal; cancelar y volver a
+     * pedir perdia el turno en la bandeja.
+     */
+    public function personas(Request $request, Reservation $reservation)
+    {
+        abort_unless($reservation->user_id === $request->user()->id, 403);
+
+        $datos = $request->validate(['participantes' => ['required', 'integer', 'min:1', 'max:500']]);
+
+        try {
+            app(\App\Services\Booking\EspacioBookingService::class)->cambiarParticipantes($reservation, (int) $datos['participantes']);
+        } catch (BookingException $e) {
+            return back()->withErrors(['reserva' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Listo: ' . $datos['participantes'] . ($datos['participantes'] == 1 ? ' persona' : ' personas') . ' en ' . ($reservation->reservable?->name ?? 'el espacio') . '.');
+    }
+
     public function cancel(Request $request, Reservation $reservation)
     {
         abort_unless($reservation->user_id === $request->user()->id, 403);

@@ -119,6 +119,52 @@ class ReservasRepetidasTest extends TestCase
         app(BookingService::class)->reservar($persona, $this->equipo, $this->hora('11:00'), $this->hora('13:00'));
     }
 
+    /** Reservar para diez y ser dos: se cambia el numero, sin cancelar y volver a pedir. */
+    public function test_se_cambia_el_numero_de_personas_sin_perder_la_reserva(): void
+    {
+        $jhonatan = $this->persona();
+        $reserva = app(EspacioBookingService::class)->reservar($jhonatan, $this->sala, $this->hora('10:00'), $this->hora('12:00'), participantes: 10);
+
+        $this->actingAs($jhonatan)->get(route('home'))->assertOk()->assertSee('Cambiar personas');
+
+        $this->actingAs($jhonatan)
+            ->post(route('reservas.personas', $reserva), ['participantes' => 2])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->assertSame(2, $reserva->fresh()->participants);
+        $this->assertSame('confirmada', $reserva->fresh()->status, 'la reserva sigue siendo la misma');
+
+        // Mas de lo que cabe, no.
+        $this->actingAs($jhonatan)
+            ->post(route('reservas.personas', $reserva), ['participantes' => 25])
+            ->assertSessionHasErrors('reserva');
+        $this->assertSame(2, $reserva->fresh()->participants);
+
+        // Y la de otra persona, ni verla.
+        $this->actingAs($this->persona())
+            ->post(route('reservas.personas', $reserva), ['participantes' => 1])
+            ->assertForbidden();
+    }
+
+    /** En una sala compartida por puestos, se cuenta lo de los demas pero no lo propio. */
+    public function test_en_una_sala_compartida_se_respetan_los_puestos_de_los_demas(): void
+    {
+        $this->sala->update(['shares_seats' => true, 'capacity' => 6]);
+        $sala = $this->sala->fresh();
+
+        $mia = app(EspacioBookingService::class)->reservar($this->persona(), $sala, $this->hora('10:00'), $this->hora('12:00'), participantes: 2);
+        app(EspacioBookingService::class)->reservar($this->persona(), $sala, $this->hora('10:00'), $this->hora('12:00'), participantes: 3);
+
+        // Quedan 1 libre + mis 2 = hasta 3 para mi.
+        $this->assertSame(3, app(EspacioBookingService::class)->cambiarParticipantes($mia, 3)->participants);
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessage('quedan 3 puestos');
+
+        app(EspacioBookingService::class)->cambiarParticipantes($mia->fresh(), 4);
+    }
+
     /** La solicitud de la sala se ve en Mi cuenta, y se puede cancelar desde ahi. */
     public function test_la_solicitud_de_espacio_se_ve_y_se_cancela_desde_mi_cuenta(): void
     {

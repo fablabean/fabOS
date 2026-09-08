@@ -562,6 +562,62 @@ class EspacioBookingService
     }
 
     /**
+     * Cambiar cuantas personas van, sin perder la reserva.
+     *
+     * Reservar para diez y despues ser dos es lo normal; obligar a cancelar
+     * y volver a pedir perdia el turno en la bandeja y, si la sala se
+     * comparte por puestos, los puestos. Se ajusta el numero y se vuelve a
+     * comprobar el aforo, contando esta misma reserva con su nuevo tamano.
+     *
+     * @throws BookingException
+     */
+    public function cambiarParticipantes(Reservation $reserva, int $participantes): Reservation
+    {
+        if ($reserva->reservable_type !== Space::class) {
+            throw new BookingException('Solo se cambia el número de personas de un espacio.');
+        }
+
+        if (! in_array($reserva->status, ['solicitada', 'confirmada'], true)) {
+            throw new BookingException('Esta reserva está ' . mb_strtolower(Reservation::ESTADOS[$reserva->status] ?? $reserva->status) . ' y ya no se cambia.');
+        }
+
+        if ($reserva->starts_at->isPast()) {
+            throw new BookingException('Esa reserva ya empezó.');
+        }
+
+        if ($participantes < 1) {
+            throw new BookingException('Tiene que ir al menos una persona.');
+        }
+
+        $espacio = Space::findOrFail($reserva->reservable_id);
+
+        if (! $reserva->esRecorrido() && $espacio->capacity && $participantes > $espacio->capacity) {
+            throw new BookingException('En ' . $espacio->name . ' caben ' . $espacio->capacity . ' personas, y pediste ' . $participantes . '.');
+        }
+
+        return DB::transaction(function () use ($reserva, $espacio, $participantes) {
+            if ($reserva->shares_seats) {
+                Space::whereKey($espacio->id)->lockForUpdate()->first();
+
+                // Los puestos libres sin contar los que esta reserva ya tiene.
+                $libres = ($this->puestosLibres($espacio, $reserva->starts_at, $reserva->ends_at) ?? PHP_INT_MAX)
+                    + (int) $reserva->participants;
+
+                if ($participantes > $libres) {
+                    throw new BookingException(
+                        'En ' . $espacio->name . ($libres === 1 ? ' queda 1 puesto' : ' quedan ' . $libres . ' puestos')
+                        . ' a esa hora contando los tuyos, y pediste ' . $participantes . '.'
+                    );
+                }
+            }
+
+            $reserva->update(['participants' => $participantes]);
+
+            return $reserva->refresh();
+        });
+    }
+
+    /**
      * @throws BookingException si la persona ya tiene una reserva o una
      *                          solicitud de ese recurso que pisa la franja
      */
