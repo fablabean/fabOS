@@ -309,7 +309,12 @@ class EnrollmentsRelationManager extends RelationManager
             ->label('Aprobar')
             ->icon('heroicon-o-check-badge')
             ->color('success')
-            ->visible(fn (Enrollment $r) => $r->status === 'inscrito')
+            // En un curso con practica, firmarla ya aprueba: dos botones que
+            // hacen lo mismo uno al lado del otro solo confunden. Aprobar
+            // queda para los cursos sin practica, y para el raro caso de una
+            // practica firmada que se quedo sin aprobar.
+            ->visible(fn (Enrollment $r) => $r->status === 'inscrito'
+                && ! ($r->edition?->course?->requires_practical && ! $r->practicaAprobada()))
             // Decir que falta antes de pulsar, y no despues de un error: el
             // certifab exige los pasos que ese curso declare.
             ->modalDescription(fn (Enrollment $r) => $r->queFaltaParaAprobar()

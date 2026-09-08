@@ -327,6 +327,22 @@ class PruebaPracticaTest extends TestCase
         $this->assertSame('completada', $reserva->fresh()->status);
     }
 
+    /** En un curso con práctica, «Aprobar» sobra hasta que se firma: firmar ya aprueba. */
+    public function test_en_un_curso_con_practica_aprobar_no_se_ofrece_antes_de_firmar(): void
+    {
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->conTeoria();
+
+        $this->entra($admin);
+
+        Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion,
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->assertActionVisible(TestAction::make('practica')->table($i))
+            ->assertActionHidden(TestAction::make('aprobar')->table($i));
+    }
+
     /** Por ahora firman administradores y superadmin: un consultor no ve el botón. */
     public function test_un_consultor_no_puede_firmar(): void
     {
