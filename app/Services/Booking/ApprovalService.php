@@ -118,9 +118,20 @@ class ApprovalService
             try {
                 $solicitud->update([
                     'status'        => 'confirmada',
-                    'supervisor_id' => $acompanante?->id ?? $solicitud->supervisor_id,
+                    // Sin acompañante elegido, en un espacio recibe quien esté
+                    // en jornada a esa hora, si alguien lo está.
+                    'supervisor_id' => $acompanante?->id
+                        ?? $solicitud->supervisor_id
+                        ?? ($espacio ? app(EspacioBookingService::class)->quienRecibe($espacio, $solicitud->starts_at)?->id : null),
                     'status_reason' => 'Aprobada por ' . ($quienAprueba?->name ?? 'la coordinación'),
                 ]);
+
+                // En un espacio, el acompañante elegido a mano acompaña de
+                // verdad —su tiempo se reserva abajo—, y por eso va también en
+                // la lista de acompañantes: recibir son minutos, esto no.
+                if ($espacio && $acompanante) {
+                    $solicitud->companions()->syncWithoutDetaching([$acompanante->id]);
+                }
 
                 // Lo que colgaba de la solicitud -otros espacios, herramientas-
                 // se confirma con ella: la actividad es una.

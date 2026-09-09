@@ -39,7 +39,7 @@
                 </p>
 
                 @foreach ($franjas as $dia => $delDia)
-                    @php($fecha = \Illuminate\Support\Carbon::parse($dia))
+                    @php $fecha = \Illuminate\Support\Carbon::parse($dia); @endphp
 
                     <h3 style="margin:1.25rem 0 .5rem;font-size:1rem">
                         {{ ucfirst($fecha->locale('es')->isoFormat('dddd D [de] MMMM')) }}

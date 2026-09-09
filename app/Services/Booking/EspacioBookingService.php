@@ -25,7 +25,65 @@ use Illuminate\Support\Facades\DB;
  */
 class EspacioBookingService
 {
+    /**
+     * Lo que le toca a quien recibe: ubicar a la persona, abrirle, darle una
+     * herramienta. Minutos, no la sesión entera; por eso no bloquea su agenda.
+     */
+    public const MINUTOS_RECIBIR = 5;
+
     public function __construct(private CoverageService $cobertura) {}
+
+    /**
+     * Quién recibe a la persona en el espacio.
+     *
+     * Una sala reservada desde fuera no tenía a nadie del equipo detrás:
+     * quien llegaba no sabía a quién buscar, y a nadie le salía que venía.
+     * Se le pone nombre al recibimiento, sin comprometer tiempo: quien recibe
+     * está de todos modos en jornada, y son minutos.
+     *
+     * Se elige entre quienes están en jornada presencial a esa hora, con
+     * preferencia por quien responde por el área de la sala, luego por quien
+     * esté libre en ese momento, y por turno —quien menos recibimientos
+     * tenga por delante—. Nadie en jornada: nadie recibe, y la reserva sigue
+     * igual; esto ayuda, no restringe.
+     */
+    public function quienRecibe(Space $espacio, CarbonInterface $desde): ?User
+    {
+        $hasta = $desde->copy()->addMinutes(self::MINUTOS_RECIBIR);
+
+        $enJornada = $this->cobertura->enJornada($desde, $hasta)
+            ->filter(fn (User $u) => $u->status === 'activo' && $u->hasAnyRole(User::ROLES_BACKOFFICE))
+            ->values();
+
+        if ($enJornada->isEmpty()) {
+            return null;
+        }
+
+        $responsables = $espacio->areas()->with('responsibles')->get()
+            ->flatMap(fn ($area) => $area->responsibles)
+            ->pluck('id')->unique();
+
+        $reservas = app(BookingService::class);
+        $libres = $enJornada->filter(fn (User $u) => $reservas->personaLibre($u, $desde, $hasta));
+        $candidatos = $libres->isNotEmpty() ? $libres : $enJornada;
+
+        $carga = Reservation::query()
+            ->where('reservable_type', Space::class)
+            ->whereIn('supervisor_id', $candidatos->pluck('id')->all())
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('ends_at', '>=', now())
+            ->selectRaw('supervisor_id, COUNT(*) AS cuantas')
+            ->groupBy('supervisor_id')
+            ->pluck('cuantas', 'supervisor_id');
+
+        return $candidatos
+            ->sortBy(fn (User $u) => [
+                $responsables->contains($u->id) ? 0 : 1,
+                (int) ($carga[$u->id] ?? 0),
+                $u->name,
+            ])
+            ->first();
+    }
 
     /**
      * Herramientas que se pueden tomar en este espacio, libres en esa franja.
@@ -190,6 +248,10 @@ class EspacioBookingService
                     'reservable_type' => Space::class,
                     'reservable_id'   => $espacio->id,
                     'user_id'         => $user->id,
+                    // Alguien del equipo la recibe, salvo que ya venga con
+                    // acompañantes elegidos a mano. No es tiempo comprometido:
+                    // son los cinco minutos de ubicar a la persona.
+                    'supervisor_id'   => $acompanantesIds === [] ? $this->quienRecibe($espacio, $desde)?->id : null,
                     'status'          => $estado,
                     'mode'            => $esRecorrido
                         ? Reservation::MODO_RECORRIDO

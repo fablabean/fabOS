@@ -461,7 +461,8 @@
         <div class="panel">
             <p class="help" style="margin-top:0">
                 Te toca estar ahí. Si ese día no puedes, pásaselo a alguien del equipo: sigue a
-                tu nombre hasta que acepte.
+                tu nombre hasta que acepte. Donde solo te toca <strong>recibir</strong> son unos
+                minutos al empezar: ubicar a la persona y darle lo que necesite; no te ocupa la hora.
             </p>
 
             @if ($traspasosRecibidos->isEmpty() && $asesoriasQueAtiendo->isEmpty()) @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror @endif
@@ -477,6 +478,9 @@
                                 <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
                             @elseif ($r->esRecorrido())
                                 <br><span class="help" style="margin:0;font-size:.82rem">Recorrido</span>
+                            @endif
+                            @if ($r->laRecibe(auth()->user()) && ! $r->companions->contains('id', auth()->id()))
+                                <br><span class="pill">Recibir · {{ \App\Services\Booking\EspacioBookingService::MINUTOS_RECIBIR }} min</span>
                             @endif
                         </td>
                         <td>
@@ -554,6 +558,9 @@
                                 {{ $esEspacio ? ($r->esRecorrido() ? 'Recorrido' : 'Espacio') : 'Equipo' }}
                                 @if ($esEspacio && $r->participants > 1) · {{ $r->participants }} personas @endif
                             </span>
+                            @if ($esEspacio && $r->supervisor)
+                                <br><span class="help" style="margin:0;font-size:.82rem">Te recibe {{ $r->supervisor->name }}</span>
+                            @endif
                         </td>
                         <td>
                             {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}

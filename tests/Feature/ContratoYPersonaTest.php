@@ -122,7 +122,9 @@ class ContratoYPersonaTest extends TestCase
         $this->assertSame($cliente->id, $aviso->user_id);
         $this->assertStringContainsString('/proyectos/' . $p->id . '/documentos/' . $doc->id, $aviso->body);
 
-        $this->assertStringContainsString('Enviamos el contrato', $p->comments()->latest('id')->first()->body);
+        // El ultimo por id: la relacion ya ordena por fecha, y en segundos
+        // distintos «latest» quedaba detras de ese orden y traia el primero.
+        $this->assertStringContainsString('Enviamos el contrato', $p->comments()->reorder('id', 'desc')->first()->body);
     }
 
     public function test_sin_aceptar_no_se_manda_contrato(): void

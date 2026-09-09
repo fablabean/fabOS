@@ -224,10 +224,22 @@ class Reservation extends Model
         }
 
         if ($this->reservable_type === Space::class) {
-            return $this->companions->contains('id', $quien->id);
+            return $this->companions->contains('id', $quien->id) || $this->laRecibe($quien);
         }
 
         return false;
+    }
+
+    /**
+     * Si a esta persona le toca RECIBIR en el espacio: ubicar a quien llega,
+     * abrirle, darle una herramienta. Minutos al empezar, no la sesion; por
+     * eso no le compromete la agenda, pero si le sale.
+     */
+    public function laRecibe(User $quien): bool
+    {
+        return $this->reservable_type === Space::class
+            && $this->supervisor_id !== null
+            && (int) $this->supervisor_id === $quien->id;
     }
 
     /**

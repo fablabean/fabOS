@@ -59,6 +59,12 @@ class Calendario
 
         $tipo = $reserva->esPractica() ? 'Práctica' : 'Asesoría';
 
+        // A quien solo recibe en un espacio, el evento le dura lo que dura
+        // recibir: cinco minutos al empezar, no la sesión entera de otro.
+        $recibe = $paraQuien
+            && $reserva->laRecibe($paraQuien)
+            && ! $reserva->companions->contains('id', $paraQuien->id);
+
         // Si el calendario es de otra persona —quien acompaña, o alguien del
         // equipo que se apunta lo que va a pasar—, el evento lleva el nombre
         // de quien reservó: «Cortadora láser» a secas, en la agenda de la
@@ -74,7 +80,17 @@ class Calendario
             $titulo .= ' · ' . $persona;
         }
 
+        if ($recibe) {
+            $titulo = 'Recibir · ' . $titulo;
+        }
+
+        $tz = config('fabos.lab.timezone');
+
         $descripcion = collect([
+            $recibe
+                ? 'Ubicar a ' . $persona . ' y darle lo que necesite. Su reserva va hasta las '
+                    . $reserva->ends_at->timezone($tz)->format('H:i') . '.'
+                : null,
             $reserva->purpose,
             $atiende ? ($reserva->esPractica() ? 'Evalúas a ' : 'Atiendes a ') . $persona . '.' : null,
             $deOtro
@@ -93,7 +109,9 @@ class Calendario
             // evento y lo actualiza en vez de duplicarlo.
             'uid'   => 'reserva-' . $reserva->id . '@' . parse_url((string) config('app.url'), PHP_URL_HOST),
             'desde' => $reserva->starts_at,
-            'hasta' => $reserva->ends_at,
+            'hasta' => $recibe
+                ? $reserva->starts_at->copy()->addMinutes(\App\Services\Booking\EspacioBookingService::MINUTOS_RECIBIR)->min($reserva->ends_at)
+                : $reserva->ends_at,
             'titulo' => $titulo,
             'descripcion' => $descripcion,
             'lugar' => config('fabos.lab.name'),

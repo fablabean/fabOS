@@ -56,7 +56,7 @@ class ReservationsTable
                 TextColumn::make('user.name')->label('Persona')->searchable(),
 
                 TextColumn::make('supervisor.name')
-                    ->label('Acompaña')
+                    ->label('Acompaña / recibe')
                     // El supervisor que exige el certifab, y además quienes se
                     // apuntaron a acompañar la actividad.
                     ->state(fn (Reservation $r) => collect([$r->supervisor?->name])
@@ -348,18 +348,25 @@ class ReservationsTable
                     ->tooltip('Cambiar quién atiende')
                     ->icon('heroicon-o-arrows-right-left')
                     ->color('gray')
-                    ->visible(fn (Reservation $r) => $r->esAtencionPersonal()
+                    ->visible(fn (Reservation $r) => ($r->esAtencionPersonal() || $r->supervisor_id)
                         && in_array($r->status, ['solicitada', 'confirmada', 'en_curso'], true)
                         && $r->ends_at->isFuture()
                         && auth()->user()?->hasAnyRole([\App\Models\User::ROL_ADMINISTRADOR, \App\Models\User::ROL_SUPERADMIN]))
                     ->modalHeading(fn (Reservation $r) => 'Reasignar: ' . $r->queAtiende())
-                    ->modalDescription(fn (Reservation $r) => 'Ahora la atiende ' . (\App\Models\User::find($r->reservable_id)?->name ?? 'nadie')
-                        . '. La persona que elijas tiene que estar libre a esa hora; se le avisa a ella, a quien la tenía y a quien la pidió.')
+                    ->modalDescription(function (Reservation $r) {
+                        $quien = $r->esAtencionPersonal() ? \App\Models\User::find($r->reservable_id) : $r->supervisor;
+                        $recibe = $r->reservable_type === \App\Models\Space::class;
+
+                        return 'Ahora la ' . ($recibe ? 'recibe ' : 'atiende ') . ($quien?->name ?? 'nadie')
+                            . '. La persona que elijas tiene que estar libre '
+                            . ($recibe ? 'los minutos de recibir' : 'a esa hora')
+                            . '; se le avisa a ella, a quien la tenía y a quien la pidió.';
+                    })
                     ->schema([
                         Select::make('a')
-                            ->label('Quién la atiende ahora')
+                            ->label(fn (Reservation $r) => $r->reservable_type === \App\Models\Space::class ? 'Quién recibe ahora' : 'Quién la atiende ahora')
                             ->options(fn (Reservation $r) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
-                                ->except([(int) $r->reservable_id, (int) $r->user_id])
+                                ->except([(int) $r->reservable_id, (int) $r->user_id, (int) $r->supervisor_id])
                                 ->all())
                             ->searchable()
                             ->required(),

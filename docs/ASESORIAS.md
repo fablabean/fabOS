@@ -198,6 +198,38 @@ mismo de entrada: vacío, la atiende quien le toque por turno; con alguien
 elegido, la lista de horas pasa a ser la de esa persona (`franjasDe`) y la
 asesoría nace a su nombre.
 
+## Quién recibe en un espacio
+
+Una sala reservada desde fuera no tenía a nadie del equipo detrás: quien
+llegaba no sabía a quién buscar, y a nadie le salía que venía. Ahora **cada
+reserva de espacio la recibe alguien del equipo**, y eso no es tiempo
+comprometido: son los cinco minutos de ubicar a la persona, abrirle o darle
+una herramienta (`EspacioBookingService::MINUTOS_RECIBIR`).
+
+Quién: se elige solo, al reservar, entre quienes están en jornada presencial
+a esa hora, con este orden: quien responde por el área de la sala, luego quien
+esté libre en ese momento, y por turno (quien menos recibimientos tenga por
+delante). Si nadie está en jornada, nadie recibe y la reserva sigue igual;
+esto ayuda, no restringe. Si al aprobar una solicitud se elige un acompañante
+a mano, ese acompaña de verdad —su tiempo sí se reserva— y no se suma nadie
+más.
+
+Dónde se ve:
+
+- **quien recibe**: en «Acompañamientos que voy a hacer» de Mi cuenta, con la
+  marca *Recibir · 5 min*; en su calendario el evento dura esos minutos, no la
+  sesión entera; y se lo puede pasar a un compañero, al que solo se le exige
+  estar libre esos minutos;
+- **quien reservó**: «Te recibe Ana», en su lista de reservas y en el mensaje
+  al reservar;
+- **el panel**: la columna *Acompaña / recibe* de la lista de reservas, y el
+  botón *Reasignar* para cambiarlo.
+
+Por dentro es el `supervisor_id` de la reserva del espacio, el mismo campo que
+en una máquina señala al supervisor. La diferencia está en lo que bloquea:
+para una máquina hay una reserva hija sobre el tiempo del supervisor; para
+recibir no hay ninguna. `Reservation::laRecibe()` es la pregunta.
+
 ## Qué ve cada quien
 
 | Dónde | Qué |

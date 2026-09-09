@@ -208,7 +208,7 @@ class TraspasoDeAtencion
     {
         $de = $reserva->esAtencionPersonal()
             ? User::find($reserva->reservable_id)
-            : ($reserva->reservable_type === Asset::class ? $reserva->supervisor : null);
+            : $reserva->supervisor;
 
         if (! $de) {
             throw new BookingException('Esta reserva no la atiende nadie en concreto: no hay a quién cambiar.');
@@ -319,7 +319,15 @@ class TraspasoDeAtencion
 
         // Lo que queda de la atencion: si ya empezo, desde ahora hasta que termine.
         $desde = $reserva->starts_at->isPast() ? now() : $reserva->starts_at;
-        $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $reserva->ends_at);
+        $hasta = $reserva->ends_at;
+
+        // Recibir en un espacio son minutos al empezar: no hace falta estar
+        // libre las tres horas de la sesion de otro para pasarlo.
+        if ($reserva->laRecibe($de) && ! $reserva->companions->contains('id', $de->id)) {
+            $hasta = $desde->copy()->addMinutes(\App\Services\Booking\EspacioBookingService::MINUTOS_RECIBIR)->min($reserva->ends_at);
+        }
+
+        $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $hasta);
 
         if ($ocupado) {
             throw new BookingException($ocupado . ' Elige a otra persona.');
@@ -369,6 +377,14 @@ class TraspasoDeAtencion
         }
 
         if ($reserva->reservable_type === Space::class) {
+            // Quien recibe, si es eso lo que se pasa; si no, un acompañante
+            // por otro. Son dos papeles distintos sobre la misma reserva.
+            if ($reserva->laRecibe($de) && ! $reserva->companions->contains('id', $de->id)) {
+                $reserva->update(['supervisor_id' => $a->id]);
+
+                return;
+            }
+
             $reserva->companions()->detach($de->id);
             $reserva->companions()->attach($a->id);
             $reserva->unsetRelation('companions');

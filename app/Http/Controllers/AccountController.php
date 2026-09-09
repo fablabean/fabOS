@@ -87,7 +87,7 @@ class AccountController extends Controller
                 ->whereNull('parent_reservation_id')
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
                 ->where('ends_at', '>=', now())
-                ->with('reservable')
+                ->with(['reservable', 'supervisor'])
                 ->orderBy('starts_at')
                 ->get(),
 
@@ -162,9 +162,13 @@ class AccountController extends Controller
             ->get()
             ->each(fn (Reservation $r) => $r->setRelation('reservable', Asset::with('area')->find($r->reservable_id)));
 
+        // Donde acompaña, y donde le toca recibir: lo segundo son minutos,
+        // pero si no le sale, quien llega no encuentra a nadie.
         $enEspacios = Reservation::query()
             ->where('reservable_type', \App\Models\Space::class)
-            ->whereHas('companions', fn ($q) => $q->where('users.id', $user->id))
+            ->where(fn ($query) => $query
+                ->whereHas('companions', fn ($q) => $q->where('users.id', $user->id))
+                ->orWhere('supervisor_id', $user->id))
             ->whereIn('status', $vigentes)
             ->where('ends_at', '>=', now())
             ->with(['user', 'companions', 'traspasoPendiente.to'])
