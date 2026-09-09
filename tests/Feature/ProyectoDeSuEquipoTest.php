@@ -261,6 +261,26 @@ class ProyectoDeSuEquipoTest extends TestCase
         $this->get(route('proyectos.tablero', $ajeno))->assertForbidden();
     }
 
+    /**
+     * La tarea que le asignaron la abre y la edita, aunque la haya creado
+     * otro: para eso se la asignaron. Las demas del proyecto, no.
+     */
+    public function test_la_tarea_que_le_asignaron_la_edita(): void
+    {
+        $quien = $this->practicante();
+        $otro = $this->practicante();
+        $p = $this->proyecto();
+        $p->members()->create(['user_id' => $quien->id, 'role' => 'equipo']);
+
+        $suya = $p->tasks()->create(['title' => 'Cortar piezas', 'assigned_to' => $quien->id, 'created_by' => $otro->id]);
+        $ajena = $p->tasks()->create(['title' => 'Pintar', 'assigned_to' => $otro->id, 'created_by' => $otro->id]);
+
+        $this->assertTrue($quien->can('view', $suya));
+        $this->assertTrue($quien->can('update', $suya), 'lo que tiene asignado lo edita');
+        $this->assertFalse($quien->can('delete', $suya), 'pero no la borra: no es suya');
+        $this->assertFalse($quien->can('update', $ajena));
+    }
+
     /** Mover una tarea es cambiar el proyecto: la mueve quien responde por él. */
     public function test_del_equipo_no_mueve_tareas(): void
     {

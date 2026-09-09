@@ -48,9 +48,12 @@ class ProjectItemPolicy extends BackofficePolicy
 
     public function update(User $user, Model $registro): bool
     {
+        // Lo que tiene asignado tambien lo edita: una tarea que te dieron y
+        // no puedes abrir para anotar el avance te obliga a pedirselo a quien
+        // la creo, y eso es justo lo que asignarla queria evitar.
         return $this->segunLaSeccion($user, 'editar')
             || $this->esDeSuProyecto($user, $registro)
-            && ($registro->loCreo($user) || $this->loLidera($user, $registro));
+            && ($registro->loCreo($user) || $registro->leToca($user) || $this->loLidera($user, $registro));
     }
 
     public function delete(User $user, Model $registro): bool

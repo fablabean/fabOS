@@ -72,6 +72,21 @@ class ProjectDocument extends Model
     /** Dónde está de verdad: archivo subido o enlace externo. */
     public function enlace(): ?string
     {
-        return $this->url ?: ($this->file_path ? asset('storage/' . $this->file_path) : null);
+        if ($this->url) {
+            return $this->url;
+        }
+
+        if (! $this->file_path) {
+            return null;
+        }
+
+        // Los documentos se guardan en el disco privado, y de ahi no hay
+        // enlace publico: se sirven por el panel, a quien tenga acceso. Los
+        // que quedaron en el disco publico de antes siguen saliendo por ahi.
+        if (\Illuminate\Support\Facades\Storage::disk('local')->exists($this->file_path)) {
+            return \App\Filament\Componentes\ArchivoPrivado::url($this->file_path, $this->title ?: basename($this->file_path), descargar: true);
+        }
+
+        return asset('storage/' . $this->file_path);
     }
 }

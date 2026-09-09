@@ -117,5 +117,35 @@ class ArchivosDeProyectoTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertDatabaseHas('project_documents', ['project_id' => $p->id, 'title' => 'Modelos para imprimir']);
+
+        // Y se descarga. El documento va al disco privado, y de ahi no hay
+        // enlace publico: «/storage/…» daba 404 a todo el mundo. El enlace
+        // pasa por el panel, que lo entrega a quien tiene acceso.
+        $doc = \App\Models\ProjectDocument::where('title', 'Modelos para imprimir')->firstOrFail();
+
+        $this->assertNotNull($doc->file_path);
+        $this->assertTrue(Storage::disk('local')->exists($doc->file_path), 'se guarda en el disco privado');
+        $this->assertStringContainsString(route('panel.archivo'), $doc->enlace());
+        $this->assertStringNotContainsString('/storage/', $doc->enlace());
+
+        $this->get($doc->enlace())
+            ->assertOk()
+            ->assertHeader('content-disposition');
+    }
+
+    /** Lo que quedo en el disco publico de antes sigue saliendo por ahi. */
+    public function test_un_documento_del_disco_publico_conserva_su_enlace(): void
+    {
+        $p = app(ProjectService::class)->registrarIdea([
+            'name' => 'Trofeos', 'source' => 'whatsapp', 'organization' => 'Deportes',
+        ]);
+
+        $doc = $p->documents()->create(['kind' => 'otro', 'title' => 'Viejo', 'file_path' => 'proyectos/viejo.pdf']);
+
+        $this->assertSame(asset('storage/proyectos/viejo.pdf'), $doc->enlace());
+
+        $conEnlace = $p->documents()->create(['kind' => 'otro', 'title' => 'Drive', 'url' => 'https://drive.google.com/x']);
+
+        $this->assertSame('https://drive.google.com/x', $conEnlace->enlace());
     }
 }
