@@ -84,7 +84,17 @@ class ProjectDocument extends Model
         // enlace publico: se sirven por el panel, a quien tenga acceso. Los
         // que quedaron en el disco publico de antes siguen saliendo por ahi.
         if (\Illuminate\Support\Facades\Storage::disk('local')->exists($this->file_path)) {
-            return \App\Filament\Componentes\ArchivoPrivado::url($this->file_path, $this->title ?: basename($this->file_path), descargar: true);
+            // Se baja con el titulo del documento, pero con la extension del
+            // archivo: «Pieza principal.stl», no «Pieza principal» a secas,
+            // que el sistema de la persona no sabe con que abrir.
+            $extension = pathinfo($this->file_path, PATHINFO_EXTENSION);
+            $nombre = $this->title ?: basename($this->file_path);
+
+            if ($extension && ! str_ends_with(mb_strtolower($nombre), '.' . mb_strtolower($extension))) {
+                $nombre .= '.' . $extension;
+            }
+
+            return \App\Filament\Componentes\ArchivoPrivado::url($this->file_path, $nombre, descargar: true);
         }
 
         return asset('storage/' . $this->file_path);

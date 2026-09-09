@@ -130,7 +130,8 @@ class ArchivosDeProyectoTest extends TestCase
 
         $this->get($doc->enlace())
             ->assertOk()
-            ->assertHeader('content-disposition');
+            // Con el titulo y la extension del archivo, para que se sepa con que abrirlo.
+            ->assertHeader('content-disposition', 'attachment; filename="Modelos para imprimir.zip"');
     }
 
     /** Lo que quedo en el disco publico de antes sigue saliendo por ahi. */
