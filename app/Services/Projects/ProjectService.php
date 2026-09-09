@@ -692,6 +692,79 @@ class ProjectService
         return $lista;
     }
 
+    /**
+     * Lo que se le dice al cliente al cerrar: un punto de partida, no un
+     * texto fijo. Quien cierra lo corrige antes de que salga.
+     */
+    public function mensajeDeCierreSugerido(Project $proyecto): string
+    {
+        return 'Terminamos «' . $proyecto->name . '». Ya puedes pasar por ' . config('fabos.lab.name')
+            . ' (' . config('fabos.lab.institution') . ', ' . config('fabos.lab.city') . ') a recoger lo tuyo, '
+            . 'en el horario de atención del laboratorio. Trae tu documento. '
+            . 'Si prefieres que coordinemos otra hora o una entrega, respóndenos por aquí.';
+    }
+
+    /**
+     * Le dice a quien pidió el proyecto que está listo y puede pasar por él.
+     *
+     * Cerrar un proyecto era una cosa interna: la etapa cambiaba y el cliente
+     * se enteraba cuando alguien se acordaba de escribirle, o no se enteraba.
+     * Lo que se fabricó se queda en un estante esperando a alguien que no
+     * sabe que tiene que venir.
+     *
+     * Con texto sugerido y editable, y por el mismo correo con enlace firmado
+     * de siempre. Queda anotado en la conversación.
+     */
+    public function avisarCierre(Project $proyecto, User $quien, ?string $mensaje = null): NotificationLog
+    {
+        $correo = $proyecto->correoDeLaPropuesta();
+
+        if (blank($correo)) {
+            throw new ProjectException('Este proyecto no tiene correo de contacto: anótalo en la ficha y vuelve a intentar.');
+        }
+
+        $mensaje = trim((string) $mensaje) ?: $this->mensajeDeCierreSugerido($proyecto);
+
+        $variables = [
+            'proyecto' => $proyecto->name,
+            'codigo'   => $proyecto->code,
+            'quien'    => $quien->name,
+            'mensaje'  => $mensaje,
+            'enlace'   => URL::temporarySignedRoute(
+                'proyectos.propuesta',
+                now()->addDays(60),
+                ['project' => $proyecto->id],
+            ),
+        ];
+
+        $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+        $aviso = $destinatario
+            ? $this->avisos->enviar('proyecto.cerrado', $destinatario, $variables, $proyecto)
+            : $this->avisos->enviarSinCuenta(
+                'proyecto.cerrado',
+                $correo,
+                $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                $variables,
+                $proyecto,
+            );
+
+        if (! $aviso || $aviso->status !== 'enviado') {
+            throw new ProjectException(
+                'El aviso no salió' . ($aviso?->reason ? ': ' . mb_strtolower($aviso->reason) : '') . '.'
+            );
+        }
+
+        $proyecto->comments()->create([
+            'user_id'     => $quien->id,
+            'author_name' => $quien->name,
+            'side'        => 'laboratorio',
+            'body'        => $mensaje,
+        ]);
+
+        return $aviso;
+    }
+
     /** Cuándo se avisó por última vez de novedades, para no avisar dos veces lo mismo. */
     public function ultimoAvisoDeNovedades(Project $proyecto): ?NotificationLog
     {

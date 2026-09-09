@@ -181,6 +181,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/archivo', [\App\Http\Controllers\ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
+    // La vista previa del acuerdo de servicio, con lo escrito en el formulario.
+    Route::get('/panel/acuerdo/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'vista'])
+        ->name('panel.acuerdo');
+
     Route::post('/salir', [LoginCodeController::class, 'logout'])->name('logout');
 
     // Que avisos quiere recibir cada persona (§15).

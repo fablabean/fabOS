@@ -53,6 +53,10 @@ final class Settings
      */
     public const COBROS_TIENDA = 'cobros.tienda';
 
+    /** La base del acuerdo de servicio que redacta el sistema (§11). */
+    public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
+    public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';
+
     /** La tienda cobra si los cobros generales estan encendidos, o si se encendio ella sola. */
     public static function cobrosEnTienda(): bool
     {

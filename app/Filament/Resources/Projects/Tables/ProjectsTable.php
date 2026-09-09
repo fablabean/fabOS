@@ -310,27 +310,99 @@ class ProjectsTable
                     ->modalHeading(fn (Project $r) => 'Enviar el contrato de ' . $r->code)
                     ->modalDescription(fn (Project $r) => 'A ' . ($r->correoDeLaPropuesta() ?? 'sin correo')
                         . ($r->quienFirma() ? ' · a nombre de ' . $r->quienFirma() : ' · sin datos de quién firma: complétalos en la ficha antes, o el contrato saldrá sin ellos.'))
+                    ->modalWidth('3xl')
+                    /*
+                     * Tres caminos: el acuerdo que redacta el sistema con la
+                     * base del laboratorio y lo que el proyecto ya sabe; un
+                     * archivo propio, para quien trae su formato; o uno ya
+                     * cargado en Documentos. El primero es el corriente, y por
+                     * eso va por defecto salvo que ya haya contrato cargado.
+                     */
                     ->schema([
+                        Select::make('origen')
+                            ->label('Qué contrato')
+                            ->options([
+                                'generar' => 'Generar el acuerdo de servicio con la base del laboratorio',
+                                'subir'   => 'Subir un archivo propio',
+                                'cargado' => 'Uno ya cargado en Documentos',
+                            ])
+                            ->default(fn (Project $record) => $record->documents()->where('kind', 'contrato')->exists() ? 'cargado' : 'generar')
+                            ->required()
+                            ->live()
+                            ->columnSpanFull(),
+
                         Select::make('document_id')
-                            ->label('Un contrato ya cargado')
+                            ->label('Cuál')
                             ->options(fn (Project $record) => $record->documents()->where('kind', 'contrato')->latest('id')->pluck('title', 'id'))
-                            ->placeholder('Ninguno: lo subo ahora')
-                            ->live(),
+                            ->visible(fn ($get) => $get('origen') === 'cargado')
+                            ->required(fn ($get) => $get('origen') === 'cargado')
+                            ->columnSpanFull(),
 
                         FileUpload::make('archivo')
-                            ->label('O el archivo del contrato')
+                            ->label('El archivo del contrato')
                             ->directory('proyectos')
                             ->maxSize(10240)
                             ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
-                            ->visible(fn ($get) => blank($get('document_id')))
-                            ->required(fn ($get) => blank($get('document_id')))
+                            ->visible(fn ($get) => $get('origen') === 'subir')
+                            ->required(fn ($get) => $get('origen') === 'subir')
                             ->columnSpanFull(),
 
                         TextInput::make('titulo')
                             ->label('Cómo se llama')
-                            ->default(fn (Project $record) => 'Contrato ' . $record->code)
-                            ->visible(fn ($get) => blank($get('document_id')))
-                            ->maxLength(160),
+                            ->default(fn (Project $record) => 'Acuerdo de servicio ' . $record->code)
+                            ->visible(fn ($get) => $get('origen') !== 'cargado')
+                            ->maxLength(160)
+                            ->columnSpanFull(),
+
+                        // Lo que el proyecto ya sabe, para corregirlo si hace falta.
+                        Textarea::make('objeto')
+                            ->label('Objeto: qué se hace')
+                            ->rows(3)
+                            ->default(fn (Project $record) => app(\App\Services\Projects\AcuerdoDeServicio::class)->datosSugeridos($record)['objeto'])
+                            ->visible(fn ($get) => $get('origen') === 'generar')
+                            ->columnSpanFull(),
+
+                        Textarea::make('entregables')
+                            ->label('Entregables')
+                            ->rows(4)
+                            ->default(fn (Project $record) => app(\App\Services\Projects\AcuerdoDeServicio::class)->datosSugeridos($record)['entregables'])
+                            ->visible(fn ($get) => $get('origen') === 'generar')
+                            ->helperText('Uno por línea. Salen de la ficha del proyecto; corrígelos aquí si hace falta.')
+                            ->columnSpanFull(),
+
+                        TextInput::make('valor')
+                            ->label('Valor del servicio (pesos)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(fn (Project $record) => app(\App\Services\Projects\AcuerdoDeServicio::class)->datosSugeridos($record)['valor'])
+                            ->visible(fn ($get) => $get('origen') === 'generar'),
+
+                        DatePicker::make('inicio')
+                            ->label('Empieza')
+                            ->default(fn (Project $record) => app(\App\Services\Projects\AcuerdoDeServicio::class)->datosSugeridos($record)['inicio'])
+                            ->visible(fn ($get) => $get('origen') === 'generar'),
+
+                        DatePicker::make('entrega')
+                            ->label('Se entrega')
+                            ->default(fn (Project $record) => app(\App\Services\Projects\AcuerdoDeServicio::class)->datosSugeridos($record)['entrega'])
+                            ->visible(fn ($get) => $get('origen') === 'generar'),
+
+                        Textarea::make('forma_pago')
+                            ->label('Forma de pago')
+                            ->rows(2)
+                            ->default(fn () => \App\Services\Projects\AcuerdoDeServicio::formaDePagoBase())
+                            ->visible(fn ($get) => $get('origen') === 'generar')
+                            ->columnSpanFull(),
+
+                        Textarea::make('clausulas')
+                            ->label('Las cláusulas')
+                            ->rows(14)
+                            ->default(fn () => \App\Services\Projects\AcuerdoDeServicio::clausulasBase())
+                            ->visible(fn ($get) => $get('origen') === 'generar')
+                            ->helperText('La base del laboratorio (se cambia en Proyectos → Acuerdo de servicio). Lo que va entre llaves '
+                                . '—{cliente}, {objeto}, {entregables}, {valor}, {inicio}, {entrega}, {forma_pago}— se rellena con lo de arriba. '
+                                . 'Escribe encima lo que haga falta para este proyecto. Pulsa «Vista previa» para verlo entero antes de enviar.')
+                            ->columnSpanFull(),
 
                         Textarea::make('mensaje')
                             ->label('Algo que quieras añadir')
@@ -338,15 +410,38 @@ class ProjectsTable
                             ->columnSpanFull()
                             ->helperText('Va dentro del correo. Opcional.'),
                     ])
-                    ->action(function (Project $record, array $data) {
-                        $documento = filled($data['document_id'] ?? null)
-                            ? $record->documents()->find($data['document_id'])
-                            : $record->documents()->create([
+                    // Verlo entero antes de generarlo: deja lo escrito en la
+                    // caché y lo abre en otra pestaña, con el formulario intacto.
+                    ->extraModalFooterActions(fn (Action $action) => [
+                        $action->makeModalSubmitAction('vistaPrevia', arguments: ['vista' => true])
+                            ->label('Vista previa')
+                            ->color('gray'),
+                    ])
+                    ->action(function (Project $record, array $data, array $arguments, Action $action, $livewire) {
+                        if ($arguments['vista'] ?? false) {
+                            if (($data['origen'] ?? null) !== 'generar') {
+                                Notification::make()->warning()->title('La vista previa es del acuerdo generado')
+                                    ->body('Elige «Generar el acuerdo de servicio» para verlo.')->send();
+                                $action->halt();
+                            }
+
+                            $token = \Illuminate\Support\Str::random(40);
+                            \Illuminate\Support\Facades\Cache::put('acuerdo:' . $token, $data + ['project_id' => $record->id], now()->addHour());
+
+                            $livewire->js('window.open(' . json_encode(route('panel.acuerdo', ['project' => $record, 'token' => $token])) . ', "_blank")');
+                            $action->halt();
+                        }
+
+                        $documento = match ($data['origen'] ?? 'subir') {
+                            'cargado' => $record->documents()->find($data['document_id']),
+                            'generar' => app(\App\Services\Projects\AcuerdoDeServicio::class)->generar($record, $data, auth()->user(), $data['titulo'] ?? null),
+                            default   => $record->documents()->create([
                                 'kind'        => 'contrato',
                                 'title'       => $data['titulo'] ?: 'Contrato ' . $record->code,
                                 'file_path'   => $data['archivo'],
                                 'uploaded_by' => auth()->id(),
-                            ]);
+                            ]),
+                        };
 
                         try {
                             app(ProjectService::class)->enviarContrato($record, $documento, $data['mensaje'] ?? null, auth()->user());
@@ -428,7 +523,12 @@ class ProjectsTable
             ->requiresConfirmation()
             ->modalDescription(fn (Project $r) => app(ProjectService::class)->queFalta($r)
                 ?? 'Todo lo que exige la siguiente etapa está en su sitio.')
-            ->action(function (Project $record) {
+            // Al cerrar, el aviso al cliente va en el mismo paso: el
+            // proyecto listo que nadie recoge es el que se olvidó avisar.
+            ->schema(fn (Project $r) => app(ProjectService::class)->siguienteEtapa($r) === 'cierre'
+                ? self::camposDelAvisoDeCierre()
+                : [])
+            ->action(function (Project $record, array $data) {
                 try {
                     $proyecto = app(ProjectService::class)->avanzar($record);
                 } catch (ProjectException $e) {
@@ -444,9 +544,47 @@ class ProjectsTable
 
                 Notification::make()
                     ->title('Ahora está en ' . mb_strtolower(Project::ETAPAS[$proyecto->stage]))
+                    ->body(self::avisarCierreSiToca($proyecto, $data))
                     ->success()
                     ->send();
             });
+    }
+
+    /** El interruptor y el texto del aviso al cliente cuando se cierra. */
+    private static function camposDelAvisoDeCierre(): array
+    {
+        return [
+            Toggle::make('avisar')
+                ->label('Avisarle al cliente que puede pasar por lo suyo')
+                ->default(true)
+                ->live(),
+
+            Textarea::make('mensaje')
+                ->label('Qué le decimos')
+                ->rows(5)
+                ->default(fn (Project $record) => app(ProjectService::class)->mensajeDeCierreSugerido($record))
+                ->visible(fn ($get) => (bool) $get('avisar'))
+                ->helperText('Va dentro del correo, con el enlace al proyecto. Cámbialo a tu gusto.')
+                ->columnSpanFull(),
+        ];
+    }
+
+    /** Manda el aviso de cierre si el proyecto quedó cerrado y se pidió. Devuelve qué pasó, para la notificación. */
+    private static function avisarCierreSiToca(Project $proyecto, array $data): ?string
+    {
+        if ($proyecto->stage !== 'cierre' || ! ($data['avisar'] ?? false)) {
+            return null;
+        }
+
+        try {
+            $aviso = app(ProjectService::class)->avisarCierre($proyecto, auth()->user(), $data['mensaje'] ?? null);
+        } catch (ProjectException $e) {
+            Notification::make()->warning()->title('Cerrado, pero el aviso no salió')->body($e->getMessage())->persistent()->send();
+
+            return null;
+        }
+
+        return 'Le avisamos a ' . $aviso->to . ' que puede pasar por lo suyo.';
     }
 
     private static function mover(): Action
@@ -463,18 +601,24 @@ class ProjectsTable
                     ->label('A qué etapa')
                     ->options(Project::ETAPAS)
                     ->required()
+                    ->live()
                     ->helperText('Retroceder no pide nada; avanzar comprueba las compuertas de cada etapa intermedia.'),
+
+                ...array_map(
+                    fn ($campo) => $campo->visible(fn ($get) => $get('etapa') === 'cierre' && ($campo->getName() === 'avisar' || (bool) $get('avisar'))),
+                    self::camposDelAvisoDeCierre(),
+                ),
             ])
             ->action(function (Project $record, array $data) {
                 try {
-                    app(ProjectService::class)->moverA($record, $data['etapa']);
+                    $proyecto = app(ProjectService::class)->moverA($record, $data['etapa']);
                 } catch (ProjectException $e) {
                     Notification::make()->title('No se pudo mover')->body($e->getMessage())->danger()->persistent()->send();
 
                     return;
                 }
 
-                Notification::make()->title('Etapa actualizada')->success()->send();
+                Notification::make()->title('Etapa actualizada')->body(self::avisarCierreSiToca($proyecto, $data))->success()->send();
             });
     }
 

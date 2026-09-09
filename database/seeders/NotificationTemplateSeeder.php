@@ -119,6 +119,27 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'proyecto.cerrado',
+                'name'         => 'Tu proyecto está listo',
+                'description'  => 'A quien pidió el proyecto, cuando el laboratorio lo cierra y avisa que puede pasar por lo suyo.',
+                'is_essential' => true,
+                'subject'      => 'Tu proyecto {proyecto} está listo ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {mensaje}
+
+                    Lo que se hizo y lo que se dijo está aquí:
+
+                    {enlace}
+
+                    Si tienes cuenta en fabOS, también lo encuentras en
+                    Mi cuenta → Mis proyectos, y ahí mismo puedes responder.
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
                 'key'          => 'proyecto.aceptada',
                 'name'         => 'Propuesta aceptada',
                 'description'  => 'A quien acepta una propuesta, cuando no hay traslado presupuestal de por medio.',
