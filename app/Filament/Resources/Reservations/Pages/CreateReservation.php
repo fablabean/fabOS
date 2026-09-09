@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations\Pages;
 
+use App\Filament\Componentes\SelectorDePersona;
 use App\Filament\Resources\Reservations\ReservationResource;
 use App\Models\Area;
 use App\Models\Asset;
@@ -141,7 +142,22 @@ class CreateReservation extends CreateRecord
                         ->live()
                         ->required(fn ($get) => $get('tipo') === 'asesoria')
                         ->visible(fn ($get) => $get('tipo') === 'asesoria')
-                        ->helperText('Una máquina, o el área en general. Quién atiende lo decide el turno, como en el sitio.'),
+                        ->helperText('Una máquina, o el área en general. Quién atiende lo decide el turno, como en el sitio, salvo que elijas a alguien abajo.'),
+
+                    /*
+                     * A dedo, si hace falta: la coordinacion puede decidir que
+                     * esta asesoria la atiende tal persona —muchas veces ella
+                     * misma—, aunque no este declarada para el equipo. Con
+                     * alguien elegido, las horas de abajo son las suyas.
+                     */
+                    Select::make('asesor')
+                        ->label('Quién atiende')
+                        ->options(fn () => SelectorDePersona::equipo())
+                        ->searchable()
+                        ->live()
+                        ->visible(fn ($get) => $get('tipo') === 'asesoria')
+                        ->placeholder('Quien le toque por turno')
+                        ->helperText('Déjalo vacío para que lo decida el turno. Si eliges a alguien, abajo salen sus horas libres.'),
 
                     /*
                      * La hora de una asesoria se elige entre las que alguien
@@ -158,13 +174,18 @@ class CreateReservation extends CreateRecord
                             }
 
                             $solicitante = $get('user_id') ? User::find($get('user_id')) : null;
+                            $asesor = $get('asesor') ? User::find($get('asesor')) : null;
+                            $dias = (int) config('fabos.asesorias.dias_vista', 7);
 
-                            return app(AsesoriaService::class)
-                                ->franjasDisponibles($ambito, $solicitante, (int) config('fabos.asesorias.dias_vista', 7))
+                            $franjas = $asesor
+                                ? app(AsesoriaService::class)->franjasDe($asesor, $solicitante, $dias)
+                                : app(AsesoriaService::class)->franjasDisponibles($ambito, $solicitante, $dias);
+
+                            return $franjas
                                 ->mapWithKeys(fn (array $f) => [
                                     $f['inicio']->format('Y-m-d H:i') => ucfirst(rtrim($f['inicio']->locale('es')->isoFormat('ddd'), '.'))
                                         . ' ' . $f['inicio']->format('d/m') . ' · ' . $f['inicio']->format('H:i') . '–' . $f['fin']->format('H:i')
-                                        . ($f['cuantos'] > 1 ? ' · ' . $f['cuantos'] . ' pueden' : ''),
+                                        . (($f['cuantos'] ?? 1) > 1 ? ' · ' . $f['cuantos'] . ' pueden' : ''),
                                 ])
                                 ->all();
                         })
@@ -172,7 +193,9 @@ class CreateReservation extends CreateRecord
                         ->required(fn ($get) => $get('tipo') === 'asesoria')
                         ->visible(fn ($get) => $get('tipo') === 'asesoria')
                         ->placeholder(fn ($get) => $get('ambito') ? 'Elige una hora con cupo' : 'Primero elige sobre qué')
-                        ->helperText('Solo horas en las que alguien declarado puede atender, de '
+                        ->helperText(fn ($get) => ($get('asesor')
+                            ? 'Solo horas en las que esa persona está en jornada y libre, de '
+                            : 'Solo horas en las que alguien declarado puede atender, de ')
                             . (int) config('fabos.asesorias.minutos', 45) . ' minutos, en los próximos '
                             . (int) config('fabos.asesorias.dias_vista', 7) . ' días.'),
 
@@ -349,7 +372,10 @@ class CreateReservation extends CreateRecord
                     $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
                     $data['acompanantes_por_espacio'] ?? [],
                 ),
-                'asesoria' => $this->agendarAsesoria($quien, $data['ambito'], $desde, $hasta, $paraQue),
+                'asesoria' => $this->agendarAsesoria(
+                    $quien, $data['ambito'], $desde, $hasta, $paraQue,
+                    ! empty($data['asesor']) ? User::find($data['asesor']) : null,
+                ),
             };
         } catch (BookingException $e) {
             Notification::make()->danger()->title('No se pudo reservar')->body($e->getMessage())->persistent()->send();
@@ -387,20 +413,23 @@ class CreateReservation extends CreateRecord
         return $ids !== [] && Space::whereIn('id', $ids)->where('es_todo', true)->exists();
     }
 
-    private function agendarAsesoria(User $quien, string $ambito, Carbon $desde, Carbon $hasta, ?string $paraQue): Reservation
+    private function agendarAsesoria(User $quien, string $ambito, Carbon $desde, Carbon $hasta, ?string $paraQue, ?User $asesor = null): Reservation
     {
         [$clase, $id] = explode(':', $ambito, 2);
 
         $sobreQue = $clase === 'area' ? Area::findOrFail($id) : Asset::findOrFail($id);
 
-        $reserva = app(AsesoriaService::class)->agendar($quien, $sobreQue, $desde, $hasta, $paraQue);
+        $reserva = app(AsesoriaService::class)->agendar($quien, $sobreQue, $desde, $hasta, $paraQue, $asesor);
 
         // Null es «nadie puede»: la persona ya tiene algo a esa hora, o ningún
         // asesor de ese equipo está en jornada y libre. Se dice, no se calla.
         if ($reserva === null) {
-            throw new BookingException(
-                'Nadie puede atender esa asesoría a esa hora: o la persona ya tiene algo, o ningún asesor '
-                . 'de ese equipo está en jornada y libre. Prueba otra hora, o mira el calendario del equipo.',
+            throw new BookingException($asesor
+                ? 'No se pudo agendar: o quien pide ya tiene algo a esa hora, o ' . $asesor->name
+                    . ' no está en jornada presencial o tiene esa hora ocupada. '
+                    . (app(BookingService::class)->porQueNoEstaLibre($asesor, $desde, $hasta) ?? '')
+                : 'Nadie puede atender esa asesoría a esa hora: o la persona ya tiene algo, o ningún asesor '
+                    . 'de ese equipo está en jornada y libre. Prueba otra hora, o mira el calendario del equipo.',
             );
         }
 

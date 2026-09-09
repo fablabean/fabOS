@@ -118,6 +118,9 @@ class AccountController extends Controller
                 ->where('reservable_id', $user->id)
                 ->whereIn('mode', ['asesoria', 'practica'])
                 ->whereIn('status', ['solicitada', 'confirmada', 'en_curso', 'completada'])
+                // Una practica completada es una practica firmada: no queda
+                // nada por hacer con ella, y verla como pendiente confunde.
+                ->whereNot(fn ($query) => $query->where('mode', 'practica')->where('status', 'completada'))
                 ->where('ends_at', '>=', now()->subDays(\App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR))
                 ->with(['advisoryAsset.area', 'advisoryArea', 'enrollment.edition.course', 'user', 'traspasoPendiente.to'])
                 ->orderBy('starts_at')

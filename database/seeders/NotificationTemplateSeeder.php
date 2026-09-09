@@ -305,6 +305,42 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'atencion.asignada',
+                'name'         => 'Te asignaron una atención',
+                'description'  => 'A alguien del equipo, cuando la coordinación le asigna una asesoría o una práctica que atendía otra persona.',
+                'is_essential' => true,
+                'subject'      => 'Te toca: {que} el {fecha} a las {inicio}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {por} te asignó una atención que llevaba {antes}:
+
+                    Qué: {que}
+                    Para quién: {para_quien}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+
+                    Ya está a tu nombre y sale en «Mi cuenta». Si ese día no puedes, pásasela a alguien del equipo desde ahí.
+                    TXT,
+            ],
+            [
+                'key'          => 'atencion.quitada',
+                'name'         => 'Una atención tuya pasó a otra persona',
+                'description'  => 'A alguien del equipo, cuando la coordinación le pasa a otra persona una asesoría o una práctica que tenía a su nombre.',
+                'is_essential' => true,
+                'subject'      => 'Ya no te toca: {que} el {fecha} a las {inicio}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {por} le pasó a {ahora} una atención que estaba a tu nombre:
+
+                    Qué: {que}
+                    Para quién: {para_quien}
+                    Cuándo: {fecha}, de {inicio} a {fin}
+
+                    Esa hora te queda libre. No tienes que hacer nada.
+                    TXT,
+            ],
+            [
                 'key'          => 'reserva.confirmada',
                 'name'         => 'Reserva confirmada',
                 'description'  => 'Se envía al reservar un equipo, cuando la reserva queda confirmada.',

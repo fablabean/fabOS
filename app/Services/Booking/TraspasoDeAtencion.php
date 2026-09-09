@@ -194,6 +194,85 @@ class TraspasoDeAtencion
     // ------------------------------------------------------------ las reglas
 
     /**
+     * La coordinacion se la asigna a alguien, sin pedir permiso.
+     *
+     * El traspaso entre pares se propone y se acepta, porque nadie carga a
+     * otro con una cita sin que diga que si. Aqui no hay propuesta: quien
+     * coordina decide que esta asesoria o esta practica la atiende tal persona
+     * —muchas veces ella misma—, y eso vale aunque no este declarada para el
+     * equipo. Lo que no se salta es la agenda: la persona tiene que estar libre.
+     *
+     * @throws BookingException
+     */
+    public function reasignar(Reservation $reserva, User $a, User $porQuien): Reservation
+    {
+        $de = $reserva->esAtencionPersonal()
+            ? User::find($reserva->reservable_id)
+            : ($reserva->reservable_type === Asset::class ? $reserva->supervisor : null);
+
+        if (! $de) {
+            throw new BookingException('Esta reserva no la atiende nadie en concreto: no hay a quién cambiar.');
+        }
+
+        if ($a->id === $de->id) {
+            throw new BookingException($a->name . ' ya la atiende.');
+        }
+
+        if (! in_array($reserva->status, ['solicitada', 'confirmada', 'en_curso'], true)) {
+            throw new BookingException(
+                'Esta atención está ' . mb_strtolower(Reservation::ESTADOS[$reserva->status] ?? $reserva->status)
+                . ' y ya no se puede reasignar.'
+            );
+        }
+
+        if ($reserva->ends_at->isPast()) {
+            throw new BookingException('Esa atención ya terminó: ya no se puede reasignar.');
+        }
+
+        $this->exigirQuePuedaRecibirla($reserva, $de, $a);
+
+        try {
+            DB::transaction(function () use ($reserva, $de, $a, $porQuien) {
+                // Una propuesta a medias ya no tiene sentido: la decision la tomo
+                // la coordinacion.
+                $reserva->traspasoPendiente()->update([
+                    'status'     => ReservationTransfer::RETIRADO,
+                    'decided_at' => now(),
+                ]);
+
+                $this->cambiarDeManos($reserva, $de, $a, 'Reasignada por ' . $porQuien->name . ': de ' . $de->name . ' a ' . $a->name);
+            });
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'reservations_sin_traslape')) {
+                throw new BookingException($a->name . ' ya tiene otra cosa reservada a esa hora.');
+            }
+
+            throw $e;
+        }
+
+        $datos = $this->datosDe($reserva);
+
+        // A quien la recibe y a quien la pierde, salvo que sean quien decide:
+        // uno no se avisa a si mismo.
+        if ($a->id !== $porQuien->id) {
+            $this->avisos->enviar('atencion.asignada', $a, $datos + ['por' => $porQuien->name, 'antes' => $de->name], $reserva);
+        }
+
+        if ($de->id !== $porQuien->id) {
+            $this->avisos->enviar('atencion.quitada', $de, $datos + ['por' => $porQuien->name, 'ahora' => $a->name], $reserva);
+        }
+
+        if ($reserva->user) {
+            $this->avisos->enviar('atencion.reasignada', $reserva->user, $datos + [
+                'antes' => $de->name,
+                'ahora' => $a->name,
+            ], $reserva);
+        }
+
+        return $reserva->refresh();
+    }
+
+    /**
      * @throws BookingException
      */
     private function exigirQueSePuedaPasar(Reservation $reserva, User $de, bool $contarLaPendiente = true): void
@@ -262,12 +341,12 @@ class TraspasoDeAtencion
     }
 
     /** El cambio de manos, según qué sea. */
-    private function cambiarDeManos(Reservation $reserva, User $de, User $a): void
+    private function cambiarDeManos(Reservation $reserva, User $de, User $a, ?string $motivo = null): void
     {
         if ($reserva->esAtencionPersonal()) {
             $reserva->update([
                 'reservable_id' => $a->id,
-                'status_reason' => 'Pasada por ' . $de->name . ' a ' . $a->name,
+                'status_reason' => $motivo ?? 'Pasada por ' . $de->name . ' a ' . $a->name,
             ]);
 
             return;

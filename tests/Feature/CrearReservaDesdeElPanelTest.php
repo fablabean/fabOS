@@ -371,4 +371,69 @@ class CrearReservaDesdeElPanelTest extends TestCase
             ->assertSee('Equipo por su cuenta')
             ->assertDontSee('Reservable type');
     }
+
+    /** Alguien del equipo, con jornada presencial el lunes, que NO asesora el laser. */
+    private function delEquipo(string $nombre, string $rol): User
+    {
+        $u = User::create(['name' => $nombre, 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $u->assignRole(Role::findOrCreate($rol, 'web'));
+
+        WorkSchedule::create([
+            'user_id' => $u->id, 'weekday' => 1, 'starts_at' => '08:00', 'ends_at' => '18:00',
+            'break_minutes' => 60, 'modalidad' => WorkSchedule::PRESENCIAL, 'effective_from' => '2026-01-01',
+        ]);
+
+        return $u;
+    }
+
+    /**
+     * A dedo: quien coordina elige quien atiende, aunque no este declarado
+     * para el equipo, y las horas que se ofrecen son las de esa persona.
+     */
+    public function test_una_asesoria_se_puede_asignar_a_dedo(): void
+    {
+        $this->asesorEnJornada();
+        $persona = $this->alguien();
+        $elegida = $this->delEquipo('Coordinadora', User::ROL_ADMINISTRADOR);
+
+        $franja = app(\App\Services\Booking\AsesoriaService::class)->franjasDe($elegida, $persona)->first()['inicio'];
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'asesoria', 'user_id' => $persona->id,
+                'ambito' => 'asset:' . $this->equipo->id,
+                'asesor' => $elegida->id,
+                'franja' => $franja->format('Y-m-d H:i'),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $r = Reservation::firstOrFail();
+
+        $this->assertSame($elegida->id, $r->reservable_id, 'la atiende quien se eligio, no el turno');
+        $this->assertSame($this->equipo->id, $r->advisory_asset_id);
+        $this->assertTrue($r->starts_at->equalTo($franja));
+    }
+
+    /** Desde la lista, la coordinacion cambia quien atiende sin proponer ni esperar. */
+    public function test_desde_la_lista_se_reasigna_una_asesoria(): void
+    {
+        $asesor = $this->asesorEnJornada();
+        $persona = $this->alguien();
+        $asesorias = app(\App\Services\Booking\AsesoriaService::class);
+
+        $franja = $asesorias->franjasDisponibles($this->equipo, $persona)->first()['inicio'];
+        $r = $asesorias->agendar($persona, $this->equipo, $franja, $franja->copy()->addMinutes(45));
+        $this->assertSame($asesor->id, $r->reservable_id);
+
+        $otra = $this->delEquipo('Otra del equipo', User::ROL_CONSULTOR);
+
+        Livewire::test(\App\Filament\Resources\Reservations\Pages\ListReservations::class)
+            ->assertActionVisible(\Filament\Actions\Testing\TestAction::make('reasignar')->table($r))
+            ->callAction(\Filament\Actions\Testing\TestAction::make('reasignar')->table($r), ['a' => $otra->id])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame($otra->id, $r->fresh()->reservable_id);
+        $this->assertStringContainsString('Reasignada por Jefa', $r->fresh()->status_reason);
+    }
 }

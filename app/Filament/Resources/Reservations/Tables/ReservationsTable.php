@@ -335,6 +335,50 @@ class ReservationsTable
                     ->visible(fn (Reservation $r) => in_array($r->status, ['solicitada', 'confirmada', 'en_curso'], true))
                     ->url(fn (Reservation $r) => route('calendario.reserva', $r)),
 
+                /*
+                 * Cambiar quien atiende, sin pedir permiso. El traspaso entre
+                 * pares se propone y se acepta desde «Mi cuenta»; aqui decide
+                 * la coordinacion, y vale para cualquiera del equipo aunque no
+                 * este declarado para ese equipo: si quien coordina quiere
+                 * atender ella misma una asesoria de laser, puede.
+                 */
+                Action::make('reasignar')
+                    ->label('Reasignar')
+                    ->iconButton()
+                    ->tooltip('Cambiar quién atiende')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->color('gray')
+                    ->visible(fn (Reservation $r) => $r->esAtencionPersonal()
+                        && in_array($r->status, ['solicitada', 'confirmada', 'en_curso'], true)
+                        && $r->ends_at->isFuture()
+                        && auth()->user()?->hasAnyRole([\App\Models\User::ROL_ADMINISTRADOR, \App\Models\User::ROL_SUPERADMIN]))
+                    ->modalHeading(fn (Reservation $r) => 'Reasignar: ' . $r->queAtiende())
+                    ->modalDescription(fn (Reservation $r) => 'Ahora la atiende ' . (\App\Models\User::find($r->reservable_id)?->name ?? 'nadie')
+                        . '. La persona que elijas tiene que estar libre a esa hora; se le avisa a ella, a quien la tenía y a quien la pidió.')
+                    ->schema([
+                        Select::make('a')
+                            ->label('Quién la atiende ahora')
+                            ->options(fn (Reservation $r) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
+                                ->except([(int) $r->reservable_id, (int) $r->user_id])
+                                ->all())
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (Reservation $r, array $data) {
+                        try {
+                            app(\App\Services\Booking\TraspasoDeAtencion::class)->reasignar(
+                                $r, \App\Models\User::findOrFail($data['a']), auth()->user(),
+                            );
+                        } catch (\App\Services\Booking\BookingException $e) {
+                            Notification::make()->danger()->title('No se pudo reasignar')->body($e->getMessage())->persistent()->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()->title('Reasignada')
+                            ->body('Ahora la atiende ' . \App\Models\User::find($data['a'])?->name . '.')->send();
+                    }),
+
                 EditAction::make()->iconButton()->tooltip('Editar'),
 
                 /*

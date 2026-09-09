@@ -525,4 +525,73 @@ class TraspasosTest extends TestCase
             ->assertSee('Prototipado')
             ->assertSee($quien->name);
     }
+
+    // ------------------------------------------------------- reasignar
+
+    /**
+     * La coordinacion decide, sin proponer ni esperar: vale aunque quien
+     * recibe no este declarado para el equipo.
+     */
+    public function test_la_coordinacion_reasigna_a_quien_quiera_sin_pedir_permiso(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $quien = $this->alguien();
+        $r = $this->asesoria($ana, $quien);
+
+        $jefa = $this->colaborador('Jefa');
+        $beto = $this->colaborador('Beto'); // no asesora el laser
+
+        $r = app(TraspasoDeAtencion::class)->reasignar($r, $beto, $jefa);
+
+        $this->assertSame($beto->id, $r->reservable_id);
+        $this->assertTrue($r->laAtiende($beto));
+        $this->assertFalse($r->laAtiende($ana));
+        $this->assertTrue(NotificationLog::where('key', 'atencion.asignada')->where('user_id', $beto->id)->exists());
+        $this->assertTrue(NotificationLog::where('key', 'atencion.quitada')->where('user_id', $ana->id)->exists());
+        $this->assertTrue(NotificationLog::where('key', 'atencion.reasignada')->where('user_id', $quien->id)->exists());
+    }
+
+    /** Quien coordina se la queda ella misma: el caso corriente, y no se avisa a si misma. */
+    public function test_la_coordinacion_se_la_asigna_a_si_misma(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $r = $this->asesoria($ana);
+        $jefa = $this->colaborador('Jefa');
+
+        $r = app(TraspasoDeAtencion::class)->reasignar($r, $jefa, $jefa);
+
+        $this->assertSame($jefa->id, $r->reservable_id);
+        $this->assertFalse(NotificationLog::where('key', 'atencion.asignada')->where('user_id', $jefa->id)->exists());
+        $this->assertTrue(NotificationLog::where('key', 'atencion.quitada')->where('user_id', $ana->id)->exists());
+    }
+
+    /** La agenda no se salta: si la persona esta ocupada a esa hora, no se le pasa. */
+    public function test_no_se_reasigna_a_alguien_ocupado(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $r = $this->asesoria($ana);
+        $beto = $this->colaborador('Beto');
+        $this->asesoria($beto); // a la misma hora, con otra persona
+        $jefa = $this->colaborador('Jefa');
+
+        $this->expectException(BookingException::class);
+        app(TraspasoDeAtencion::class)->reasignar($r, $beto, $jefa);
+    }
+
+    /** Una propuesta a medias se retira: la coordinacion ya decidio. */
+    public function test_reasignar_retira_la_propuesta_pendiente(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $carla = $this->colaborador('Carla');
+        $r = $this->asesoria($ana);
+
+        $traspasos = app(TraspasoDeAtencion::class);
+        $propuesta = $traspasos->proponer($r, $ana, $beto);
+
+        $traspasos->reasignar($r, $carla, $ana);
+
+        $this->assertSame(ReservationTransfer::RETIRADO, $propuesta->fresh()->status);
+        $this->assertSame($carla->id, $r->fresh()->reservable_id);
+    }
 }

@@ -174,8 +174,9 @@ class AsesoriaService
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?string $motivo = null,
+        ?User $asesor = null,
     ): ?Reservation {
-        return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo) {
+        return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo, $asesor) {
             // Quien pide tambien tiene que estar libre. Se comprobaba solo al
             // asesor, asi que una misma persona podia agendarse dos asesorias a
             // la misma hora —con dos asesores distintos— y dejar plantado a uno.
@@ -186,7 +187,22 @@ class AsesoriaService
                 return null;
             }
 
-            $asesor = $this->elegir($ambito, $desde, $hasta, $solicitante);
+            /*
+             * Con alguien elegido a dedo, no hay turno: la coordinacion decide
+             * que esa asesoria la atiende tal persona, sea o no de las
+             * declaradas para el equipo. Lo unico que se le exige es lo mismo
+             * que a cualquiera: estar en jornada presencial y con la hora libre.
+             */
+            if ($asesor) {
+                $puede = $this->cobertura->enJornada($desde, $hasta)->contains('id', $asesor->id)
+                    && $this->reservas->personaLibre($asesor, $desde, $hasta);
+
+                if (! $puede) {
+                    return null;
+                }
+            } else {
+                $asesor = $this->elegir($ambito, $desde, $hasta, $solicitante);
+            }
 
             if (! $asesor) {
                 return null;

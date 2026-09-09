@@ -175,8 +175,28 @@ Según qué sea, cambiar de manos es distinto:
 - **acompañamiento en un espacio**: se cambia un nombre por otro en la lista
   de acompañantes.
 
-Solo se pasa lo confirmado y por venir. Una que ya empezó, una solicitada o
-una cancelada no se pasan.
+Solo se pasa lo confirmado y hasta que termine. Una solicitada o una cancelada
+no se pasan.
+
+### Y la coordinación la reasigna sin preguntar
+
+Lo de arriba es entre pares. Quien coordina no propone: **decide**. En la
+lista de reservas del panel, una asesoría o una práctica tienen el botón
+*Reasignar* (flechas), solo para administración, que la pone a nombre de
+cualquiera del equipo, muchas veces de quien coordina. No hace falta que esa
+persona esté declarada para el equipo de la asesoría: si quien coordina
+quiere atender ella misma una de láser, puede.
+
+Lo único que no se salta es la agenda: la persona tiene que estar libre a esa
+hora, aquí y en su calendario de fuera, y se le dice por qué si no lo está.
+Una propuesta pendiente entre pares se retira sola. Se avisa a quien la
+recibe (*atencion.asignada*), a quien la tenía (*atencion.quitada*) y a quien
+la pidió (*atencion.reasignada*); quien decide no se avisa a sí misma.
+
+Y al crear una asesoría desde el panel, el campo **Quién atiende** hace lo
+mismo de entrada: vacío, la atiende quien le toque por turno; con alguien
+elegido, la lista de horas pasa a ser la de esa persona (`franjasDe`) y la
+asesoría nace a su nombre.
 
 ## Qué ve cada quien
 
