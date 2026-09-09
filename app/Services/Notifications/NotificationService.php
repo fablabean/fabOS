@@ -31,7 +31,10 @@ class NotificationService
     /**
      * @param  array<string,mixed>  $datos  variables de la plantilla
      */
-    public function enviar(string $clave, User $destinatario, array $datos = [], ?Model $referencia = null): ?NotificationLog
+    /**
+     * @param  list<array{ruta:string,nombre:string}>  $adjuntos  archivos del disco privado que van dentro del correo
+     */
+    public function enviar(string $clave, User $destinatario, array $datos = [], ?Model $referencia = null, array $adjuntos = []): ?NotificationLog
     {
         $plantilla = NotificationTemplate::where('key', $clave)->first();
 
@@ -60,7 +63,7 @@ class NotificationService
         $cuerpo = $plantilla->render('body', $datos);
 
         try {
-            Mail::to($destinatario->email)->send(new PlantillaMail($asunto, $cuerpo));
+            Mail::to($destinatario->email)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos));
         } catch (\Throwable $e) {
             return $this->anotar($clave, $destinatario, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
         }
@@ -86,6 +89,7 @@ class NotificationService
         string $nombre,
         array $datos = [],
         ?Model $referencia = null,
+        array $adjuntos = [],
     ): NotificationLog {
         $plantilla = NotificationTemplate::where('key', $clave)->first();
 
@@ -103,7 +107,7 @@ class NotificationService
         $cuerpo = $plantilla->render('body', $datos);
 
         try {
-            Mail::to($correo)->send(new PlantillaMail($asunto, $cuerpo));
+            Mail::to($correo)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos));
         } catch (\Throwable $e) {
             return $this->anotarSuelto($clave, $correo, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
         }

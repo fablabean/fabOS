@@ -4,6 +4,8 @@ namespace App\Services\Projects;
 
 use App\Models\Evidencia;
 use App\Models\Project;
+use App\Models\ProjectComment;
+use App\Models\User;
 use App\Services\Media\OptimizadorDeImagen;
 use Illuminate\Http\UploadedFile;
 
@@ -54,7 +56,7 @@ class SoportesDeSolicitud
     /**
      * @param  array<int,UploadedFile>  $archivos
      */
-    public function guardar(Project $proyecto, array $archivos): int
+    public function guardar(Project $proyecto, array $archivos, ?ProjectComment $comentario = null, ?int $porQuien = null): int
     {
         $guardados = 0;
 
@@ -76,16 +78,53 @@ class SoportesDeSolicitud
                 : $archivo->store(self::DIRECTORIO, 'local');
 
             $proyecto->evidence()->create([
-                'kind'          => $esImagen ? 'foto' : 'archivo',
-                'file_path'     => $ruta,
-                'original_name' => mb_substr($archivo->getClientOriginalName(), 0, 255),
-                'uploaded_by'   => $proyecto->requested_by,
+                'kind'               => $esImagen ? 'foto' : 'archivo',
+                'file_path'          => $ruta,
+                'original_name'      => mb_substr($archivo->getClientOriginalName(), 0, 255),
+                'uploaded_by'        => $porQuien ?? $proyecto->requested_by,
+                'project_comment_id' => $comentario?->id,
             ]);
 
             $guardados++;
         }
 
         return $guardados;
+    }
+
+    /**
+     * Lo que el panel ya subio al disco privado, pegado a una respuesta.
+     *
+     * El campo de archivos del panel guarda por su cuenta; aqui solo se anota
+     * cada archivo como soporte del proyecto y de esa respuesta, con el
+     * nombre con que llego.
+     *
+     * @param  list<string>  $rutas
+     * @param  array<string,string>  $nombres  ruta guardada → nombre original
+     */
+    public function anotarSubidos(Project $proyecto, ProjectComment $comentario, array $rutas, array $nombres, ?User $quien): int
+    {
+        $anotados = 0;
+
+        foreach (array_slice(array_values($rutas), 0, self::MAXIMO) as $ruta) {
+            if (! is_string($ruta) || $ruta === '' || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta)) {
+                continue;
+            }
+
+            $nombre = $nombres[$ruta] ?? basename($ruta);
+            $extension = mb_strtolower(pathinfo($nombre, PATHINFO_EXTENSION) ?: pathinfo($ruta, PATHINFO_EXTENSION));
+
+            $proyecto->evidence()->create([
+                'kind'               => in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'], true) ? 'foto' : 'archivo',
+                'file_path'          => $ruta,
+                'original_name'      => mb_substr($nombre, 0, 255),
+                'uploaded_by'        => $quien?->id,
+                'project_comment_id' => $comentario->id,
+            ]);
+
+            $anotados++;
+        }
+
+        return $anotados;
     }
 
     /**

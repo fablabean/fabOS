@@ -18,10 +18,23 @@ class PlantillaMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * @param  list<array{ruta:string,nombre:string}>  $adjuntos  archivos del disco privado que van dentro del correo
+     */
     public function __construct(
         public string $asunto,
         public string $cuerpo,
+        public array $adjuntos = [],
     ) {}
+
+    /** @return list<\Illuminate\Mail\Mailables\Attachment> */
+    public function attachments(): array
+    {
+        return array_map(
+            fn (array $a) => \Illuminate\Mail\Mailables\Attachment::fromStorageDisk('local', $a['ruta'])->as($a['nombre']),
+            $this->adjuntos,
+        );
+    }
 
     public function envelope(): Envelope
     {

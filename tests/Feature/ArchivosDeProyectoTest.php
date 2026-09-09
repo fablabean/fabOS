@@ -134,6 +134,61 @@ class ArchivosDeProyectoTest extends TestCase
             ->assertHeader('content-disposition', 'attachment; filename="Modelos para imprimir.zip"');
     }
 
+    /**
+     * El laboratorio responde con una foto: queda pegada a la respuesta, es
+     * soporte del proyecto, y quien pidió la ve debajo de lo que se dijo.
+     */
+    public function test_el_laboratorio_responde_con_imagenes(): void
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+
+        $jefa = User::create(['name' => 'Jefa', 'email' => uniqid() . '@lab.co', 'status' => 'activo']);
+        $jefa->assignRole(User::ROL_ADMINISTRADOR);
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($jefa);
+        $servicio->confirmar($jefa, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($jefa->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $p = app(ProjectService::class)->registrarIdea([
+            'name' => 'Trofeos', 'source' => 'whatsapp', 'organization' => 'Deportes', 'lead_id' => $jefa->id,
+            'contact_email' => 'cliente@ejemplo.co',
+        ]);
+
+        Livewire::test(\App\Filament\Resources\Projects\RelationManagers\CommentsRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => EditProject::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), [
+                'body'     => 'Así va la pieza.',
+                'adjuntos' => [UploadedFile::fake()->image('avance.jpg', 400, 300)],
+            ])
+            ->assertHasNoActionErrors();
+
+        $respuesta = $p->comments()->where('side', 'laboratorio')->firstOrFail();
+        $foto = $respuesta->adjuntos->first();
+
+        $this->assertNotNull($foto, 'la foto queda pegada a la respuesta');
+        $this->assertSame('foto', $foto->kind);
+        $this->assertSame('avance.jpg', $foto->original_name);
+        $this->assertSame($p->id, $foto->evidenciable_id, 'y es soporte del proyecto');
+        $this->assertSame($jefa->id, $foto->uploaded_by);
+        $this->assertTrue(Storage::disk('local')->exists($foto->file_path));
+
+        // Quien pidió la ve en línea, debajo de la respuesta.
+        $enlace = \Illuminate\Support\Facades\URL::temporarySignedRoute('proyectos.propuesta', now()->addDay(), ['project' => $p->id]);
+
+        $this->get($enlace)
+            ->assertOk()
+            ->assertSee('Así va la pieza.')
+            ->assertSee('/proyectos/evidencia/' . $foto->id, false)
+            ->assertSee('alt="avance.jpg"', false)
+            // Y no repetida en la lista de lo que adjuntó al pedirlo: no la adjuntó él.
+            ->assertDontSee('<h2 style="margin-top:0">Lo que adjuntaste</h2>', false);
+    }
+
     /** Lo que quedo en el disco publico de antes sigue saliendo por ahi. */
     public function test_un_documento_del_disco_publico_conserva_su_enlace(): void
     {

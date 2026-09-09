@@ -27,9 +27,15 @@ class Evidencia extends Model
     protected $table = 'evidencias';
 
     protected $fillable = [
-        'evidenciable_type', 'evidenciable_id',
+        'evidenciable_type', 'evidenciable_id', 'project_comment_id',
         'kind', 'file_path', 'url', 'caption', 'original_name', 'uploaded_by',
     ];
+
+    /** La respuesta con la que llego, si llego con una. */
+    public function comment(): BelongsTo
+    {
+        return $this->belongsTo(ProjectComment::class, 'project_comment_id');
+    }
 
     public const TIPOS = [
         'foto'    => 'Foto',

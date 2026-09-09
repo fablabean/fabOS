@@ -83,6 +83,33 @@ class AvisoDeNovedadesTest extends TestCase
     }
 
     /** El enlace del correo abre la propuesta y la conversación sin entrar. */
+    /** Las imágenes que el laboratorio pegó en sus respuestas van dentro del correo, y solo una vez. */
+    public function test_el_aviso_lleva_las_imagenes_de_las_respuestas(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $p = $this->proyecto();
+        $jefa = $this->jefa();
+        $servicio = app(ProjectService::class);
+
+        $respuesta = $servicio->comentar($p, 'Así va la pieza.', $jefa);
+        app(\App\Services\Projects\SoportesDeSolicitud::class)->guardar($p, [
+            \Illuminate\Http\UploadedFile::fake()->image('avance.jpg', 300, 200),
+            \Illuminate\Http\UploadedFile::fake()->create('plano.pdf', 20, 'application/pdf'),
+        ], $respuesta, $jefa->id);
+
+        $this->assertCount(2, $respuesta->fresh()->adjuntos, 'los dos quedan pegados a la respuesta');
+        $this->assertCount(1, $servicio->adjuntosDelAviso($p), 'pero al correo solo van las imágenes');
+
+        $servicio->avisarNovedades($p, $jefa, 'Mira la foto.');
+
+        Mail::assertSent(\App\Mail\PlantillaMail::class, fn (\App\Mail\PlantillaMail $m) => count($m->adjuntos) === 1
+            && $m->adjuntos[0]['nombre'] === 'avance.jpg');
+
+        // El siguiente aviso no la repite.
+        $this->assertSame([], $servicio->adjuntosDelAviso($p));
+    }
+
     public function test_el_enlace_del_aviso_abre_la_conversacion_sin_sesion(): void
     {
         $p = $this->proyecto();

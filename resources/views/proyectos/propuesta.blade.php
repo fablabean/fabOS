@@ -167,11 +167,15 @@
     @endif
 
     {{-- Lo que adjuntó al pedirlo. Verlo aquí evita el «¿les llegó la foto?». --}}
-    @if ($proyecto->evidence->isNotEmpty())
+    @php
+        // Lo que vino con una respuesta se ve debajo de esa respuesta, no aquí.
+        $soportesDeLaSolicitud = $proyecto->evidence->whereNull('project_comment_id');
+    @endphp
+    @if ($soportesDeLaSolicitud->isNotEmpty())
         <div class="panel">
             <h2 style="margin-top:0">Lo que adjuntaste</h2>
             <ul style="margin:0;padding-left:1.1rem">
-                @foreach ($proyecto->evidence as $soporte)
+                @foreach ($soportesDeLaSolicitud as $soporte)
                     <li style="margin:.4rem 0">
                         @auth
                             <a href="{{ $soporte->enlace() }}" target="_blank" rel="noopener">
@@ -233,6 +237,27 @@
                         {{ $comentario->created_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
                     </div>
                     <div>{!! nl2br(e($comentario->body)) !!}</div>
+
+                    {{-- Lo que vino pegado a la respuesta: las imágenes se ven
+                         aquí mismo, lo demás se descarga. Con enlace firmado
+                         para quien llega por el correo, como la galería. --}}
+                    @if ($comentario->adjuntos->isNotEmpty())
+                        <div class="adjuntos">
+                            @foreach ($comentario->adjuntos as $adjunto)
+                                @if ($adjunto->esImagen())
+                                    <a href="{{ $verImagen($adjunto) }}" target="_blank" rel="noopener">
+                                        <img src="{{ $verImagen($adjunto) }}" alt="{{ $adjunto->comoSeLlama() }}" loading="lazy">
+                                    </a>
+                                @else
+                                    <div>
+                                        <a href="{{ $verImagen($adjunto) }}" target="_blank" rel="noopener">
+                                            {{ $adjunto->comoSeLlama() }}
+                                        </a>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
@@ -246,8 +271,8 @@
         <div class="panel" id="responder">
             <h2 style="margin-top:0">Responder</h2>
             <p class="help" style="margin-top:0">
-                Si te preguntaron algo o te pidieron un archivo, aquí va. Lo que adjuntes queda
-                con el proyecto, en «Lo que adjuntaste».
+                Si te preguntaron algo o te pidieron un archivo, aquí va. Lo que adjuntes se ve
+                debajo de tu respuesta y queda con el proyecto.
             </p>
 
             @error('body') <p class="msg error">{{ $message }}</p> @enderror
@@ -485,6 +510,8 @@
         .aceptar .botones button { margin:0; }
         .comentario { border-left:3px solid var(--rule); padding-left:.9rem; margin-bottom:1rem; }
         .comentario.laboratorio { border-left-color:var(--accent); }
+        .comentario .adjuntos { margin-top:.5rem; display:flex; flex-wrap:wrap; gap:.5rem; align-items:flex-start; }
+        .comentario .adjuntos img { max-width:240px; max-height:180px; border-radius:6px; display:block; }
         .comentario .quien { margin-bottom:.15rem; }
         .flujo .pasos { list-style:none; margin:0; padding:0;
                         display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.6rem; }

@@ -42,6 +42,12 @@ class ProjectComment extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** Lo que vino pegado a esta respuesta: fotos, planos, archivos. */
+    public function adjuntos(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Evidencia::class, 'project_comment_id')->orderBy('id');
+    }
+
     public function quien(): string
     {
         return $this->user?->name

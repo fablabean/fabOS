@@ -329,22 +329,28 @@ class SolicitudDeProyectoController extends Controller
          * desde la ficha se convierte en documento del proyecto con un clic.
          * En el hilo queda dicho que archivos llegaron con esta respuesta.
          */
-        $archivos = collect($request->file('soportes', []))->filter();
-        $guardados = $archivos->isNotEmpty() ? $this->soportes->guardar($project, $archivos->all()) : 0;
+        $archivos = collect($request->file('soportes', []))
+            ->filter(fn ($a) => $a instanceof \Illuminate\Http\UploadedFile && $a->isValid())
+            ->take(SoportesDeSolicitud::MAXIMO);
 
         $texto = trim((string) ($datos['body'] ?? ''));
 
-        if ($guardados > 0) {
-            $nombres = $archivos->take($guardados)->map(fn ($a) => $a->getClientOriginalName())->implode(', ');
+        if ($archivos->isNotEmpty()) {
+            $nombres = $archivos->map(fn ($a) => $a->getClientOriginalName())->implode(', ');
             $texto = trim($texto . "\n\nAdjuntó: " . $nombres . '.');
         }
 
-        $this->proyectos->comentar(
+        $comentario = $this->proyectos->comentar(
             $project,
             $texto,
             $request->user(),
             $project->contact_name,
         );
+
+        // Y pegados a la respuesta, para que se vean debajo de lo que dijo.
+        if ($archivos->isNotEmpty()) {
+            $this->soportes->guardar($project, $archivos->all(), $comentario, $request->user()?->id);
+        }
 
         return back()->with('comentado', true);
     }

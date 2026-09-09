@@ -628,15 +628,17 @@ class ProjectService
         ];
 
         $destinatario = $proyecto->destinatarioDeLaPropuesta();
+        $adjuntos = $this->adjuntosDelAviso($proyecto);
 
         $aviso = $destinatario
-            ? $this->avisos->enviar('proyecto.novedades', $destinatario, $variables, $proyecto)
+            ? $this->avisos->enviar('proyecto.novedades', $destinatario, $variables, $proyecto, $adjuntos)
             : $this->avisos->enviarSinCuenta(
                 'proyecto.novedades',
                 $correo,
                 $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
                 $variables,
                 $proyecto,
+                $adjuntos,
             );
 
         if (! $aviso || $aviso->status !== 'enviado') {
@@ -646,6 +648,48 @@ class ProjectService
         }
 
         return $aviso;
+    }
+
+    /**
+     * Las imágenes que el laboratorio pegó en sus respuestas desde el último
+     * aviso: van dentro del correo, para que se vean sin abrir nada.
+     *
+     * Solo imágenes, y con techo. Un plano o un modelo se descargan desde la
+     * propuesta; meterlos en el correo es mandar veinte megas a un buzón que
+     * quizá los rebote. Y solo lo nuevo: el segundo aviso no repite la foto
+     * del primero.
+     *
+     * @return list<array{ruta:string,nombre:string}>
+     */
+    public function adjuntosDelAviso(Project $proyecto, int $topeBytes = 12 * 1024 * 1024): array
+    {
+        $desde = $this->ultimoAvisoDeNovedades($proyecto)?->created_at;
+
+        $respuestas = $proyecto->comments()
+            ->where('side', 'laboratorio')
+            ->when($desde, fn ($query) => $query->where('created_at', '>', $desde))
+            ->select('id');
+
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+        $lista = [];
+        $total = 0;
+
+        foreach (\App\Models\Evidencia::whereIn('project_comment_id', $respuestas)->where('kind', 'foto')->whereNotNull('file_path')->orderBy('id')->get() as $foto) {
+            if (! $disco->exists($foto->file_path)) {
+                continue;
+            }
+
+            $peso = $disco->size($foto->file_path);
+
+            if ($total + $peso > $topeBytes) {
+                continue;
+            }
+
+            $total += $peso;
+            $lista[] = ['ruta' => $foto->file_path, 'nombre' => $foto->original_name ?: basename($foto->file_path)];
+        }
+
+        return $lista;
     }
 
     /** Cuándo se avisó por última vez de novedades, para no avisar dos veces lo mismo. */
