@@ -284,6 +284,10 @@ class Project extends Model
         'correo'     => 'Correo',
         'whatsapp'   => 'WhatsApp',
         'formulario' => 'Formulario del sitio',
+        // Lo que llega por la puerta: alguien que pasa por el laboratorio a
+        // preguntar, o que viene porque otro le hablo de aqui.
+        'presencial' => 'En persona',
+        'voz_a_voz'  => 'Voz a voz',
         'gerencia'   => 'Gerencia',
         'interno'    => 'Iniciativa del laboratorio',
     ];

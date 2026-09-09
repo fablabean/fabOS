@@ -148,6 +148,25 @@ class BackofficeProyectosTest extends TestCase
         $this->assertDatabaseHas('projects', ['name' => 'Encargo de gerencia', 'source' => 'gerencia']);
     }
 
+    /** Lo que llega por la puerta: en persona, o porque otro le hablo de aqui. */
+    public function test_en_persona_y_voz_a_voz_son_origenes_validos(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+        $this->entra($admin);
+
+        foreach (['presencial' => 'Vino a preguntar', 'voz_a_voz' => 'Se lo contó un amigo'] as $origen => $nombre) {
+            Livewire::test(\App\Filament\Resources\Projects\Pages\CreateProject::class)
+                ->fillForm(['name' => $nombre, 'source' => $origen])
+                ->call('create')
+                ->assertHasNoFormErrors();
+
+            $this->assertDatabaseHas('projects', ['name' => $nombre, 'source' => $origen]);
+        }
+
+        $this->assertSame('En persona', Project::ORIGENES['presencial']);
+        $this->assertSame('Voz a voz', Project::ORIGENES['voz_a_voz']);
+    }
+
     /** Dejar el avance en blanco es «todavia nada», no un error de guardado. */
     public function test_una_tarea_se_guarda_sin_avance(): void
     {
