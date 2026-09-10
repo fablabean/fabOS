@@ -113,6 +113,10 @@ class LoginCodeController extends Controller
         FactoresDeSesion::olvidar($request);
         FactoresDeSesion::anotar($request, $factor);
 
+        if ($factor === FactoresDeSesion::APP) {
+            FactoresDeSesion::recordarApp($user);
+        }
+
         // Un carne escaneado antes de identificarse prueba algo por su cuenta:
         // cuenta como factor propio de cara al backoffice.
         if ($request->session()->pull('carnet_verificado')) {
@@ -133,6 +137,9 @@ class LoginCodeController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Salir es salir: la app tampoco se recuerda ya.
+        FactoresDeSesion::olvidarApp();
 
         return redirect()->route('publico.home');
     }

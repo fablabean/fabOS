@@ -37,7 +37,7 @@
 
     @if (\App\Support\Settings::carnetLoginEnabled())
         <p class="foot" style="text-align:center;margin-top:1.6rem">
-            o <a href="{{ route('carnet') }}">escanea tu carné digital</a>
+            o <a href="{{ route('carnet') }}">escanea tu carné digital</a> si ya estás registrado
         </p>
     @endif
     <p class="foot">

@@ -49,6 +49,14 @@ class RequiereSegundoFactor
             return $next($request);
         }
 
+        // O la demostró hace menos de una semana en este mismo navegador: la
+        // cookie lo recuerda aunque la sesión haya caducado entre medias.
+        if (FactoresDeSesion::appRecordada($request, $user)) {
+            FactoresDeSesion::anotar($request, FactoresDeSesion::APP);
+
+            return $next($request);
+        }
+
         // Sin configurar: se manda a configurarlo, no se le niega el paso sin más.
         if (! $user->tieneSegundoFactor()) {
             return redirect()->route('dosfactores.configurar');

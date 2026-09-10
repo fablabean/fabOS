@@ -161,6 +161,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cuanto dura lo que se demostro al entrar
+    |--------------------------------------------------------------------------
+    |
+    | La sesion dura lo que diga SESSION_LIFETIME (un mes). El codigo de la
+    | app de autenticacion, que el panel exige a quien administra, se
+    | recuerda estos dias en el navegador: se pide como mucho una vez por
+    | semana, o antes si la persona sale.
+    */
+    'sesion' => [
+        'dias_segundo_factor' => (int) env('SEGUNDO_FACTOR_DIAS', 7),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Codigo de un solo uso (OTP)
     |--------------------------------------------------------------------------
     */

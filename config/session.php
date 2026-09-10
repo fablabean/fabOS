@@ -32,7 +32,11 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // Un mes (§5): la sesion dura hasta que la persona salga, o hasta que
+    // pase un mes sin entrar. Con dos horas, cada vuelta al sitio era otro
+    // codigo al correo. El segundo factor del panel se recuerda aparte, una
+    // semana, en config/fabos.php.
+    'lifetime' => (int) env('SESSION_LIFETIME', 43200),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

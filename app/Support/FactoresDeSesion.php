@@ -73,4 +73,47 @@ final class FactoresDeSesion
     {
         $request->session()->forget(self::CLAVE);
     }
+
+    /*
+     * La app de autenticacion, recordada mas alla de la sesion (§5).
+     *
+     * El codigo de la app se pedia cada vez que la sesion caducaba, y con la
+     * sesion de dos horas eso era varias veces al dia para quien administra.
+     * Se guarda en una cookie propia, cifrada por Laravel como todas, que
+     * dice de quien es y hasta cuando vale: una semana. Al salir se borra.
+     * El correo y el carne no se recuerdan asi: lo que dura es la sesion.
+     */
+    private const COOKIE_APP = 'fabos_segundo_factor';
+
+    public static function recordarApp(\App\Models\User $user): void
+    {
+        $dias = max(1, (int) config('fabos.sesion.dias_segundo_factor', 7));
+        $hasta = now()->addDays($dias);
+
+        \Illuminate\Support\Facades\Cookie::queue(
+            self::COOKIE_APP,
+            $user->id . '|' . $hasta->timestamp,
+            $dias * 24 * 60,
+        );
+    }
+
+    public static function appRecordada(Request $request, \App\Models\User $user): bool
+    {
+        $valor = (string) $request->cookie(self::COOKIE_APP, '');
+
+        if ($valor === '' || ! str_contains($valor, '|')) {
+            return false;
+        }
+
+        [$id, $hasta] = explode('|', $valor, 2);
+
+        return (int) $id === $user->id
+            && ctype_digit($hasta)
+            && (int) $hasta > now()->timestamp;
+    }
+
+    public static function olvidarApp(): void
+    {
+        \Illuminate\Support\Facades\Cookie::queue(\Illuminate\Support\Facades\Cookie::forget(self::COOKIE_APP));
+    }
 }

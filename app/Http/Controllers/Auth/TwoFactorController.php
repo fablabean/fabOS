@@ -52,6 +52,7 @@ class TwoFactorController extends Controller
 
         $request->session()->forget('2fa_secreto_provisional');
         FactoresDeSesion::anotar($request, FactoresDeSesion::APP);
+        FactoresDeSesion::recordarApp($request->user());
 
         return redirect('/admin')->with('status', 'Segundo factor activado.');
     }
@@ -86,6 +87,7 @@ class TwoFactorController extends Controller
 
         RateLimiter::clear($clave);
         FactoresDeSesion::anotar($request, FactoresDeSesion::APP);
+        FactoresDeSesion::recordarApp($request->user());
 
         return redirect()->intended('/admin');
     }
@@ -135,6 +137,7 @@ class TwoFactorController extends Controller
 
         $request->session()->forget('2fa_secreto_provisional');
         FactoresDeSesion::anotar($request, FactoresDeSesion::APP);
+        FactoresDeSesion::recordarApp($request->user());
 
         return redirect()->route('cuenta.app')
             ->with('status', 'Listo. Desde ahora entras con el codigo de tu app.');
