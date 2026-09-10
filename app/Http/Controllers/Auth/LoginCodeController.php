@@ -26,6 +26,9 @@ class LoginCodeController extends Controller
 
     public function sendCode(Request $request)
     {
+        // Con el nick basta: «ehansen» es ehansen@ el dominio de la Universidad.
+        $request->merge(['email' => \App\Models\User::correoDesde((string) $request->input('email', ''))]);
+
         $data = $request->validate([
             'email' => ['required', 'email:rfc', 'max:255'],
         ]);
@@ -79,6 +82,8 @@ class LoginCodeController extends Controller
 
     public function verifyCode(Request $request)
     {
+        $request->merge(['email' => \App\Models\User::correoDesde((string) $request->input('email', ''))]);
+
         $data = $request->validate([
             'email' => ['required', 'email:rfc'],
             'code'  => ['required', 'string', 'max:12'],

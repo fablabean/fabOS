@@ -91,6 +91,18 @@ class CarnetClient
 
         $document = $this->cleanNone($this->firstMatch($html, '/Identificación:\s*([^<]+)/u'));
         $phone    = $this->cleanNone($this->firstMatch($html, '/Teléfono:\s*([^<]+)/u'));
+
+        // El correo o el usuario institucional, si el carné lo trae: es el
+        // dato exacto que evita emparejar por nombre. Se acepta «Correo:»,
+        // «Usuario:» o una dirección suelta del dominio institucional.
+        $correo = $this->cleanNone($this->firstMatch($html, '/(?:Correo|Email|Usuario)[^:<]*:\s*([^<\s]+)/iu'));
+
+        if ($correo === null) {
+            $dominio = preg_quote(strtolower(trim((string) config('fabos.identity.institutional_domain'))), '/');
+            $correo = $dominio !== ''
+                ? $this->cleanNone($this->firstMatch($html, '/([A-Za-z0-9._+-]+@' . $dominio . ')/i'))
+                : null;
+        }
         $expires  = $this->parseExpiry($this->firstMatch($html, '/Fecha de expiración:\s*([^<]+)/u'));
 
         // Un carne cuya fecha ya paso no sirve, aunque el servidor devuelva 200.
@@ -102,10 +114,12 @@ class CarnetClient
             valid:          true,
             documentNumber: $document,
             fullName:       $this->clean($name),
+            email:          $correo ? strtolower($correo) : null,
             affiliation:    null,
             raw:            array_filter([
                 'nombre'     => $this->clean($name),
                 'documento'  => $document,
+                'correo'     => $correo,
                 'telefono'   => $phone,
                 'expira'     => $expires?->toIso8601String(),
             ]),

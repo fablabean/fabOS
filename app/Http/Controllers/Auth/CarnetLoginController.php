@@ -140,7 +140,19 @@ class CarnetLoginController extends Controller
             $user = User::where('document_number', $identity->documentNumber)->first();
         }
 
-        // 3) Nombre, solo si coincide con UNA sola cuenta.
+        // 3) El correo o el nick institucional, si el carné lo trae: exacto,
+        //    y no se repite. Va antes que el nombre a propósito.
+        if (! $user && $identity->email) {
+            $correo = strtolower(trim($identity->email));
+            $nick = User::nickDe($correo);
+
+            $user = User::query()
+                ->where(fn ($q) => $q->whereRaw('LOWER(email) = ?', [$correo])
+                    ->when($nick, fn ($s) => $s->orWhere('nick', $nick)))
+                ->first();
+        }
+
+        // 4) Nombre, solo si coincide con UNA sola cuenta.
         if (! $user && $identity->fullName) {
             $user = $this->matchByName($identity->fullName);
         }

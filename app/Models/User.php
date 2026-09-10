@@ -234,4 +234,46 @@ class User extends Authenticatable implements FilamentUser
 
         return $dominio !== '' && str_ends_with(strtolower($email), '@' . strtolower($dominio));
     }
+
+    /**
+     * El nick institucional: lo que va antes de la arroba en un correo de la
+     * Universidad. No se repite, y por eso identifica mejor que el nombre.
+     * Para un correo de fuera no hay nick: ahí la parte local no es de nadie.
+     */
+    public static function nickDe(?string $email): ?string
+    {
+        if (blank($email) || ! self::correoInstitucional($email)) {
+            return null;
+        }
+
+        $nick = strtolower(trim(explode('@', $email, 2)[0]));
+
+        return $nick !== '' ? $nick : null;
+    }
+
+    /**
+     * Lo que alguien escribe para identificarse, vuelto correo: «ehansen» es
+     * ehansen@universidadean.edu.co; un correo completo se deja como está.
+     */
+    public static function correoDesde(string $identificador): string
+    {
+        $texto = strtolower(trim($identificador));
+        $dominio = strtolower(trim((string) config('fabos.identity.institutional_domain')));
+
+        if ($texto === '' || str_contains($texto, '@') || $dominio === '') {
+            return $texto;
+        }
+
+        return preg_match('/^[a-z0-9._+-]+$/', $texto) ? $texto . '@' . $dominio : $texto;
+    }
+
+    protected static function booted(): void
+    {
+        // El nick va siempre pegado al correo: cambia el correo, cambia el nick.
+        static::saving(function (self $user) {
+            if ($user->isDirty('email') || ($user->nick === null && $user->email)) {
+                $user->nick = self::nickDe($user->email);
+            }
+        });
+    }
 }

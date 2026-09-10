@@ -9,14 +9,20 @@
 
     <form method="POST" action="{{ route('login.send') }}">
         @csrf
-        <label for="email">Correo</label>
-        <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
-               {{-- "@{{" es la secuencia de escape de Blade: pegar la arroba
-                    justo antes de la expresión la imprime literal. Por eso la
-                    arroba se concatena dentro de la propia expresión. --}}
-               required autofocus
-               placeholder="{{ 'nombre@' . config('fabos.identity.institutional_domain') }}"
+        @php $dominio = config('fabos.identity.institutional_domain'); @endphp
+        <label for="email">{{ $dominio ? 'Correo o nick' : 'Correo' }}</label>
+        {{-- Tipo texto y no email: con el nick a secas («ehansen») el
+             navegador rechazaría el envío antes de que llegue al servidor,
+             que es quien le pone la arroba y el dominio. --}}
+        <input id="email" name="email" type="text" inputmode="email" autocomplete="username"
+               required autofocus spellcheck="false" autocapitalize="none"
+               placeholder="{{ $dominio ? 'ehansen o ehansen@' . $dominio : 'nombre@correo.com' }}"
                value="{{ old('email') }}">
+        @if ($dominio)
+            <p class="help" style="margin-top:.35rem;font-size:.85rem">
+                Si eres de la Universidad, con lo que va antes de la arroba basta: le ponemos @{{ $dominio }}.
+            </p>
+        @endif
         <button type="submit">Enviarme el código</button>
     </form>
 
