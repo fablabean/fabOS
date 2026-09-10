@@ -53,13 +53,19 @@ class ReservationsTable
                 ->orderBy('id'))
             // Lo reservado -y lo reservado por la madre- de una vez: sin esto
             // seria una consulta por fila solo para escribir un nombre.
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['reservable', 'madre.reservable']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'reservable', 'madre.reservable']))
             ->columns([
                 TextColumn::make('starts_at')
                     ->label('Cuándo')
-                    ->dateTime('d/m/Y H:i', config('fabos.lab.timezone'))
-                    ->description(fn (Reservation $record) => 'hasta ' .
-                        $record->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i'))
+                    // Una hija no repite la franja de su madre: es la misma, y
+                    // escribirla otra vez justo debajo hace que una actividad
+                    // parezca dos. La fila de arriba ya lo dice.
+                    ->state(fn (Reservation $record) => $record->repiteALaMadre()
+                        ? null
+                        : $record->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i'))
+                    ->description(fn (Reservation $record) => $record->repiteALaMadre()
+                        ? null
+                        : 'hasta ' . $record->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i'))
                     ->sortable(),
 
                 TextColumn::make('recurso')
@@ -72,7 +78,13 @@ class ReservationsTable
                         ? $record->tipoDeRecurso() . ', dentro de ' . $record->madre->nombreDelRecurso()
                         : $record->tipoDeRecurso()),
 
-                TextColumn::make('user.name')->label('Persona')->searchable(),
+                // Igual con quien reserva: la herramienta es de quien tomó la
+                // sala. Se busca por su nombre igual, que la búsqueda mira la
+                // columna y no lo que se pinta.
+                TextColumn::make('user.name')
+                    ->label('Persona')
+                    ->state(fn (Reservation $record) => $record->repiteALaMadre() ? null : $record->user?->name)
+                    ->searchable(),
 
                 TextColumn::make('supervisor.name')
                     ->label('Acompaña / recibe')

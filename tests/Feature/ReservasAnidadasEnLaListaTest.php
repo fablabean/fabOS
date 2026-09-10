@@ -143,6 +143,34 @@ class ReservasAnidadasEnLaListaTest extends TestCase
             ->assertDontSee('acompañamiento');
     }
 
+    /**
+     * La hija no repite la franja ni la persona: son las de su madre.
+     *
+     * Escribir «10/09/2026 16:00 · hasta 17:00 · Andrés Felipe Álvarez» dos
+     * veces seguidas, una debajo de otra, hace que una actividad parezca dos.
+     */
+    public function test_la_hija_no_repite_la_hora_ni_la_persona(): void
+    {
+        $madre = $this->reservaConHerramienta();
+        $hija = Reservation::where('parent_reservation_id', $madre->id)->firstOrFail();
+
+        $this->assertTrue($hija->repiteALaMadre());
+        $this->assertFalse($madre->repiteALaMadre(), 'la madre no cuelga de nadie');
+
+        $this->entraComoAdmin();
+
+        $html = Livewire::test(ListReservations::class)->html();
+
+        // La hora sale una sola vez, la de la madre; el nombre de quien
+        // reserva, tambien.
+        $this->assertSame(1, substr_count($html, '24/08/2026 10:00'), 'la franja se escribe una vez');
+        $this->assertSame(1, substr_count($html, 'Quien reserva'), 'la persona se escribe una vez');
+
+        // Y lo suyo si sale: que es, y de donde cuelga.
+        $this->assertStringContainsString('↳ Fuente voltaje 1', $html);
+        $this->assertStringContainsString('equipo, dentro de Lab electrónica', $html);
+    }
+
     /** Lo que no cuelga de nada se sigue viendo suelto, sin flecha. */
     public function test_una_reserva_suelta_no_lleva_flecha(): void
     {

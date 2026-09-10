@@ -217,6 +217,10 @@ class Bandeja extends Page
                     'reserva'    => $s,
                     'equipo'     => $equipo,
                     'espacio'    => $espacio,
+                    // La bandeja lista hasta que la franja TERMINA, y aprobar
+                    // solo vale hasta que EMPIEZA. En medio hay que decirlo,
+                    // o el boton verde miente.
+                    'ya_empezo'  => $s->franjaYaEmpezo(),
                     'candidatos' => $candidatos->map(fn (User $u) => [
                         'id'         => $u->id,
                         'nombre'     => $u->name,

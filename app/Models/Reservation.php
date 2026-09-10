@@ -129,6 +129,36 @@ class Reservation extends Model
         return $this->belongsTo(self::class, 'parent_reservation_id');
     }
 
+    /**
+     * Si esta reserva no añade nada a lo que ya dice su madre: misma franja y
+     * misma persona.
+     *
+     * Sirve para no repetirlo en una lista. La herramienta tomada dentro de
+     * una sala es de la misma hora y de quien reservó la sala; escribir la
+     * fecha, la hora y el nombre otra vez en la fila de abajo hace que dos
+     * filas de una actividad parezcan dos actividades.
+     */
+    public function repiteALaMadre(): bool
+    {
+        return $this->madre !== null
+            && $this->madre->starts_at->equalTo($this->starts_at)
+            && $this->madre->ends_at->equalTo($this->ends_at)
+            && (int) $this->madre->user_id === (int) $this->user_id;
+    }
+
+    /**
+     * Si la franja ya empezó, y por tanto aprobarla ya no tiene sentido.
+     *
+     * Aprobar programa la jornada de quien abre el laboratorio: hacerlo para
+     * una hora que ya está corriendo es apuntar horas extras hacia atrás. Se
+     * puede rechazar —la solicitud sigue necesitando una respuesta— pero no
+     * confirmar.
+     */
+    public function franjaYaEmpezo(): bool
+    {
+        return $this->starts_at->isPast();
+    }
+
     /** Las que cuelgan de esta. */
     public function hijas(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

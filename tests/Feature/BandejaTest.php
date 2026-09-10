@@ -16,6 +16,7 @@ use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\UserCategory;
 use App\Services\Auth\TwoFactorService;
+use App\Services\Booking\ApprovalService;
 use App\Services\Booking\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -325,5 +326,66 @@ class BandejaTest extends TestCase
 
         Livewire::test(ListReservations::class)
             ->assertActionHidden(TestAction::make('decidir')->table($solicitud));
+    }
+
+    // ------------------------------------------ la franja que ya empezo
+
+    /**
+     * Hasta cuando se puede aprobar: hasta que la franja EMPIEZA.
+     *
+     * La bandeja listaba hasta que la franja terminaba y aprobar solo valia
+     * hasta que empezaba. En medio -una solicitud de 10:00 a 18:00 mirada a
+     * las doce- salia con su boton verde, se pulsaba, y saltaba «esa franja ya
+     * paso». Un boton que siempre falla no es un boton.
+     */
+    public function test_una_franja_ya_empezada_no_ofrece_aprobar_pero_si_cerrar(): void
+    {
+        $quienPide = $this->persona();
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
+
+        // Nos ponemos dentro de la franja: ya empezo, todavia no termina.
+        $this->travelTo($solicitud->starts_at->copy()->addMinutes(30));
+
+        $this->assertTrue($solicitud->fresh()->franjaYaEmpezo());
+
+        // Sigue en la bandeja: necesita respuesta, no desaparece.
+        $this->assertTrue(app(ApprovalService::class)->bandeja()->contains('id', $solicitud->id));
+
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR))
+            ->get(Bandeja::getUrl())
+            ->assertOk()
+            ->assertSee('ya no se puede aprobar')
+            ->assertSee('Cerrar la solicitud');
+    }
+
+    /** Y cerrarla con motivo sigue funcionando: es la salida que queda. */
+    public function test_una_franja_ya_empezada_se_puede_cerrar_con_motivo(): void
+    {
+        $quienPide = $this->persona();
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
+
+        $this->travelTo($solicitud->starts_at->copy()->addMinutes(30));
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR));
+
+        Livewire::test(Bandeja::class)
+            ->set('motivo.' . $solicitud->id, 'Se pidio para una hora que ya paso')
+            ->call('rechazar', $solicitud->id);
+
+        $this->assertSame('rechazada', $solicitud->fresh()->status);
+    }
+
+    /** Antes de que empiece, se aprueba con normalidad. */
+    public function test_antes_de_que_empiece_se_puede_aprobar(): void
+    {
+        $quienPide = $this->persona();
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
+
+        $this->assertFalse($solicitud->franjaYaEmpezo());
+
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR))
+            ->get(Bandeja::getUrl())
+            ->assertOk()
+            ->assertSee('Aprobar')
+            ->assertDontSee('ya no se puede aprobar');
     }
 }

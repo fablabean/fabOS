@@ -59,6 +59,36 @@
                     <p class="motivo">{{ $s->status_reason }}</p>
                 @endif
 
+                {{-- La franja ya corriendo: aprobar programaria la jornada de
+                     quien abre hacia atras, y el servicio no lo permite. Se
+                     dice aqui y se quita el boton, en vez de dejar que se
+                     pulse y salte el error. Rechazar si vale: la solicitud
+                     sigue necesitando una respuesta, y quien la pidio merece
+                     saber por que no. --}}
+                @if ($fila['ya_empezo'])
+                    <p class="motivo">
+                        {{-- Las frases van enteras en su linea: partidas, el HTML lleva
+                             un salto en medio y quien las busca -una prueba, un Ctrl+F-
+                             no las encuentra. --}}
+                        Empezaba a las {{ $s->starts_at->timezone($tz)->format('H:i') }},
+                        <strong>así que ya no se puede aprobar</strong>:
+                        hacerlo apuntaría horas extras hacia atrás.
+                        Ciérrala con un motivo, y si la actividad sigue en pie, pídele a la persona que vuelva a solicitarla.
+                    </p>
+
+                    <div class="decidir">
+                        <div>
+                            <label for="mot-{{ $s->id }}">Motivo</label>
+                            <input id="mot-{{ $s->id }}" type="text"
+                                   wire:model="motivo.{{ $s->id }}"
+                                   placeholder="Se pidió para una hora que ya pasó">
+                        </div>
+
+                        <x-filament::button wire:click="rechazar({{ $s->id }})" color="danger">
+                            Cerrar la solicitud
+                        </x-filament::button>
+                    </div>
+                @else
                 <div class="decidir">
                     <div>
                         <label for="acom-{{ $s->id }}">Quién la atiende</label>
@@ -96,8 +126,11 @@
                         Rechazar
                     </x-filament::button>
                 </div>
+                @endif
 
-                @if ($equipo && $fila['candidatos']->isEmpty())
+                @if ($fila['ya_empezo'])
+                    {{-- Ya se dijo arriba lo que hay que saber. --}}
+                @elseif ($equipo && $fila['candidatos']->isEmpty())
                     <p class="nota">
                         Nadie tiene certifab para este equipo todavía. Se puede aprobar sin
                         acompañante solo si el equipo no lo exige.
