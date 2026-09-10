@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', config('fabos.lab.name') . ' · fabOS')</title>
+    <title>@yield('title', config('fabos.lab.name'))</title>
     <meta name="description" content="@yield('description', config('fabos.lab.tagline') . ' de ' . config('fabos.lab.institution') . '.')">
     <style>
         :root{
@@ -81,7 +81,7 @@
 <div class="nav">
     <a class="marca-sitio" href="{{ route('publico.home') }}">
         <x-logo/>
-        <span class="palabra">fab<em>OS</em></span>
+        <span class="palabra">{{ config('fabos.lab.name') }}</span>
     </a>
     <nav>
         @include('partials.menu')
@@ -95,8 +95,9 @@
         <strong style="color:var(--ink)">{{ config('fabos.lab.name') }}</strong>
         <span>{{ config('fabos.lab.institution') }} · {{ config('fabos.lab.city') }}</span>
         @if (config('fabos.lab.network'))
-            <span style="margin-left:auto">Parte de la red {{ config('fabos.lab.network') }}</span>
+            <span>Parte de la red {{ config('fabos.lab.network') }}</span>
         @endif
+        <span style="margin-left:auto">powered by <strong style="color:var(--accent)">fabOS</strong></span>
     </div>
 </footer>
 

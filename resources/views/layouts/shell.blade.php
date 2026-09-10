@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'fabOS')</title>
+    <title>@yield('title', config('fabos.lab.name'))</title>
     {{-- Estilos en linea a proposito: el arranque no depende de compilar assets. --}}
     <style>
         :root{
@@ -74,8 +74,8 @@
 </head>
 <body>
     <main class="card">
-        <p class="brand"><span class="palabra">fab<em>OS</em></span></p>
-        <p class="powered">Powered by {{ config('fabos.lab.name') }}</p>
+        <p class="brand"><span class="palabra">{{ config('fabos.lab.name') }}</span></p>
+        <p class="powered">powered by fab<em>OS</em></p>
 
         @if (session('status'))
             <div class="msg">{{ session('status') }}</div>

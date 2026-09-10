@@ -230,10 +230,11 @@ class PortadaTest extends TestCase
         ] as $vista) {
             $fuente = file_get_contents(base_path($vista));
 
+            // La marca es el nombre del laboratorio, en UN solo elemento.
             $this->assertStringContainsString(
-                '<span class="palabra">fab<em>OS</em></span>',
+                '<span class="palabra">{{ config(\'fabos.lab.name\') }}</span>',
                 $fuente,
-                "{$vista} deja «fab» y «OS» sueltos dentro de un contenedor flex, y el gap los separa.",
+                "{$vista} deja la marca suelta dentro de un contenedor flex, y el gap la separa.",
             );
         }
     }

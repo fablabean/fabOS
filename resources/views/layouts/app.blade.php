@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'fabOS')</title>
+    <title>@yield('title', config('fabos.lab.name'))</title>
     {{-- Estilos en línea a propósito: el arranque no depende de compilar assets. --}}
     <style>
         :root{
@@ -122,6 +122,11 @@
         th{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;letter-spacing:.1em;
            text-transform:uppercase;color:var(--muted)}
         .volver{font-size:.85rem;color:var(--muted);text-decoration:none}
+        footer.pie-sitio{max-width:62rem;margin:0 auto;padding:1.4rem 1.4rem 2.2rem;border-top:1px solid var(--rule);
+            display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
+        footer.pie-sitio strong{color:var(--ink)}
+        footer.pie-sitio .powered{margin-left:auto}
+        footer.pie-sitio em{font-style:normal;color:var(--accent);font-weight:700}
 
         /* En el teléfono las tablas se apilan: cada fila es una tarjeta y
            cada celda lleva encima el nombre de su columna (lo pone un script
@@ -146,7 +151,7 @@
 </head>
 <body>
     <header class="top">
-        <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">fab<em>OS</em></span></a>
+        <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">{{ config('fabos.lab.name') }}</span></a>
         <nav>
             @include('partials.menu')
         </nav>
@@ -162,6 +167,13 @@
 
         @yield('content')
     </main>
+
+    {{-- El sitio es del laboratorio; el sistema que lo mueve, fabOS. --}}
+    <footer class="pie-sitio">
+        <strong>{{ config('fabos.lab.name') }}</strong>
+        <span>{{ config('fabos.lab.institution') }} · {{ config('fabos.lab.city') }}</span>
+        <span class="powered">powered by fab<em>OS</em></span>
+    </footer>
 
     {{-- El nombre de cada columna, puesto en cada celda para que en el
          teléfono, con la tabla apilada, se sepa qué es cada dato. --}}
