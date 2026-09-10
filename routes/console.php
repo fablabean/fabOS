@@ -25,6 +25,18 @@ Schedule::call(fn () => app(App\Services\Booking\WaitlistService::class)->vencer
     ->dailyAt('04:30')
     ->name('fabos:vencer-esperas');
 
+/*
+ * El beneficio semanal de FabCoins (§12): cada lunes a primera hora, a quien
+ * tiene correo aliado se le completa el saldo hasta el tope. A diferencia de
+ * la dotacion mensual de abajo, esto SI se programa: no crea saldo a
+ * discrecion sino que aplica una regla escrita —el tope y los dominios se
+ * administran en Finanzas → Beneficio semanal, y ahi mismo se apaga—. Cada
+ * asiento dice la semana y la regla, y correrlo dos veces no abona dos veces.
+ */
+Schedule::command('fabos:beneficio-semanal')
+    ->weeklyOn(1, '00:10')
+    ->timezone(config('fabos.lab.timezone'));
+
 // Respaldo diario. Lo que hay dentro de fabOS no se puede volver a teclear:
 // el histórico de uso, las habilitaciones y un libro contable encadenado por
 // hash. Se conservan 30 días (§18).

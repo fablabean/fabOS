@@ -53,6 +53,47 @@ final class Settings
      */
     public const COBROS_TIENDA = 'cobros.tienda';
 
+    /*
+     * El beneficio semanal de FabCoins (§12): cada semana, a quien tenga
+     * correo de una institucion aliada, el sistema le completa el saldo
+     * hasta el tope. No se acumula: quien ya tiene el tope o mas, no recibe.
+     */
+    public const BENEFICIO_ACTIVO   = 'beneficio.activo';
+    public const BENEFICIO_SEMANAL  = 'beneficio.semanal_minor';
+    public const BENEFICIO_DOMINIOS = 'beneficio.dominios';
+
+    public const BENEFICIO_DOMINIOS_DE_FABRICA = ['universidadean.edu.co', 'fablabean.com', 'ieee.org'];
+
+    public static function beneficioActivo(): bool
+    {
+        return (bool) Setting::get(self::BENEFICIO_ACTIVO, false);
+    }
+
+    /** El tope semanal, en unidades menores: 8 FabCoins de fabrica. */
+    public static function beneficioSemanalMenor(): int
+    {
+        return max(0, (int) Setting::get(self::BENEFICIO_SEMANAL, 8 * (int) config('fabos.currency.minor_units', 100)));
+    }
+
+    /** @return list<string> dominios de correo con derecho al beneficio, en minusculas */
+    public static function dominiosDelBeneficio(): array
+    {
+        $guardados = Setting::get(self::BENEFICIO_DOMINIOS);
+
+        if (is_string($guardados)) {
+            $guardados = preg_split('/[\s,;]+/', $guardados) ?: [];
+        }
+
+        $lista = collect(is_array($guardados) ? $guardados : self::BENEFICIO_DOMINIOS_DE_FABRICA)
+            ->map(fn ($d) => strtolower(trim(ltrim((string) $d, '@'))))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $lista ?: self::BENEFICIO_DOMINIOS_DE_FABRICA;
+    }
+
     /** La base del acuerdo de servicio que redacta el sistema (§11). */
     public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
     public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';
