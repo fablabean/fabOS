@@ -122,6 +122,26 @@
         th{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;letter-spacing:.1em;
            text-transform:uppercase;color:var(--muted)}
         .volver{font-size:.85rem;color:var(--muted);text-decoration:none}
+
+        /* En el teléfono las tablas se apilan: cada fila es una tarjeta y
+           cada celda lleva encima el nombre de su columna (lo pone un script
+           al final, leyendo la cabecera). Una tabla de cuatro columnas en
+           360 px de ancho no cabe de ninguna otra manera sin desplazamiento
+           lateral, y el desplazamiento lateral es donde se pierde el botón
+           de la derecha, que es justo el que hay que pulsar. */
+        @media (max-width:640px){
+            main{padding:1.2rem .9rem 3rem}
+            .panel{padding:.9rem}
+            table:not(.fija) thead{display:none}
+            table:not(.fija),table:not(.fija) tbody,table:not(.fija) tr,table:not(.fija) td{display:block;width:100%}
+            table:not(.fija) tr{border:1px solid var(--rule);border-radius:6px;padding:.55rem .75rem;margin-bottom:.6rem;background:var(--ground)}
+            table:not(.fija) td{border:0;padding:.25rem 0;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere}
+            table:not(.fija) td[data-label]::before{content:attr(data-label);display:block;font-family:ui-monospace,Consolas,monospace;
+                font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.05rem}
+            table:not(.fija) td:empty{display:none}
+            details.plegable form{min-width:0}
+            img{max-width:100%;height:auto}
+        }
     </style>
 </head>
 <body>
@@ -142,5 +162,19 @@
 
         @yield('content')
     </main>
+
+    {{-- El nombre de cada columna, puesto en cada celda para que en el
+         teléfono, con la tabla apilada, se sepa qué es cada dato. --}}
+    <script>
+        document.querySelectorAll('table').forEach(function (tabla) {
+            var titulos = Array.prototype.map.call(tabla.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+            if (!titulos.length) return;
+            tabla.querySelectorAll('tbody tr').forEach(function (fila) {
+                Array.prototype.forEach.call(fila.children, function (celda, i) {
+                    if (titulos[i]) celda.setAttribute('data-label', titulos[i]);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

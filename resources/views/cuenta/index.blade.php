@@ -281,7 +281,8 @@
                             {{-- Una general no tiene máquina: decir «—» obligaba a
                                  adivinar de qué iba. --}}
                             {{ $a->sobreQue() ?? '—' }}
-                            @if ($area = $a->areaDeLoQueAtiende())
+                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
+                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
                                 <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
                             @endif
                         </td>
@@ -394,7 +395,8 @@
                                 <span class="pill warn" style="margin:0 .3rem 0 0">Práctica</span>
                             @endif
                             {{ $a->sobreQue() ?? '—' }}
-                            @if ($area = $a->areaDeLoQueAtiende())
+                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
+                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
                                 <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
                             @endif
                         </td>

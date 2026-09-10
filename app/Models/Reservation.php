@@ -284,7 +284,17 @@ class Reservation extends Model
                 ?? ($this->advisoryArea ? 'Curso de ' . $this->advisoryArea->name : null);
         }
 
-        return $this->advisoryAsset?->name
-            ?? ($this->advisoryArea ? 'General de ' . $this->advisoryArea->name : null);
+        if ($this->advisoryAsset) {
+            return $this->advisoryAsset->name;
+        }
+
+        if (! $this->advisoryArea) {
+            return null;
+        }
+
+        // Un area que se llama «General» daria «General de General».
+        return mb_strtolower($this->advisoryArea->name) === 'general'
+            ? 'Asesoría general'
+            : 'General de ' . $this->advisoryArea->name;
     }
 }
