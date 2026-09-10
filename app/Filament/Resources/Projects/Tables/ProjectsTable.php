@@ -96,6 +96,9 @@ class ProjectsTable
                     ->label('Cliente')
                     ->formatStateUsing(fn (?string $state) => Project::CLIENTES[$state] ?? $state)
                     ->color('gray')
+                    // «Empresa u organizacion de fuera» en una sola linea
+                    // ensancha la columna y estruja las demas. Que baje.
+                    ->wrap()
                     ->toggleable(),
 
                 TextColumn::make('stage')->sortable()
@@ -113,9 +116,28 @@ class ProjectsTable
                         default     => 'success',
                     }),
 
+                /*
+                 * El responsable, en dos lineas: nombres arriba, apellidos
+                 * debajo. «MICHAEL SEBASTIAN TORRES GARZON» de corrido se
+                 * llevaba media tabla.
+                 *
+                 * Cuando no se puede saber donde acaba el nombre -y muchas
+                 * veces no se puede: en `users` solo hay un campo- se deja
+                 * entero y se deja que baje solo. Inventarle el corte al
+                 * nombre de alguien es peor que una linea larga.
+                 */
                 TextColumn::make('lead.name')->sortable()
                     ->label('Responsable')
                     ->placeholder('sin asignar')
+                    ->wrap()
+                    ->state(function (Project $r) {
+                        if (! $r->lead) {
+                            return null;
+                        }
+
+                        return $r->lead->nombreYApellidos()[0] ?? $r->lead->name;
+                    })
+                    ->description(fn (Project $r) => $r->lead?->nombreYApellidos()[1] ?? null)
                     ->color(fn (Project $r) => $r->lead_id ? null : 'danger'),
 
                 TextColumn::make('avance')

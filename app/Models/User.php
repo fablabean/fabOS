@@ -107,6 +107,65 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
      * es un permiso, es un estado imposible; dejarlo existir es como acaban
      * apareciendo botones que fallan al pulsarlos.
      */
+    /**
+     * Particulas que van pegadas al apellido que arrastran: «de la Cruz» es
+     * un apellido, no tres.
+     */
+    private const PARTICULAS = [
+        'de', 'del', 'la', 'las', 'los', 'y', 'e', 'van', 'von', 'da', 'das', 'dos', 'di', 'san', 'santa',
+    ];
+
+    /**
+     * El nombre partido en dos: los nombres por un lado, los apellidos por otro.
+     *
+     * **Es una conjetura, no un dato.** En `users` solo vive `name`: nadie
+     * guardo nombres y apellidos por separado, asi que esto se deduce de como
+     * se escriben los nombres aqui. Por eso solo se parte cuando la conjetura
+     * es razonablemente segura -cuatro partes o mas, que son dos nombres y dos
+     * apellidos- y se devuelve null en cuanto hay duda.
+     *
+     * Con tres partes no se sabe: «Ana Maria Ruiz» puede ser dos nombres y un
+     * apellido, o uno y dos. Partir mal el nombre de alguien es peor que no
+     * partirlo, asi que ahi no se toca y se deja que la linea fluya sola.
+     *
+     * @return array{0:string,1:string}|null  nombres y apellidos, o null si no se sabe
+     */
+    public function nombreYApellidos(): ?array
+    {
+        $partes = preg_split('/\s+/', trim((string) $this->name)) ?: [];
+
+        if (count($partes) < 4) {
+            return null;
+        }
+
+        // Dos apellidos contados desde el final, arrastrando sus particulas.
+        $corte = count($partes);
+
+        for ($apellido = 0; $apellido < 2 && $corte > 1; $apellido++) {
+            $corte--;
+
+            while ($corte > 1 && in_array(mb_strtolower($partes[$corte - 1]), self::PARTICULAS, true)) {
+                $corte--;
+            }
+        }
+
+        $nombres = array_slice($partes, 0, $corte);
+
+        // Si lo que queda de nombre son solo particulas, la conjetura era
+        // mala: nadie se llama «de la». Se deja el nombre entero.
+        $soloParticulas = $nombres === [] || collect($nombres)
+            ->every(fn (string $parte) => in_array(mb_strtolower($parte), self::PARTICULAS, true));
+
+        if ($soloParticulas) {
+            return null;
+        }
+
+        return [
+            implode(' ', $nombres),
+            implode(' ', array_slice($partes, $corte)),
+        ];
+    }
+
     public function puedeEnLaSeccion(string $accion, string $clave): bool
     {
         if ($this->hasRole(self::ROL_SUPERADMIN)) {
