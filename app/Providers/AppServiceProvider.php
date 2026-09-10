@@ -104,6 +104,12 @@ class AppServiceProvider extends ServiceProvider
             fn (\Filament\Forms\Components\DatePicker $campo) => $campo->timezone(config('app.timezone')),
         );
 
+        // Veinte filas por pagina en todas las listas del panel: con diez, la
+        // lista de proyectos o de personas obligaba a pasar pagina enseguida.
+        \Filament\Tables\Table::configureUsing(
+            fn (\Filament\Tables\Table $tabla) => $tabla->defaultPaginationPageOption(20),
+        );
+
         // La identidad del laboratorio se administra desde el backoffice y pisa
         // a `.env`: cambiar el nombre no debería exigir entrar por SSH (§19).
         LabSettings::aplicar();

@@ -37,8 +37,11 @@ class ProjectsTable
     {
         return $table
             ->defaultSort('id', 'desc')
+            // El semaforo de la entrega: la fila se tiñe segun cuanto falta,
+            // y en rojo si ya paso sin cerrarse. Los estilos van en el panel.
+            ->recordClasses(fn (Project $r) => $r->semaforo())
             ->columns([
-                TextColumn::make('code')
+                TextColumn::make('code')->sortable()
                     ->label('Código')
                     ->searchable()
                     ->weight('bold')
@@ -73,7 +76,7 @@ class ProjectsTable
                     // Por la ruta con permiso, no por /storage.
                     ->getStateUsing(fn (Project $r) => $r->imagenDeReferencia()),
 
-                TextColumn::make('name')
+                TextColumn::make('name')->sortable()
                     ->label('Proyecto')
                     ->searchable()
                     ->weight('medium')
@@ -85,13 +88,13 @@ class ProjectsTable
 
                 // De quien es el encargo: estaba pegado al codigo, donde
                 // ensanchaba una columna que solo tiene que decir «PRY-2026-33».
-                TextColumn::make('client_kind')
+                TextColumn::make('client_kind')->sortable()
                     ->label('Cliente')
                     ->formatStateUsing(fn (?string $state) => Project::CLIENTES[$state] ?? $state)
                     ->color('gray')
                     ->toggleable(),
 
-                TextColumn::make('stage')
+                TextColumn::make('stage')->sortable()
                     ->width('1px')
                     ->label('Etapa')
                     ->badge()
@@ -106,7 +109,7 @@ class ProjectsTable
                         default     => 'success',
                     }),
 
-                TextColumn::make('lead.name')
+                TextColumn::make('lead.name')->sortable()
                     ->label('Responsable')
                     ->placeholder('sin asignar')
                     ->color(fn (Project $r) => $r->lead_id ? null : 'danger'),
@@ -117,7 +120,7 @@ class ProjectsTable
                     ->state(fn (Project $r) => $r->avance() . '%')
                     ->description(fn (Project $r) => $r->tasks()->count() . ' tareas'),
 
-                TextColumn::make('due_on')
+                TextColumn::make('due_on')->sortable()
                     ->label('Entrega')
                     ->date('d/m/Y')
                     ->placeholder('—')
@@ -125,7 +128,7 @@ class ProjectsTable
                         ? 'danger'
                         : null),
 
-                TextColumn::make('status')
+                TextColumn::make('status')->sortable()
                     ->width('1px')
                     ->label('Estado')
                     ->badge()

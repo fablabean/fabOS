@@ -579,6 +579,35 @@ class Project extends Model
         return (int) round($tareas->avg(fn (ProjectTask $t) => $t->status === 'hecha' ? 100 : $t->progress));
     }
 
+    /**
+     * El semaforo de la entrega, para teñir la fila en la lista (§11).
+     *
+     * Vencida sin cerrar: rojo. Hoy: naranja. Mañana: amarillo. Pasado
+     * mañana: verde. Lo cerrado no se tiñe: ya no hay nada que entregar.
+     */
+    public function semaforo(): ?string
+    {
+        if (! $this->due_on || $this->estaCerrado()) {
+            return null;
+        }
+
+        // Las dos fechas como dias del laboratorio, sin horas: la de entrega
+        // viene en UTC y a medianoche, y comparada con «hoy» en Bogota se
+        // corria un dia.
+        $tz = config('fabos.lab.timezone');
+        $hoy = now($tz)->startOfDay();
+        $entrega = \Illuminate\Support\Carbon::parse($this->due_on->format('Y-m-d'), $tz)->startOfDay();
+        $dias = (int) round($hoy->diffInDays($entrega, false));
+
+        return match (true) {
+            $dias < 0   => 'entrega-vencida',
+            $dias === 0 => 'entrega-hoy',
+            $dias === 1 => 'entrega-manana',
+            $dias === 2 => 'entrega-pasado',
+            default     => null,
+        };
+    }
+
     public function estaCerrado(): bool
     {
         // Cerrado por etapa o por estado: cambiar el estado a «cerrado» en la

@@ -70,6 +70,11 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::SIDEBAR_NAV_START,
                 fn (): string => view('filament.parciales.buscador-menu')->render(),
             )
+            // Los estilos propios del panel: el semaforo de las entregas.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('filament.parciales.estilos')->render(),
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
