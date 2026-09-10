@@ -198,12 +198,14 @@ class PagosDeProyectoTest extends TestCase
         app(PagosDeProyecto::class)->pedir($p, 1_250_000, 'Anticipo', null, $p->lead);
 
         Livewire::test(\App\Filament\Pages\Pagos::class)
-            ->set('qr', UploadedFile::fake()->image('bancolombia.png', 400, 400))
-            ->set('instrucciones', 'Paga con la app de Bancolombia y responde con el comprobante.')
+            ->fillForm([
+                'qr'            => UploadedFile::fake()->image('bancolombia.png', 400, 400),
+                'instrucciones' => 'Paga con la app de Bancolombia y responde con el comprobante.',
+            ])
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasNoFormErrors();
 
-        $this->assertStringStartsWith('pagos/qr-', Settings::qrDePagos());
+        $this->assertStringStartsWith('pagos/', Settings::qrDePagos());
         $this->assertTrue(Storage::disk('local')->exists(Settings::qrDePagos()));
         $this->assertSame('Paga con la app de Bancolombia y responde con el comprobante.', Settings::instruccionesDePago());
 

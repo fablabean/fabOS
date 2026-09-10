@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
 class ArchivoPrivado
 {
     /** Rutas del disco privado que el panel puede enseñar. */
-    public const PREFIJOS = ['proyectos/'];
+    public const PREFIJOS = ['proyectos/', 'pagos/'];
 
     public static function previsualizar(FileUpload $campo): FileUpload
     {

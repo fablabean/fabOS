@@ -2,16 +2,20 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Componentes\ArchivoPrivado;
 use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\ProjectPayment;
 use App\Models\Setting;
 use App\Support\Settings;
 use BackedEnum;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Storage;
-use Livewire\WithFileUploads;
 
 /**
  * Los pagos por QR (§11).
@@ -23,7 +27,6 @@ use Livewire\WithFileUploads;
 class Pagos extends Page
 {
     use ControlaSuAcceso;
-    use WithFileUploads;
 
     protected string $view = 'filament.pages.pagos';
 
@@ -31,9 +34,8 @@ class Pagos extends Page
 
     protected static ?int $navigationSort = 6;
 
-    public $qr = null;
-
-    public string $instrucciones = '';
+    /** @var array<string,mixed> */
+    public array $datos = [];
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -52,38 +54,62 @@ class Pagos extends Page
 
     public function mount(): void
     {
-        $this->instrucciones = Settings::instruccionesDePago();
+        $this->form->fill([
+            'qr'            => Settings::qrDePagos(),
+            'instrucciones' => Settings::instruccionesDePago(),
+        ]);
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->statePath('datos')
+            ->components([
+                Section::make('El código QR del banco')
+                    ->description('Uno solo para todo el laboratorio. Va adjunto en cada correo de cobro y se ve en la página del proyecto junto al valor a pagar. Súbelo como imagen, tal como lo entrega el banco.')
+                    ->schema([
+                        // En el disco privado: es el mismo archivo que va
+                        // adjunto en los correos, y se sirve por su propia
+                        // ruta publica para pagar.
+                        ArchivoPrivado::previsualizar(FileUpload::make('qr'))
+                            ->label('La imagen del QR')
+                            ->disk('local')
+                            ->directory('pagos')
+                            ->visibility('private')
+                            ->image()
+                            ->imagePreviewHeight('220')
+                            ->maxSize(4096)
+                            ->helperText('PNG o JPG, hasta 4 MB. Sin QR no se puede pedir un pago.'),
+                    ]),
+
+                Section::make('Lo que le decimos a quien paga')
+                    ->description('Va en el correo y en la página del proyecto, encima del QR.')
+                    ->schema([
+                        Textarea::make('instrucciones')
+                            ->label('Instrucción')
+                            ->rows(3)
+                            ->maxLength(600),
+                    ]),
+            ]);
     }
 
     public function save(): void
     {
-        $this->validate([
-            'qr' => ['nullable', 'image', 'max:4096'],
-        ], [
-            'qr.image' => 'El QR tiene que ser una imagen (PNG o JPG).',
-        ]);
+        $estado = $this->form->getState();
 
-        if ($this->qr) {
-            $ruta = $this->qr->storeAs('pagos', 'qr-' . now()->format('Ymd-His') . '.' . $this->qr->getClientOriginalExtension(), 'local');
+        $nuevo = trim((string) ($estado['qr'] ?? ''));
+        $anterior = Settings::qrDePagos();
 
-            if ($anterior = Settings::qrDePagos()) {
-                Storage::disk('local')->delete($anterior);
-            }
-
-            Setting::put(Settings::PAGOS_QR, $ruta, 'finanzas');
-            $this->qr = null;
+        if ($anterior && $anterior !== $nuevo) {
+            Storage::disk('local')->delete($anterior);
         }
 
-        Setting::put(Settings::PAGOS_INSTRUCCIONES, trim($this->instrucciones), 'finanzas');
+        Setting::put(Settings::PAGOS_QR, $nuevo, 'finanzas');
+        Setting::put(Settings::PAGOS_INSTRUCCIONES, trim((string) ($estado['instrucciones'] ?? '')), 'finanzas');
 
         Notification::make()->success()->title('Pagos guardados')
             ->body(Settings::qrDePagos() ? 'El QR va en cada cobro desde ahora.' : 'Falta subir el QR: sin él no se puede pedir un pago.')
             ->send();
-    }
-
-    public function qrActual(): ?string
-    {
-        return Settings::qrDePagos() ? route('pagos.qr') . '?v=' . md5(Settings::qrDePagos()) : null;
     }
 
     /** Lo que espera algo, en todos los proyectos. */
