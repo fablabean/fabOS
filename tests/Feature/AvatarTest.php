@@ -77,6 +77,38 @@ class AvatarTest extends TestCase
         $this->assertFalse(Storage::disk('public')->exists($ruta), 'el archivo se borra con la foto');
     }
 
+    /** El nombre se corrige desde «Editar perfil»; el correo no, que es el identificador. */
+    public function test_la_persona_corrige_su_nombre(): void
+    {
+        $u = User::factory()->create(['name' => 'Erick', 'email' => 'erick@ejemplo.co', 'status' => 'activo']);
+
+        $this->actingAs($u)
+            ->post(route('cuenta.perfil'), ['name' => '  Erick Hansen Gómez ', 'email' => 'otro@x.co'])
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Perfil guardado.');
+
+        $this->assertSame('Erick Hansen Gómez', $u->fresh()->name);
+        $this->assertSame('erick@ejemplo.co', $u->fresh()->email);
+
+        $this->actingAs($u)->from(route('home'))->post(route('cuenta.perfil'), ['name' => 'X'])
+            ->assertSessionHasErrors('name');
+    }
+
+    /** El saldo va al lado del círculo, y su detalle trae los últimos movimientos. */
+    public function test_el_saldo_sale_en_la_barra_con_su_detalle(): void
+    {
+        $u = User::factory()->create(['name' => 'Erick Hansen', 'status' => 'activo']);
+        app(\App\Services\Money\ChargeService::class)->dotar($u, 10_000, '2026-09');
+
+        $this->actingAs($u)->get(route('home'))
+            ->assertOk()
+            ->assertSee('class="saldo-boton"', false)
+            ->assertSee('100,00')
+            ->assertSee('id="menu-saldo"', false)
+            ->assertSee('Dotación institucional')
+            ->assertSee('Ver todo en Mi cuenta');
+    }
+
     public function test_lo_que_no_es_imagen_no_entra(): void
     {
         $u = User::factory()->create(['status' => 'activo']);

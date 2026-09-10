@@ -33,6 +33,47 @@
         {{-- La cuenta, compacta: un círculo con la foto o las iniciales que
              despliega lo suyo. «Mi cuenta», el correo y «Salir» ocupaban
              media barra. --}}
+        {{-- El saldo, al lado del círculo: lo que más se pregunta. Al
+             pulsarlo se abre el detalle con los últimos movimientos. --}}
+        @php
+            $libro = app(\App\Services\Ledger\LedgerService::class);
+            $saldoMenor = $libro->saldoDe(auth()->user());
+            $unidadesFbc = config('fabos.currency.minor_units');
+            $ultimosMovimientos = $libro->cuentaDe(auth()->user())->entries()->with('transaction')->latest('id')->limit(5)->get();
+            $tzFbc = config('fabos.lab.timezone');
+        @endphp
+        <div class="saldo">
+            <button type="button" class="saldo-boton" aria-haspopup="true" aria-expanded="false" aria-controls="menu-saldo"
+                    title="Mi saldo en {{ config('fabos.currency.name') }}s">
+                <strong>{{ number_format($saldoMenor / $unidadesFbc, 2, ',', '.') }}</strong>
+                <span>{{ config('fabos.currency.code') }}</span>
+            </button>
+            <div class="menu-saldo" id="menu-saldo" hidden>
+                <div class="cifra">
+                    <strong>{{ number_format($saldoMenor / $unidadesFbc, 2, ',', '.') }}</strong>
+                    <span>{{ config('fabos.currency.code') }}</span>
+                </div>
+                @if ($ultimosMovimientos->isEmpty())
+                    <p class="vacio">Todavía no hay movimientos.</p>
+                @else
+                    <ul>
+                        @foreach ($ultimosMovimientos as $m)
+                            <li>
+                                <span class="que">
+                                    {{ \App\Models\LedgerTransaction::TIPOS[$m->transaction?->kind] ?? $m->transaction?->kind }}
+                                    <small>{{ $m->transaction?->occurred_at?->timezone($tzFbc)->format('d/m/Y') }}</small>
+                                </span>
+                                <span class="cuanto {{ $m->direction === 'C' ? 'mas' : 'menos' }}">
+                                    {{ $m->direction === 'C' ? '+' : '−' }}{{ number_format($m->amount_minor / $unidadesFbc, 2, ',', '.') }}
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                <a href="{{ route('home') }}#saldo">Ver todo en Mi cuenta</a>
+            </div>
+        </div>
+
         <div class="usuario">
             <button type="button" class="avatar-boton" aria-haspopup="true" aria-expanded="false"
                     aria-controls="menu-usuario" title="{{ auth()->user()->name }}">
@@ -95,6 +136,32 @@
     .menu-usuario a:hover,.menu-usuario .salir button:hover{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
     .menu-usuario .salir{display:block;border-top:1px solid var(--rule);margin-top:.25rem;padding-top:.25rem}
 
+    /* El saldo y su detalle. */
+    .saldo{position:relative}
+    .saldo-boton{
+        display:inline-flex;align-items:baseline;gap:.3rem;background:color-mix(in srgb,var(--accent) 12%,transparent);
+        border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:.3rem .75rem;margin:0;
+        font:inherit;font-size:.82rem;color:var(--ink);cursor:pointer;white-space:nowrap;
+    }
+    .saldo-boton span{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;letter-spacing:.08em;color:var(--muted)}
+    .saldo-boton:hover,.saldo-boton[aria-expanded="true"]{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+    .menu-saldo{
+        position:absolute;right:0;top:calc(100% + .5rem);min-width:18rem;z-index:30;
+        background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.14);
+        padding:.8rem 1rem .6rem;display:flex;flex-direction:column;gap:.5rem;
+    }
+    .menu-saldo[hidden]{display:none}
+    .menu-saldo .cifra strong{font-size:1.6rem;letter-spacing:-.02em}
+    .menu-saldo .cifra span{font-size:.8rem;color:var(--muted);margin-left:.3rem}
+    .menu-saldo ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+    .menu-saldo li{display:flex;justify-content:space-between;gap:.8rem;padding:.4rem 0;border-top:1px solid var(--rule);font-size:.85rem}
+    .menu-saldo li .que{display:flex;flex-direction:column}
+    .menu-saldo li small{color:var(--muted);font-size:.72rem}
+    .menu-saldo li .cuanto{font-variant-numeric:tabular-nums;white-space:nowrap}
+    .menu-saldo li .cuanto.mas{color:var(--accent)}
+    .menu-saldo .vacio{margin:0;color:var(--muted);font-size:.85rem}
+    .menu-saldo > a{font-size:.85rem;padding-top:.3rem;border-top:1px solid var(--rule)}
+
     /* Bajo esta anchura no caben ocho enlaces en una fila: el navegador los
        aprieta hasta que no se pueden pulsar sin acertar. */
     @media (max-width:52rem){
@@ -127,7 +194,10 @@
         .menu-enlaces .btn{text-align:center;margin-top:.6rem;padding:.7rem}
 
         /* En el teléfono no hay desplegable: el bloque de la persona va
-           abierto dentro del menú, con su nombre al lado del círculo. */
+           abierto dentro del menú, con su nombre al lado del círculo. El
+           saldo se queda como una línea más, y su detalle abre debajo. */
+        .saldo-boton{margin:.3rem 0}
+        .menu-saldo{position:static;min-width:0;box-shadow:none;margin-top:.5rem}
         .usuario{margin-left:0}
         .avatar-boton{pointer-events:none;padding:0}
         .avatar-boton .nombre-corto{display:inline;font-weight:600}
@@ -171,30 +241,44 @@
         });
     })();
 
-    // El menú de la persona: se abre con el círculo, se cierra al pulsar
-    // fuera o con Escape. En el teléfono va abierto dentro del menú.
+    // Los desplegables de la barra —la persona y el saldo—: se abren con su
+    // botón, se cierran al pulsar fuera o con Escape, y abrir uno cierra el
+    // otro. En el teléfono el de la persona va abierto dentro del menú.
     (function () {
-        var boton = document.querySelector('.avatar-boton');
-        var menu = document.getElementById('menu-usuario');
+        var pares = [
+            ['.avatar-boton', 'menu-usuario'],
+            ['.saldo-boton', 'menu-saldo'],
+        ].map(function (p) {
+            return { boton: document.querySelector(p[0]), menu: document.getElementById(p[1]) };
+        }).filter(function (p) { return p.boton && p.menu; });
 
-        if (!boton || !menu) return;
+        if (!pares.length) return;
 
-        function abrir(si) {
-            menu.hidden = !si;
-            boton.setAttribute('aria-expanded', si ? 'true' : 'false');
+        function abrir(par, si) {
+            par.menu.hidden = !si;
+            par.boton.setAttribute('aria-expanded', si ? 'true' : 'false');
         }
 
-        boton.addEventListener('click', function (e) {
-            e.stopPropagation();
-            abrir(menu.hidden);
+        pares.forEach(function (par) {
+            par.boton.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var estabaCerrado = par.menu.hidden;
+                pares.forEach(function (otro) { abrir(otro, false); });
+                abrir(par, estabaCerrado);
+            });
         });
 
         document.addEventListener('click', function (e) {
-            if (!menu.hidden && !menu.contains(e.target)) abrir(false);
+            pares.forEach(function (par) {
+                if (!par.menu.hidden && !par.menu.contains(e.target)) abrir(par, false);
+            });
         });
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !menu.hidden) { abrir(false); boton.focus(); }
+            if (e.key !== 'Escape') return;
+            pares.forEach(function (par) {
+                if (!par.menu.hidden) { abrir(par, false); par.boton.focus(); }
+            });
         });
     })();
 </script>

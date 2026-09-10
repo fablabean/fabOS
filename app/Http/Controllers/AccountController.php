@@ -239,6 +239,21 @@ class AccountController extends Controller
         return back()->with('status', 'Foto guardada.');
     }
 
+    /** Lo que cada quien puede corregir de sí mismo: por ahora, el nombre. */
+    public function perfil(Request $request)
+    {
+        $datos = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:255'],
+        ], [
+            'name.required' => 'Escribe tu nombre.',
+            'name.min'      => 'El nombre es demasiado corto.',
+        ]);
+
+        $request->user()->forceFill(['name' => trim($datos['name'])])->save();
+
+        return back()->with('status', 'Perfil guardado.');
+    }
+
     public function quitarFoto(Request $request)
     {
         $usuario = $request->user();

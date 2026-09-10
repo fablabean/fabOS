@@ -9,12 +9,12 @@
     <style>
         :root{
             --ground:#E8E8E2; --surface:#F6F6F2; --ink:#191A16; --ink-soft:#3D4038;
-            --muted:#6E7066; --rule:#C7C7BD; --accent:#0D6E63; --danger:#9B2C2C; --link:#0B57D0;
+            --muted:#6E7066; --rule:#C7C7BD; --accent:#0D6E63; --danger:#9B2C2C; --link:#0D6E63;
         }
         @media (prefers-color-scheme:dark){
             :root{
                 --ground:#131511; --surface:#1B1E19; --ink:#E9EAE2; --ink-soft:#C6C8BC;
-                --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8; --danger:#E08585; --link:#8AB4F8;
+                --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8; --danger:#E08585; --link:#5CC9B8;
             }
         }
         /* Los enlaces del texto: sin esto salian con el azul de serie del

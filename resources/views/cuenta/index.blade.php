@@ -7,7 +7,20 @@
     {{-- La foto o las iniciales, y desde aqui mismo se cambia: es el
          circulo que sale en la barra de todo el sitio. --}}
     <div class="saludo">
-        <x-avatar :usuario="$usuario" tamano="4.2rem"/>
+        {{-- El círculo con la cámara encima: pulsarla elige la foto y la sube. --}}
+        <form method="POST" action="{{ route('cuenta.foto') }}" enctype="multipart/form-data" class="foto-form">
+            @csrf
+            <label class="circulo-foto" title="{{ $usuario->photo_path ? 'Cambiar la foto' : 'Poner una foto' }}">
+                <x-avatar :usuario="$usuario" tamano="4.6rem"/>
+                <span class="camara" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>
+                    </svg>
+                </span>
+                <input type="file" name="foto" accept="image/*" onchange="this.form.submit()">
+                <span class="sr-only">{{ $usuario->photo_path ? 'Cambiar la foto' : 'Poner una foto' }}</span>
+            </label>
+        </form>
         <div>
             <h1 style="margin:0">Hola, {{ $usuario->name }}</h1>
             <p class="help" style="margin:.2rem 0 0">
@@ -17,25 +30,42 @@
                     <span class="pill warn" style="margin-left:.4rem">pendiente de confirmar</span>
                 @endunless
             </p>
-            <form method="POST" action="{{ route('cuenta.foto') }}" enctype="multipart/form-data" class="foto-form">
-                @csrf
-                <label class="foto-boton">
-                    {{ $usuario->photo_path ? 'Cambiar foto' : 'Poner una foto' }}
-                    <input type="file" name="foto" accept="image/*" onchange="this.form.submit()">
-                </label>
+
+            {{-- Editar perfil: por ahora el nombre y la foto. --}}
+            <details class="plegable perfil" @if ($errors->has('name') || $errors->has('foto')) open @endif>
+                <summary>Editar perfil</summary>
+                <form method="POST" action="{{ route('cuenta.perfil') }}">
+                    @csrf
+                    <label for="perfil-nombre">Nombre</label>
+                    <input id="perfil-nombre" name="name" type="text" value="{{ old('name', $usuario->name) }}" required maxlength="255">
+                    @error('name') <p class="msg error" style="margin:.2rem 0 0">{{ $message }}</p> @enderror
+                    <button type="submit">Guardar</button>
+                </form>
                 @if ($usuario->photo_path)
-                    <button type="submit" formaction="{{ route('cuenta.foto.quitar') }}" class="foto-quitar">Quitar</button>
+                    <form method="POST" action="{{ route('cuenta.foto.quitar') }}" style="margin-top:.4rem">
+                        @csrf
+                        <button type="submit" class="foto-quitar">Quitar la foto</button>
+                    </form>
                 @endif
-            </form>
+            </details>
             @error('foto') <p class="msg error" style="margin:.4rem 0 0">{{ $message }}</p> @enderror
         </div>
     </div>
     <style>
-        .saludo{display:flex;gap:1rem;align-items:center;margin-bottom:1.4rem}
-        .saludo .avatar{font-size:1.4rem}
-        .foto-form{display:flex;gap:.6rem;align-items:center;margin-top:.5rem}
-        .foto-boton{font-size:.82rem;color:var(--link);cursor:pointer;text-decoration:underline}
-        .foto-boton input{display:none}
+        .saludo{display:flex;gap:1rem;align-items:flex-start;margin-bottom:1.4rem}
+        .saludo .avatar{font-size:1.5rem}
+        .foto-form{margin:0;flex:none}
+        .circulo-foto{position:relative;display:inline-block;cursor:pointer;line-height:0}
+        .circulo-foto input{display:none}
+        .circulo-foto .camara{
+            position:absolute;right:-.15rem;bottom:-.15rem;width:1.6rem;height:1.6rem;border-radius:50%;
+            display:inline-flex;align-items:center;justify-content:center;background:var(--surface);
+            color:var(--ink);border:1px solid var(--rule);box-shadow:0 1px 4px rgba(0,0,0,.15);
+        }
+        .circulo-foto:hover .camara{color:var(--accent);border-color:var(--accent)}
+        .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+        .perfil{margin-top:.5rem}
+        .perfil > summary{font-size:.85rem;color:var(--link);cursor:pointer}
         .foto-quitar{background:none;border:0;padding:0;margin:0;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;text-decoration:underline}
     </style>
 
@@ -46,7 +76,7 @@
         $cobrosActivos = \App\Support\Settings::cobrosActivos();
     @endphp
 
-    <h2>Mi saldo</h2>
+    <h2 id="saldo">Mi saldo</h2>
     <div class="panel">
         <p style="margin:0;font-size:2rem;font-weight:700;letter-spacing:-.02em">
             {{ number_format($saldo / $unidades, 2, ',', '.') }}
