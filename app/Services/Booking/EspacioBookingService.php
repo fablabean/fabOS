@@ -6,7 +6,9 @@ use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\Space;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Services\Staffing\CoverageService;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -122,6 +124,236 @@ class EspacioBookingService
 
     public const FUERA_DE_JORNADA = 'Fuera de la jornada del equipo: requiere visto bueno, porque implica horas extras.';
 
+    /** Las duraciones que se ofrecen al reservar un espacio. */
+    public const DURACIONES = [60, 90, 120, 180, 240, 360, 480];
+
+    /**
+     * Si a esa hora hay quien atienda el espacio.
+     *
+     * Quién cuenta como equipo depende de qué se atiende: un espacio físico lo
+     * abre alguien presencial; uno virtual lo atiende quien esté en jornada,
+     * aunque sea desde casa.
+     *
+     * Vive aquí, en un solo sitio, porque la pregunta se hace dos veces: la
+     * pantalla la hace ANTES de enviar —para advertir— y `reservar()` al
+     * grabar. Si fueran dos reglas distintas, la advertencia mentiría.
+     */
+    public function estaCubierta(Space $espacio, CarbonInterface $desde, CarbonInterface $hasta): bool
+    {
+        return $this->cobertura->hayCobertura($desde, $hasta, incluirRemota: $espacio->type === 'virtual');
+    }
+
+    /**
+     * Con varios espacios manda el más exigente: la actividad es una sola, y
+     * basta que uno caiga fuera para que la reserva entera quede pendiente.
+     *
+     * @param  iterable<Space>  $espacios
+     */
+    public function estanCubiertos(iterable $espacios, CarbonInterface $desde, CarbonInterface $hasta): bool
+    {
+        foreach ($espacios as $espacio) {
+            if (! $this->estaCubierta($espacio, $desde, $hasta)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Qué le va a pasar a esta reserva, dicho ANTES de pedirla.
+     *
+     * Una sala pedida a las cuatro por ocho horas se salía de la jornada y se
+     * iba a la bandeja sin que quien la pedía se enterara: creía tener la sala
+     * y tenía una solicitud, y se presentaba a una puerta cerrada. Ahora se lo
+     * dice la propia pantalla mientras elige la hora, y con alternativas que
+     * sí se confirman solas —acortar, correr la hora, otro día—. Pedirlo fuera
+     * sigue valiendo: se advierte, no se prohíbe; a veces abrir el sábado es
+     * exactamente lo que hay que hacer.
+     *
+     * @param  list<Space>  $espacios  todos los que van en la reserva
+     * @return array{cubierta:bool,franja:array{0:string,1:string}|null,titulo:string,mensaje:string,opciones:list<array{etiqueta:string,fecha:string,inicio:string,duracion:int}>}
+     */
+    public function vistaPreviaDeJornada(array $espacios, CarbonInterface $desde, int $minutos): array
+    {
+        $tz = config('fabos.lab.timezone');
+        $desde = $desde->copy()->setTimezone($tz);
+        $hasta = $desde->copy()->addMinutes($minutos);
+
+        // Lo remoto solo cuenta si TODO lo que se pide es virtual: un taller en
+        // el mismo paquete obliga a que alguien esté en el laboratorio.
+        $remota = $espacios !== [] && collect($espacios)->every(fn (Space $e) => $e->type === 'virtual');
+        $franja = $this->cobertura->franjaAtendida($desde, incluirRemota: $remota);
+        $abre   = $franja ? substr($franja[0], 0, 5) : null;
+        $cierra = $franja ? substr($franja[1], 0, 5) : null;
+
+        if ($this->estanCubiertos($espacios, $desde, $hasta)) {
+            return [
+                'cubierta' => true,
+                'franja'   => $franja ? [$abre, $cierra] : null,
+                'titulo'   => 'Dentro de la jornada del equipo',
+                'mensaje'  => 'De ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i')
+                    . ' hay quien atienda, así que la reserva queda confirmada al instante.',
+                'opciones' => [],
+            ];
+        }
+
+        // Como INSTANTES, no como horas de pared: ocho horas desde las cuatro
+        // de la tarde terminan a las 00:00 del día siguiente, y comparando
+        // «00:00» contra «18:00» esa reserva parecía caber dentro del día.
+        $dia = $desde->copy()->startOfDay();
+        $cuando = 'de ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i')
+            . ($desde->isSameDay($hasta) ? '' : ' del día siguiente');
+
+        if (! $franja) {
+            $mensaje = 'Ese día no hay nadie del equipo en el laboratorio.';
+        } elseif ($desde->greaterThanOrEqualTo($dia->copy()->setTimeFromTimeString($franja[0]))
+            && $hasta->lessThanOrEqualTo($dia->copy()->setTimeFromTimeString($franja[1]))) {
+            // Dentro de la envolvente y aun así sin cubrir: turnos partidos, el
+            // descanso, una clase atravesada. Decir «se sale de la jornada»
+            // aquí sería falso, y quien lo lea no encontraría el hueco.
+            $mensaje = 'Ese día el equipo atiende de ' . $abre . ' a ' . $cierra
+                . ', pero ' . $cuando . ' no hay nadie que cubra la franja entera:'
+                . ' es el descanso, o los turnos no se juntan.';
+        } else {
+            $mensaje = 'Ese día el equipo atiende de ' . $abre . ' a ' . $cierra
+                . ', y lo que pides va ' . $cuando . ': se sale de la jornada.';
+        }
+
+        return [
+            'cubierta' => false,
+            'franja'   => $franja ? [$abre, $cierra] : null,
+            'titulo'   => 'Fuera de la jornada: hace falta visto bueno',
+            'mensaje'  => $mensaje . ' Puedes pedirlo igual, pero no se confirma solo: queda pendiente'
+                . ' de que alguien lo apruebe, porque abrir fuera de jornada son horas extras del equipo.',
+            'opciones' => $this->alternativasDeJornada($espacios, $desde, $minutos, $remota),
+        ];
+    }
+
+    /**
+     * Lo más parecido a lo que se pidió que NO necesita visto bueno.
+     *
+     * Se buscan tres cosas, por orden de menor estorbo para quien pide: dejarlo
+     * más corto, correrlo de hora el mismo día, o pasarlo a otro día. Cada
+     * candidata se comprueba de verdad con `estanCubiertos` —no basta con que
+     * caiga dentro de la envolvente, que un descanso o unos turnos partidos
+     * dejan huecos— para no ofrecer una hora que acabaría en la bandeja igual.
+     *
+     * @param  list<Space>  $espacios
+     * @return list<array{etiqueta:string,fecha:string,inicio:string,duracion:int}>
+     */
+    private function alternativasDeJornada(array $espacios, CarbonInterface $desde, int $minutos, bool $remota): array
+    {
+        $tz = config('fabos.lab.timezone');
+        $ahora = Carbon::now($tz);
+        $dia = $desde->copy()->startOfDay();
+
+        $cabe = fn (CarbonInterface $inicio, int $mins) => $inicio->greaterThan($ahora)
+            && $this->estanCubiertos($espacios, $inicio, $inicio->copy()->addMinutes($mins));
+
+        $opciones = [];
+
+        // 1. Acortar: la misma hora de inicio, lo más largo que quepa. Quien
+        //    pidió ocho horas suele preferir cuatro hoy a ocho el jueves.
+        foreach (array_reverse(self::DURACIONES) as $mins) {
+            if ($mins < $minutos && $cabe($desde, $mins)) {
+                $opciones[] = $this->opcionDeJornada('Acortar a ' . self::enHoras($mins), $desde, $mins);
+                break;
+            }
+        }
+
+        // 2. Correr la hora: el mismo día y lo mismo de largo, empezando antes
+        //    o después. Se prueban las medias horas de la jornada, de la más
+        //    cercana a lo pedido hacia afuera.
+        $franja = $this->cobertura->franjaAtendida($desde, incluirRemota: $remota);
+
+        if ($franja) {
+            $cierra = $dia->copy()->setTimeFromTimeString($franja[1]);
+            $candidatas = [];
+
+            for ($i = $dia->copy()->setTimeFromTimeString($franja[0]);
+                $i->copy()->addMinutes($minutos)->lessThanOrEqualTo($cierra);
+                $i->addMinutes(30)) {
+                $candidatas[] = $i->copy();
+            }
+
+            usort($candidatas, fn ($a, $b) => abs($a->diffInMinutes($desde)) <=> abs($b->diffInMinutes($desde)));
+
+            // Con tope: cada prueba son consultas, y esto corre mientras
+            // alguien teclea la hora.
+            foreach (array_slice($candidatas, 0, 12) as $candidata) {
+                if (! $candidata->equalTo($desde) && $cabe($candidata, $minutos)) {
+                    $opciones[] = $this->opcionDeJornada('Empezar a las ' . $candidata->format('H:i'), $candidata, $minutos);
+                    break;
+                }
+            }
+        }
+
+        // 3. Otro día: el primero de la semana siguiente que sí lo cubra, a la
+        //    misma hora si cabe y, si no, en cuanto abren.
+        for ($n = 1; $n <= 7; $n++) {
+            $otro = $dia->copy()->addDays($n);
+            $suya = $this->cobertura->franjaAtendida($otro, incluirRemota: $remota);
+
+            if (! $suya) {
+                continue;
+            }
+
+            $abreOtro   = $otro->copy()->setTimeFromTimeString($suya[0]);
+            $cierraOtro = $otro->copy()->setTimeFromTimeString($suya[1]);
+            $inicio     = $otro->copy()->setTimeFrom($desde);
+
+            if ($inicio->lessThan($abreOtro)) {
+                $inicio = $abreOtro;
+            }
+
+            if ($inicio->copy()->addMinutes($minutos)->greaterThan($cierraOtro)) {
+                $inicio = $abreOtro;
+            }
+
+            if ($inicio->copy()->addMinutes($minutos)->greaterThan($cierraOtro) || ! $cabe($inicio, $minutos)) {
+                continue;
+            }
+
+            $opciones[] = $this->opcionDeJornada(
+                'Pasar al ' . mb_strtolower(WorkSchedule::DIAS[$otro->isoWeekday()]) . ' ' . $otro->format('d/m'),
+                $inicio,
+                $minutos,
+            );
+            break;
+        }
+
+        return $opciones;
+    }
+
+    /** @return array{etiqueta:string,fecha:string,inicio:string,duracion:int} */
+    private function opcionDeJornada(string $etiqueta, CarbonInterface $inicio, int $minutos): array
+    {
+        $fin = $inicio->copy()->addMinutes($minutos);
+
+        return [
+            'etiqueta' => $etiqueta . ' · de ' . $inicio->format('H:i') . ' a ' . $fin->format('H:i'),
+            'fecha'    => $inicio->format('Y-m-d'),
+            'inicio'   => $inicio->format('H:i'),
+            'duracion' => $minutos,
+        ];
+    }
+
+    /**
+     * «2 horas», «1 hora 30 min». Los minutos sueltos importan: con intdiv a
+     * secas, noventa minutos salía como «1 hora» y la lista de duraciones
+     * parecía repetir la misma opción.
+     */
+    public static function enHoras(int $minutos): string
+    {
+        $h = intdiv($minutos, 60);
+        $m = $minutos % 60;
+
+        return trim(($h ? $h . ' hora' . ($h > 1 ? 's' : '') : '') . ($m ? ' ' . $m . ' min' : ''))
+            ?: $minutos . ' min';
+    }
+
+
     /**
      * @param  list<int>  $herramientaIds
      * @param  string|null  $modalidad  solo para el laboratorio entero: recorrido u operación
@@ -228,7 +460,7 @@ class EspacioBookingService
          * físico lo abre alguien presencial; uno virtual lo atiende quien esté
          * en jornada, aunque sea desde casa.
          */
-        $cubierta = $this->cobertura->hayCobertura($desde, $hasta, incluirRemota: $espacio->type === 'virtual');
+        $cubierta = $this->estaCubierta($espacio, $desde, $hasta);
         $estado = $cubierta ? 'confirmada' : 'solicitada';
         $motivo = $cubierta ? null : self::FUERA_DE_JORNADA;
 

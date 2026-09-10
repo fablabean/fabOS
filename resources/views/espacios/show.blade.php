@@ -52,11 +52,9 @@
                 <div class="agenda-campo">
                     <label for="duracion">Duración</label>
                     <select id="duracion" name="duracion" required>
-                        @foreach ([60, 90, 120, 180, 240, 360, 480] as $min)
-                            @php($h = intdiv($min, 60))
-                            @php($m = $min % 60)
+                        @foreach (\App\Services\Booking\EspacioBookingService::DURACIONES as $min)
                             <option value="{{ $min }}" @selected(old('duracion', $duracion) == $min)>
-                                {{ $h }} hora{{ $h > 1 ? 's' : '' }}{{ $m ? ' ' . $m . ' min' : '' }}
+                                {{ \App\Services\Booking\EspacioBookingService::enHoras($min) }}
                             </option>
                         @endforeach
                     </select>
@@ -80,6 +78,33 @@
             </div>
 
             @error('participantes') <p class="msg error">{{ $message }}</p> @enderror
+
+            {{-- Lo que le espera a esta reserva, dicho ANTES de enviarla.
+
+                 Alguien pedía la sala a las cuatro por ocho horas, la reserva
+                 se iba a la bandeja por caer fuera de la jornada y quien la
+                 pedía no se enteraba: creía tener la sala. Ahora se dice aquí
+                 mismo, con alternativas que sí se confirman solas. Pedirlo
+                 fuera se puede igual: se advierte, no se prohíbe.
+
+                 Viene resuelto del servidor —se lee sin JavaScript, y las
+                 alternativas son enlaces que recargan con esa hora puesta— y
+                 el script de abajo lo refresca sin recargar cuando lo hay. --}}
+            <div id="jornada" class="jornada{{ $jornada['cubierta'] ? '' : ' aviso' }}"
+                 data-url="{{ route('espacios.jornada', $espacio) }}" aria-live="polite">
+                <p><strong>{{ $jornada['titulo'] }}</strong></p>
+                <p>{{ $jornada['mensaje'] }}</p>
+                @if ($jornada['opciones'])
+                    <p class="j-alt">Sin visto bueno, lo más parecido:</p>
+                    <div class="j-opciones">
+                        @foreach ($jornada['opciones'] as $o)
+                            <a href="{{ route('espacios.show', ['space' => $espacio, 'fecha' => $o['fecha'], 'inicio' => $o['inicio'], 'duracion' => $o['duracion']]) }}"
+                               data-fecha="{{ $o['fecha'] }}" data-inicio="{{ $o['inicio'] }}"
+                               data-duracion="{{ $o['duracion'] }}">{{ $o['etiqueta'] }}</a>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
 
             {{-- Para qué se toma. En recorrido se pasa por ahí: no bloquea la
                  sala y el aforo es guía. En operación se usa en exclusiva y el
@@ -163,8 +188,14 @@
         </div>
         @endunless
 
-        <button type="submit">
-            {{ $espacio->esTodoElLaboratorio() ? 'Reservar el recorrido' : 'Reservar el espacio' }}
+        {{-- El botón dice lo que de verdad va a pasar al pulsarlo: reservar no
+             es lo mismo que pedir, y confundirlos es lo que hacía que alguien
+             se presentara a una puerta cerrada. --}}
+        @php($etiquetaDentro = $espacio->esTodoElLaboratorio() ? 'Reservar el recorrido' : 'Reservar el espacio')
+        @php($etiquetaFuera = 'Pedirlo igual: queda pendiente del visto bueno')
+        <button type="submit" id="enviar"
+                data-dentro="{{ $etiquetaDentro }}" data-fuera="{{ $etiquetaFuera }}">
+            {{ $jornada['cubierta'] ? $etiquetaDentro : $etiquetaFuera }}
         </button>
     </form>
 
@@ -190,5 +221,139 @@
         .herramienta:has(input:checked) {
             border-color: #0f766e; background: rgba(15,118,110,.08);
         }
+
+        .jornada {
+            font-size: .9rem; margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 4px;
+            border-left: 3px solid var(--ok); background: color-mix(in srgb, var(--ok) 9%, transparent);
+        }
+        .jornada.aviso {
+            border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 11%, transparent);
+        }
+        .jornada p { margin: 0 }
+        .jornada p + p { margin-top: .35rem }
+        .jornada .j-alt { margin-top: .6rem; color: var(--muted); font-size: .84rem }
+        .j-opciones { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem }
+        .j-opciones a {
+            display: inline-block; padding: .4rem .7rem; font-size: .82rem; font-weight: 600;
+            border: 1px solid var(--rule); border-radius: 4px; background: var(--surface);
+            color: var(--ink); text-decoration: none;
+        }
+        .j-opciones a:hover { border-color: var(--accent) }
     </style>
+
+    {{-- Refresca el aviso de arriba mientras se elige la hora. Sin esto la
+         página sigue sirviendo: el aviso ya viene resuelto del servidor y las
+         alternativas son enlaces de verdad. --}}
+    <script>
+        (() => {
+            const caja = document.getElementById('jornada');
+            const form = caja?.closest('form');
+
+            if (! caja || ! form) {
+                return;
+            }
+
+            const enviar = document.getElementById('enviar');
+            const campo = (id) => form.querySelector('#' + id);
+            let espera, aborta;
+
+            const pintar = (j) => {
+                caja.className = 'jornada' + (j.cubierta ? '' : ' aviso');
+
+                const alternativas = (j.opciones || []).map((o) => {
+                    const a = document.createElement('a');
+                    a.href = caja.dataset.url.replace('/jornada', '')
+                        + '?fecha=' + encodeURIComponent(o.fecha)
+                        + '&inicio=' + encodeURIComponent(o.inicio)
+                        + '&duracion=' + encodeURIComponent(o.duracion);
+                    a.dataset.fecha = o.fecha;
+                    a.dataset.inicio = o.inicio;
+                    a.dataset.duracion = o.duracion;
+                    a.textContent = o.etiqueta;
+
+                    return a;
+                });
+
+                caja.replaceChildren();
+                caja.insertAdjacentHTML('beforeend', '<p><strong></strong></p><p></p>');
+                caja.querySelector('strong').textContent = j.titulo;
+                caja.querySelectorAll('p')[1].textContent = j.mensaje;
+
+                if (alternativas.length) {
+                    const rotulo = document.createElement('p');
+                    rotulo.className = 'j-alt';
+                    rotulo.textContent = 'Sin visto bueno, lo más parecido:';
+
+                    const fila = document.createElement('div');
+                    fila.className = 'j-opciones';
+                    alternativas.forEach((a) => fila.append(a));
+
+                    caja.append(rotulo, fila);
+                }
+
+                if (enviar) {
+                    enviar.textContent = j.cubierta ? enviar.dataset.dentro : enviar.dataset.fuera;
+                }
+            };
+
+            const consultar = () => {
+                const datos = new URLSearchParams();
+                datos.set('fecha', campo('fecha').value);
+                datos.set('inicio', campo('inicio').value);
+                datos.set('duracion', campo('duracion').value);
+                form.querySelectorAll('input[name="espacios[]"]:checked')
+                    .forEach((c) => datos.append('espacios[]', c.value));
+
+                // A medio teclear una hora no hay nada que preguntar.
+                if (! datos.get('fecha') || ! datos.get('inicio')) {
+                    return;
+                }
+
+                aborta?.abort();
+                aborta = new AbortController();
+
+                fetch(caja.dataset.url + '?' + datos.toString(), {
+                    headers: { Accept: 'application/json' },
+                    signal: aborta.signal,
+                })
+                    .then((r) => (r.ok ? r.json() : null))
+                    .then((j) => j && pintar(j))
+                    // Sin red se queda lo último que se dijo, que es mejor que
+                    // un hueco: el servidor lo vuelve a comprobar al enviar.
+                    .catch(() => {});
+            };
+
+            const pedir = () => {
+                clearTimeout(espera);
+                espera = setTimeout(consultar, 300);
+            };
+
+            form.addEventListener('change', (e) => {
+                if (e.target.matches('#fecha, #inicio, #duracion, input[name="espacios[]"]')) {
+                    pedir();
+                }
+            });
+            form.addEventListener('input', (e) => {
+                if (e.target.matches('#fecha, #inicio')) {
+                    pedir();
+                }
+            });
+
+            // Tomar una alternativa mueve los campos, sin recargar ni perder lo
+            // que ya se hubiera escrito abajo.
+            caja.addEventListener('click', (e) => {
+                const alternativa = e.target.closest('a[data-fecha]');
+
+                if (! alternativa) {
+                    return;
+                }
+
+                e.preventDefault();
+                campo('fecha').value = alternativa.dataset.fecha;
+                campo('inicio').value = alternativa.dataset.inicio;
+                campo('duracion').value = alternativa.dataset.duracion;
+                consultar();
+            });
+        })();
+    </script>
 @endsection

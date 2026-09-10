@@ -65,7 +65,53 @@ class EspacioController extends Controller
             'desde'         => $desde,
             'duracion'      => (int) $request->integer('duracion', 60) ?: 60,
             'franjaHoy'     => $this->cobertura->franjaAtendida(Carbon::now($tz)),
+            // Qué le pasaría a la reserva con lo que hay elegido ahora mismo.
+            // Va servida desde aquí para que se lea sin JavaScript; a partir
+            // de ahí la pantalla la refresca sola al cambiar la hora.
+            'jornada'       => $this->espacios->vistaPreviaDeJornada(
+                [$space], $desde, (int) $request->integer('duracion', 60) ?: 60,
+            ),
         ]);
+    }
+
+    /**
+     * Si lo que se está eligiendo se confirma solo o necesita visto bueno, y
+     * qué alternativas hay que no lo necesitan.
+     *
+     * Lo consulta la pantalla de reserva mientras alguien mueve la fecha, la
+     * hora o la duración: enterarse después de enviar, cuando ya se cree tener
+     * la sala, es enterarse tarde.
+     */
+    public function jornada(Request $request, Space $space)
+    {
+        abort_unless($space->is_reservable, 404);
+
+        $datos = $request->validate([
+            'fecha'      => ['required', 'date'],
+            'inicio'     => ['required', 'date_format:H:i'],
+            'duracion'   => ['required', 'integer', 'min:15', 'max:720'],
+            'espacios'   => ['array'],
+            'espacios.*' => ['integer'],
+        ]);
+
+        // Los otros espacios marcados cuentan: van en la misma reserva, y basta
+        // que uno caiga fuera para que la entera quede pendiente.
+        $espacios = Space::where('is_reservable', true)
+            ->where('es_todo', false)
+            ->whereIn('id', array_map('intval', $datos['espacios'] ?? []))
+            ->get()
+            ->prepend($space)
+            ->unique('id')
+            ->values()
+            ->all();
+
+        $tz = config('fabos.lab.timezone');
+
+        return response()->json($this->espacios->vistaPreviaDeJornada(
+            $espacios,
+            Carbon::parse($datos['fecha'] . ' ' . $datos['inicio'], $tz),
+            (int) $datos['duracion'],
+        ));
     }
 
     public function store(Request $request, Space $space)

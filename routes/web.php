@@ -278,6 +278,9 @@ Route::middleware('auth')->group(function () {
     // Espacios: se reserva la sala y dentro se toman las herramientas (§7).
     Route::get('/espacios', [EspacioController::class, 'index'])->name('espacios.index');
     Route::get('/espacios/{space}', [EspacioController::class, 'show'])->name('espacios.show');
+    // Lo que le espera a la reserva antes de enviarla: la pantalla lo pregunta
+    // mientras se elige la hora, para advertir antes y no despues.
+    Route::get('/espacios/{space}/jornada', [EspacioController::class, 'jornada'])->name('espacios.jornada');
     Route::post('/espacios/{space}', [EspacioController::class, 'store'])->name('espacios.store');
 
     // Asesoria: la salida para quien todavia no tiene el certifab (§10).

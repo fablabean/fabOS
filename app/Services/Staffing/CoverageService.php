@@ -159,9 +159,11 @@ class CoverageService
      * Envolvente de las jornadas de un día: la franja atendida.
      * Devuelve null cuando ese día no hay nadie.
      *
+     * @param  bool  $incluirRemota  contar también la jornada remota, igual que en
+     *                               `enJornada`: lo virtual se atiende desde casa.
      * @return array{0:string,1:string}|null
      */
-    public function franjaAtendida(CarbonInterface $dia): ?array
+    public function franjaAtendida(CarbonInterface $dia, bool $incluirRemota = false): ?array
     {
         // Ojo: aquí llega una FECHA de calendario, no un instante. Convertirle
         // la zona horaria la correría al día anterior —medianoche UTC es la
@@ -177,7 +179,7 @@ class CoverageService
         $jornadas = WorkSchedule::query()
             ->vigenteEn($fecha)
             ->where('weekday', $fecha->isoWeekday())
-            ->where('modalidad', WorkSchedule::PRESENCIAL)
+            ->when(! $incluirRemota, fn ($q) => $q->where('modalidad', WorkSchedule::PRESENCIAL))
             ->whereNotIn('user_id', $ausentes)
             ->get();
 
