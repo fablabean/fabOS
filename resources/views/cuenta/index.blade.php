@@ -277,15 +277,10 @@
                         <td>
                             {{ $c->grantedBy?->name ?? '—' }}
                             <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
-                            {{-- De dónde salió: el curso que la dio, con su
-                                 cohorte. Sin esto, el certificado del curso y
-                                 esta habilitación parecían dos cosas sueltas. --}}
-                            @if ($curso = $c->vieneDe())
-                                <div class="quien origen"><x-icono nombre="formacion"/>
-                                    por el curso {{ $curso->edition?->course?->name }}
-                                    @if ($curso->edition?->code) · {{ $curso->edition->code }} @endif
-                                </div>
-                            @elseif ($c->granted_via && $c->granted_via !== 'curso')
+                            {{-- Por donde llego, solo cuando NO fue por un curso:
+                                 la que salio de un curso ya se ve en «Mi
+                                 formacion», con «Te habilito: …». --}}
+                            @if ($c->granted_via && $c->granted_via !== 'curso')
                                 <div class="quien origen"><x-icono nombre="verificar"/>{{ \App\Models\Certifab::VIAS[$c->granted_via] ?? $c->granted_via }}</div>
                             @endif
                         </td>

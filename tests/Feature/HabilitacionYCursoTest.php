@@ -55,11 +55,11 @@ class HabilitacionYCursoTest extends TestCase
 
         $this->assertSame('HI-CONTINUA', $certifab->vieneDe()?->edition?->code);
 
+        // El curso dice que habilito; la habilitacion no repite el curso.
         $this->actingAs($quien)->get(route('home'))
             ->assertOk()
             ->assertSee('Te habilitó: Creality Hi')
-            ->assertSee('por el curso kilo · Creality Hi')
-            ->assertSee('HI-CONTINUA')
+            ->assertDontSee('por el curso')
             ->assertSee('CYQV885SNE')
             ->assertSee($certifab->public_code);
     }
