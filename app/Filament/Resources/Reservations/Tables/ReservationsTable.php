@@ -32,7 +32,28 @@ class ReservationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('starts_at', 'desc')
+            /*
+             * Cada actividad, junta y en orden: primero la reserva de la que
+             * cuelgan las demas, y debajo las suyas.
+             *
+             * Quien reserva una sala y toma dos herramientas dentro genera
+             * tres filas. Sueltas y mezcladas con las de todo el mundo, leer
+             * la lista era reconstruir a ojo que la fuente de voltaje de las
+             * seis era la misma actividad que el Lab electronica de las seis.
+             * Las hijas nacen con el horario de su madre, asi que ordenar por
+             * la hora y despues por la actividad las deja pegadas.
+             */
+            // El parametro se llama `query` a proposito: Filament lo inyecta
+            // por NOMBRE, y con otro nombre resuelve un Builder sin modelo del
+            // contenedor y la tabla revienta al pintarse.
+            ->defaultSort(fn (Builder $query) => $query
+                ->orderBy('starts_at', 'desc')
+                ->orderByRaw('coalesce(parent_reservation_id, id) desc')
+                ->orderByRaw('parent_reservation_id is null desc')
+                ->orderBy('id'))
+            // Lo reservado -y lo reservado por la madre- de una vez: sin esto
+            // seria una consulta por fila solo para escribir un nombre.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['reservable', 'madre.reservable']))
             ->columns([
                 TextColumn::make('starts_at')
                     ->label('Cuándo')
@@ -43,16 +64,13 @@ class ReservationsTable
 
                 TextColumn::make('recurso')
                     ->label('Recurso')
-                    ->state(function (Reservation $record) {
-                        // Polimórfico: puede ser un equipo o el tiempo de una persona.
-                        $clase = class_basename($record->reservable_type);
-                        $nombre = $record->reservable_type::find($record->reservable_id)?->name;
-
-                        return $nombre ?? ($clase . ' #' . $record->reservable_id);
-                    })
-                    ->description(fn (Reservation $record) => $record->reservable_type === Asset::class
-                        ? 'equipo'
-                        : 'acompañamiento'),
+                    // Sangrada y con la flecha si cuelga de otra: se ve de un
+                    // vistazo que la herramienta va dentro de la sala de arriba.
+                    ->state(fn (Reservation $record) => ($record->parent_reservation_id ? '↳ ' : '')
+                        . $record->nombreDelRecurso())
+                    ->description(fn (Reservation $record) => $record->madre
+                        ? $record->tipoDeRecurso() . ', dentro de ' . $record->madre->nombreDelRecurso()
+                        : $record->tipoDeRecurso()),
 
                 TextColumn::make('user.name')->label('Persona')->searchable(),
 

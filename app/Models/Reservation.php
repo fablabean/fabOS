@@ -117,6 +117,47 @@ class Reservation extends Model
         return $this->hasOne(self::class, 'parent_reservation_id');
     }
 
+    /**
+     * La reserva de la que cuelga esta, si cuelga de alguna.
+     *
+     * Una herramienta tomada dentro de una sala, el bloque de quien acompaña,
+     * el complemento pedido con un equipo: no son actividades sueltas, son
+     * partes de una. Verlas sueltas en una lista es no entender que pasó.
+     */
+    public function madre(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_reservation_id');
+    }
+
+    /** Las que cuelgan de esta. */
+    public function hijas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_reservation_id');
+    }
+
+    /**
+     * Cómo se llama lo reservado: un equipo, una sala, el tiempo de alguien.
+     *
+     * Por la relación polimórfica y no buscando a mano, que en una tabla de
+     * cien filas eso son cien consultas.
+     */
+    public function nombreDelRecurso(): string
+    {
+        return $this->reservable?->name
+            ?? class_basename($this->reservable_type) . ' #' . $this->reservable_id;
+    }
+
+    /** «equipo», «espacio» o «acompañamiento»: qué clase de cosa se reservó. */
+    public function tipoDeRecurso(): string
+    {
+        return match ($this->reservable_type) {
+            Asset::class => 'equipo',
+            Space::class => 'espacio',
+            User::class  => 'acompañamiento',
+            default      => mb_strtolower(class_basename($this->reservable_type)),
+        };
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
