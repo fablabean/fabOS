@@ -70,7 +70,12 @@ class NickInstitucionalTest extends TestCase
         $this->get('/ingresar')
             ->assertOk()
             ->assertSee('Correo o nick')
-            ->assertSee('ehansen o ehansen@universidadean.edu.co');
+            ->assertSee('placeholder="nick@universidadean.edu.co"', false)
+            // El sufijo que acompaña al nick mientras se escribe, y la ayuda
+            // con la arroba de verdad, no con la plantilla sin compilar.
+            ->assertSee('class="sufijo"', false)
+            ->assertSee('le ponemos @universidadean.edu.co')
+            ->assertDontSee('{{ $dominio }}');
     }
 
     /** El carné con correo reconoce a la persona por el nick, aunque el nombre no cuadre. */
