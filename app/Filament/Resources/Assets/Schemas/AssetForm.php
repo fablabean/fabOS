@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\DB;
 
 class AssetForm
 {
+    /** Tope de lo que se crea de una vez: mas que esto es una importacion. */
+    public const MAXIMAS_UNIDADES = 50;
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -30,6 +33,28 @@ class AssetForm
                             ->required()
                             ->maxLength(255)
                             ->columnSpanFull(),
+
+                        /*
+                         * Siete multimetros iguales son siete fichas: cada uno
+                         * tiene su placa, su historial y su hoja de vida. Se
+                         * crean de una, numerados, en vez de repetir el
+                         * formulario siete veces.
+                         *
+                         * Solo al crear: una ficha ya existente es UN aparato,
+                         * y «cantidad» ahi no significaria nada.
+                         */
+                        TextInput::make('cantidad')
+                            ->label('Cuántas unidades')
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(1)
+                            ->maxValue(self::MAXIMAS_UNIDADES)
+                            ->live(onBlur: true)
+                            ->visibleOn('create')
+                            ->helperText(fn ($get) => ((int) $get('cantidad') > 1)
+                                ? 'Se crean ' . (int) $get('cantidad') . ' fichas numeradas: «' . trim((string) $get('name')) . ' 1», «'
+                                    . trim((string) $get('name')) . ' 2»… La placa y el serie se anotan después en cada una, que son de cada aparato.'
+                                : 'Una ficha por aparato. Si vas a anotar varios iguales, di cuántos y se crean de una.'),
 
                         Select::make('area_id')
                             ->label('Área')
