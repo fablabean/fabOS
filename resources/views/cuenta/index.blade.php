@@ -38,6 +38,15 @@
         .tablero h2 .ico{display:inline-flex;color:var(--accent)}
         .tablero .panel{overflow-x:auto}
         @media (max-width:900px){.tablero{grid-template-columns:minmax(0,1fr)}}
+
+        /* A todo el ancho, pero no pegado a los bordes: en un monitor grande
+           el tablero respira con margen a los lados y un tope de anchura. */
+        @media (min-width:1200px){
+            main.completo{max-width:100rem;padding-left:3.5rem;padding-right:3.5rem}
+        }
+        @media (min-width:1700px){
+            main.completo{padding-left:5rem;padding-right:5rem}
+        }
     </style>
 
     {{-- El tablero, en dos columnas: primero las asesorías que atiendo a
