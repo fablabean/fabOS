@@ -58,9 +58,24 @@ final class Settings
      * correo de una institucion aliada, el sistema le completa el saldo
      * hasta el tope. No se acumula: quien ya tiene el tope o mas, no recibe.
      */
-    public const BENEFICIO_ACTIVO   = 'beneficio.activo';
-    public const BENEFICIO_SEMANAL  = 'beneficio.semanal_minor';
-    public const BENEFICIO_DOMINIOS = 'beneficio.dominios';
+    public const BENEFICIO_ACTIVO        = 'beneficio.activo';
+    public const BENEFICIO_SEMANAL       = 'beneficio.semanal_minor';
+    public const BENEFICIO_DOMINIOS      = 'beneficio.dominios';
+    public const BENEFICIO_EQUIVALENCIAS = 'beneficio.equivalencias';
+
+    /**
+     * A cuánto material equivale el beneficio de la semana.
+     *
+     * Se dice, no se calcula: el equivalente exacto depende del relleno, del
+     * calibre y de lo que se desperdicia en el corte, y una cifra falsa es
+     * peor que una orientación honesta. Sale al cerrar una producción, para
+     * que quien la cierra sepa hasta dónde llega.
+     */
+    public static function equivalenciasDelBeneficio(): string
+    {
+        return trim((string) Setting::get(self::BENEFICIO_EQUIVALENCIAS, ''))
+            ?: '60 g de filamento, o 20 × 20 cm de MDF de 2,7 mm';
+    }
 
     public const BENEFICIO_DOMINIOS_DE_FABRICA = ['universidadean.edu.co', 'fablabean.com', 'ieee.org'];
 

@@ -45,8 +45,13 @@
                     <div>
                         <label class="block text-sm font-medium" for="tope">Tope semanal, en {{ $moneda }}</label>
                         <input id="tope" type="text" wire:model="tope" inputmode="decimal">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium" for="equivalencias">A cuánto material equivale</label>
+                        <input id="equivalencias" type="text" wire:model="equivalencias">
                         <p class="text-sm text-gray-500 dark:text-gray-400" style="margin-top:.3rem">
-                            De fábrica, 8: el equivalente a unos 60 g de filamento o a 20 × 20 cm de MDF.
+                            Se dice, no se calcula. Sale al cerrar una producción, para que quien la cierra
+                            sepa hasta dónde llega lo que ya está pagado.
                         </p>
                     </div>
                 </div>

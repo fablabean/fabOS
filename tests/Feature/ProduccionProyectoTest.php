@@ -409,6 +409,93 @@ class ProduccionProyectoTest extends TestCase
         $this->assertGreaterThan(0, (int) $produccion->fresh()->actual_cost_minor);
     }
 
+    /**
+     * Lo que trae el cliente no sale de existencias ni se cobra: nunca fue
+     * nuestro, y aunque no quede una sola lámina la producción cierra.
+     */
+    public function test_lo_que_trae_el_cliente_no_descuenta_ni_se_cobra(): void
+    {
+        $area = Area::create(['slug' => 'a-' . uniqid(), 'name' => 'Corte láser']);
+
+        $mdf = \App\Models\Supply::create([
+            'area_id' => $area->id, 'name' => 'MDF 3 mm', 'unit' => 'lámina',
+            'stock' => 0, 'last_cost' => 30000, 'is_active' => true,
+        ]);
+
+        $produccion = app(ProduccionService::class)->programar(
+            $this->impresora(), $this->persona(),
+            now()->subHours(2), now()->addHours(2),
+        );
+
+        app(ProduccionService::class)->terminar($produccion, now(), [
+            $mdf->id => ['cantidad' => 2, 'origen' => \App\Models\ReservationSupply::CLIENTE],
+        ]);
+
+        $linea = \App\Models\ReservationSupply::where('reservation_id', $produccion->id)->firstOrFail();
+
+        $this->assertSame(\App\Models\ReservationSupply::CLIENTE, $linea->origin);
+        $this->assertFalse($linea->descuentaInventario());
+        $this->assertFalse($linea->seCobra());
+        $this->assertSame(0, (int) $linea->unit_price_minor);
+        $this->assertSame(0.0, (float) $mdf->fresh()->stock, 'no sale del inventario');
+        $this->assertSame(2.0, (float) $linea->quantity, 'pero queda anotado lo que se usó');
+    }
+
+    /**
+     * Lo que cubre el beneficio semanal se gastó igual —sale de existencias—
+     * pero ya está pagado con los FabCoins de la semana: no se cobra aparte.
+     */
+    public function test_el_material_del_beneficio_sale_de_existencias_pero_no_se_cobra(): void
+    {
+        $area = Area::create(['slug' => 'a-' . uniqid(), 'name' => 'Impresión 3D']);
+
+        $filamento = \App\Models\Supply::create([
+            'area_id' => $area->id, 'name' => 'Filamento PLA', 'unit' => 'g',
+            'stock' => 1000, 'last_cost' => 100, 'is_active' => true,
+        ]);
+
+        $produccion = app(ProduccionService::class)->programar(
+            $this->impresora(), $this->persona(),
+            now()->subHours(2), now()->addHours(2),
+        );
+
+        app(ProduccionService::class)->terminar($produccion, now(), [
+            $filamento->id => ['cantidad' => 60, 'origen' => \App\Models\ReservationSupply::BENEFICIO],
+        ]);
+
+        $linea = \App\Models\ReservationSupply::where('reservation_id', $produccion->id)->firstOrFail();
+
+        $this->assertSame(\App\Models\ReservationSupply::BENEFICIO, $linea->origin);
+        $this->assertTrue($linea->descuentaInventario());
+        $this->assertFalse($linea->seCobra());
+        $this->assertSame(940.0, (float) $filamento->fresh()->stock, 'el filamento se gastó de verdad');
+        $this->assertSame(0, (int) $linea->unit_price_minor, 'pero ya lo pagaron los FabCoins de la semana');
+    }
+
+    /** Sin decir de dónde sale, sale del inventario: es lo corriente. */
+    public function test_sin_origen_se_descuenta_como_siempre(): void
+    {
+        $area = Area::create(['slug' => 'a-' . uniqid(), 'name' => 'Impresión 3D']);
+
+        $filamento = \App\Models\Supply::create([
+            'area_id' => $area->id, 'name' => 'Filamento PLA', 'unit' => 'g',
+            'stock' => 1000, 'last_cost' => 100, 'is_active' => true,
+        ]);
+
+        $produccion = app(ProduccionService::class)->programar(
+            $this->impresora(), $this->persona(),
+            now()->subHours(2), now()->addHours(2),
+        );
+
+        app(ProduccionService::class)->terminar($produccion, now(), [$filamento->id => 250]);
+
+        $this->assertSame(750.0, (float) $filamento->fresh()->stock);
+        $this->assertSame(
+            \App\Models\ReservationSupply::INVENTARIO,
+            \App\Models\ReservationSupply::where('reservation_id', $produccion->id)->firstOrFail()->origin,
+        );
+    }
+
     /** Y no se puede gastar lo que no hay. */
     public function test_no_se_cierra_con_mas_material_del_que_existe(): void
     {

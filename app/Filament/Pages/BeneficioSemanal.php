@@ -33,6 +33,8 @@ class BeneficioSemanal extends Page
 
     public string $dominios = '';
 
+    public string $equivalencias = '';
+
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
         return 'Finanzas';
@@ -53,6 +55,7 @@ class BeneficioSemanal extends Page
         $this->activo = Settings::beneficioActivo();
         $this->tope = number_format(Settings::beneficioSemanalMenor() / config('fabos.currency.minor_units'), 2, '.', '');
         $this->dominios = implode("\n", Settings::dominiosDelBeneficio());
+        $this->equivalencias = Settings::equivalenciasDelBeneficio();
     }
 
     public function save(): void
@@ -81,6 +84,7 @@ class BeneficioSemanal extends Page
         Setting::put(Settings::BENEFICIO_ACTIVO, $this->activo, 'finanzas');
         Setting::put(Settings::BENEFICIO_SEMANAL, (int) round($tope * config('fabos.currency.minor_units')), 'finanzas');
         Setting::put(Settings::BENEFICIO_DOMINIOS, $dominios, 'finanzas');
+        Setting::put(Settings::BENEFICIO_EQUIVALENCIAS, trim($this->equivalencias), 'finanzas');
 
         $this->mount();
 

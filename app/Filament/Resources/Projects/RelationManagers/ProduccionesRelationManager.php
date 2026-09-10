@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projects\RelationManagers;
 use App\Filament\Componentes\CampoDeEvidencia;
 use App\Models\Asset;
 use App\Models\Reservation;
+use App\Models\ReservationSupply;
 use App\Models\Supply;
 use App\Services\Projects\ProduccionService;
 use App\Services\Projects\ProjectException;
@@ -173,8 +174,8 @@ class ProduccionesRelationManager extends RelationManager
                             ->label('Material gastado')
                             ->addActionLabel('Añadir material')
                             ->defaultItems(0)
-                            ->columns(2)
-                            ->helperText('Los gramos de filamento, los mililitros de resina. Sale del inventario y entra al costo.')
+                            ->columns(3)
+                            ->helperText('Los gramos de filamento, los mililitros de resina. Lo del inventario entra al costo; lo que cubre el beneficio semanal ya está pagado, y lo que trae el cliente ni siquiera sale de existencias.')
                             ->schema([
                                 Select::make('supply_id')
                                     ->label('Qué')
@@ -192,12 +193,34 @@ class ProduccionesRelationManager extends RelationManager
                                     ->numeric()
                                     ->required()
                                     ->minValue(0.001),
+
+                                /*
+                                 * De donde salio. Lo del beneficio semanal se
+                                 * gasto igual, pero ya esta pagado con los
+                                 * FabCoins de la semana; lo del cliente nunca
+                                 * fue nuestro. Los tres se anotan.
+                                 */
+                                Select::make('origen')
+                                    ->label('De dónde sale')
+                                    ->options(ReservationSupply::ORIGENES)
+                                    ->default(ReservationSupply::INVENTARIO)
+                                    ->required()
+                                    ->live()
+                                    ->helperText(fn ($state) => match ($state) {
+                                        ReservationSupply::BENEFICIO => 'Sale de existencias, pero no se cobra: lo cubre '
+                                            . \App\Support\Settings::equivalenciasDelBeneficio(),
+                                        ReservationSupply::CLIENTE => 'Ni sale de existencias ni se cobra.',
+                                        default => 'Descuenta existencias y entra al costo.',
+                                    }),
                             ]),
                     ])
                     ->action(function (Reservation $r, array $data) {
                         $materiales = collect($data['materiales'] ?? [])
                             ->filter(fn ($m) => filled($m['supply_id'] ?? null))
-                            ->mapWithKeys(fn ($m) => [(int) $m['supply_id'] => (float) $m['cantidad']])
+                            ->mapWithKeys(fn ($m) => [(int) $m['supply_id'] => [
+                                'cantidad' => (float) $m['cantidad'],
+                                'origen'   => $m['origen'] ?? ReservationSupply::INVENTARIO,
+                            ]])
                             ->all();
 
                         try {

@@ -165,7 +165,13 @@ class ProduccionService
      * máquina corre. Descontarlo por adelantado dejaría el inventario mintiendo
      * durante las seis horas que dura la impresión, y peor aún si se cancela.
      *
-     * @param  array<int,float>  $materiales
+     * Y no todo se cobra ni todo sale de existencias. Lo que cubre el
+     * beneficio semanal se gastó igual —sale del inventario— pero ya está
+     * pagado con los FabCoins de la semana; lo que trae el cliente nunca fue
+     * nuestro, así que ni descuenta ni se cobra. Los tres casos se anotan: la
+     * hoja tiene que decir qué se usó.
+     *
+     * @param  array<int,float|array{cantidad:float,origen?:string}>  $materiales
      *
      * @return int lo que costó, en unidades menores
      */
@@ -173,8 +179,13 @@ class ProduccionService
     {
         $total = 0;
 
-        foreach ($materiales as $insumoId => $cantidad) {
-            $cantidad = (float) $cantidad;
+        foreach ($materiales as $insumoId => $linea) {
+            $cantidad = (float) (is_array($linea) ? ($linea['cantidad'] ?? 0) : $linea);
+            $origen = is_array($linea) ? (string) ($linea['origen'] ?? ReservationSupply::INVENTARIO) : ReservationSupply::INVENTARIO;
+
+            if (! ReservationSupply::esOrigenValido($origen)) {
+                $origen = ReservationSupply::INVENTARIO;
+            }
 
             if ($cantidad <= 0) {
                 continue;
@@ -186,23 +197,29 @@ class ProduccionService
                 continue;
             }
 
-            try {
-                $this->existencias->salida(
-                    $insumo,
-                    $cantidad,
-                    'Producción #' . $produccion->id,
-                    $produccion,
-                    $produccion->user,
-                );
-            } catch (StockException $e) {
-                throw new ProjectException($e->getMessage());
+            $linea = new ReservationSupply(['origin' => $origen]);
+
+            if ($linea->descuentaInventario()) {
+                try {
+                    $this->existencias->salida(
+                        $insumo,
+                        $cantidad,
+                        'Producción #' . $produccion->id
+                            . ($origen === ReservationSupply::BENEFICIO ? ' · beneficio semanal' : ''),
+                        $produccion,
+                        $produccion->user,
+                    );
+                } catch (StockException $e) {
+                    throw new ProjectException($e->getMessage());
+                }
             }
 
-            $precio = $this->precios->precioDe($insumo);
+            $precio = $linea->seCobra() ? $this->precios->precioDe($insumo) : 0;
 
             ReservationSupply::create([
                 'reservation_id'   => $produccion->id,
                 'supply_id'        => $insumo->id,
+                'origin'           => $origen,
                 'quantity'         => $cantidad,
                 'unit_price_minor' => $precio,
             ]);
