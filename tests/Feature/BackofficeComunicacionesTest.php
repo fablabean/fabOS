@@ -67,8 +67,12 @@ class BackofficeComunicacionesTest extends TestCase
         // La primera página del listado, ordenada por clave. No se afirma sobre
         // una plantilla concreta del final: añadir avisos nuevos la empujaría a
         // la segunda página y rompería la prueba sin que nada esté mal.
-        $this->entra($admin)->get('/admin/notification-templates')
-            ->assertOk()
+        // Buscandola: con las plantillas que se han ido sumando, ninguna
+        // pagina concreta garantiza que salga esta.
+        $this->entra($admin)->get('/admin/notification-templates')->assertOk();
+
+        \Livewire\Livewire::test(\App\Filament\Resources\NotificationTemplates\Pages\ListNotificationTemplates::class)
+            ->searchTable('Habilitación')
             ->assertSee('Habilitación otorgada');
 
         $this->entra($admin)->get('/admin/notification-logs')

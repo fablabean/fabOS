@@ -61,13 +61,7 @@ class PagosDeProyecto
                 'requested_at' => now(),
             ]);
 
-            $this->avisar('proyecto.pago_solicitado', $proyecto, [
-                'valor'         => $pago->valorFormateado(),
-                'concepto'      => $pago->concept ?: 'el proyecto',
-                'mensaje'       => trim((string) $mensaje),
-                'instrucciones' => Settings::instruccionesDePago(),
-                'quien'         => $porQuien->name,
-            ], conQr: true);
+            $this->avisar('proyecto.pago_solicitado', $proyecto, $this->datosDelCobro($pago->valorFormateado(), $pago->concept, $mensaje, $porQuien), conQr: true);
 
             $proyecto->comments()->create([
                 'user_id'     => $porQuien->id,
@@ -206,6 +200,48 @@ class PagosDeProyecto
         });
     }
 
+    /**
+     * Como le llegaria el cobro al cliente, sin mandarlo: el asunto, el texto
+     * y el correo maquetado, con las mismas variables que al enviarlo.
+     *
+     * @return array{asunto:string,cuerpo:string,html:string,correo:?string}
+     */
+    public function vistaPrevia(Project $proyecto, int $valor, ?string $concepto, ?string $mensaje, User $porQuien): array
+    {
+        $formateado = config('fabos.money.symbol') . number_format((float) $valor, 0, ',', '.');
+        $datos = $this->datosDelCobro($formateado, trim((string) $concepto) ?: null, $mensaje, $porQuien) + $this->datosDelProyecto($proyecto);
+
+        $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+        return $this->avisos->previsualizar(
+            'proyecto.pago_solicitado',
+            $destinatario,
+            $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+            $datos,
+        ) + ['correo' => $proyecto->correoDeLaPropuesta()];
+    }
+
+    /** Las variables propias de un cobro, iguales al enviar y al previsualizar. */
+    private function datosDelCobro(string $valorFormateado, ?string $concepto, ?string $mensaje, User $porQuien): array
+    {
+        return [
+            'valor'         => $valorFormateado,
+            'concepto'      => $concepto ?: 'el proyecto',
+            'mensaje'       => trim((string) $mensaje),
+            'instrucciones' => Settings::instruccionesDePago(),
+            'quien'         => $porQuien->name,
+        ];
+    }
+
+    private function datosDelProyecto(Project $proyecto): array
+    {
+        return [
+            'proyecto' => $proyecto->name,
+            'codigo'   => $proyecto->code,
+            'enlace'   => URL::temporarySignedRoute('proyectos.propuesta', now()->addDays(60), ['project' => $proyecto->id]) . '#pago',
+        ];
+    }
+
     /** Al cliente, con cuenta o sin ella, con el enlace firmado a su proyecto. */
     private function avisar(string $clave, Project $proyecto, array $datos, bool $conQr = false): void
     {
@@ -215,11 +251,7 @@ class PagosDeProyecto
             return;
         }
 
-        $datos += [
-            'proyecto' => $proyecto->name,
-            'codigo'   => $proyecto->code,
-            'enlace'   => URL::temporarySignedRoute('proyectos.propuesta', now()->addDays(60), ['project' => $proyecto->id]) . '#pago',
-        ];
+        $datos += $this->datosDelProyecto($proyecto);
 
         $adjuntos = [];
 

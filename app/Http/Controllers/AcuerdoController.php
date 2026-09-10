@@ -19,6 +19,34 @@ use Illuminate\Support\Facades\Cache;
  */
 class AcuerdoController extends Controller
 {
+    /**
+     * Como le llegaria un cobro al cliente: el correo maquetado, con el QR,
+     * y la seccion «Pago» tal como la vera en su proyecto. Con lo escrito en
+     * el formulario, que espera en la cache con una clave de un solo uso.
+     */
+    public function pago(Request $request, Project $project, string $token)
+    {
+        $quien = $request->user();
+
+        abort_unless($quien instanceof User && $quien->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+
+        $datos = Cache::get('cobro:' . $token);
+
+        abort_unless(is_array($datos) && (int) ($datos['project_id'] ?? 0) === $project->id, 404);
+
+        $vista = app(\App\Services\Projects\PagosDeProyecto::class)->vistaPrevia(
+            $project, (int) ($datos['valor'] ?? 0), $datos['concepto'] ?? null, $datos['mensaje'] ?? null, $quien,
+        );
+
+        return view('proyectos.pago-vista', [
+            'proyecto' => $project,
+            'vista'    => $vista,
+            'valor'    => config('fabos.money.symbol') . number_format((float) ($datos['valor'] ?? 0), 0, ',', '.'),
+            'concepto' => trim((string) ($datos['concepto'] ?? '')) ?: null,
+            'qr'       => \App\Support\Settings::qrDePagos() ? route('pagos.qr') : null,
+        ]);
+    }
+
     public function vista(Request $request, Project $project, string $token)
     {
         $quien = $request->user();

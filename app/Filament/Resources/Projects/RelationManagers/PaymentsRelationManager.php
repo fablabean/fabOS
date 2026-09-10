@@ -167,7 +167,22 @@ class PaymentsRelationManager extends RelationManager
                     ->rows(3)
                     ->helperText('Va dentro del correo. Opcional.'),
             ])
-            ->action(function (Project $record, array $data) {
+            // Verlo antes de mandarlo: el correo con el QR y la seccion de
+            // pago, en otra pestaña, con el formulario intacto.
+            ->extraModalFooterActions(fn (Action $action) => [
+                $action->makeModalSubmitAction('vistaPrevia', arguments: ['vista' => true])
+                    ->label('Vista previa')
+                    ->color('gray'),
+            ])
+            ->action(function (Project $record, array $data, array $arguments, Action $action, $livewire) {
+                if ($arguments['vista'] ?? false) {
+                    $token = \Illuminate\Support\Str::random(40);
+                    \Illuminate\Support\Facades\Cache::put('cobro:' . $token, $data + ['project_id' => $record->id], now()->addHour());
+
+                    $livewire->js('window.open(' . json_encode(route('panel.cobro', ['project' => $record, 'token' => $token])) . ', "_blank")');
+                    $action->halt();
+                }
+
                 try {
                     $pago = app(PagosDeProyecto::class)->pedir(
                         $record, (int) $data['valor'], $data['concepto'] ?? null, $data['mensaje'] ?? null, auth()->user(),

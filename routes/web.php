@@ -199,6 +199,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/acuerdo/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'vista'])
         ->name('panel.acuerdo');
 
+    // La vista previa de un cobro: el correo con el QR, y la seccion de pago.
+    Route::get('/panel/cobro/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'pago'])
+        ->name('panel.cobro');
+
     Route::post('/salir', [LoginCodeController::class, 'logout'])->name('logout');
 
     // Que avisos quiere recibir cada persona (§15).

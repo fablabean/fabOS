@@ -146,6 +146,39 @@ class NotificationService
      * Es lo que permite que el proceso de recordatorios corra cada hora sin
      * mandar el mismo aviso una y otra vez.
      */
+    /**
+     * Como llegaria un aviso, sin mandarlo: el asunto, el texto y el correo
+     * ya maquetado. Para verlo antes de pulsar «enviar».
+     *
+     * @return array{asunto:string,cuerpo:string,html:string}
+     */
+    public function previsualizar(string $clave, ?User $destinatario, ?string $nombre, array $datos = []): array
+    {
+        $plantilla = NotificationTemplate::where('key', $clave)->first();
+
+        if (! $plantilla) {
+            return ['asunto' => '', 'cuerpo' => 'No existe la plantilla [' . $clave . '].', 'html' => ''];
+        }
+
+        $base = $destinatario
+            ? $this->variablesBase($destinatario)
+            : [
+                'nombre'      => (string) $nombre,
+                'nombre_pila' => str((string) $nombre)->trim()->explode(' ')->first(),
+                'laboratorio' => config('fabos.lab.name'),
+            ];
+
+        $datos = array_merge($base, $datos);
+        $asunto = $plantilla->render('subject', $datos);
+        $cuerpo = $plantilla->render('body', $datos);
+
+        return [
+            'asunto' => $asunto,
+            'cuerpo' => $cuerpo,
+            'html'   => (new PlantillaMail($asunto, $cuerpo))->render(),
+        ];
+    }
+
     public function enviarUnaVez(string $clave, User $destinatario, Model $referencia, array $datos = []): ?NotificationLog
     {
         $ya = NotificationLog::where('key', $clave)

@@ -98,6 +98,37 @@ class PagosDeProyectoTest extends TestCase
         $this->assertStringContainsString('Pedimos el pago de Anticipo', $p->comments()->reorder('id', 'desc')->first()->body);
     }
 
+    /** Antes de mandarlo se ve como llegara: el correo con el valor y el QR, y la seccion de pago. */
+    public function test_la_vista_previa_ensena_el_correo_y_la_seccion_de_pago(): void
+    {
+        $p = $this->proyecto();
+
+        $vista = app(PagosDeProyecto::class)->vistaPrevia($p, 1_250_000, 'Anticipo del 50 %', 'Con esto compramos el acrílico.', $p->lead);
+
+        $this->assertStringContainsString('$1.250.000', $vista['asunto']);
+        $this->assertStringContainsString('Anticipo del 50 %', $vista['cuerpo']);
+        $this->assertStringContainsString('compramos el acrílico', $vista['cuerpo']);
+        $this->assertStringContainsString('#pago', $vista['cuerpo']);
+        $this->assertStringContainsString('<html', $vista['html']);
+        $this->assertSame('marcela@cliente.co', $vista['correo']);
+
+        \Illuminate\Support\Facades\Cache::put('cobro:prueba', [
+            'valor' => 1_250_000, 'concepto' => 'Anticipo del 50 %', 'mensaje' => 'Con esto compramos el acrílico.', 'project_id' => $p->id,
+        ], now()->addHour());
+
+        $this->get(route('panel.cobro', ['project' => $p, 'token' => 'prueba']))
+            ->assertOk()
+            ->assertSee('Así le llegará el cobro')
+            ->assertSee('marcela@cliente.co')
+            ->assertSee('Anticipo del 50 %')
+            ->assertSee(route('pagos.qr'), false)
+            ->assertSee('Enviar el comprobante');
+
+        // Nada se envió.
+        $this->assertSame(0, $p->payments()->count());
+        $this->assertFalse(NotificationLog::where('key', 'proyecto.pago_solicitado')->exists());
+    }
+
     public function test_sin_qr_no_se_pide(): void
     {
         $p = $this->proyecto();
