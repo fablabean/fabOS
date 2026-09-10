@@ -207,10 +207,18 @@ comprometido: son los cinco minutos de ubicar a la persona, abrirle o darle
 una herramienta (`EspacioBookingService::MINUTOS_RECIBIR`).
 
 Quién: se elige solo, al reservar, entre quienes están en jornada presencial
-a esa hora, con este orden: quien responde por el área de la sala, luego quien
-esté libre en ese momento, y por turno (quien menos recibimientos tenga por
-delante). Si nadie está en jornada, nadie recibe y la reserva sigue igual;
-esto ayuda, no restringe. Si al aprobar una solicitud se elige un acompañante
+a esa hora, con este orden:
+
+1. **la persona fija de la sala**, si la tiene (*Espacios → Quién recibe en
+   este espacio*), cuando está en jornada y libre en ese momento;
+2. quien **responde por el área** de la sala (*Áreas → Responsables del
+   área*);
+3. quien esté libre en ese momento;
+4. por turno: quien menos recibimientos tenga por delante.
+
+Si nadie está en jornada, nadie recibe y la reserva sigue igual; esto ayuda,
+no restringe. A quien le cae recibir **se le avisa por correo**
+(`espacio.recibir`): quién viene, cuándo, dónde y para qué. Si al aprobar una solicitud se elige un acompañante
 a mano, ese acompaña de verdad —su tiempo sí se reserva— y no se suma nadie
 más.
 

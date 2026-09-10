@@ -59,11 +59,22 @@ class EspacioBookingService
             return null;
         }
 
+        $reservas = app(BookingService::class);
+
+        // La persona fija de la sala manda, si esta en jornada y libre en ese
+        // momento. Si no esta, recibe quien este: la sala no se queda sin nadie.
+        if ($espacio->host_id) {
+            $fijo = $enJornada->firstWhere('id', (int) $espacio->host_id);
+
+            if ($fijo && $reservas->personaLibre($fijo, $desde, $hasta)) {
+                return $fijo;
+            }
+        }
+
         $responsables = $espacio->areas()->with('responsibles')->get()
             ->flatMap(fn ($area) => $area->responsibles)
             ->pluck('id')->unique();
 
-        $reservas = app(BookingService::class);
         $libres = $enJornada->filter(fn (User $u) => $reservas->personaLibre($u, $desde, $hasta));
         $candidatos = $libres->isNotEmpty() ? $libres : $enJornada;
 
@@ -238,7 +249,7 @@ class EspacioBookingService
         $this->exigirQueNoLoTengaYa($user, Space::class, $espacio->id, $espacio->name, $desde, $hasta);
 
         try {
-            return DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta, $compartida) {
+            $creada = DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta, $compartida) {
                 if ($compartida) {
                     Space::whereKey($espacio->id)->lockForUpdate()->first();
                     $this->exigirPuestos($espacio, $participantes, $desde, $hasta);
@@ -315,6 +326,43 @@ class EspacioBookingService
 
             throw $e;
         }
+
+        // Ya escrita: a quien le toca recibir se le dice, para que este
+        // pendiente. Fuera de la transaccion, que un correo no la retenga.
+        $this->avisarAQuienRecibe($creada);
+
+        return $creada;
+    }
+
+    /**
+     * Le dice a quien recibe que le cae una reserva: quien viene, cuando y
+     * donde. Solo cuando la reserva esta confirmada y hay alguien puesto;
+     * una solicitud fuera de jornada no tiene a nadie todavia.
+     */
+    public function avisarAQuienRecibe(Reservation $reserva): void
+    {
+        if ($reserva->status !== 'confirmada' || ! $reserva->supervisor_id || $reserva->reservable_type !== Space::class) {
+            return;
+        }
+
+        $quien = User::find($reserva->supervisor_id);
+        $espacio = Space::find($reserva->reservable_id);
+
+        if (! $quien || ! $espacio || $reserva->companions()->where('users.id', $quien->id)->exists()) {
+            return;
+        }
+
+        $tz = config('fabos.lab.timezone');
+
+        app(\App\Services\Notifications\NotificationService::class)->enviar('espacio.recibir', $quien, [
+            'espacio'    => $espacio->name,
+            'para_quien' => $reserva->user?->name ?? 'Alguien',
+            'fecha'      => $reserva->starts_at->timezone($tz)->format('d/m/Y'),
+            'inicio'     => $reserva->starts_at->timezone($tz)->format('H:i'),
+            'fin'        => $reserva->ends_at->timezone($tz)->format('H:i'),
+            'cuantos'    => $reserva->participants . ' persona' . ($reserva->participants === 1 ? '' : 's'),
+            'proposito'  => $reserva->purpose ? '«' . $reserva->purpose . '»' : '',
+        ], $reserva);
     }
 
     /**

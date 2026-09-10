@@ -12,7 +12,14 @@ class Space extends Model
     protected $fillable = [
         'slug', 'name', 'type', 'capacity',
         'is_reservable', 'is_production_space', 'es_todo', 'shares_seats', 'setup_minutes', 'cleanup_minutes',
+        'host_id',
     ];
+
+    /** Quien recibe en este espacio por defecto, si esta en jornada (§10). */
+    public function host(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'host_id');
+    }
 
     protected function casts(): array
     {

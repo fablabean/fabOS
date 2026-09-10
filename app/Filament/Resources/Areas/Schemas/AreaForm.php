@@ -66,6 +66,19 @@ class AreaForm
                     )
                     ->columnSpanFull(),
 
+                // Quienes responden por el area: cuando alguien reserva una
+                // de sus salas y la sala no tiene a nadie fijo, reciben ellos
+                // antes que el resto del equipo, si estan en jornada.
+                \Filament\Forms\Components\Select::make('responsibles')
+                    ->label('Responsables del área')
+                    ->relationship('responsibles', 'name', fn ($query) => $query->where('status', 'activo')->whereHas('roles')->orderBy('name'))
+                    ->getOptionLabelFromRecordUsing(fn (\App\Models\User $u) => $u->etiquetaConCargo())
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Reciben a quien reserva una sala del área, antes que el resto del equipo. Cada sala puede tener además a alguien fijo.')
+                    ->columnSpanFull(),
+
                 TextInput::make('position')
                     ->label('Orden en el menú')
                     ->numeric()

@@ -60,6 +60,18 @@ class SpaceForm
                          * tome un puesto; el taller si, porque una actividad
                          * no convive con otra. Lo dice cada espacio.
                          */
+                        // Quien recibe a quien reserva esta sala: si esta en
+                        // jornada a esa hora, es la persona; si no, se elige
+                        // entre quienes esten. Manda sobre el responsable del
+                        // area. No le compromete la hora: son minutos.
+                        Select::make('host_id')
+                            ->label('Quién recibe en este espacio')
+                            ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
+                            ->searchable()
+                            ->placeholder('Quien esté en jornada, por turno')
+                            ->helperText('Recibe a quien reserva: ubicarlo, abrirle, darle una herramienta. Si no está en jornada, recibe quien esté.')
+                            ->columnSpanFull(),
+
                         Toggle::make('shares_seats')
                             ->label('Se comparte por puestos')
                             ->helperText('Varias reservas caben a la vez hasta el aforo: cada una toma los puestos que pide. Apagado, la primera reserva toma la sala entera.')

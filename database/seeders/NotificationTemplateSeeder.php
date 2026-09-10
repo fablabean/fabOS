@@ -445,6 +445,25 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'espacio.recibir',
+                'name'         => 'Te toca recibir en un espacio',
+                'description'  => 'A alguien del equipo, cuando le cae recibir a quien reservó una sala. Son minutos: no le compromete la hora.',
+                'is_essential' => false,
+                'subject'      => 'Recibir en {espacio} el {fecha} a las {inicio}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {para_quien} reservó {espacio} el {fecha}, de {inicio} a {fin}
+                    ({cuantos}). Te toca recibir: ubicarle, abrirle y darle lo que
+                    necesite. Son unos minutos al empezar; no te ocupa la hora.
+
+                    {proposito}
+
+                    Lo ves en «Mi cuenta», y si ese día no puedes, pásaselo a alguien del
+                    equipo desde ahí.
+                    TXT,
+            ],
+            [
                 'key'          => 'reserva.confirmada',
                 'name'         => 'Reserva confirmada',
                 'description'  => 'Se envía al reservar un equipo, cuando la reserva queda confirmada.',

@@ -107,6 +107,44 @@ class QuienRecibeEnElEspacioTest extends TestCase
         $this->assertSame('solicitada', $r->status, 'fuera de jornada queda como solicitud, como siempre');
     }
 
+    /** La persona fija de la sala manda sobre el responsable del área, si está en jornada. */
+    public function test_la_persona_fija_de_la_sala_va_primero(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $this->area->responsibles()->attach($ana->id);
+        $this->sala->update(['host_id' => $beto->id]);
+
+        $r = $this->reserva(User::factory()->create(['status' => 'activo']));
+
+        $this->assertSame($beto->id, $r->supervisor_id, 'la sala tiene dueño: recibe él');
+
+        // Sin jornada ese día, recibe quien esté: el responsable del área.
+        \App\Models\WorkSchedule::where('user_id', $beto->id)->delete();
+        $otra = Space::create(['slug' => 'otra', 'name' => 'Otra sala', 'capacity' => 5, 'is_reservable' => true, 'host_id' => $beto->id]);
+        $otra->areas()->attach($this->area);
+
+        $r2 = app(EspacioBookingService::class)->reservar(User::factory()->create(['status' => 'activo']), $otra, $this->hora('14:00'), $this->hora('15:00'));
+
+        $this->assertSame($ana->id, $r2->supervisor_id);
+    }
+
+    /** A quien le cae recibir se le avisa, con quién viene y cuándo. */
+    public function test_a_quien_recibe_se_le_avisa(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $quien = User::factory()->create(['name' => 'Laura Bareño', 'status' => 'activo']);
+
+        $r = $this->reserva($quien);
+
+        $aviso = \App\Models\NotificationLog::where('key', 'espacio.recibir')->where('user_id', $ana->id)->first();
+
+        $this->assertNotNull($aviso, 'le llega el aviso a quien recibe');
+        $this->assertStringContainsString('Laura Bareño', $aviso->body);
+        $this->assertStringContainsString('Sala de cómputo', $aviso->body);
+        $this->assertStringContainsString('10:00', $aviso->body);
+    }
+
     /** Quien responde por el área de la sala va primero. */
     public function test_el_responsable_del_area_va_primero(): void
     {

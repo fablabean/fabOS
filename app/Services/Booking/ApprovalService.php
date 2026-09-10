@@ -133,6 +133,11 @@ class ApprovalService
                     $solicitud->companions()->syncWithoutDetaching([$acompanante->id]);
                 }
 
+                // Si al aprobar le cayo recibir a alguien, que se entere.
+                if ($espacio && ! $acompanante && $solicitud->fresh()->supervisor_id) {
+                    app(EspacioBookingService::class)->avisarAQuienRecibe($solicitud->fresh());
+                }
+
                 // Lo que colgaba de la solicitud -otros espacios, herramientas-
                 // se confirma con ella: la actividad es una.
                 Reservation::where('parent_reservation_id', $solicitud->id)
