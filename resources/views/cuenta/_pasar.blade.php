@@ -16,7 +16,7 @@
     </form>
 @elseif ($candidatos && $candidatos->isNotEmpty())
     <details class="plegable">
-        <summary>Pasar a otra persona</summary>
+        <summary><x-icono nombre="pasar"/>Pasar a otra persona</summary>
         <form method="POST" action="{{ route('traspaso.proponer', $reserva) }}">
             @csrf
             <label for="a-{{ $reserva->id }}">A quién</label>

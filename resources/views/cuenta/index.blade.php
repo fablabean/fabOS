@@ -21,7 +21,7 @@
                     <span class="pill warn" style="margin-left:.4rem">pendiente de confirmar</span>
                 @endunless
             </p>
-            <p style="margin:.4rem 0 0;font-size:.85rem"><a href="{{ route('cuenta.perfil') }}">Editar perfil</a></p>
+            <p style="margin:.4rem 0 0;font-size:.85rem"><a href="{{ route('cuenta.perfil') }}"><x-icono nombre="editar"/>Editar perfil</a></p>
         </div>
     </div>
     <style>
@@ -47,6 +47,11 @@
         .origen .ico svg{width:14px;height:14px}
         a.codigo{display:inline-flex;gap:.35rem;align-items:center}
         a.codigo .ico svg{width:14px;height:14px}
+
+        /* Los enlaces de acción con su icono delante, alineado con el texto. */
+        a .ico,summary .ico,button .ico{display:inline-flex;vertical-align:-3px;margin-right:.3rem}
+        a .ico svg,summary .ico svg,button .ico svg{width:14px;height:14px}
+        button .ico{color:inherit}
         @media (max-width:900px){.tablero{grid-template-columns:minmax(0,1fr)}}
 
         /* A todo el ancho, pero no pegado a los bordes: en un monitor grande
@@ -144,7 +149,7 @@
                                 <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
                             @endif
                             @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
-                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                                <br><a href="{{ route('calendario.reserva', $a) }}"><x-icono nombre="calendario"/>Añadir a mi calendario</a>
                             @endif
                         </td>
                     </tr>
@@ -201,7 +206,7 @@
                                 <a href="{{ route('escaneo.camara') }}"><strong>Validar mi llegada</strong></a>
                                 ·
                             @endif
-                            <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
+                            <a href="{{ route('calendario.reserva', $r) }}"><x-icono nombre="calendario"/>Añadir a mi calendario</a>
                             {{-- Cancelar desde aquí: sin esto, quien pedía una
                                  sala y quería cambiarla volvía a pedirla. --}}
                             @if (in_array($r->status, ['solicitada', 'confirmada'], true) && $r->starts_at->isFuture())
@@ -253,7 +258,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Habilita</th><th>Nivel</th><th>Vigencia</th>
+                        <th>Habilita</th><th>Nivel</th>
                         <th>Otorgado por</th><th>Verificación</th>
                     </tr>
                 </thead>
@@ -269,12 +274,6 @@
                             </div>
                         </td>
                         <td>{{ $c->level }}</td>
-                        <td>
-                            <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}">{{ $estado }}</span>
-                            @if ($c->expires_at)
-                                <div class="quien">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</div>
-                            @endif
-                        </td>
                         <td>
                             {{ $c->grantedBy?->name ?? '—' }}
                             <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
@@ -296,6 +295,15 @@
                             <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank" class="codigo">
                                 <x-icono nombre="verificar"/><span class="who">{{ $c->public_code }}</span>
                             </a>
+                            {{-- El estado va aquí y no en columna propia: es lo
+                                 que dice el enlace de verificación, y así la
+                                 tabla cabe en media pantalla. --}}
+                            <div style="margin-top:.25rem">
+                                <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}" style="margin:0">{{ $estado }}</span>
+                                @if ($c->expires_at)
+                                    <span class="quien" style="margin-left:.3rem">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</span>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @endforeach
@@ -340,11 +348,11 @@
 
                                 @if ($curso?->lessons?->isNotEmpty())
                                     <div class="quien" style="margin-top:.3rem">
-                                        <a href="{{ route('formacion.teoria', $inscripcion) }}">Ver la teoría</a>
+                                        <a href="{{ route('formacion.teoria', $inscripcion) }}"><x-icono nombre="teoria"/>Ver la teoría</a>
                                         @if ($curso->tieneExamen())
                                             ·
                                             <a href="{{ route('formacion.examen', $inscripcion) }}">
-                                                {{ $inscripcion->teoriaAprobada() ? 'Repetir el examen' : 'Hacer el examen' }}
+                                                <x-icono nombre="examen"/>{{ $inscripcion->teoriaAprobada() ? 'Repetir el examen' : 'Hacer el examen' }}
                                             </a>
                                         @endif
                                     </div>
@@ -362,7 +370,7 @@
                                         <strong>Práctica agendada:</strong>
                                         {{ $practica->starts_at->timezone($tz)->format('d/m/Y H:i') }}
                                         con {{ $practica->reservable?->name ?? 'el equipo' }}
-                                        · <a href="{{ route('calendario.reserva', $practica) }}">Añadir a mi calendario</a>
+                                        · <a href="{{ route('calendario.reserva', $practica) }}"><x-icono nombre="calendario"/>Añadir a mi calendario</a>
                                         <form method="POST" action="{{ route('reservas.cancel', $practica) }}" style="display:inline"
                                               onsubmit="return confirm('¿Cancelar la práctica? Podrás pedir otra hora.')">
                                             @csrf
@@ -459,7 +467,7 @@
                                 <span class="pill warn">Pendiente</span>
                             @endif
                             @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
-                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                                <br><a href="{{ route('calendario.reserva', $a) }}"><x-icono nombre="calendario"/>Añadir a mi calendario</a>
                             @endif
                         </td>
                     </tr>
@@ -574,7 +582,7 @@
                             @else
                                 @include('cuenta._pasar', ['reserva' => $r, 'candidatos' => $candidatos->get($r->id)])
                             @endif
-                            <br><a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
+                            <br><a href="{{ route('calendario.reserva', $r) }}"><x-icono nombre="calendario"/>Añadir a mi calendario</a>
                         </td>
                     </tr>
                 @endforeach
