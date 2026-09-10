@@ -28,26 +28,24 @@
         .saludo{display:flex;gap:1rem;align-items:center;margin-bottom:1.4rem}
         .saludo .avatar{font-size:1.5rem}
 
-        /* El tablero: tres columnas en un monitor grande, dos en uno mediano,
-           una en el teléfono. Cada bloque es una tarjeta con su icono; los que
+        /* El tablero: dos columnas en pantalla ancha, una en el teléfono. Cada bloque es una tarjeta con su icono; los que
            no tienen nada que decir no ocupan sitio. */
-        .tablero{display:grid;gap:0 1.4rem;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+        .tablero{display:grid;gap:0 1.4rem;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
         .tablero .bloque{min-width:0}
         .tablero .bloque.ancho{grid-column:1 / -1}
         .tablero .bloque:not(:has(h2)){display:none}
         .tablero h2{display:flex;align-items:center;gap:.5rem;margin-top:.6rem}
         .tablero h2 .ico{display:inline-flex;color:var(--accent)}
         .tablero .panel{overflow-x:auto}
-        @media (max-width:1400px){.tablero{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media (max-width:900px){.tablero{grid-template-columns:minmax(0,1fr)}}
     </style>
 
-    {{-- El tablero: tres columnas en pantallas grandes, una en las
-         pequeñas. Primero las asesorías que atiendo, mis reservas y lo que estoy
-         habilitado a usar; luego, a todo el ancho, mi formación; y después
-         el resto. --}}
+    {{-- El tablero, en dos columnas: primero las asesorías que atiendo a
+         todo el ancho; luego mis reservas y lo que estoy habilitado a usar,
+         una al lado de la otra; luego mi formación a todo el ancho; y
+         después el resto. En el teléfono, una columna. --}}
     <div class="tablero">
-    <section class="bloque" data-bloque="atiendo">
+    <section class="bloque ancho" data-bloque="atiendo">
 
     @if ($asesoriasQueAtiendo->isNotEmpty())
         <h2><x-icono nombre="atender"/>Asesorías que voy a atender</h2>
