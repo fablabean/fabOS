@@ -270,16 +270,20 @@
         .puntos button::after,.cursor{animation:none}
     }
 
-    /* ---------- las cifras ----------
-       Fuera del banner: son una prueba, no un titular. Dentro competían con
-       la frase principal y hacían del banner una ficha técnica. */
-    .cifras{
-        display:flex;gap:clamp(1.6rem,4vw,3rem);flex-wrap:wrap;align-items:baseline;
-        max-width:70rem;margin:0 auto;padding:1.3rem 1.4rem 1.5rem;
+    /* ---------- los logos ----------
+       Fuera del banner: quién respalda al laboratorio, en una fila sobria.
+       Cada logo cabe en una caja de la misma altura y conserva su
+       proporción; el ancho lo pone la imagen. En el tema oscuro cada uno va
+       sobre una pastilla clara, porque casi todos los logos institucionales
+       están pensados para fondo blanco. */
+    .logos{
+        display:flex;gap:clamp(1.4rem,4vw,3.2rem);flex-wrap:wrap;align-items:center;justify-content:center;
+        max-width:70rem;margin:0 auto;padding:1.4rem 1.4rem 1.6rem;
         border-bottom:1px solid var(--rule);
     }
-    .cifra b{display:block;font-size:1.7rem;letter-spacing:-.03em;color:var(--ink);line-height:1.2}
-    .cifra span{
-        font-family:ui-monospace,Consolas,monospace;font-size:.64rem;
-        letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    .logos .logo{display:block;line-height:0;border-radius:.5rem;padding:.35rem .5rem;opacity:.92;transition:opacity .2s}
+    .logos .logo:hover{opacity:1}
+    .logos img{height:clamp(2.4rem,5vw,3.6rem);width:auto;max-width:13rem;object-fit:contain}
+    @media (prefers-color-scheme:dark){
+        .logos .logo{background:#fff}
     }

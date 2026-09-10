@@ -107,20 +107,25 @@
     </div>
 </div>
 
-{{-- La franja de cifras: fuera del banner a propósito. Son una prueba, no un
-     titular; dentro competían con la frase principal. --}}
-<div class="cifras">
-    <div class="cifra"><b>{{ $cifras['equipos'] }}</b><span>equipos</span></div>
-    <div class="cifra"><b>{{ $cifras['libres'] }}</b><span>libres ahora</span></div>
-    <div class="cifra"><b>{{ $cifras['areas'] }}</b><span>áreas</span></div>
-    {{-- Una cifra pequeña resta en vez de sumar: «1 persona habilitada»
-         comunica lo contrario de lo que se quiere. Aparece sola cuando ya
-         cuenta una historia; el umbral vive en config/fabos.php. --}}
-    @if ($cifras['personas'] >= config('fabos.showcase.min_personas'))
-        <div class="cifra"><b>{{ $cifras['personas'] }}</b><span>personas habilitadas</span></div>
-    @endif
-    <div class="cifra"><b>Fab</b><span>Academy acreditado</span></div>
-</div>
+{{-- La franja de logos: quién respalda al laboratorio. Fuera del banner a
+     propósito —dentro competiría con la frase principal— y administrada
+     desde el panel, en Comunicaciones → Logos de la portada. Sin logos no
+     hay franja: una fila vacía no dice nada. --}}
+@if (($logos ?? collect())->isNotEmpty())
+    <div class="logos" aria-label="Quién respalda al laboratorio">
+        @foreach ($logos as $logo)
+            @if ($logo->url)
+                <a class="logo" href="{{ $logo->url }}" target="_blank" rel="noopener" title="{{ $logo->nombre }}">
+                    <img src="{{ $logo->imagenUrl() }}" alt="{{ $logo->nombre }}" loading="lazy">
+                </a>
+            @else
+                <span class="logo" title="{{ $logo->nombre }}">
+                    <img src="{{ $logo->imagenUrl() }}" alt="{{ $logo->nombre }}" loading="lazy">
+                </span>
+            @endif
+        @endforeach
+    </div>
+@endif
 
 {{--
     La rotación del banner y los efectos del título.

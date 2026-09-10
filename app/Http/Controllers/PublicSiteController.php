@@ -36,16 +36,12 @@ class PublicSiteController extends Controller
             // El banner se administra desde el panel (§3). Si nadie lo ha
             // tocado todavia, el modelo devuelve las laminas de fabrica.
             'laminas'   => Banner::paraLaPortada(),
+            // Quién respalda al laboratorio, debajo del banner. Sustituyó a
+            // la franja de cifras: a quien llega le dice más un logo de la
+            // Universidad que «79 libres ahora».
+            'logos'     => \App\Models\Logo::paraLaPortada(),
             'areas'     => $areas,
             'destacados' => $this->destacados(),
-            'cifras'    => [
-                'equipos'  => Asset::where('is_public', true)->count(),
-                'libres'   => $this->disponibilidad->contarLibres(
-                    Asset::where('is_public', true)->where('is_reservable', true)->get()
-                ),
-                'areas'    => $areas->count(),
-                'personas' => Certifab::query()->vigente()->distinct('user_id')->count('user_id'),
-            ],
         ]);
     }
 
