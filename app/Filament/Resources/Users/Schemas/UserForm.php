@@ -19,6 +19,18 @@ class UserForm
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')->label('Nombre')->required()->maxLength(255),
+                        // La misma foto que la persona se pone desde Mi cuenta.
+                        \Filament\Forms\Components\FileUpload::make('photo_path')
+                            ->label('Foto')
+                            ->avatar()
+                            ->image()
+                            ->disk('public')
+                            ->visibility('public')
+                            ->directory('fotos')
+                            ->maxSize(8192)
+                            ->imageEditor()
+                            ->imageEditorAspectRatios(['1:1'])
+                            ->columnSpanFull(),
                         TextInput::make('email')
                             ->label('Correo')
                             ->email()

@@ -212,4 +212,42 @@ class AccountController extends Controller
 
         return back()->with('status', 'Guardamos qué avisos quieres recibir.');
     }
+
+    /**
+     * La foto de la persona: para el circulo de la barra y para que en el
+     * laboratorio se reconozca a quien llega. Se endereza y se comprime
+     * como cualquier foto que entra al sistema.
+     */
+    public function foto(Request $request)
+    {
+        $request->validate([
+            'foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,heic', 'max:8192'],
+        ], [
+            'foto.image' => 'Tiene que ser una imagen: JPG, PNG o WEBP.',
+            'foto.max'   => 'La foto puede pesar hasta 8 MB.',
+        ]);
+
+        $usuario = $request->user();
+        $ruta = app(\App\Services\Media\OptimizadorDeImagen::class)->guardar($request->file('foto'), 'fotos', 'public');
+
+        if ($usuario->photo_path && $usuario->photo_path !== $ruta) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($usuario->photo_path);
+        }
+
+        $usuario->forceFill(['photo_path' => $ruta])->save();
+
+        return back()->with('status', 'Foto guardada.');
+    }
+
+    public function quitarFoto(Request $request)
+    {
+        $usuario = $request->user();
+
+        if ($usuario->photo_path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($usuario->photo_path);
+            $usuario->forceFill(['photo_path' => null])->save();
+        }
+
+        return back()->with('status', 'Foto quitada: vuelven las iniciales.');
+    }
 }

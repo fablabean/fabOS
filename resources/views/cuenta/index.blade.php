@@ -4,14 +4,40 @@
 @php $tz = config('fabos.lab.timezone'); @endphp
 
 @section('content')
-    <h1>Hola, {{ $usuario->name }}</h1>
-    <p class="help">
-        <span class="who">{{ $usuario->email }}</span>
-        · Categoría <strong>{{ $usuario->category?->name ?? 'sin asignar' }}</strong>
-        @unless ($usuario->category_confirmed)
-            <span class="pill warn" style="margin-left:.4rem">pendiente de confirmar</span>
-        @endunless
-    </p>
+    {{-- La foto o las iniciales, y desde aqui mismo se cambia: es el
+         circulo que sale en la barra de todo el sitio. --}}
+    <div class="saludo">
+        <x-avatar :usuario="$usuario" tamano="4.2rem"/>
+        <div>
+            <h1 style="margin:0">Hola, {{ $usuario->name }}</h1>
+            <p class="help" style="margin:.2rem 0 0">
+                <span class="who">{{ $usuario->email }}</span>
+                · Categoría <strong>{{ $usuario->category?->name ?? 'sin asignar' }}</strong>
+                @unless ($usuario->category_confirmed)
+                    <span class="pill warn" style="margin-left:.4rem">pendiente de confirmar</span>
+                @endunless
+            </p>
+            <form method="POST" action="{{ route('cuenta.foto') }}" enctype="multipart/form-data" class="foto-form">
+                @csrf
+                <label class="foto-boton">
+                    {{ $usuario->photo_path ? 'Cambiar foto' : 'Poner una foto' }}
+                    <input type="file" name="foto" accept="image/*" onchange="this.form.submit()">
+                </label>
+                @if ($usuario->photo_path)
+                    <button type="submit" formaction="{{ route('cuenta.foto.quitar') }}" class="foto-quitar">Quitar</button>
+                @endif
+            </form>
+            @error('foto') <p class="msg error" style="margin:.4rem 0 0">{{ $message }}</p> @enderror
+        </div>
+    </div>
+    <style>
+        .saludo{display:flex;gap:1rem;align-items:center;margin-bottom:1.4rem}
+        .saludo .avatar{font-size:1.4rem}
+        .foto-form{display:flex;gap:.6rem;align-items:center;margin-top:.5rem}
+        .foto-boton{font-size:.82rem;color:var(--link);cursor:pointer;text-decoration:underline}
+        .foto-boton input{display:none}
+        .foto-quitar{background:none;border:0;padding:0;margin:0;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;text-decoration:underline}
+    </style>
 
     {{-- ---------------------------------------------------- saldo --}}
     @php

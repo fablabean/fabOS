@@ -207,6 +207,10 @@ Route::middleware('auth')->group(function () {
     // Vincular el carne a la cuenta: se hace una vez, ya autenticado.
     Route::post('/cuenta/carnet', [CarnetLoginController::class, 'link'])->name('carnet.link');
 
+    // La foto de la persona: la sube y la quita cada quien desde Mi cuenta.
+    Route::post('/cuenta/foto', [AccountController::class, 'foto'])->name('cuenta.foto');
+    Route::post('/cuenta/foto/quitar', [AccountController::class, 'quitarFoto'])->name('cuenta.foto.quitar');
+
     // La app de autenticacion, para cualquiera: deja de depender del correo.
     Route::get('/cuenta/app', [TwoFactorController::class, 'miApp'])->name('cuenta.app');
     Route::post('/cuenta/app/activar', [TwoFactorController::class, 'activarMiApp'])->name('cuenta.app.activar');

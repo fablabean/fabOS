@@ -22,7 +22,7 @@ use Spatie\Permission\Traits\HasRoles;
     'carnet_subject', 'carnet_linked_at',
 ])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, \Filament\Models\Contracts\HasAvatar
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable, SoftDeletes;
@@ -265,6 +265,29 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return preg_match('/^[a-z0-9._+-]+$/', $texto) ? $texto . '@' . $dominio : $texto;
+    }
+
+    /**
+     * Las iniciales, para el circulo de la barra cuando no hay foto: la
+     * primera letra de las dos primeras palabras del nombre.
+     */
+    public function iniciales(): string
+    {
+        $palabras = preg_split('/\s+/u', trim((string) $this->name)) ?: [];
+        $letras = array_map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)), array_slice(array_filter($palabras), 0, 2));
+
+        return implode('', $letras) ?: '?';
+    }
+
+    public function fotoUrl(): ?string
+    {
+        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+    }
+
+    /** La misma foto en el panel. */
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->fotoUrl();
     }
 
     protected static function booted(): void

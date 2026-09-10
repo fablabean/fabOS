@@ -24,6 +24,18 @@ class UsersTable
         return $table
             ->defaultSort('name')
             ->columns([
+                \Filament\Tables\Columns\ImageColumn::make('photo_path')
+                    ->label('')
+                    ->disk('public')
+                    ->circular()
+                    ->height(32)
+                    ->defaultImageUrl(fn (User $u) => 'data:image/svg+xml;utf8,' . rawurlencode(
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#0D6E63"/>'
+                        . '<text x="32" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#fff">'
+                        . htmlspecialchars($u->iniciales()) . '</text></svg>'
+                    ))
+                    ->width('1px'),
+
                 TextColumn::make('name')
                     ->label('Persona')
                     ->searchable()
