@@ -67,10 +67,13 @@ class CertifabsTable
 
                 Filter::make('vigentes')
                     ->label('Solo vigentes')
-                    // Sin scopes del modelo ni where anidados: el constructor
-                    // de consulta que entrega Filament aquí no lleva modelo
-                    // asociado, y ambas formas dependen de él.
-                    ->query(fn (Builder $q) => $q
+                    // El parametro se llama `query` a proposito: Filament lo
+                    // inyecta por NOMBRE. Con otro nombre resuelve un Builder
+                    // sin modelo del contenedor, y el filtro se aplica a un
+                    // objeto de usar y tirar: la pantalla dice «Solo vigentes»
+                    // y ensena todo. De ahi venia la creencia de que aqui no se
+                    // podian usar scopes del modelo; se puede.
+                    ->query(fn (Builder $query) => $query
                         ->whereNull('revoked_at')
                         ->whereRaw('(expires_at IS NULL OR expires_at > ?)', [now()]))
                     ->default(),

@@ -121,12 +121,20 @@ class ReservationsTable
 
                 Filter::make('proximas')
                     ->label('Solo próximas')
-                    ->query(fn (Builder $q) => $q->where('ends_at', '>=', now())),
+                    ->query(fn (Builder $query) => $query->where('ends_at', '>=', now())),
 
+                /*
+                 * Ya no viene puesto.
+                 *
+                 * Escondia los espacios y los acompanamientos, que son
+                 * justamente lo que hay que ver junto a su equipo: una sala
+                 * con dos herramientas dentro es una actividad, y con este
+                 * filtro se veian las herramientas sin la sala. Quien quiera
+                 * solo maquinas lo enciende.
+                 */
                 Filter::make('solo_equipos')
                     ->label('Solo equipos')
-                    ->query(fn (Builder $q) => $q->where('reservable_type', Asset::class))
-                    ->default(),
+                    ->query(fn (Builder $query) => $query->where('reservable_type', Asset::class)),
             ])
             ->recordActions([
                 // Producir lo que se acordó en la asesoría.

@@ -80,12 +80,12 @@ class WorkOrdersTable
 
                 Filter::make('abiertas')
                     ->label('Solo abiertas')
-                    ->query(fn (Builder $q) => $q->whereIn('status', WorkOrder::ABIERTAS))
+                    ->query(fn (Builder $query) => $query->whereIn('status', WorkOrder::ABIERTAS))
                     ->default(),
 
                 Filter::make('con_paro')
                     ->label('Equipos detenidos')
-                    ->query(fn (Builder $q) => $q->where('stops_equipment', true)
+                    ->query(fn (Builder $query) => $query->where('stops_equipment', true)
                         ->whereIn('status', WorkOrder::ABIERTAS)),
             ])
             ->recordActions([
