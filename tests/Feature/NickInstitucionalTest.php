@@ -95,10 +95,55 @@ class NickInstitucionalTest extends TestCase
             ));
         });
 
+        // Con el nick el dato es exacto: entra sin código, y el carné queda vinculado.
+        $this->post('/ingresar/carnet', ['carnet' => 'https://ejemplo/abc'])
+            ->assertRedirect(route('home'));
+
+        $this->assertAuthenticatedAs($persona->fresh());
+        $this->assertNotNull($persona->fresh()->carnet_subject, 'el carné queda vinculado a la cuenta del nick');
+    }
+
+    /** Un carné ya vinculado abre la cuenta sin pedir código: el dato es exacto. */
+    public function test_el_carne_vinculado_entra_sin_codigo(): void
+    {
+        Setting::put(Settings::CARNET_LOGIN, true, 'auth');
+
+        $identidad = new CarnetIdentity(valid: true, fullName: 'ERICK HANSEN GOMEZ');
+        $persona = User::factory()->create([
+            'email' => 'ehansen@universidadean.edu.co', 'name' => 'Erick', 'status' => 'activo',
+            'carnet_subject' => $identidad->subject(), 'carnet_linked_at' => now(),
+        ]);
+
+        $this->mock(CarnetClient::class, fn ($mock) => $mock->shouldReceive('lookup')->andReturn($identidad));
+
+        $this->post('/ingresar/carnet', ['carnet' => 'https://ejemplo/abc'])
+            ->assertRedirect(route('home'));
+
+        $this->assertAuthenticatedAs($persona->fresh());
+        $this->assertTrue(session(\App\Support\FactoresDeSesion::CLAVE_PRUEBAS)['carne'] ?? false);
+    }
+
+    /** Reconocido solo por el nombre, la primera vez se pide el código; después queda vinculado. */
+    public function test_por_el_nombre_la_primera_vez_pide_el_codigo_y_luego_no(): void
+    {
+        Setting::put(Settings::CARNET_LOGIN, true, 'auth');
+
+        $persona = User::factory()->create([
+            'email' => 'ehansen@universidadean.edu.co', 'name' => 'ERICK HANSEN GOMEZ', 'status' => 'activo',
+        ]);
+
+        $this->mock(CarnetClient::class, fn ($mock) => $mock->shouldReceive('lookup')
+            ->andReturn(new CarnetIdentity(valid: true, fullName: 'ERICK HANSEN GOMEZ')));
+
         $this->post('/ingresar/carnet', ['carnet' => 'https://ejemplo/abc'])
             ->assertRedirect(route('login.code', ['email' => 'ehansen@universidadean.edu.co']));
+        $this->assertGuest();
+        $this->assertNotNull($persona->fresh()->carnet_subject, 'quedó vinculado al reconocerlo');
 
-        $this->assertNotNull($persona->fresh()->carnet_subject, 'el carné queda vinculado a la cuenta del nick');
+        // La segunda vez el carné ya es un dato exacto.
+        $this->post('/ingresar/carnet', ['carnet' => 'https://ejemplo/abc'])
+            ->assertRedirect(route('home'));
+        $this->assertAuthenticatedAs($persona->fresh());
     }
 
     /** Lo que el carné trae como «Correo:» se lee. */

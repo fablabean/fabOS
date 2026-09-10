@@ -26,10 +26,7 @@
     </form>
 
     @error('code') <p class="msg error">{{ $message }}</p> @enderror
-
-    @if (session('status'))
-        <p class="msg ok">{{ session('status') }}</p>
-    @endif
+    {{-- El aviso de sesion lo pinta el layout, arriba: aqui salia dos veces. --}}
 
     <p class="foot">
         ¿Perdiste el teléfono, o no usas app?

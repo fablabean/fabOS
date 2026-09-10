@@ -19,7 +19,17 @@ class UserForm
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')->label('Nombre')->required()->maxLength(255),
-                        TextInput::make('email')->label('Correo')->email()->required()->maxLength(255),
+                        TextInput::make('email')
+                            ->label('Correo')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            // El nick sale solo del correo institucional: lo
+                            // que va antes de la arroba. No se escribe a mano.
+                            ->helperText(fn ($get) => ($nick = \App\Models\User::nickDe((string) $get('email')))
+                                ? 'Nick institucional: ' . $nick . '. Con eso basta para ingresar.'
+                                : 'Sin nick: no es un correo de ' . (config('fabos.identity.institutional_domain') ?: 'la institución') . '.'),
                         TextInput::make('document_number')->label('Documento')->maxLength(255),
                         \App\Filament\Componentes\CampoDeTelefono::make('phone'),
                     ]),

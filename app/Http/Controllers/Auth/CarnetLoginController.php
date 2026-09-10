@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Identity\CarnetClient;
 use App\Services\Identity\CarnetIdentity;
 use App\Services\Identity\CarnetLinker;
+use App\Support\FactoresDeSesion;
 use App\Support\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -91,18 +92,37 @@ class CarnetLoginController extends Controller
             'identity_verified_via' => 'carnet_ean',
         ])->save();
 
-        // El carne **identifica**, no autentica. Prueba que quien escanea tiene
-        // una sesion viva de la app de la Universidad, y eso vale como factor;
-        // pero como el unico dato que trae es el nombre, por si solo no puede
-        // abrir una cuenta: dos personas homonimas serian indistinguibles.
-        //
-        // Lo que ahorra es teclear el correo, que no es poco desde un telefono.
-        $request->session()->put('carnet_verificado', true);
+        /*
+         * Reconocido solo por el nombre —la primera vez, sin documento ni
+         * correo en el carne—, el carne identifica pero no autentica: dos
+         * homonimos serian indistinguibles. Se pide el codigo una vez, y con
+         * eso el carne queda vinculado a la cuenta. La proxima, basta.
+         */
+        if ($this->porNombre) {
+            $request->session()->put('carnet_verificado', true);
 
-        return redirect()->route('login.code', ['email' => $user->email])->with(
-            'status',
-            'Carné validado. Escribe tu código para terminar de entrar.'
-        );
+            return redirect()->route('login.code', ['email' => $user->email])->with(
+                'status',
+                'Carné validado. Como es la primera vez, escribe tu código para terminar de entrar; la próxima el carné bastará.'
+            );
+        }
+
+        /*
+         * Reconocido por un dato exacto —el carne ya vinculado, la cedula o el
+         * correo institucional—, el carne abre la cuenta sin mas: probo que
+         * quien escanea tiene una sesion viva de la app de la Universidad, y
+         * el dato dice sin duda de quien es. Pedir ademas un codigo era pedir
+         * dos veces lo mismo.
+         */
+        Auth::login($user, remember: true);
+        $request->session()->regenerate();
+
+        FactoresDeSesion::olvidar($request);
+        FactoresDeSesion::anotar($request, FactoresDeSesion::CARNE);
+
+        Log::info('Ingreso con carné', ['user_id' => $user->id]);
+
+        return redirect()->intended(route('home'))->with('status', 'Entraste con tu carné.');
     }
 
     /** Vincula el carné a la cuenta autenticada. Se hace una sola vez. */
@@ -124,8 +144,12 @@ class CarnetLoginController extends Controller
      * más débil, y en los dos últimos el vínculo queda guardado para que la
      * próxima vez la persona entre por el primero, que es exacto.
      */
+    /** Si la ultima identificacion se hizo solo por el nombre: la debil. */
+    private bool $porNombre = false;
+
     private function resolveUser(CarnetIdentity $identity): ?User
     {
+        $this->porNombre = false;
         $subject = $identity->subject();
 
         if (! $subject) {
@@ -155,6 +179,7 @@ class CarnetLoginController extends Controller
         // 4) Nombre, solo si coincide con UNA sola cuenta.
         if (! $user && $identity->fullName) {
             $user = $this->matchByName($identity->fullName);
+            $this->porNombre = $user !== null;
         }
 
         if (! $user || $user->status !== 'activo') {
