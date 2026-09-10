@@ -100,7 +100,13 @@ class PublicSiteController extends Controller
          * intenta reservar y ahi se entera de que le falta el certifab.
          */
         $quien = $request->user();
-        $visibles = $todos;
+
+        /*
+         * Lo que no se reserva no sale como algo que pedir: la aspiradora, el
+         * secador de filamento. Salvo que alguien lo asesore, que entonces si
+         * se puede pedir una asesoria sobre ello.
+         */
+        $visibles = $todos->filter(fn (Asset $a) => $a->is_reservable || $a->advisors_count > 0);
 
         if ($modo === 'autonomia') {
             if ($quien === null) {
@@ -223,6 +229,7 @@ class PublicSiteController extends Controller
             'similares' => Asset::where('area_id', $asset->area_id)
                 ->where('id', '!=', $asset->id)
                 ->where('is_public', true)
+                ->where('is_reservable', true)
                 ->inRandomOrder()
                 ->limit(3)
                 ->get(),
@@ -235,6 +242,7 @@ class PublicSiteController extends Controller
         return Asset::query()
             ->with('area')
             ->where('is_public', true)
+            ->where('is_reservable', true)
             ->orderByRaw('photo_path IS NULL')
             ->orderBy('name')
             ->limit(6)

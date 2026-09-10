@@ -207,6 +207,31 @@ class CatalogoDeEquiposTest extends TestCase
             ->assertDontSee('Impresora 3D');
     }
 
+    /**
+     * Lo que no se reserva no sale como algo que pedir: la aspiradora esta
+     * publicada, pero nadie la pide. Salvo que alguien la asesore.
+     */
+    public function test_lo_que_no_se_reserva_no_sale_en_la_lista(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+        $aspiradora = $this->equipo('Aspiradora', 'corte', 'Corte láser');
+        $aspiradora->update(['is_reservable' => false]);
+
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')
+            ->assertOk()
+            ->assertSee('Cortadora láser')
+            ->assertDontSee('Aspiradora');
+
+        // El area la cuenta sin ella.
+        $this->get('/reservas?modo=asesoria')->assertOk()->assertSee('1 equipo');
+
+        // Con alguien que la asesore, si sale: se puede pedir una asesoria sobre ella.
+        $asesora = User::create(['name' => 'Ana', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        \App\Models\AssetAdvisor::create(['user_id' => $asesora->id, 'asset_id' => $aspiradora->id]);
+
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')->assertOk()->assertSee('Aspiradora');
+    }
+
     /** Cada área dice cuántos equipos tiene: sin eso, elegir es a ciegas. */
     public function test_cada_area_dice_cuantos_equipos_tiene(): void
     {
@@ -464,8 +489,9 @@ class CatalogoDeEquiposTest extends TestCase
 
         $html = $this->actingAs($quien)->get('/reservas')->assertOk()->getContent();
 
+        // Todo el bloque del menu, hasta que se cierra la barra de navegacion.
         $menu = substr($html, strpos($html, 'id="menu-enlaces"'));
-        $menu = substr($menu, 0, strpos($menu, '</div>'));
+        $menu = substr($menu, 0, strpos($menu, '</nav>'));
 
         $this->assertStringContainsString('Salir', $menu);
         $this->assertStringContainsString($quien->email, $menu);
