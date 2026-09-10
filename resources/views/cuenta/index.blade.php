@@ -37,6 +37,16 @@
         .tablero h2{display:flex;align-items:center;gap:.5rem;margin-top:.6rem}
         .tablero h2 .ico{display:inline-flex;color:var(--accent)}
         .tablero .panel{overflow-x:auto}
+
+        /* Los textos con su icono delante: las explicaciones de cada bloque,
+           los estados vacíos, y de dónde sale cada código. */
+        .ayuda{display:flex;gap:.5rem;align-items:flex-start}
+        .ayuda .ico{flex:none;margin-top:.2rem;color:var(--accent)}
+        .origen{display:flex;gap:.35rem;align-items:center;margin-top:.2rem}
+        .origen .ico{flex:none;color:var(--accent)}
+        .origen .ico svg{width:14px;height:14px}
+        a.codigo{display:inline-flex;gap:.35rem;align-items:center}
+        a.codigo .ico svg{width:14px;height:14px}
         @media (max-width:900px){.tablero{grid-template-columns:minmax(0,1fr)}}
 
         /* A todo el ancho, pero no pegado a los bordes: en un monitor grande
@@ -60,7 +70,7 @@
         <h2><x-icono nombre="atender"/>Asesorías que voy a atender</h2>
 
         <div class="panel">
-            <p class="help" style="margin-top:0">
+            <p class="help ayuda" style="margin-top:0"><x-icono nombre="info"/>
                 Una asesoría no tiene QR: la llegada la validas tú. Si se te olvidó, se puede
                 validar hasta {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }} días
                 después; si la persona no vino, dilo aquí para que quede anotado. Si ese día no
@@ -151,7 +161,7 @@
 
     @if ($reservas->isEmpty())
         <div class="panel">
-            <p style="margin:0">No tienes reservas próximas.</p>
+            <p class="ayuda" style="margin:0"><x-icono nombre="reservas"/>No tienes reservas próximas.</p>
             <a href="{{ route('reservas.index') }}"><button type="button">Reservar un equipo</button></a>
         </div>
     @else
@@ -231,8 +241,8 @@
 
     @if ($certifabs->isEmpty())
         <div class="panel">
-            <p style="margin:0">Todavía no tienes ninguna habilitación.</p>
-            <p class="help" style="margin:.6rem 0 0">
+            <p class="ayuda" style="margin:0"><x-icono nombre="habilitado"/>Todavía no tienes ninguna habilitación.</p>
+            <p class="help ayuda" style="margin:.6rem 0 0"><x-icono nombre="info"/>
                 Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
                 y ahí verás qué necesitas para habilitarte.
             </p>
@@ -268,12 +278,23 @@
                         <td>
                             {{ $c->grantedBy?->name ?? '—' }}
                             <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
+                            {{-- De dónde salió: el curso que la dio, con su
+                                 cohorte. Sin esto, el certificado del curso y
+                                 esta habilitación parecían dos cosas sueltas. --}}
+                            @if ($curso = $c->vieneDe())
+                                <div class="quien origen"><x-icono nombre="formacion"/>
+                                    por el curso {{ $curso->edition?->course?->name }}
+                                    @if ($curso->edition?->code) · {{ $curso->edition->code }} @endif
+                                </div>
+                            @elseif ($c->granted_via && $c->granted_via !== 'curso')
+                                <div class="quien origen"><x-icono nombre="verificar"/>{{ \App\Models\Certifab::VIAS[$c->granted_via] ?? $c->granted_via }}</div>
+                            @endif
                         </td>
                         <td>
                             {{-- El código es lo que le sirve a la persona para
                                  demostrar su habilitación fuera del sistema. --}}
-                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank">
-                                <span class="who">{{ $c->public_code }}</span>
+                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank" class="codigo">
+                                <x-icono nombre="verificar"/><span class="who">{{ $c->public_code }}</span>
                             </a>
                         </td>
                     </tr>
@@ -357,9 +378,15 @@
                         </td>
                         <td>
                             @if ($inscripcion->certificate_code)
-                                <a href="{{ route('publico.verificar', $inscripcion->certificate_code) }}" target="_blank">
-                                    <span class="who">{{ $inscripcion->certificate_code }}</span>
+                                <a href="{{ route('publico.verificar', $inscripcion->certificate_code) }}" target="_blank" class="codigo">
+                                    <x-icono nombre="certificado"/><span class="who">{{ $inscripcion->certificate_code }}</span>
                                 </a>
+                                {{-- Lo que ese certificado abrió: las habilitaciones
+                                     que salen de él, que están en el otro bloque. --}}
+                                @php $habilito = $inscripcion->edition?->course?->riskFamilies ?? collect(); @endphp
+                                @if ($inscripcion->aprobada() && $habilito->isNotEmpty())
+                                    <div class="quien origen"><x-icono nombre="habilitado"/>Te habilitó: {{ $habilito->pluck('name')->implode(', ') }}</div>
+                                @endif
                             @elseif ($inscripcion->status === 'inscrito')
                                 <form method="POST" action="{{ route('formacion.retirar', $inscripcion) }}">
                                     @csrf
@@ -392,7 +419,7 @@
         <h2><x-icono nombre="asesorias"/>Mis próximas asesorías</h2>
 
         <div class="panel">
-            <p class="help" style="margin-top:0">
+            <p class="help ayuda" style="margin-top:0"><x-icono nombre="info"/>
                 Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
                 usarla, resérvala aparte.
             </p>
@@ -450,7 +477,7 @@
         <h2><x-icono nombre="proponen"/>Me proponen atender</h2>
 
         <div class="panel">
-            <p class="help" style="margin-top:0">
+            <p class="help ayuda" style="margin-top:0"><x-icono nombre="info"/>
                 Alguien del equipo quiere pasarte una atención suya. Sigue a su nombre hasta que
                 aceptes: si no puedes, recházala y se queda como estaba.
             </p>
@@ -507,7 +534,7 @@
         <h2><x-icono nombre="acompanar"/>Acompañamientos que voy a hacer</h2>
 
         <div class="panel">
-            <p class="help" style="margin-top:0">
+            <p class="help ayuda" style="margin-top:0"><x-icono nombre="info"/>
                 Te toca estar ahí. Si ese día no puedes, pásaselo a alguien del equipo: sigue a
                 tu nombre hasta que acepte. Donde solo te toca <strong>recibir</strong> son unos
                 minutos al empezar: ubicar a la persona y darle lo que necesite; no te ocupa la hora.
@@ -603,7 +630,7 @@
         <h2><x-icono nombre="tiempo"/>Tiempo apartado para proyectos</h2>
 
         <div class="panel">
-            <p class="help" style="margin-top:0">
+            <p class="help ayuda" style="margin-top:0"><x-icono nombre="info"/>
                 En estas horas no se te asignan asesorías ni acompañamientos. Se aparta desde la
                 tarea, en el proyecto.
             </p>

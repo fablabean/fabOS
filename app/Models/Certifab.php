@@ -45,6 +45,35 @@ class Certifab extends Model
         });
     }
 
+    /** Por dónde llegó la habilitación, para decirlo en una línea. */
+    public const VIAS = [
+        'curso'        => 'Por un curso',
+        'manual'       => 'Reconocida por el laboratorio',
+        'experiencia'  => 'Por experiencia reconocida',
+        'externo'      => 'Traída de otro laboratorio',
+        'importado'    => 'Importada',
+    ];
+
+    /**
+     * El curso del que salió, si salió de uno: la inscripción aprobada de la
+     * misma persona cuyo curso habilita esta familia. Sin este enlace, el
+     * certificado del curso y la habilitación parecían dos cosas sueltas.
+     */
+    public function vieneDe(): ?Enrollment
+    {
+        if ($this->granted_via !== 'curso' || ! $this->risk_family_id) {
+            return null;
+        }
+
+        return Enrollment::query()
+            ->where('user_id', $this->user_id)
+            ->where('status', 'aprobado')
+            ->whereHas('edition.course.riskFamilies', fn ($q) => $q->where('risk_families.id', $this->risk_family_id))
+            ->with('edition.course')
+            ->orderByDesc('completed_at')
+            ->first();
+    }
+
     /** Estado legible, tal como lo ve quien verifica. */
     public function estado(): string
     {
