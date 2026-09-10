@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('fabos.lab.name'))</title>
+    @include('partials.iconos')
     {{-- Estilos en linea a proposito: el arranque no depende de compilar assets. --}}
     <style>
         :root{
@@ -30,6 +31,7 @@
             border-radius:6px;padding:2rem;
         }
         .brand{font-weight:800;letter-spacing:-.03em;font-size:1.9rem;margin:0}
+        .brand svg,.brand img{width:3rem;height:3rem;vertical-align:middle;margin-right:.3rem;color:var(--accent)}
         /* La palabra va envuelta: con `display:flex` y `gap`, «fab» y
            <em>OS</em> son DOS elementos y el hueco se metia entre ellos,
            partiendo la marca en «fab OS». */
@@ -74,7 +76,7 @@
 </head>
 <body>
     <main class="card">
-        <p class="brand"><span class="palabra">{{ config('fabos.lab.name') }}</span></p>
+        <p class="brand"><x-logo/> <span class="palabra">{{ config('fabos.lab.name') }}</span></p>
         <p class="powered">powered by fab<em>OS</em></p>
 
         @if (session('status'))

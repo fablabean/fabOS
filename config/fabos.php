@@ -29,7 +29,7 @@ return [
         // Marca. Por defecto se usa el SVG de fabOS, que hereda el color del
         // tema. Para poner el logo del laboratorio basta reemplazar el archivo
         // o apuntar LAB_LOGO a otra ruta dentro de public/.
-        'logo'       => env('LAB_LOGO', 'img/fabos-logo.svg'),
+        'logo'       => env('LAB_LOGO', 'img/fablabean.png'),
     ],
 
     /*

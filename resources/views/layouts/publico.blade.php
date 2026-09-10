@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('fabos.lab.name'))</title>
+    @include('partials.iconos')
     <meta name="description" content="@yield('description', config('fabos.lab.tagline') . ' de ' . config('fabos.lab.institution') . '.')">
     <style>
         :root{
@@ -42,7 +43,7 @@
         .marca-sitio em{font-style:normal;color:var(--accent)}
         /* Sirve igual para el SVG en línea que para un logo propio en PNG. */
         .marca-sitio svg,.marca-sitio img{
-            width:1.9rem;height:1.9rem;display:block;color:var(--accent);flex:none;
+            width:2.4rem;height:2.4rem;display:block;color:var(--accent);flex:none;
         }
         .nav nav{margin-left:auto;display:flex;gap:1.2rem;align-items:center;font-size:.92rem}
         .nav nav a{color:var(--ink-soft);text-decoration:none}

@@ -34,7 +34,8 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => config('fabos.lab.logo') && is_file(public_path(config('fabos.lab.logo')))
                 ? asset(config('fabos.lab.logo'))
                 : null)
-            ->brandLogoHeight('2rem')
+            ->brandLogoHeight('2.2rem')
+            ->favicon(fn () => asset('img/favicon-32.png'))
             ->path('admin')
             // El ingreso es el del sitio, sin contraseñas. El formulario de
             // Filament pedía una que nadie tiene; ahora /admin/login manda a

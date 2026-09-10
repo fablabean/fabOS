@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('fabos.lab.name'))</title>
+    @include('partials.iconos')
     {{-- Estilos en línea a propósito: el arranque no depende de compilar assets. --}}
     <style>
         :root{
@@ -38,7 +39,7 @@
            partiendo la marca en «fab OS». */
         .brand .palabra{display:inline}
         .brand em{font-style:normal;color:var(--accent)}
-        .brand svg,.brand img{width:1.7rem;height:1.7rem;display:block;color:var(--accent);flex:none}
+        .brand svg,.brand img{width:2.2rem;height:2.2rem;display:block;color:var(--accent);flex:none}
         header.top nav{display:flex;gap:1rem;margin-left:auto;align-items:center;font-size:.9rem}
         header.top a{color:var(--ink-soft);text-decoration:none}
         header.top a:hover{color:var(--accent)}
