@@ -103,10 +103,10 @@ class PublicSiteController extends Controller
 
         /*
          * Lo que no se reserva no sale como algo que pedir: la aspiradora, el
-         * secador de filamento. Salvo que alguien lo asesore, que entonces si
-         * se puede pedir una asesoria sobre ello.
+         * secador de filamento. Aunque tenga asesores declarados: si la
+         * coordinacion lo marco como no reservable, es que no se pide.
          */
-        $visibles = $todos->filter(fn (Asset $a) => $a->is_reservable || $a->advisors_count > 0);
+        $visibles = $todos->filter(fn (Asset $a) => $a->is_reservable);
 
         if ($modo === 'autonomia') {
             if ($quien === null) {

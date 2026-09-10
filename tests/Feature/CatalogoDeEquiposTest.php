@@ -225,11 +225,11 @@ class CatalogoDeEquiposTest extends TestCase
         // El area la cuenta sin ella.
         $this->get('/reservas?modo=asesoria')->assertOk()->assertSee('1 equipo');
 
-        // Con alguien que la asesore, si sale: se puede pedir una asesoria sobre ella.
+        // Ni aunque tenga asesores declarados: no reservable es no reservable.
         $asesora = User::create(['name' => 'Ana', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
         \App\Models\AssetAdvisor::create(['user_id' => $asesora->id, 'asset_id' => $aspiradora->id]);
 
-        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')->assertOk()->assertSee('Aspiradora');
+        $this->get('/reservas?modo=asesoria&area=corte&maquina=1')->assertOk()->assertDontSee('Aspiradora');
     }
 
     /** Cada área dice cuántos equipos tiene: sin eso, elegir es a ciegas. */
