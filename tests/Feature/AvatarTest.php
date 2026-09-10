@@ -105,8 +105,7 @@ class AvatarTest extends TestCase
             ->assertSee('class="saldo-boton"', false)
             ->assertSee('100,00')
             ->assertSee('id="menu-saldo"', false)
-            ->assertSee('Dotación institucional')
-            ->assertSee('Ver todo en Mi cuenta');
+            ->assertSee('Dotación institucional');
     }
 
     public function test_lo_que_no_es_imagen_no_entra(): void

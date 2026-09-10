@@ -70,7 +70,6 @@
                         @endforeach
                     </ul>
                 @endif
-                <a href="{{ route('home') }}#saldo">Ver todo en Mi cuenta</a>
             </div>
         </div>
 
@@ -160,7 +159,6 @@
     .menu-saldo li .cuanto{font-variant-numeric:tabular-nums;white-space:nowrap}
     .menu-saldo li .cuanto.mas{color:var(--accent)}
     .menu-saldo .vacio{margin:0;color:var(--muted);font-size:.85rem}
-    .menu-saldo > a{font-size:.85rem;padding-top:.3rem;border-top:1px solid var(--rule)}
 
     /* Bajo esta anchura no caben ocho enlaces en una fila: el navegador los
        aprieta hasta que no se pueden pulsar sin acertar. */

@@ -69,57 +69,6 @@
         .foto-quitar{background:none;border:0;padding:0;margin:0;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;text-decoration:underline}
     </style>
 
-    {{-- ---------------------------------------------------- saldo --}}
-    @php
-        $moneda = config('fabos.currency.code');
-        $unidades = config('fabos.currency.minor_units');
-        $cobrosActivos = \App\Support\Settings::cobrosActivos();
-    @endphp
-
-    <h2 id="saldo">Mi saldo</h2>
-    <div class="panel">
-        <p style="margin:0;font-size:2rem;font-weight:700;letter-spacing:-.02em">
-            {{ number_format($saldo / $unidades, 2, ',', '.') }}
-            <span style="font-size:1rem;font-weight:500;color:var(--muted)">{{ $moneda }}</span>
-        </p>
-
-        @unless ($cobrosActivos)
-            <p class="help" style="margin:.6rem 0 0">
-                Los cobros de reservas todavía están apagados: reservar no descuenta saldo. Las
-                reservas sí guardan lo que habrían costado, para poder revisarlo antes de encenderlo.
-                @if (\App\Support\Settings::cobrosEnTienda())
-                    La tienda sí descuenta.
-                @endif
-            </p>
-        @else
-            <p class="help" style="margin:.6rem 0 0">
-                Al reservar se retiene el estimado y al cerrar se cobra lo que realmente usaste;
-                la diferencia vuelve a tu saldo.
-            </p>
-        @endunless
-
-        @if ($movimientos->isNotEmpty())
-            <table style="margin-top:1rem">
-                <thead><tr><th>Cuándo</th><th>Concepto</th><th style="text-align:right">Importe</th></tr></thead>
-                <tbody>
-                @foreach ($movimientos as $m)
-                    <tr>
-                        <td>{{ $m->transaction?->occurred_at?->timezone($tz)->format('d/m/Y H:i') }}</td>
-                        <td>
-                            {{ \App\Models\LedgerTransaction::TIPOS[$m->transaction?->kind] ?? $m->transaction?->kind }}
-                            <div class="quien">{{ $m->transaction?->memo }}</div>
-                        </td>
-                        <td style="text-align:right;white-space:nowrap">
-                            {{ $m->esDebito() ? '−' : '+' }}
-                            {{ number_format($m->amount_minor / $unidades, 2, ',', '.') }}
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
-
     {{-- ---------------------------------------------------- certifabs --}}
     <h2>Lo que estoy habilitado a usar</h2>
 

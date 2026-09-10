@@ -50,7 +50,6 @@ class AccountController extends Controller
                 ->get(),
 
             'certifabs' => $certifabs,
-            'saldo'     => $this->libro->saldoDe($user),
             'cursos'    => Enrollment::with('edition.course')
                 ->where('user_id', $user->id)
                 ->whereNot('status', 'retirado')
@@ -66,12 +65,6 @@ class AccountController extends Controller
                     'plantilla' => $p,
                     'recibe'    => $this->avisos->quiereRecibir($user, $p),
                 ]),
-            'movimientos' => $this->libro->cuentaDe($user)
-                ->entries()
-                ->with('transaction')
-                ->latest('id')
-                ->limit(10)
-                ->get(),
             // Como va la lectura del calendario de fuera: quien pego una
             // direccion no tiene otra forma de saber si sirve.
             'agenda'    => app(\App\Services\Calendar\AgendaExterna::class)->resumen($user),

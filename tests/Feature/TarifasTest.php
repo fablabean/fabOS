@@ -246,8 +246,10 @@ class TarifasTest extends TestCase
         $this->actingAs($u)
             ->get(route('home'))
             ->assertOk()
-            ->assertSee('Mi saldo')
+            // El saldo vive en la barra, al lado del círculo; en la página ya no hay sección.
+            ->assertSee('class="saldo-boton"', false)
             ->assertSee('45,00')
-            ->assertSee('Dotación institucional');
+            ->assertSee('Dotación institucional')
+            ->assertDontSee('id="saldo"', false);
     }
 }
