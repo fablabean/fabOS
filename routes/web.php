@@ -210,7 +210,9 @@ Route::middleware('auth')->group(function () {
     // La foto de la persona: la sube y la quita cada quien desde Mi cuenta.
     Route::post('/cuenta/foto', [AccountController::class, 'foto'])->name('cuenta.foto');
     Route::post('/cuenta/foto/quitar', [AccountController::class, 'quitarFoto'])->name('cuenta.foto.quitar');
-    Route::post('/cuenta/perfil', [AccountController::class, 'perfil'])->name('cuenta.perfil');
+    // Editar perfil: la foto, el nombre, el calendario, como entra, los avisos y el carne.
+    Route::get('/cuenta/perfil', [AccountController::class, 'perfil'])->name('cuenta.perfil');
+    Route::post('/cuenta/perfil', [AccountController::class, 'guardarPerfil'])->name('cuenta.perfil.guardar');
 
     // La app de autenticacion, para cualquiera: deja de depender del correo.
     Route::get('/cuenta/app', [TwoFactorController::class, 'miApp'])->name('cuenta.app');

@@ -83,14 +83,14 @@ class AvatarTest extends TestCase
         $u = User::factory()->create(['name' => 'Erick', 'email' => 'erick@ejemplo.co', 'status' => 'activo']);
 
         $this->actingAs($u)
-            ->post(route('cuenta.perfil'), ['name' => '  Erick Hansen Gómez ', 'email' => 'otro@x.co'])
+            ->post(route('cuenta.perfil.guardar'), ['name' => '  Erick Hansen Gómez ', 'email' => 'otro@x.co'])
             ->assertRedirect()
             ->assertSessionHas('status', 'Perfil guardado.');
 
         $this->assertSame('Erick Hansen Gómez', $u->fresh()->name);
         $this->assertSame('erick@ejemplo.co', $u->fresh()->email);
 
-        $this->actingAs($u)->from(route('home'))->post(route('cuenta.perfil'), ['name' => 'X'])
+        $this->actingAs($u)->from(route('home'))->post(route('cuenta.perfil.guardar'), ['name' => 'X'])
             ->assertSessionHasErrors('name');
     }
 
@@ -106,6 +106,32 @@ class AvatarTest extends TestCase
             ->assertSee('100,00')
             ->assertSee('id="menu-saldo"', false)
             ->assertSee('Dotación institucional');
+    }
+
+    /** «Editar perfil» es su propia página: foto, nombre, calendario, cómo entro, avisos y carné. */
+    public function test_editar_perfil_reune_lo_que_se_configura(): void
+    {
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+        $u = User::factory()->create(['name' => 'Erick Hansen', 'status' => 'activo']);
+
+        $this->actingAs($u)->get(route('cuenta.perfil'))
+            ->assertOk()
+            ->assertSee('class="circulo-foto"', false)
+            ->assertSee('Mi calendario')
+            ->assertSee('Tu calendario de la Universidad')
+            ->assertSee('Cómo entro')
+            ->assertSee('Qué avisos quiero recibir');
+
+        // Mi cuenta ya no trae eso, ni el cerrar sesión: están en el menú de la persona.
+        $this->actingAs($u)->get(route('home'))
+            ->assertOk()
+            ->assertSee('Editar perfil')
+            ->assertDontSee('Cerrar sesión')
+            ->assertDontSee('<h2>Mi calendario</h2>', false)
+            ->assertDontSee('Qué avisos quiero recibir');
+
+        // Y el saldo avisa de lo que viene.
+        $this->actingAs($u)->get(route('home'))->assertSee('Próximamente podrás adquirir');
     }
 
     public function test_lo_que_no_es_imagen_no_entra(): void

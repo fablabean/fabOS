@@ -214,7 +214,7 @@ class AgendaExternaTest extends TestCase
         $ana = $this->persona();
 
         $this->actingAs($ana)
-            ->get('/mi-cuenta')
+            ->get('/cuenta/perfil')
             ->assertOk()
             ->assertSee('Se está leyendo')
             ->assertSee('2 compromisos');
@@ -225,7 +225,7 @@ class AgendaExternaTest extends TestCase
         Http::fake(['*' => Http::response('', 404)]);
 
         $this->actingAs($this->persona())
-            ->get('/mi-cuenta')
+            ->get('/cuenta/perfil')
             ->assertOk()
             ->assertSee('No se pudo leer');
     }

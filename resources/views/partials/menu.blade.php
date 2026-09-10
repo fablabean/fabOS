@@ -70,6 +70,7 @@
                         @endforeach
                     </ul>
                 @endif
+                <p class="nota">Próximamente podrás adquirir {{ config('fabos.currency.name') }}s.</p>
             </div>
         </div>
 
@@ -86,10 +87,10 @@
                     <span>{{ auth()->user()->email }}</span>
                 </div>
                 <a href="{{ route('home') }}">Mi cuenta</a>
+                <a href="{{ route('cuenta.perfil') }}">Editar perfil</a>
                 @if (auth()->user()->hasAnyRole(\App\Models\User::ROLES_BACKOFFICE))
                     <a href="/admin">Backoffice</a>
                 @endif
-                <a href="{{ route('cuenta.app') }}">Mi app de autenticación</a>
                 <form method="POST" action="{{ route('logout') }}" class="salir">
                     @csrf
                     <button type="submit">Salir</button>
@@ -159,6 +160,7 @@
     .menu-saldo li .cuanto{font-variant-numeric:tabular-nums;white-space:nowrap}
     .menu-saldo li .cuanto.mas{color:var(--accent)}
     .menu-saldo .vacio{margin:0;color:var(--muted);font-size:.85rem}
+    .menu-saldo .nota{margin:0;padding-top:.5rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.78rem}
 
     /* Bajo esta anchura no caben ocho enlaces en una fila: el navegador los
        aprieta hasta que no se pueden pulsar sin acertar. */

@@ -232,8 +232,32 @@ class AccountController extends Controller
         return back()->with('status', 'Foto guardada.');
     }
 
-    /** Lo que cada quien puede corregir de sí mismo: por ahora, el nombre. */
+    /**
+     * Editar perfil: lo que cada quien ajusta de sí mismo, en su propia
+     * página. La foto y el nombre; el calendario, con el de la Universidad;
+     * cómo entra; qué avisos quiere; el carné. Mi cuenta se queda con lo que
+     * pasa —reservas, cursos, proyectos—, y esto con lo que se configura.
+     */
     public function perfil(Request $request)
+    {
+        $user = $request->user();
+
+        return view('cuenta.perfil', [
+            'usuario' => $user,
+            'avisos'  => NotificationTemplate::where('is_active', true)
+                ->where('is_essential', false)
+                ->orderBy('name')
+                ->get()
+                ->map(fn (NotificationTemplate $p) => [
+                    'plantilla' => $p,
+                    'recibe'    => $this->avisos->quiereRecibir($user, $p),
+                ]),
+            'agenda'  => app(\App\Services\Calendar\AgendaExterna::class)->resumen($user),
+        ]);
+    }
+
+    /** Lo que cada quien puede corregir de sí mismo: por ahora, el nombre. */
+    public function guardarPerfil(Request $request)
     {
         $datos = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:255'],

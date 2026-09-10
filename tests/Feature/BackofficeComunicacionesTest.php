@@ -101,7 +101,7 @@ class BackofficeComunicacionesTest extends TestCase
         $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
         $u = $this->conRol();
 
-        $this->actingAs($u)->get(route('home'))
+        $this->actingAs($u)->get(route('cuenta.perfil'))
             ->assertOk()
             ->assertSee('Qué avisos quiero recibir')
             ->assertSee('Recordatorio de reserva');
