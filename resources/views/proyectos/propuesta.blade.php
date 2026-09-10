@@ -263,6 +263,66 @@
         </div>
     @endif
 
+    {{-- El pago pedido: el valor, el QR del banco y la respuesta con el
+         comprobante, el nombre completo y el documento. Validado, se dice y
+         ya. --}}
+    @if (($pago ?? null) || ($pagosValidados ?? collect())->isNotEmpty())
+        <div class="panel" id="pago">
+            <h2 style="margin-top:0">Pago</h2>
+
+            @foreach ($pagosValidados ?? [] as $validado)
+                <p style="margin:0 0 .5rem">
+                    <span class="pill ok">Validado</span>
+                    {{ $validado->titulo() }} · recibido el {{ $validado->validated_at?->timezone(config('fabos.lab.timezone'))->format('d/m/Y') }}
+                </p>
+            @endforeach
+
+            @if ($pago ?? null)
+                <p style="margin:.4rem 0 .2rem;font-size:1.4rem;font-weight:700;letter-spacing:-.02em">
+                    {{ $pago->valorFormateado() }}
+                    @if ($pago->concept)<span style="font-size:.95rem;font-weight:400;color:var(--muted)"> · {{ $pago->concept }}</span>@endif
+                </p>
+
+                @if ($pago->status === \App\Models\ProjectPayment::ENVIADO)
+                    <p class="help" style="margin:0">
+                        <span class="pill warn">Comprobante enviado</span>
+                        Lo estamos revisando; te avisamos cuando quede validado.
+                    </p>
+                @else
+                    @if ($pago->status === \App\Models\ProjectPayment::RECHAZADO)
+                        <p class="msg error">El comprobante anterior no sirvió: {{ $pago->notes }} Envíalo de nuevo.</p>
+                    @endif
+
+                    <p class="help" style="margin:.2rem 0 .8rem">{{ \App\Support\Settings::instruccionesDePago() }}</p>
+
+                    @if ($qrDePagos ?? null)
+                        <p style="margin:0 0 1rem">
+                            <img src="{{ $qrDePagos }}" alt="Código QR para pagar" style="width:min(16rem,100%);border:1px solid var(--rule);border-radius:6px;background:#fff;padding:.5rem">
+                        </p>
+                    @endif
+
+                    @error('comprobante') <p class="msg error">{{ $message }}</p> @enderror
+                    @error('nombre') <p class="msg error">{{ $message }}</p> @enderror
+                    @error('documento') <p class="msg error">{{ $message }}</p> @enderror
+
+                    <form method="POST" action="{{ $urlPagar }}" enctype="multipart/form-data">
+                        @csrf
+                        <label for="pago-comprobante">Captura o comprobante del pago</label>
+                        <input id="pago-comprobante" type="file" name="comprobante" accept="image/*,.pdf" required>
+
+                        <label for="pago-nombre">Nombre completo de quien pagó</label>
+                        <input id="pago-nombre" type="text" name="nombre" value="{{ old('nombre', $proyecto->contact_name) }}" required maxlength="160">
+
+                        <label for="pago-documento">Número de documento</label>
+                        <input id="pago-documento" type="text" name="documento" value="{{ old('documento') }}" required maxlength="40" inputmode="numeric">
+
+                        <button type="submit">Enviar el comprobante</button>
+                    </form>
+                @endif
+            @endif
+        </div>
+    @endif
+
     {{-- Responder, con archivos. El laboratorio pregunta desde el panel —«mándanos
          el vectorial», «¿de qué grosor es el MDF?»— y quien pidió no tenía por
          dónde contestar salvo cuando había una propuesta que aceptar. Lo que

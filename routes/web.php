@@ -136,6 +136,20 @@ Route::post('/proyectos/{project}/comentar', [SolicitudDeProyectoController::cla
     ->middleware('throttle:60,60')
     ->name('proyectos.comentar');
 
+// El comprobante de un pago pedido (§11), por el mismo camino que una respuesta.
+Route::post('/proyectos/{project}/pagos/{payment}', [SolicitudDeProyectoController::class, 'pagar'])
+    ->middleware('throttle:30,60')
+    ->name('proyectos.pagar');
+
+// El QR del banco: es para pagar, asi que se ve sin sesion. Se sirve desde el
+// disco privado para que el mismo archivo vaya adjunto en los correos.
+Route::get('/pagos/qr', function () {
+    $ruta = \App\Support\Settings::qrDePagos();
+    abort_unless($ruta, 404);
+
+    return \Illuminate\Support\Facades\Storage::disk('local')->response($ruta, 'qr-de-pago', ['Cache-Control' => 'public, max-age=3600']);
+})->name('pagos.qr');
+
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
 Route::get('/verificar/{codigo}', [VerificationController::class, 'show'])->name('publico.verificar');
 

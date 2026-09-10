@@ -244,6 +244,16 @@ class SolicitudDeProyectoController extends Controller
                 ? URL::temporarySignedRoute('proyectos.comentar', now()->addDays(30), ['project' => $project->id])
                 : route('proyectos.comentar', $project),
 
+            // El pago que espera algo, con la direccion para responderle.
+            'pago' => $pago = $project->pagoPendiente(),
+            'urlPagar' => $pago
+                ? ($firmado
+                    ? URL::temporarySignedRoute('proyectos.pagar', now()->addDays(60), ['project' => $project->id, 'payment' => $pago->id])
+                    : route('proyectos.pagar', ['project' => $project, 'payment' => $pago]))
+                : null,
+            'qrDePagos' => \App\Support\Settings::qrDePagos() ? route('pagos.qr') : null,
+            'pagosValidados' => $project->payments()->where('status', \App\Models\ProjectPayment::VALIDADO)->get(),
+
             'urlAceptar' => URL::temporarySignedRoute(
                 'proyectos.aceptar',
                 now()->addDays(60),
@@ -292,6 +302,37 @@ class SolicitudDeProyectoController extends Controller
      * sin un sitio donde decirla acaba en un chat donde nadie la vuelve a
      * encontrar.
      */
+    /**
+     * El cliente responde a un pago pedido: comprobante, nombre y documento.
+     * Por el enlace firmado del correo o con su sesion, como el resto.
+     */
+    public function pagar(Request $request, Project $project, \App\Models\ProjectPayment $payment)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+        abort_unless($payment->project_id === $project->id, 404);
+
+        $datos = $request->validate([
+            'comprobante' => ['required', 'file', 'max:' . SoportesDeSolicitud::TAMANO_MAXIMO, 'mimes:jpg,jpeg,png,webp,heic,pdf'],
+            'nombre'      => ['required', 'string', 'min:3', 'max:160'],
+            'documento'   => ['required', 'string', 'min:4', 'max:40'],
+        ], [
+            'comprobante.required' => 'Adjunta la captura o el comprobante del pago.',
+            'comprobante.mimes'    => 'El comprobante puede ser una imagen o un PDF.',
+            'nombre.required'      => 'Escribe tu nombre completo.',
+            'documento.required'   => 'Escribe tu número de documento.',
+        ]);
+
+        try {
+            app(\App\Services\Projects\PagosDeProyecto::class)->enviarComprobante(
+                $payment, $request->file('comprobante'), $datos['nombre'], $datos['documento'], $request->user(),
+            );
+        } catch (\App\Services\Projects\ProjectException $e) {
+            return back()->withErrors(['comprobante' => $e->getMessage()]);
+        }
+
+        return back()->with('comentado', true)->with('status', 'Recibimos tu comprobante. Te avisamos cuando lo validemos.');
+    }
+
     public function comentar(Request $request, Project $project)
     {
         abort_unless($this->puedeVerla($request, $project), 403);

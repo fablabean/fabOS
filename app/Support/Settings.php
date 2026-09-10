@@ -94,6 +94,28 @@ final class Settings
         return $lista ?: self::BENEFICIO_DOMINIOS_DE_FABRICA;
     }
 
+    /*
+     * Los pagos por QR (§11): el codigo del banco es uno solo para todo el
+     * laboratorio, y se sube desde Finanzas → Pagos. Va con el valor en cada
+     * correo de cobro y se ve en la pagina del proyecto.
+     */
+    public const PAGOS_QR            = 'pagos.qr_path';
+    public const PAGOS_INSTRUCCIONES = 'pagos.instrucciones';
+
+    /** La ruta del QR en el disco privado, si esta subido. */
+    public static function qrDePagos(): ?string
+    {
+        $ruta = trim((string) Setting::get(self::PAGOS_QR, ''));
+
+        return $ruta !== '' && \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta) ? $ruta : null;
+    }
+
+    public static function instruccionesDePago(): string
+    {
+        return trim((string) Setting::get(self::PAGOS_INSTRUCCIONES, ''))
+            ?: 'Escanea el código QR con la app de tu banco, paga el valor indicado y respóndenos aquí con el comprobante.';
+    }
+
     /** La base del acuerdo de servicio que redacta el sistema (§11). */
     public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
     public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';

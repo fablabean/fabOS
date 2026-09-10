@@ -529,6 +529,18 @@ class Project extends Model
         return $this->hasMany(ProjectProposal::class)->orderBy('version');
     }
 
+    /** Los pagos pedidos a quien lo encargo (§11). */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(ProjectPayment::class)->orderBy('id');
+    }
+
+    /** El pago que sigue esperando algo, si lo hay: el ultimo abierto. */
+    public function pagoPendiente(): ?ProjectPayment
+    {
+        return $this->payments()->whereIn('status', ProjectPayment::ABIERTOS)->orderByDesc('id')->first();
+    }
+
     /** La última que se mandó, que es la que el cliente tiene delante. */
     public function propuestaVigente(): ?ProjectProposal
     {

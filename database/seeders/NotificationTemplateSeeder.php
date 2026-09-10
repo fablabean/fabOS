@@ -140,6 +140,89 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'proyecto.pago_solicitado',
+                'name'         => 'Pago de un proyecto',
+                'description'  => 'A quien pidió el proyecto, cuando el laboratorio le pide un pago. Lleva el QR del banco adjunto.',
+                'is_essential' => true,
+                'subject'      => 'Pago de {valor} por {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Para seguir con «{proyecto}» hace falta el pago de {concepto}:
+
+                    Valor: {valor}
+
+                    {instrucciones}
+
+                    El código QR va adjunto a este correo. Cuando pagues, entra aquí y
+                    respóndenos con el comprobante, tu nombre completo y tu número de
+                    documento:
+
+                    {enlace}
+
+                    {mensaje}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.comprobante_recibido',
+                'name'         => 'Llegó un comprobante de pago',
+                'description'  => 'A quien responde por el proyecto, cuando el cliente envía el comprobante de un pago.',
+                'is_essential' => true,
+                'subject'      => 'Comprobante de {valor} en {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Llegó el comprobante del pago de {valor} por «{proyecto}».
+
+                    A nombre de: {nombre}
+                    Documento: {documento}
+
+                    Revísalo y valídalo en el proyecto, en la pestaña Pagos:
+
+                    {enlace}
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.pago_validado',
+                'name'         => 'Pago validado',
+                'description'  => 'A quien pidió el proyecto, cuando el laboratorio da por bueno su comprobante.',
+                'is_essential' => true,
+                'subject'      => 'Recibimos tu pago de {valor} por {proyecto}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Validamos tu pago de {valor} por «{proyecto}» ({codigo}). Con esto
+                    el proyecto puede pasar a producción; te contamos por aquí cómo va:
+
+                    {enlace}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.pago_rechazado',
+                'name'         => 'Comprobante devuelto',
+                'description'  => 'A quien pidió el proyecto, cuando su comprobante no sirve y hay que enviarlo de nuevo.',
+                'is_essential' => true,
+                'subject'      => 'Necesitamos otro comprobante del pago de {valor} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    El comprobante que enviaste por el pago de {valor} de «{proyecto}» no
+                    nos sirve: {motivo}
+
+                    Vuelve a enviarlo desde aquí, con tu nombre completo y tu documento:
+
+                    {enlace}
+
+                    El código QR va adjunto por si necesitas volver a pagar.
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
                 'key'          => 'proyecto.aceptada',
                 'name'         => 'Propuesta aceptada',
                 'description'  => 'A quien acepta una propuesta, cuando no hay traslado presupuestal de por medio.',

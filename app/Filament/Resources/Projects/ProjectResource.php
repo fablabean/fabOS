@@ -135,6 +135,7 @@ class ProjectResource extends Resource
             RelationManagers\AssetsRelationManager::class,
             RelationManagers\ProduccionesRelationManager::class,
             RelationManagers\DocumentsRelationManager::class,
+            RelationManagers\PaymentsRelationManager::class,
             RelationManagers\TasksRelationManager::class,
             RelationManagers\TimeLogsRelationManager::class,
             RelationManagers\CostsRelationManager::class,

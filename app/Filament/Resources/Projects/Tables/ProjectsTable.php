@@ -67,7 +67,11 @@ class ProjectsTable
                             ? ($r->contract_sent_at ? ' · contrato enviado' : ' · aceptada')
                             : ($r->proposal_sent_at
                                 ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
-                                : ''))),
+                                : ''))
+                        // El pago que espera algo, a la vista sin abrir la ficha.
+                        . (($pago = $r->pagoPendiente())
+                            ? ' · pago ' . mb_strtolower(\App\Models\ProjectPayment::ESTADOS[$pago->status] ?? $pago->status)
+                            : '')),
 
                 ImageColumn::make('reference_image_path')
                     ->label('')
@@ -460,6 +464,13 @@ class ProjectsTable
                             ->send();
                     }),
 
+                // Pedir un pago desde la fila: el valor con el QR del banco.
+                \App\Filament\Resources\Projects\RelationManagers\PaymentsRelationManager::pedir()
+                    ->iconButton()
+                    ->tooltip('Pedir un pago')
+                    ->color(fn (Project $r) => $r->pagoPendiente() ? 'warning' : 'gray')
+                    ->visible(fn (Project $r) => self::puedeManejar($r) && filled($r->correoDeLaPropuesta())),
+
                 self::tablero(),
                 self::avanzar(),
                 self::mover(),
@@ -524,8 +535,13 @@ class ProjectsTable
                 && app(ProjectService::class)->siguienteEtapa($r) !== null
                 && ! in_array($r->status, ['perdido', 'descartado'], true))
             ->requiresConfirmation()
-            ->modalDescription(fn (Project $r) => app(ProjectService::class)->queFalta($r)
-                ?? 'Todo lo que exige la siguiente etapa está en su sitio.')
+            // Con un pago sin validar se dice, no se impide: la regla es que
+            // la produccion empieza con el pago validado, pero quien coordina
+            // decide cuando arranca.
+            ->modalDescription(fn (Project $r) => (($pago = $r->pagoPendiente())
+                    ? 'Ojo: hay un pago de ' . $pago->titulo() . ' ' . mb_strtolower(\App\Models\ProjectPayment::ESTADOS[$pago->status]) . '. '
+                    : '')
+                . (app(ProjectService::class)->queFalta($r) ?? 'Todo lo que exige la siguiente etapa está en su sitio.'))
             // Al cerrar, el aviso al cliente va en el mismo paso: el
             // proyecto listo que nadie recoge es el que se olvidó avisar.
             ->schema(fn (Project $r) => app(ProjectService::class)->siguienteEtapa($r) === 'cierre'
