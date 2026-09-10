@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\ControlaSuAcceso;
+use App\Filament\Resources\Reservations\ReservationResource;
 use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\User;
@@ -25,6 +26,21 @@ use Filament\Support\Icons\Heroicon;
  * Cada solicitud muestra **quién podría atenderla y a qué costo en horas
  * extras**. Decidir sin ver eso es cómo un «sí» amable se convierte, tres
  * sábados después, en un problema con Talento Humano.
+ *
+ * **Vive dentro de Reservas**, no aparte. Al final una solicitud es una
+ * reserva que todavía no se confirmó, y tenerla en su propio grupo del menú
+ * hacía creer que eran dos temas distintos. Se entra desde la lista de
+ * Reservas; el menú tiene una sola entrada.
+ *
+ * Sigue siendo una **pantalla propia** y no una pestaña de la tabla porque lo
+ * que hace falta para decidir —quién puede atenderla, cuántas horas extras
+ * lleva ya ese mes, si está libre a esa hora— no cabe en una fila.
+ *
+ * Y conserva el nombre `Bandeja` a propósito: de él sale la clave del permiso
+ * (`ver.bandeja`), que vive en la base de datos y NO es la de Reservas.
+ * Renombrar la clase dejaría el permiso huérfano y la sección cerrada; darle
+ * el permiso de Reservas se lo abriría a consultores y practicantes, que hoy
+ * ven reservas pero no deciden horas extras de nadie.
  */
 class Bandeja extends Page
 {
@@ -36,6 +52,26 @@ class Bandeja extends Page
 
     protected static ?int $navigationSort = 0;
 
+    /** Bajo Reservas también en la URL: es donde se piensa que está. */
+    protected static ?string $slug = 'reservations/solicitudes';
+
+    /**
+     * Normalmente no se anuncia en el menú: se llega desde Reservas, que es de
+     * donde cuelga, y dos entradas para el mismo tema es lo que se vino a
+     * quitar.
+     *
+     * **Salvo que quien decide no vea Reservas.** Los permisos se editan en
+     * *Roles y accesos* sin desplegar, así que esa combinación se puede
+     * configurar cualquier martes; escondida y sin lista desde donde entrar,
+     * la bandeja quedaría inalcanzable y las solicitudes sin responder sin que
+     * nadie entendiera por qué. Ahí sí se anuncia sola: la regla es una sola
+     * puerta, no ninguna.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess() && ! ReservationResource::canAccess();
+    }
+
     /** Quién atiende cada solicitud, por id de reserva. */
     public array $acompanante = [];
 
@@ -45,7 +81,7 @@ class Bandeja extends Page
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'Reservas';
+        return 'Operación';
     }
 
     public static function getNavigationLabel(): string
@@ -58,12 +94,15 @@ class Bandeja extends Page
         return 'Solicitudes por decidir';
     }
 
-    /** El número al lado del menú: lo que está esperando respuesta. */
-    public static function getNavigationBadge(): ?string
+    /**
+     * Lo que está esperando respuesta.
+     *
+     * El número lo enseña Reservas en el menú —esta pantalla ya no está en
+     * él— y también el botón que lleva hasta aquí.
+     */
+    public static function pendientes(): int
     {
-        $pendientes = Reservation::where('status', 'solicitada')->where('ends_at', '>', now())->count();
-
-        return $pendientes ?: null;
+        return Reservation::where('status', 'solicitada')->where('ends_at', '>', now())->count();
     }
 
     public function aprobar(int $reservaId): void

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations\Tables;
 
+use App\Filament\Pages\Bandeja;
 use App\Models\Asset;
 use App\Models\Project;
 use App\Models\Reservation;
@@ -213,29 +214,32 @@ class ReservationsTable
                             ->send();
                     }),
 
-                Action::make('aprobar')
-                    ->label('Aprobar')
+                /*
+                 * Una solicitud NO se decide desde aqui: se va a decidirla.
+                 *
+                 * Antes esta tabla traia sus propios botones de aprobar y
+                 * rechazar. Aprobar escribia «confirmada» a secas: nadie
+                 * quedaba asignado a abrir el laboratorio ese sabado y las
+                 * horas extras no se contaban en ninguna parte. Rechazar
+                 * inventaba el motivo -«Rechazada desde el backoffice»-, que
+                 * es lo mismo que no dar ninguno.
+                 *
+                 * Aprobar de verdad exige contestar quien la atiende, y eso
+                 * necesita ver quien esta certificado, quien esta libre a esa
+                 * hora y cuantas extras lleva ya ese mes. Es la pantalla de
+                 * solicitudes. Un segundo camino que no pregunta nada de eso
+                 * no es una comodidad: es la forma de que las horas de alguien
+                 * no aparezcan hasta que las reclama.
+                 */
+                Action::make('decidir')
+                    ->label('Decidir')
                     ->iconButton()
-                    ->tooltip('Aprobar')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalDescription('Al aprobarla, la reserva pasa a confirmada y bloquea el equipo.')
-                    ->visible(fn (Reservation $record) => $record->status === 'solicitada')
-                    ->action(fn (Reservation $record) => $record->update(['status' => 'confirmada'])),
-
-                Action::make('rechazar')
-                    ->label('Rechazar')
-                    ->iconButton()
-                    ->tooltip('Rechazar')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn (Reservation $record) => $record->status === 'solicitada')
-                    ->action(fn (Reservation $record) => $record->update([
-                        'status' => 'rechazada',
-                        'status_reason' => 'Rechazada desde el backoffice',
-                    ])),
+                    ->tooltip('Decidir la solicitud')
+                    ->icon('heroicon-o-inbox-arrow-down')
+                    ->color('warning')
+                    ->url(fn () => Bandeja::getUrl())
+                    ->visible(fn (Reservation $record) => $record->status === 'solicitada'
+                        && Bandeja::canAccess()),
 
                 /*
                  * Levantar una reserva que se cayo sola.

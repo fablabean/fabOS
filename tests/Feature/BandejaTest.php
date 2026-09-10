@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Support\FactoresDeSesion;
 use App\Filament\Pages\Bandeja;
+use App\Filament\Resources\Reservations\Pages\ListReservations;
+use App\Filament\Resources\Reservations\ReservationResource;
+use Filament\Actions\Testing\TestAction;
 use App\Models\Area;
 use App\Models\Asset;
 use App\Models\Certifab;
@@ -104,7 +107,7 @@ class BandejaTest extends TestCase
         $equipo = $this->humanoide();
         $solicitud = $this->solicitudDeSabado($equipo, $this->persona());
 
-        $this->entra($admin)->get('/admin/bandeja')
+        $this->entra($admin)->get(Bandeja::getUrl())
             ->assertOk()
             ->assertSee('Humanoide')
             ->assertSee($solicitud->user->name)
@@ -127,7 +130,7 @@ class BandejaTest extends TestCase
 
         // En un sábado no hay nadie en jornada por definición: si solo se
         // ofreciera a quien está en jornada, la bandeja no serviría de nada.
-        $this->entra($admin)->get('/admin/bandeja')
+        $this->entra($admin)->get(Bandeja::getUrl())
             ->assertOk()
             ->assertSee($colaborador->name)
             ->assertSee('habría que abrirle el día');
@@ -157,7 +160,7 @@ class BandejaTest extends TestCase
             'starts_at' => $solicitud->starts_at, 'ends_at' => $solicitud->starts_at->copy()->addHour(),
         ]);
 
-        $html = $this->entra($admin)->get('/admin/bandeja')->assertOk()->getContent();
+        $html = $this->entra($admin)->get(Bandeja::getUrl())->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression('/<option value="' . $ocupado->id . '"[^>]*disabled/', $html, 'el ocupado no se puede elegir');
         $this->assertMatchesRegularExpression('/<option value="' . $libre->id . '"\s*>/', $html, 'el libre sí');
@@ -218,7 +221,109 @@ class BandejaTest extends TestCase
     public function test_la_bandeja_es_de_quien_decide(): void
     {
         $this->entra($this->persona(User::ROL_CONSULTOR))
-            ->get('/admin/bandeja')
+            ->get(Bandeja::getUrl())
             ->assertForbidden();
+    }
+
+    // ----------------------------------------- las solicitudes viven en Reservas
+
+    /**
+     * Una solicitud es una reserva sin confirmar, no otro tema.
+     *
+     * Tenerla en su propio grupo del menú hacía creer que había dos sitios
+     * para lo mismo. Ahora el menú tiene una entrada, Reservas, y desde ahí se
+     * entra a decidir.
+     */
+    public function test_las_solicitudes_no_son_una_entrada_aparte_del_menu(): void
+    {
+        $this->actingAs($this->persona(User::ROL_ADMINISTRADOR));
+
+        $this->assertTrue(ReservationResource::canAccess(), 'el administrador ve Reservas');
+        $this->assertFalse(Bandeja::shouldRegisterNavigation(), 'y por eso la bandeja no se anuncia sola');
+        $this->assertStringContainsString('/admin/reservations/solicitudes', Bandeja::getUrl());
+    }
+
+    /**
+     * Una puerta, no ninguna.
+     *
+     * Los permisos se editan en «Roles y accesos» sin desplegar: alguien puede
+     * quedarse pudiendo decidir solicitudes y sin ver Reservas. Escondida y
+     * sin lista desde donde entrar, la bandeja quedaría inalcanzable y las
+     * solicitudes sin responder sin que nadie entendiera por qué.
+     */
+    public function test_quien_decide_pero_no_ve_reservas_si_la_encuentra_en_el_menu(): void
+    {
+        $quien = $this->persona(User::ROL_ADMINISTRADOR);
+
+        // Se le quita Reservas a su rol, que es lo que haría alguien desde la
+        // pantalla de accesos.
+        $quien->roles->first()->revokePermissionTo('ver.reservation');
+        $this->actingAs($quien->fresh());
+        app()->forgetInstance(\Spatie\Permission\PermissionRegistrar::class);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertFalse(ReservationResource::canAccess(), 'ya no ve Reservas');
+        $this->assertTrue(Bandeja::canAccess(), 'pero sigue pudiendo decidir');
+        $this->assertTrue(
+            Bandeja::shouldRegisterNavigation(),
+            'sin Reservas en el menú, la bandeja tiene que anunciarse sola o no hay por dónde entrar',
+        );
+    }
+
+    public function test_desde_reservas_se_llega_a_las_solicitudes(): void
+    {
+        $quienPide = $this->persona();
+        $this->solicitudDeSabado($this->humanoide(), $quienPide);
+
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR));
+
+        Livewire::test(ListReservations::class)
+            ->assertActionVisible(TestAction::make('solicitudes'))
+            ->assertSee('Solicitudes por decidir');
+    }
+
+    /** Y quien ve reservas pero no decide, no encuentra la puerta. */
+    public function test_quien_no_decide_no_ve_la_puerta_a_las_solicitudes(): void
+    {
+        $this->entra($this->persona(User::ROL_CONSULTOR));
+
+        Livewire::test(ListReservations::class)
+            ->assertActionHidden(TestAction::make('solicitudes'));
+    }
+
+    /**
+     * La tabla de Reservas no decide por su cuenta: lleva a decidir.
+     *
+     * Traia sus propios botones. Aprobar escribia «confirmada» a secas —nadie
+     * quedaba asignado a abrir el laboratorio ese sábado y las horas extras no
+     * se contaban— y rechazar inventaba el motivo. Dos puertas al mismo acto, y
+     * una se saltaba justo lo que hay que preguntar.
+     */
+    public function test_la_tabla_de_reservas_no_decide_lleva_a_decidir(): void
+    {
+        $quienPide = $this->persona();
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
+
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR));
+
+        Livewire::test(ListReservations::class)
+            ->assertActionVisible(TestAction::make('decidir')->table($solicitud))
+            ->assertActionDoesNotExist(TestAction::make('aprobar')->table($solicitud))
+            ->assertActionDoesNotExist(TestAction::make('rechazar')->table($solicitud));
+
+        $this->assertSame('solicitada', $solicitud->fresh()->status, 'nada se decidió por mirar la tabla');
+    }
+
+    /** Y lo que ya se decidió no ofrece decidirlo otra vez. */
+    public function test_una_reserva_confirmada_no_ofrece_decidir(): void
+    {
+        $quienPide = $this->persona();
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
+        $solicitud->update(['status' => 'confirmada']);
+
+        $this->entra($this->persona(User::ROL_ADMINISTRADOR));
+
+        Livewire::test(ListReservations::class)
+            ->assertActionHidden(TestAction::make('decidir')->table($solicitud));
     }
 }

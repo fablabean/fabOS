@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Reservations;
 
 use App\Filament\Concerns\ControlaSuAcceso;
+use App\Filament\Pages\Bandeja;
 use App\Filament\Resources\Reservations\Pages\CreateReservation;
 use App\Filament\Resources\Reservations\Pages\EditReservation;
 use App\Filament\Resources\Reservations\Pages\ListReservations;
@@ -32,6 +33,27 @@ class ReservationResource extends Resource
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
         return 'Operación';
+    }
+
+    /**
+     * Lo que está esperando decisión, en el menú.
+     *
+     * El número lo llevaba la bandeja cuando era una entrada aparte. Ahora
+     * que se entra por aquí, la señal tiene que estar aquí: sin ella nadie
+     * sabría que hay gente esperando respuesta.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        if (! Bandeja::canAccess()) {
+            return null;
+        }
+
+        return Bandeja::pendientes() ?: null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return Bandeja::pendientes() ? 'warning' : null;
     }
 
     public static function form(Schema $schema): Schema
