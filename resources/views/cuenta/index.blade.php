@@ -43,67 +43,10 @@
     </style>
 
     {{-- El tablero: tres columnas en pantallas grandes, una en las
-         pequeñas. Primero lo que toca pronto: las asesorías que pedí, las que
-         atiendo y mi formación; luego, a todo el ancho, lo que estoy
-         habilitado a usar; y después el resto. --}}
+         pequeñas. Primero las asesorías que atiendo, mis reservas y lo que estoy
+         habilitado a usar; luego, a todo el ancho, mi formación; y después
+         el resto. --}}
     <div class="tablero">
-    <section class="bloque" data-bloque="asesorias">
-    {{-- --------------------------------------------------- asesorías --}}
-    @if ($asesorias->isNotEmpty())
-        <h2><x-icono nombre="asesorias"/>Mis próximas asesorías</h2>
-
-        <div class="panel">
-            <p class="help" style="margin-top:0">
-                Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
-                usarla, resérvala aparte.
-            </p>
-
-            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
-
-            <table>
-                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th><th></th></tr></thead>
-                <tbody>
-                @foreach ($asesorias as $a)
-                    @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
-                    <tr>
-                        <td>
-                            {{-- Una general no tiene máquina: decir «—» obligaba a
-                                 adivinar de qué iba. --}}
-                            {{ $a->sobreQue() ?? '—' }}
-                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
-                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
-                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
-                            @endif
-                        </td>
-                        <td>{{ $a->reservable?->name ?? '—' }}</td>
-                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
-                        <td style="text-align:right;white-space:nowrap">
-                            @if ($a->checked_in_at)
-                                <span class="pill ok">Atendida</span>
-                            @elseif ($a->status === 'confirmada' && now()->greaterThan($tol))
-                                {{-- La otra cara de la validación: si quien atiende
-                                     no ha dicho nada pasada la tolerancia, quien
-                                     pidió puede decir que no lo atendieron. --}}
-                                <form method="POST" action="{{ route('asesoria.no_me_atendieron', $a) }}" style="display:inline"
-                                      onsubmit="return confirm('¿Nadie te atendió? Queda anotado con tu nombre y el de quien debía atenderte.')">
-                                    @csrf
-                                    <button type="submit" class="secundario">No me atendieron</button>
-                                </form>
-                            @elseif ($a->status === 'solicitada')
-                                <span class="pill warn">Pendiente</span>
-                            @endif
-                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
-                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-    </section>
-
     <section class="bloque" data-bloque="atiendo">
 
     @if ($asesoriasQueAtiendo->isNotEmpty())
@@ -195,7 +138,150 @@
     @endif
     </section>
 
-    <section class="bloque" data-bloque="cursos">
+    <section class="bloque" data-bloque="reservas">
+    {{-- ---------------------------------------------------- reservas --}}
+    <h2><x-icono nombre="reservas"/>Mis próximas reservas</h2>
+
+    @if ($reservas->isEmpty())
+        <div class="panel">
+            <p style="margin:0">No tienes reservas próximas.</p>
+            <a href="{{ route('reservas.index') }}"><button type="button">Reservar un equipo</button></a>
+        </div>
+    @else
+        <div class="panel">
+            <table>
+                <thead><tr><th>Qué</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($reservas as $r)
+                    @php $esEspacio = $r->reservable_type === \App\Models\Space::class; @endphp
+                    <tr>
+                        <td>
+                            {{ $r->reservable?->name ?? '—' }}
+                            <br><span class="help" style="margin:0;font-size:.82rem">
+                                {{ $esEspacio ? ($r->esRecorrido() ? 'Recorrido' : 'Espacio') : 'Equipo' }}
+                                @if ($esEspacio && $r->participants > 1) · {{ $r->participants }} personas @endif
+                            </span>
+                            @if ($esEspacio && $r->supervisor)
+                                <br><span class="help" style="margin:0;font-size:.82rem">Te recibe {{ $r->supervisor->name }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                            — {{ $r->ends_at->timezone($tz)->format('H:i') }}
+                        </td>
+                        <td>
+                            <span class="pill {{ in_array($r->status, ['confirmada', 'en_curso'], true) ? 'ok' : 'warn' }}">
+                                {{ \App\Models\Reservation::ESTADOS[$r->status] ?? $r->status }}
+                            </span>
+                            @if ($r->status === 'solicitada')
+                                <br><span class="help" style="margin:0;font-size:.82rem">Esperando decisión de la coordinación</span>
+                            @endif
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            {{-- Validar la llegada desde aquí: hasta ahora había
+                                 que salir a buscar la cámara del teléfono. --}}
+                            @if (in_array($r->status, ['confirmada', 'en_curso'], true))
+                                <a href="{{ route('escaneo.camara') }}"><strong>Validar mi llegada</strong></a>
+                                ·
+                            @endif
+                            <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
+                            {{-- Cancelar desde aquí: sin esto, quien pedía una
+                                 sala y quería cambiarla volvía a pedirla. --}}
+                            @if (in_array($r->status, ['solicitada', 'confirmada'], true) && $r->starts_at->isFuture())
+                                <form method="POST" action="{{ route('reservas.cancel', $r) }}" style="display:inline"
+                                      onsubmit="return confirm('¿Cancelar? Esa hora queda libre para alguien más.')">
+                                    @csrf
+                                    <button type="submit" class="secundario" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.78rem">Cancelar</button>
+                                </form>
+                                {{-- Cuántas personas, sin cancelar y volver a
+                                     pedir: reservar para diez y ser dos es lo
+                                     normal. --}}
+                                @if ($esEspacio && ! $r->esRecorrido())
+                                    <br>
+                                    <details class="plegable" style="margin-top:.3rem">
+                                        <summary style="font-size:.85rem">Cambiar personas</summary>
+                                        <form method="POST" action="{{ route('reservas.personas', $r) }}">
+                                            @csrf
+                                            <label for="personas-{{ $r->id }}">Cuántas van</label>
+                                            <input id="personas-{{ $r->id }}" name="participantes" type="number" min="1" max="500" required value="{{ $r->participants }}">
+                                            <button type="submit">Guardar</button>
+                                        </form>
+                                    </details>
+                                @endif
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+    </section>
+
+    <section class="bloque" data-bloque="certifabs">
+    {{-- ---------------------------------------------------- certifabs --}}
+    <h2><x-icono nombre="habilitado"/>Lo que estoy habilitado a usar</h2>
+
+    @if ($certifabs->isEmpty())
+        <div class="panel">
+            <p style="margin:0">Todavía no tienes ninguna habilitación.</p>
+            <p class="help" style="margin:.6rem 0 0">
+                Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
+                y ahí verás qué necesitas para habilitarte.
+            </p>
+            <a href="{{ route('reservas.index') }}"><button type="button">Ver el catálogo</button></a>
+        </div>
+    @else
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Habilita</th><th>Nivel</th><th>Vigencia</th>
+                        <th>Otorgado por</th><th>Verificación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($certifabs as $c)
+                    @php $estado = $c->estado(); @endphp
+                    <tr>
+                        <td>
+                            <strong>{{ $c->asset?->name ?? $c->riskFamily?->name }}</strong>
+                            <div class="quien">
+                                {{ $c->asset?->area?->name ?? $c->riskFamily?->area?->name }}
+                                · {{ $c->asset_id ? 'equipo puntual' : 'toda la familia' }}
+                            </div>
+                        </td>
+                        <td>{{ $c->level }}</td>
+                        <td>
+                            <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}">{{ $estado }}</span>
+                            @if ($c->expires_at)
+                                <div class="quien">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $c->grantedBy?->name ?? '—' }}
+                            <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
+                        </td>
+                        <td>
+                            {{-- El código es lo que le sirve a la persona para
+                                 demostrar su habilitación fuera del sistema. --}}
+                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank">
+                                <span class="who">{{ $c->public_code }}</span>
+                            </a>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+            <p class="foot" style="margin-top:.9rem">
+                Comparte el código o el enlace para que cualquiera verifique tu habilitación
+                sin tener que preguntarle al laboratorio.
+            </p>
+        </div>
+    @endif
+    </section>
+
+    <section class="bloque ancho" data-bloque="cursos">
     {{-- ---------------------------------------------------- cursos --}}
     @if ($cursos->isNotEmpty())
         <h2><x-icono nombre="formacion"/>Mi formación</h2>
@@ -293,65 +379,59 @@
     @endif
     </section>
 
-    <section class="bloque ancho" data-bloque="certifabs">
-    {{-- ---------------------------------------------------- certifabs --}}
-    <h2><x-icono nombre="habilitado"/>Lo que estoy habilitado a usar</h2>
+    <section class="bloque" data-bloque="asesorias">
+    {{-- --------------------------------------------------- asesorías --}}
+    @if ($asesorias->isNotEmpty())
+        <h2><x-icono nombre="asesorias"/>Mis próximas asesorías</h2>
 
-    @if ($certifabs->isEmpty())
         <div class="panel">
-            <p style="margin:0">Todavía no tienes ninguna habilitación.</p>
-            <p class="help" style="margin:.6rem 0 0">
-                Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
-                y ahí verás qué necesitas para habilitarte.
+            <p class="help" style="margin-top:0">
+                Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
+                usarla, resérvala aparte.
             </p>
-            <a href="{{ route('reservas.index') }}"><button type="button">Ver el catálogo</button></a>
-        </div>
-    @else
-        <div class="panel">
+
+            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+
             <table>
-                <thead>
-                    <tr>
-                        <th>Habilita</th><th>Nivel</th><th>Vigencia</th>
-                        <th>Otorgado por</th><th>Verificación</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th><th></th></tr></thead>
                 <tbody>
-                @foreach ($certifabs as $c)
-                    @php $estado = $c->estado(); @endphp
+                @foreach ($asesorias as $a)
+                    @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
                     <tr>
                         <td>
-                            <strong>{{ $c->asset?->name ?? $c->riskFamily?->name }}</strong>
-                            <div class="quien">
-                                {{ $c->asset?->area?->name ?? $c->riskFamily?->area?->name }}
-                                · {{ $c->asset_id ? 'equipo puntual' : 'toda la familia' }}
-                            </div>
-                        </td>
-                        <td>{{ $c->level }}</td>
-                        <td>
-                            <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}">{{ $estado }}</span>
-                            @if ($c->expires_at)
-                                <div class="quien">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</div>
+                            {{-- Una general no tiene máquina: decir «—» obligaba a
+                                 adivinar de qué iba. --}}
+                            {{ $a->sobreQue() ?? '—' }}
+                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
+                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
                             @endif
                         </td>
-                        <td>
-                            {{ $c->grantedBy?->name ?? '—' }}
-                            <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
-                        </td>
-                        <td>
-                            {{-- El código es lo que le sirve a la persona para
-                                 demostrar su habilitación fuera del sistema. --}}
-                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank">
-                                <span class="who">{{ $c->public_code }}</span>
-                            </a>
+                        <td>{{ $a->reservable?->name ?? '—' }}</td>
+                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($a->checked_in_at)
+                                <span class="pill ok">Atendida</span>
+                            @elseif ($a->status === 'confirmada' && now()->greaterThan($tol))
+                                {{-- La otra cara de la validación: si quien atiende
+                                     no ha dicho nada pasada la tolerancia, quien
+                                     pidió puede decir que no lo atendieron. --}}
+                                <form method="POST" action="{{ route('asesoria.no_me_atendieron', $a) }}" style="display:inline"
+                                      onsubmit="return confirm('¿Nadie te atendió? Queda anotado con tu nombre y el de quien debía atenderte.')">
+                                    @csrf
+                                    <button type="submit" class="secundario">No me atendieron</button>
+                                </form>
+                            @elseif ($a->status === 'solicitada')
+                                <span class="pill warn">Pendiente</span>
+                            @endif
+                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
+                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
-            <p class="foot" style="margin-top:.9rem">
-                Comparte el código o el enlace para que cualquiera verifique tu habilitación
-                sin tener que preguntarle al laboratorio.
-            </p>
         </div>
     @endif
     </section>
@@ -461,86 +541,6 @@
                                 @include('cuenta._pasar', ['reserva' => $r, 'candidatos' => $candidatos->get($r->id)])
                             @endif
                             <br><a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-    </section>
-
-    <section class="bloque" data-bloque="reservas">
-    {{-- ---------------------------------------------------- reservas --}}
-    <h2><x-icono nombre="reservas"/>Mis próximas reservas</h2>
-
-    @if ($reservas->isEmpty())
-        <div class="panel">
-            <p style="margin:0">No tienes reservas próximas.</p>
-            <a href="{{ route('reservas.index') }}"><button type="button">Reservar un equipo</button></a>
-        </div>
-    @else
-        <div class="panel">
-            <table>
-                <thead><tr><th>Qué</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead>
-                <tbody>
-                @foreach ($reservas as $r)
-                    @php $esEspacio = $r->reservable_type === \App\Models\Space::class; @endphp
-                    <tr>
-                        <td>
-                            {{ $r->reservable?->name ?? '—' }}
-                            <br><span class="help" style="margin:0;font-size:.82rem">
-                                {{ $esEspacio ? ($r->esRecorrido() ? 'Recorrido' : 'Espacio') : 'Equipo' }}
-                                @if ($esEspacio && $r->participants > 1) · {{ $r->participants }} personas @endif
-                            </span>
-                            @if ($esEspacio && $r->supervisor)
-                                <br><span class="help" style="margin:0;font-size:.82rem">Te recibe {{ $r->supervisor->name }}</span>
-                            @endif
-                        </td>
-                        <td>
-                            {{ $r->starts_at->timezone($tz)->format('d/m/Y H:i') }}
-                            — {{ $r->ends_at->timezone($tz)->format('H:i') }}
-                        </td>
-                        <td>
-                            <span class="pill {{ in_array($r->status, ['confirmada', 'en_curso'], true) ? 'ok' : 'warn' }}">
-                                {{ \App\Models\Reservation::ESTADOS[$r->status] ?? $r->status }}
-                            </span>
-                            @if ($r->status === 'solicitada')
-                                <br><span class="help" style="margin:0;font-size:.82rem">Esperando decisión de la coordinación</span>
-                            @endif
-                        </td>
-                        <td style="text-align:right;white-space:nowrap">
-                            {{-- Validar la llegada desde aquí: hasta ahora había
-                                 que salir a buscar la cámara del teléfono. --}}
-                            @if (in_array($r->status, ['confirmada', 'en_curso'], true))
-                                <a href="{{ route('escaneo.camara') }}"><strong>Validar mi llegada</strong></a>
-                                ·
-                            @endif
-                            <a href="{{ route('calendario.reserva', $r) }}">Añadir a mi calendario</a>
-                            {{-- Cancelar desde aquí: sin esto, quien pedía una
-                                 sala y quería cambiarla volvía a pedirla. --}}
-                            @if (in_array($r->status, ['solicitada', 'confirmada'], true) && $r->starts_at->isFuture())
-                                <form method="POST" action="{{ route('reservas.cancel', $r) }}" style="display:inline"
-                                      onsubmit="return confirm('¿Cancelar? Esa hora queda libre para alguien más.')">
-                                    @csrf
-                                    <button type="submit" class="secundario" style="margin:0 0 0 .4rem;padding:.15rem .5rem;font-size:.78rem">Cancelar</button>
-                                </form>
-                                {{-- Cuántas personas, sin cancelar y volver a
-                                     pedir: reservar para diez y ser dos es lo
-                                     normal. --}}
-                                @if ($esEspacio && ! $r->esRecorrido())
-                                    <br>
-                                    <details class="plegable" style="margin-top:.3rem">
-                                        <summary style="font-size:.85rem">Cambiar personas</summary>
-                                        <form method="POST" action="{{ route('reservas.personas', $r) }}">
-                                            @csrf
-                                            <label for="personas-{{ $r->id }}">Cuántas van</label>
-                                            <input id="personas-{{ $r->id }}" name="participantes" type="number" min="1" max="500" required value="{{ $r->participants }}">
-                                            <button type="submit">Guardar</button>
-                                        </form>
-                                    </details>
-                                @endif
-                            @endif
                         </td>
                     </tr>
                 @endforeach
