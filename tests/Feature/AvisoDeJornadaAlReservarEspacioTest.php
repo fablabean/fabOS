@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ScheduleException;
+use App\Models\ShiftAssignment;
 use App\Models\Space;
 use App\Models\User;
 use App\Models\UserCategory;
@@ -196,6 +197,47 @@ class AvisoDeJornadaAlReservarEspacioTest extends TestCase
                 'se ofreció ' . $opcion['etiqueta'] . ', que acabaría en la bandeja igual',
             );
         }
+    }
+
+    /**
+     * Un turno suelto cubre la franja, pero no es «la jornada del equipo».
+     *
+     * Caso real de producción: las jornadas del jueves terminan a las 17:30 y
+     * la pantalla decía «Dentro de la jornada del equipo» a las 18:00. Era
+     * cierto que había quien atendiera —alguien se quedaba hasta las 20:00
+     * para ayudar en una clase— pero se leía como que el laboratorio abre
+     * hasta las ocho los jueves, y no: es una tarde suelta.
+     */
+    public function test_un_turno_programado_cubre_pero_no_se_llama_jornada(): void
+    {
+        $quien = $this->colaborador([1]);
+
+        // Se queda hasta las 20:00 ese lunes, por otra cosa.
+        ShiftAssignment::create([
+            'user_id'   => $quien->id,
+            'starts_at' => $this->hora('18:00')->utc(),
+            'ends_at'   => $this->hora('20:00')->utc(),
+            'reason'    => 'Ayuda para clase de profesor',
+        ]);
+
+        $vista = $this->espacios()->vistaPreviaDeJornada([$this->sala], $this->hora('18:00'), 60);
+
+        $this->assertTrue($vista['cubierta'], 'hay quien atienda: se confirma sola');
+        $this->assertSame('Hay turno programado a esa hora', $vista['titulo']);
+        $this->assertStringContainsString('fuera del horario habitual', $vista['mensaje']);
+        $this->assertStringContainsString('de 08:00 a 18:00', $vista['mensaje'], 'y se dice cuál es el habitual');
+        $this->assertStringContainsString('No es el horario de todas las semanas', $vista['mensaje']);
+    }
+
+    /** Dentro del horario de siempre se dice tal cual, sin matices. */
+    public function test_dentro_del_horario_habitual_no_se_matiza(): void
+    {
+        $this->colaborador([1]);
+
+        $vista = $this->espacios()->vistaPreviaDeJornada([$this->sala], $this->hora('10:00'), 60);
+
+        $this->assertSame('Dentro de la jornada del equipo', $vista['titulo']);
+        $this->assertStringNotContainsString('fuera del horario habitual', $vista['mensaje']);
     }
 
     // ------------------------------------------------------------------ la pantalla

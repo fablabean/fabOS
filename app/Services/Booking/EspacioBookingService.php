@@ -187,13 +187,38 @@ class EspacioBookingService
         $abre   = $franja ? substr($franja[0], 0, 5) : null;
         $cierra = $franja ? substr($franja[1], 0, 5) : null;
 
+        /*
+         * Dentro del horario habitual, o solo por un turno suelto.
+         *
+         * Hay quien atienda de dos maneras distintas, y no dan lo mismo. El
+         * horario habitual sale del patrón semanal de las jornadas: es lo que
+         * el laboratorio hace todas las semanas. Un turno programado es de un
+         * día concreto —alguien se queda hasta las ocho para ayudar en una
+         * clase— y cubre esa franja igual de bien, pero NO es el horario del
+         * laboratorio.
+         *
+         * Llamar «jornada del equipo» a las dos cosas hacía leer que el
+         * laboratorio abre hasta las ocho los jueves, cuando lo que hay es una
+         * tarde suelta. Se dice cuál de las dos es.
+         */
+        $enElHorario = $franja
+            && $desde->greaterThanOrEqualTo($desde->copy()->startOfDay()->setTimeFromTimeString($franja[0]))
+            && $hasta->lessThanOrEqualTo($desde->copy()->startOfDay()->setTimeFromTimeString($franja[1]));
+
         if ($this->estanCubiertos($espacios, $desde, $hasta)) {
             return [
                 'cubierta' => true,
                 'franja'   => $franja ? [$abre, $cierra] : null,
-                'titulo'   => 'Dentro de la jornada del equipo',
-                'mensaje'  => 'De ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i')
-                    . ' hay quien atienda, así que la reserva queda confirmada al instante.',
+                'titulo'   => $enElHorario
+                    ? 'Dentro de la jornada del equipo'
+                    : 'Hay turno programado a esa hora',
+                'mensaje'  => $enElHorario
+                    ? 'De ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i')
+                        . ' hay quien atienda, así que la reserva queda confirmada al instante.'
+                    : 'Está fuera del horario habitual'
+                        . ($franja ? ' —ese día el equipo atiende de ' . $abre . ' a ' . $cierra . '—' : '')
+                        . ', pero alguien tiene turno programado y cubre esa franja: la reserva'
+                        . ' queda confirmada al instante. No es el horario de todas las semanas.',
                 'opciones' => [],
             ];
         }
