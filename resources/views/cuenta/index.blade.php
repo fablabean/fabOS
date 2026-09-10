@@ -1,5 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Mi cuenta · fabOS')
+@section('title', 'Mi cuenta · ' . config('fabos.lab.name'))
+{{-- A todo el ancho: el tablero de tres columnas lo necesita. --}}
+@section('ancho', 'completo')
 
 @php $tz = config('fabos.lab.timezone'); @endphp
 
@@ -25,72 +27,178 @@
     <style>
         .saludo{display:flex;gap:1rem;align-items:center;margin-bottom:1.4rem}
         .saludo .avatar{font-size:1.5rem}
+
+        /* El tablero: tres columnas en un monitor grande, dos en uno mediano,
+           una en el teléfono. Cada bloque es una tarjeta con su icono; los que
+           no tienen nada que decir no ocupan sitio. */
+        .tablero{display:grid;gap:0 1.4rem;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+        .tablero .bloque{min-width:0}
+        .tablero .bloque.ancho{grid-column:1 / -1}
+        .tablero .bloque:not(:has(h2)){display:none}
+        .tablero h2{display:flex;align-items:center;gap:.5rem;margin-top:.6rem}
+        .tablero h2 .ico{display:inline-flex;color:var(--accent)}
+        .tablero .panel{overflow-x:auto}
+        @media (max-width:1400px){.tablero{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media (max-width:900px){.tablero{grid-template-columns:minmax(0,1fr)}}
     </style>
 
-    {{-- ---------------------------------------------------- certifabs --}}
-    <h2>Lo que estoy habilitado a usar</h2>
+    {{-- El tablero: tres columnas en pantallas grandes, una en las
+         pequeñas. Primero lo que toca pronto: las asesorías que pedí, las que
+         atiendo y mi formación; luego, a todo el ancho, lo que estoy
+         habilitado a usar; y después el resto. --}}
+    <div class="tablero">
+    <section class="bloque" data-bloque="asesorias">
+    {{-- --------------------------------------------------- asesorías --}}
+    @if ($asesorias->isNotEmpty())
+        <h2><x-icono nombre="asesorias"/>Mis próximas asesorías</h2>
 
-    @if ($certifabs->isEmpty())
         <div class="panel">
-            <p style="margin:0">Todavía no tienes ninguna habilitación.</p>
-            <p class="help" style="margin:.6rem 0 0">
-                Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
-                y ahí verás qué necesitas para habilitarte.
+            <p class="help" style="margin-top:0">
+                Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
+                usarla, resérvala aparte.
             </p>
-            <a href="{{ route('reservas.index') }}"><button type="button">Ver el catálogo</button></a>
-        </div>
-    @else
-        <div class="panel">
+
+            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+
             <table>
-                <thead>
-                    <tr>
-                        <th>Habilita</th><th>Nivel</th><th>Vigencia</th>
-                        <th>Otorgado por</th><th>Verificación</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th><th></th></tr></thead>
                 <tbody>
-                @foreach ($certifabs as $c)
-                    @php $estado = $c->estado(); @endphp
+                @foreach ($asesorias as $a)
+                    @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
                     <tr>
                         <td>
-                            <strong>{{ $c->asset?->name ?? $c->riskFamily?->name }}</strong>
-                            <div class="quien">
-                                {{ $c->asset?->area?->name ?? $c->riskFamily?->area?->name }}
-                                · {{ $c->asset_id ? 'equipo puntual' : 'toda la familia' }}
-                            </div>
-                        </td>
-                        <td>{{ $c->level }}</td>
-                        <td>
-                            <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}">{{ $estado }}</span>
-                            @if ($c->expires_at)
-                                <div class="quien">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</div>
+                            {{-- Una general no tiene máquina: decir «—» obligaba a
+                                 adivinar de qué iba. --}}
+                            {{ $a->sobreQue() ?? '—' }}
+                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
+                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
                             @endif
                         </td>
-                        <td>
-                            {{ $c->grantedBy?->name ?? '—' }}
-                            <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
-                        </td>
-                        <td>
-                            {{-- El código es lo que le sirve a la persona para
-                                 demostrar su habilitación fuera del sistema. --}}
-                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank">
-                                <span class="who">{{ $c->public_code }}</span>
-                            </a>
+                        <td>{{ $a->reservable?->name ?? '—' }}</td>
+                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($a->checked_in_at)
+                                <span class="pill ok">Atendida</span>
+                            @elseif ($a->status === 'confirmada' && now()->greaterThan($tol))
+                                {{-- La otra cara de la validación: si quien atiende
+                                     no ha dicho nada pasada la tolerancia, quien
+                                     pidió puede decir que no lo atendieron. --}}
+                                <form method="POST" action="{{ route('asesoria.no_me_atendieron', $a) }}" style="display:inline"
+                                      onsubmit="return confirm('¿Nadie te atendió? Queda anotado con tu nombre y el de quien debía atenderte.')">
+                                    @csrf
+                                    <button type="submit" class="secundario">No me atendieron</button>
+                                </form>
+                            @elseif ($a->status === 'solicitada')
+                                <span class="pill warn">Pendiente</span>
+                            @endif
+                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
+                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
-            <p class="foot" style="margin-top:.9rem">
-                Comparte el código o el enlace para que cualquiera verifique tu habilitación
-                sin tener que preguntarle al laboratorio.
-            </p>
         </div>
     @endif
+    </section>
 
+    <section class="bloque" data-bloque="atiendo">
+
+    @if ($asesoriasQueAtiendo->isNotEmpty())
+        <h2><x-icono nombre="atender"/>Asesorías que voy a atender</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                Una asesoría no tiene QR: la llegada la validas tú. Si se te olvidó, se puede
+                validar hasta {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }} días
+                después; si la persona no vino, dilo aquí para que quede anotado. Si ese día no
+                puedes, pásasela a alguien del equipo: queda a su nombre cuando acepte.
+            </p>
+
+            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
+            @if ($traspasosRecibidos->isEmpty()) @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror @endif
+
+            <table>
+                <thead><tr><th>Sobre qué</th><th>Quién la pidió</th><th>Cuándo</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($asesoriasQueAtiendo as $a)
+                    @php
+                        $abre = $a->starts_at->copy()->subMinutes(config('fabos.checkin.antes'));
+                        $tol  = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia'));
+                    @endphp
+                    <tr>
+                        <td>
+                            @if ($a->esPractica())
+                                <span class="pill warn" style="margin:0 .3rem 0 0">Práctica</span>
+                            @endif
+                            {{ $a->sobreQue() ?? '—' }}
+                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
+                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
+                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $a->user?->name ?? '—' }}
+                            @if ($a->purpose && ! $a->esPractica())
+                                <br><span class="help" style="margin:0;font-size:.82rem">«{{ $a->purpose }}»</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $a->starts_at->timezone($tz)->format('d/m/Y H:i') }}
+                            — {{ $a->ends_at->timezone($tz)->format('H:i') }}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if ($a->checked_in_at)
+                                <span class="pill ok">{{ $a->esPractica() ? 'Firmada' : 'Validada' }}</span>
+                            @elseif ($a->esPractica() && $a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
+                                {{-- Una practica no se valida aqui: la firma la
+                                     coordinacion en el panel, y esa firma da el
+                                     certifab. --}}
+                                <span class="help" style="margin:0;font-size:.82rem">Se firma en el panel, en la edición del curso</span>
+                            @elseif ($a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
+                                <form method="POST" action="{{ route('asesoria.llego', $a) }}" style="display:inline">
+                                    @csrf
+                                    <button type="submit">Llegó</button>
+                                </form>
+                                @if (now()->greaterThan($tol))
+                                    <form method="POST" action="{{ route('asesoria.no_vino', $a) }}" style="display:inline"
+                                          onsubmit="return confirm('¿No vino? Queda como no presentada, con tu nombre.')">
+                                        @csrf
+                                        <button type="submit" class="secundario">No vino</button>
+                                    </form>
+                                @endif
+                                {{-- Ya se puede validar la llegada, pero todavía no
+                                     empezó: hasta ese momento se puede pasar. --}}
+                                @if ($a->ends_at->isFuture() && ($a->traspasoPendiente || $candidatos->has($a->id)))
+                                    <br>@include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
+                                @endif
+                            @elseif ($a->status === 'solicitada')
+                                <span class="pill warn">Pendiente</span>
+                            @elseif ($a->traspasoPendiente || $candidatos->has($a->id))
+                                {{-- Confirmada y todavía lejos: es el momento de
+                                     pasarla si ese día no se puede. --}}
+                                @include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
+                            @else
+                                <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
+                            @endif
+                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
+                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+    </section>
+
+    <section class="bloque" data-bloque="cursos">
     {{-- ---------------------------------------------------- cursos --}}
     @if ($cursos->isNotEmpty())
-        <h2>Mi formación</h2>
+        <h2><x-icono nombre="formacion"/>Mi formación</h2>
         <div class="panel">
             <table>
                 <thead><tr><th>Curso</th><th>Cohorte</th><th>Estado</th><th>Certificado</th></tr></thead>
@@ -183,103 +291,76 @@
             </p>
         </div>
     @endif
+    </section>
 
-    {{-- --------------------------------------------------- proyectos --}}
-    @if ($proyectos->isNotEmpty())
-        <h2>Mis proyectos</h2>
+    <section class="bloque ancho" data-bloque="certifabs">
+    {{-- ---------------------------------------------------- certifabs --}}
+    <h2><x-icono nombre="habilitado"/>Lo que estoy habilitado a usar</h2>
 
+    @if ($certifabs->isEmpty())
+        <div class="panel">
+            <p style="margin:0">Todavía no tienes ninguna habilitación.</p>
+            <p class="help" style="margin:.6rem 0 0">
+                Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
+                y ahí verás qué necesitas para habilitarte.
+            </p>
+            <a href="{{ route('reservas.index') }}"><button type="button">Ver el catálogo</button></a>
+        </div>
+    @else
         <div class="panel">
             <table>
-                <thead><tr><th>Código</th><th>Proyecto</th><th>En qué va</th><th></th></tr></thead>
-                <tbody>
-                @foreach ($proyectos as $proyecto)
+                <thead>
                     <tr>
-                        <td class="quien">{{ $proyecto->code }}</td>
+                        <th>Habilita</th><th>Nivel</th><th>Vigencia</th>
+                        <th>Otorgado por</th><th>Verificación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($certifabs as $c)
+                    @php $estado = $c->estado(); @endphp
+                    <tr>
                         <td>
-                            {{ $proyecto->name }}
-                            @if ($proyecto->organization)
-                                <div class="quien">{{ $proyecto->organization }}</div>
+                            <strong>{{ $c->asset?->name ?? $c->riskFamily?->name }}</strong>
+                            <div class="quien">
+                                {{ $c->asset?->area?->name ?? $c->riskFamily?->area?->name }}
+                                · {{ $c->asset_id ? 'equipo puntual' : 'toda la familia' }}
+                            </div>
+                        </td>
+                        <td>{{ $c->level }}</td>
+                        <td>
+                            <span class="pill {{ $estado === 'vigente' ? 'ok' : 'bad' }}">{{ $estado }}</span>
+                            @if ($c->expires_at)
+                                <div class="quien">hasta {{ $c->expires_at->timezone($tz)->format('d/m/Y') }}</div>
                             @endif
                         </td>
                         <td>
-                            {{-- De los hechos y no de la etapa: «Idea» no
-                                 significa nada para quien ya aceptó. --}}
-                            @php $estado = $proyecto->estadoParaElCliente(); @endphp
-                            {{ $estado['titulo'] }}
-                            @if ($estado['detalle'])
-                                <div class="quien">{{ $estado['detalle'] }}</div>
-                            @endif
+                            {{ $c->grantedBy?->name ?? '—' }}
+                            <div class="quien">{{ $c->granted_at?->timezone($tz)->format('d/m/Y') }}</div>
                         </td>
                         <td>
-                            <a href="{{ route('proyectos.propuesta', $proyecto) }}">
-                                {{ $proyecto->proposal_sent_at ? 'Ver la propuesta' : 'Ver el proyecto' }} →
+                            {{-- El código es lo que le sirve a la persona para
+                                 demostrar su habilitación fuera del sistema. --}}
+                            <a href="{{ route('publico.verificar', $c->public_code) }}" target="_blank">
+                                <span class="who">{{ $c->public_code }}</span>
                             </a>
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
-        </div>
-    @endif
-
-    {{-- --------------------------------------------------- asesorías --}}
-    @if ($asesorias->isNotEmpty())
-        <h2>Mis próximas asesorías</h2>
-
-        <div class="panel">
-            <p class="help" style="margin-top:0">
-                Alguien del laboratorio te acompaña. No reservan la máquina: si además vas a
-                usarla, resérvala aparte.
+            <p class="foot" style="margin-top:.9rem">
+                Comparte el código o el enlace para que cualquiera verifique tu habilitación
+                sin tener que preguntarle al laboratorio.
             </p>
-
-            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
-
-            <table>
-                <thead><tr><th>Equipo</th><th>Te atiende</th><th>Cuándo</th><th></th></tr></thead>
-                <tbody>
-                @foreach ($asesorias as $a)
-                    @php $tol = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia')); @endphp
-                    <tr>
-                        <td>
-                            {{-- Una general no tiene máquina: decir «—» obligaba a
-                                 adivinar de qué iba. --}}
-                            {{ $a->sobreQue() ?? '—' }}
-                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
-                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
-                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
-                            @endif
-                        </td>
-                        <td>{{ $a->reservable?->name ?? '—' }}</td>
-                        <td>{{ $a->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}</td>
-                        <td style="text-align:right;white-space:nowrap">
-                            @if ($a->checked_in_at)
-                                <span class="pill ok">Atendida</span>
-                            @elseif ($a->status === 'confirmada' && now()->greaterThan($tol))
-                                {{-- La otra cara de la validación: si quien atiende
-                                     no ha dicho nada pasada la tolerancia, quien
-                                     pidió puede decir que no lo atendieron. --}}
-                                <form method="POST" action="{{ route('asesoria.no_me_atendieron', $a) }}" style="display:inline"
-                                      onsubmit="return confirm('¿Nadie te atendió? Queda anotado con tu nombre y el de quien debía atenderte.')">
-                                    @csrf
-                                    <button type="submit" class="secundario">No me atendieron</button>
-                                </form>
-                            @elseif ($a->status === 'solicitada')
-                                <span class="pill warn">Pendiente</span>
-                            @endif
-                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
-                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
         </div>
     @endif
+    </section>
+
+    <section class="bloque" data-bloque="traspasos">
 
     {{-- Para quien es del equipo: lo que le proponen y lo que le toca atender. --}}
     @if ($traspasosRecibidos->isNotEmpty())
-        <h2>Me proponen atender</h2>
+        <h2><x-icono nombre="proponen"/>Me proponen atender</h2>
 
         <div class="panel">
             <p class="help" style="margin-top:0">
@@ -329,99 +410,14 @@
             </table>
         </div>
     @endif
+    </section>
 
-    @if ($asesoriasQueAtiendo->isNotEmpty())
-        <h2>Asesorías que voy a atender</h2>
-
-        <div class="panel">
-            <p class="help" style="margin-top:0">
-                Una asesoría no tiene QR: la llegada la validas tú. Si se te olvidó, se puede
-                validar hasta {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }} días
-                después; si la persona no vino, dilo aquí para que quede anotado. Si ese día no
-                puedes, pásasela a alguien del equipo: queda a su nombre cuando acepte.
-            </p>
-
-            @error('asesoria') <p class="msg error">{{ $message }}</p> @enderror
-            @if ($traspasosRecibidos->isEmpty()) @error('traspaso') <p class="msg error">{{ $message }}</p> @enderror @endif
-
-            <table>
-                <thead><tr><th>Sobre qué</th><th>Quién la pidió</th><th>Cuándo</th><th></th></tr></thead>
-                <tbody>
-                @foreach ($asesoriasQueAtiendo as $a)
-                    @php
-                        $abre = $a->starts_at->copy()->subMinutes(config('fabos.checkin.antes'));
-                        $tol  = $a->starts_at->copy()->addMinutes(config('fabos.checkin.tolerancia'));
-                    @endphp
-                    <tr>
-                        <td>
-                            @if ($a->esPractica())
-                                <span class="pill warn" style="margin:0 .3rem 0 0">Práctica</span>
-                            @endif
-                            {{ $a->sobreQue() ?? '—' }}
-                            {{-- El area debajo, salvo que ya este dicha arriba. --}}
-                            @if (($area = $a->areaDeLoQueAtiende()) && ! str_contains($a->sobreQue() ?? '', $area->name))
-                                <br><span class="help" style="margin:0;font-size:.82rem">{{ $area->name }}</span>
-                            @endif
-                        </td>
-                        <td>
-                            {{ $a->user?->name ?? '—' }}
-                            @if ($a->purpose && ! $a->esPractica())
-                                <br><span class="help" style="margin:0;font-size:.82rem">«{{ $a->purpose }}»</span>
-                            @endif
-                        </td>
-                        <td>
-                            {{ $a->starts_at->timezone($tz)->format('d/m/Y H:i') }}
-                            — {{ $a->ends_at->timezone($tz)->format('H:i') }}
-                        </td>
-                        <td style="text-align:right;white-space:nowrap">
-                            @if ($a->checked_in_at)
-                                <span class="pill ok">{{ $a->esPractica() ? 'Firmada' : 'Validada' }}</span>
-                            @elseif ($a->esPractica() && $a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
-                                {{-- Una practica no se valida aqui: la firma la
-                                     coordinacion en el panel, y esa firma da el
-                                     certifab. --}}
-                                <span class="help" style="margin:0;font-size:.82rem">Se firma en el panel, en la edición del curso</span>
-                            @elseif ($a->status === 'confirmada' && now()->greaterThanOrEqualTo($abre))
-                                <form method="POST" action="{{ route('asesoria.llego', $a) }}" style="display:inline">
-                                    @csrf
-                                    <button type="submit">Llegó</button>
-                                </form>
-                                @if (now()->greaterThan($tol))
-                                    <form method="POST" action="{{ route('asesoria.no_vino', $a) }}" style="display:inline"
-                                          onsubmit="return confirm('¿No vino? Queda como no presentada, con tu nombre.')">
-                                        @csrf
-                                        <button type="submit" class="secundario">No vino</button>
-                                    </form>
-                                @endif
-                                {{-- Ya se puede validar la llegada, pero todavía no
-                                     empezó: hasta ese momento se puede pasar. --}}
-                                @if ($a->ends_at->isFuture() && ($a->traspasoPendiente || $candidatos->has($a->id)))
-                                    <br>@include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
-                                @endif
-                            @elseif ($a->status === 'solicitada')
-                                <span class="pill warn">Pendiente</span>
-                            @elseif ($a->traspasoPendiente || $candidatos->has($a->id))
-                                {{-- Confirmada y todavía lejos: es el momento de
-                                     pasarla si ese día no se puede. --}}
-                                @include('cuenta._pasar', ['reserva' => $a, 'candidatos' => $candidatos->get($a->id)])
-                            @else
-                                <span class="help">Desde las {{ $abre->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}</span>
-                            @endif
-                            @if (in_array($a->status, ['confirmada', 'en_curso'], true) && $a->ends_at->isFuture())
-                                <br><a href="{{ route('calendario.reserva', $a) }}">Añadir a mi calendario</a>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
+    <section class="bloque" data-bloque="acompanamientos">
 
     {{-- Y los acompañamientos: una máquina que exige a alguien al lado, o
          un espacio donde se apuntó a acompañar. --}}
     @if ($acompanamientos->isNotEmpty())
-        <h2>Acompañamientos que voy a hacer</h2>
+        <h2><x-icono nombre="acompanar"/>Acompañamientos que voy a hacer</h2>
 
         <div class="panel">
             <p class="help" style="margin-top:0">
@@ -472,37 +468,11 @@
             </table>
         </div>
     @endif
+    </section>
 
-    {{-- ------------------------------------------- tiempo de proyecto --}}
-    @if ($bloques->isNotEmpty())
-        <h2>Tiempo apartado para proyectos</h2>
-
-        <div class="panel">
-            <p class="help" style="margin-top:0">
-                En estas horas no se te asignan asesorías ni acompañamientos. Se aparta desde la
-                tarea, en el proyecto.
-            </p>
-
-            <table>
-                <thead><tr><th>Proyecto</th><th>Tarea</th><th>Cuándo</th></tr></thead>
-                <tbody>
-                @foreach ($bloques as $b)
-                    <tr>
-                        <td>{{ $b->project?->code ?? '—' }}</td>
-                        <td>{{ $b->task?->title ?? '—' }}</td>
-                        <td>
-                            {{ $b->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
-                            — {{ $b->ends_at->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-
+    <section class="bloque" data-bloque="reservas">
     {{-- ---------------------------------------------------- reservas --}}
-    <h2>Mis próximas reservas</h2>
+    <h2><x-icono nombre="reservas"/>Mis próximas reservas</h2>
 
     @if ($reservas->isEmpty())
         <div class="panel">
@@ -578,5 +548,78 @@
             </table>
         </div>
     @endif
+    </section>
+
+    <section class="bloque" data-bloque="proyectos">
+    {{-- --------------------------------------------------- proyectos --}}
+    @if ($proyectos->isNotEmpty())
+        <h2><x-icono nombre="proyectos"/>Mis proyectos</h2>
+
+        <div class="panel">
+            <table>
+                <thead><tr><th>Código</th><th>Proyecto</th><th>En qué va</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($proyectos as $proyecto)
+                    <tr>
+                        <td class="quien">{{ $proyecto->code }}</td>
+                        <td>
+                            {{ $proyecto->name }}
+                            @if ($proyecto->organization)
+                                <div class="quien">{{ $proyecto->organization }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            {{-- De los hechos y no de la etapa: «Idea» no
+                                 significa nada para quien ya aceptó. --}}
+                            @php $estado = $proyecto->estadoParaElCliente(); @endphp
+                            {{ $estado['titulo'] }}
+                            @if ($estado['detalle'])
+                                <div class="quien">{{ $estado['detalle'] }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            <a href="{{ route('proyectos.propuesta', $proyecto) }}">
+                                {{ $proyecto->proposal_sent_at ? 'Ver la propuesta' : 'Ver el proyecto' }} →
+                            </a>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+    </section>
+
+    <section class="bloque" data-bloque="tiempo">
+    {{-- ------------------------------------------- tiempo de proyecto --}}
+    @if ($bloques->isNotEmpty())
+        <h2><x-icono nombre="tiempo"/>Tiempo apartado para proyectos</h2>
+
+        <div class="panel">
+            <p class="help" style="margin-top:0">
+                En estas horas no se te asignan asesorías ni acompañamientos. Se aparta desde la
+                tarea, en el proyecto.
+            </p>
+
+            <table>
+                <thead><tr><th>Proyecto</th><th>Tarea</th><th>Cuándo</th></tr></thead>
+                <tbody>
+                @foreach ($bloques as $b)
+                    <tr>
+                        <td>{{ $b->project?->code ?? '—' }}</td>
+                        <td>{{ $b->task?->title ?? '—' }}</td>
+                        <td>
+                            {{ $b->starts_at->timezone($tz ?? config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                            — {{ $b->ends_at->timezone($tz ?? config('fabos.lab.timezone'))->format('H:i') }}
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+    </section>
+
+    </div>
 
 @endsection
