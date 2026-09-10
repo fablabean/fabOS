@@ -95,6 +95,34 @@ class Bandeja extends Page
     }
 
     /**
+     * El rastro de vuelta: esta pantalla cuelga de Reservas.
+     *
+     * Se entra desde ahi y no esta en el menu, asi que sin esto la unica
+     * salida era el boton de atras del navegador o volver a buscar Reservas
+     * en el menu. Una pantalla en la que se entra y no se sale es una
+     * pantalla en la que la gente no entra dos veces.
+     */
+    public function getBreadcrumbs(): array
+    {
+        return [
+            ReservationResource::getUrl() => 'Reservas',
+            '#' => 'Solicitudes por decidir',
+        ];
+    }
+
+    /** Y el boton, para quien no lee migas de pan. */
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('volver')
+                ->label('Volver a Reservas')
+                ->icon('heroicon-o-arrow-left')
+                ->color('gray')
+                ->url(fn () => ReservationResource::getUrl()),
+        ];
+    }
+
+    /**
      * Lo que está esperando respuesta.
      *
      * El número lo enseña Reservas en el menú —esta pantalla ya no está en

@@ -302,9 +302,20 @@ class ReservationsTable
                         && ! $r->esProduccion())
                     ->requiresConfirmation()
                     ->modalHeading('Anotar que llegó a tiempo')
-                    ->modalDescription(fn (Reservation $r) => 'La llegada queda a las '
-                        . $r->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i')
-                        . ', la hora reservada, con tu nombre como quien lo anotó.')
+                    ->modalDescription(function (Reservation $r) {
+                        $texto = 'La llegada queda a las '
+                            . $r->starts_at->timezone(config('fabos.lab.timezone'))->format('H:i')
+                            . ', la hora reservada, con tu nombre como quien lo anotó.';
+
+                        // Se valida la actividad entera, no una fila: quien
+                        // entró a la sala entró con sus herramientas.
+                        $cuantas = $r->hijas()->where('status', 'confirmada')->count();
+
+                        return $cuantas
+                            ? $texto . ' Vale también por lo que se tomó dentro ('
+                                . $cuantas . ($cuantas > 1 ? ' reservas' : ' reserva') . ' más).'
+                            : $texto;
+                    })
                     ->action(function (Reservation $record) {
                         try {
                             app(\App\Services\Booking\AttendanceService::class)->llegoATiempo($record, auth()->user());

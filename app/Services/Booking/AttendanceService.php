@@ -5,6 +5,7 @@ namespace App\Services\Booking;
 use App\Models\Asset;
 use App\Models\Reservation;
 use App\Models\ReservationSupply;
+use App\Models\Space;
 use App\Models\Supply;
 use App\Models\User;
 use App\Services\Inventory\StockException;
@@ -105,7 +106,54 @@ class AttendanceService
             'checked_in_at' => $ahora,
         ]);
 
+        $this->arrastrarLlegada($reserva, $ahora);
+
         return $reserva->refresh();
+    }
+
+    /**
+     * La llegada vale por toda la actividad, no por una fila.
+     *
+     * Quien reserva una sala y toma dos herramientas dentro llega UNA vez, y
+     * son tres reservas. La llegada se guardaba solo donde se validó y las
+     * otras dos se quedaban esperando a alguien que ya estaba dentro: el
+     * barrido las daba por no presentadas a los quince minutos.
+     *
+     * Va en las dos direcciones, porque se puede entrar por cualquiera:
+     * escanear el multímetro valida también la sala donde se tomó, y validar
+     * la sala vale por las herramientas. Una sala no tiene QR que escanear,
+     * así que muchas veces la herramienta es la única puerta.
+     */
+    private function arrastrarLlegada(Reservation $reserva, Carbon $cuando): void
+    {
+        $raiz = $reserva->parent_reservation_id ?? $reserva->id;
+
+        Reservation::query()
+            ->where(fn ($q) => $q->whereKey($raiz)->orWhere('parent_reservation_id', $raiz))
+            ->whereKeyNot($reserva->id)
+            ->where('status', 'confirmada')
+            ->whereNull('checked_in_at')
+            ->get()
+            ->each(fn (Reservation $otra) => $otra->update([
+                'checked_in_at' => $cuando,
+                'status'        => $otra->ends_at->isPast() ? 'completada' : 'en_curso',
+            ]));
+    }
+
+    /**
+     * Una sala sin nada tomado dentro.
+     *
+     * No se valida al llegar porque no hay nada que escanear: el QR lo tienen
+     * los equipos, no las paredes. Lo que se tomó dentro sí lo tiene, y por eso
+     * una sala CON herramientas se sigue mirando: una herramienta apartada que
+     * nadie usó es una herramienta perdida.
+     */
+    private function esSalaSinHerramientas(Reservation $reserva): bool
+    {
+        return $reserva->reservable_type === Space::class
+            && ! Reservation::where('parent_reservation_id', $reserva->id)
+                ->where('reservable_type', Asset::class)
+                ->exists();
     }
 
     /**
@@ -193,6 +241,9 @@ class AttendanceService
             'status_reason' => 'Llegada a tiempo anotada por ' . $quien->name,
         ]);
 
+        // Con la sala llegan sus herramientas: es una actividad, no tres.
+        $this->arrastrarLlegada($reserva, $reserva->starts_at);
+
         return $reserva->refresh();
     }
 
@@ -241,9 +292,25 @@ class AttendanceService
             ->where('starts_at', '<', $limite)
             ->get();
 
-        $pendientes->each(fn (Reservation $r) => $this->marcarNoShow($r));
+        /*
+         * Una sala sola no se da por no presentada.
+         *
+         * No tiene QR: nadie puede validar que llegó, y marcarla era castigar
+         * por algo que no se podía hacer. Se deja correr, y cuando su hora
+         * pasa se cierra sin mancha para quien la pidió. Con herramientas
+         * dentro es otra cosa: eso sí quedó apartado y sin usar.
+         */
+        [$salas, $ausencias] = $pendientes->partition(fn (Reservation $r) => $this->esSalaSinHerramientas($r));
 
-        return $pendientes->count();
+        $salas->filter(fn (Reservation $r) => $r->ends_at->isPast())
+            ->each(fn (Reservation $r) => $r->update([
+                'status'        => 'completada',
+                'status_reason' => 'La sala se reservó y su hora pasó. Una sala no se valida al llegar: no hay QR que escanear.',
+            ]));
+
+        $ausencias->each(fn (Reservation $r) => $this->marcarNoShow($r));
+
+        return $ausencias->count();
     }
 
     /**
