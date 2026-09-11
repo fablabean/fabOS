@@ -47,6 +47,15 @@
         background:var(--surface);border:1px solid var(--rule);border-radius:6px;
         padding:.9rem 1rem;position:relative;
     }
+    /* El dibujo, en la esquina de enfrente del rotulo: no empuja el texto ni
+       le anade altura a la tarjeta, que son nueve. Discreto a proposito -lo
+       que hay que leer es el nombre del modulo, no el icono-. */
+    .modulo .icono{
+        position:absolute;top:.85rem;right:1rem;
+        width:1.5rem;height:1.5rem;color:var(--muted);opacity:.5;
+    }
+    .modulo.listo .icono{color:var(--accent);opacity:.65}
+    .modulo .icono svg{width:100%;height:100%;display:block}
     .modulo.listo{border-left:3px solid var(--accent)}
     .modulo.curso{border-left:3px solid #A45A17}
     .modulo.proximo{opacity:.72}
@@ -151,6 +160,7 @@
         <div class="mapa">
             @foreach ($mapa as $m)
                 <div class="modulo {{ $m['estado'] }}">
+                    @include('publico.icono-modulo', ['icono' => $m['icono'] ?? null])
                     <span class="marca {{ $m['estado'] }}">{{ $rotulos[$m['estado']] }}</span>
                     <b>{{ $m['nombre'] }}</b>
                     <span>{{ $m['detalle'] }}</span>

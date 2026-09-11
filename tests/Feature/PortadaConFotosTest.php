@@ -156,6 +156,50 @@ class PortadaConFotosTest extends TestCase
 
     // ------------------------------------------------------------- el mapa
 
+    /**
+     * Cada módulo trae su dibujo, y el dibujo existe.
+     *
+     * Un nombre de icono mal escrito en la configuración no rompe nada: el
+     * partial cae al `@default` y pinta un punto. Nueve puntos iguales serían
+     * peor que ningún icono, y nadie se daría cuenta mirando la página.
+     */
+    public function test_cada_modulo_tiene_su_dibujo(): void
+    {
+        $partial = file_get_contents(resource_path('views/publico/icono-modulo.blade.php'));
+
+        foreach (config('fabos.roadmap') as $modulo) {
+            $this->assertArrayHasKey('icono', $modulo, $modulo['nombre'] . ' se quedó sin icono');
+
+            $this->assertStringContainsString(
+                "@case('" . $modulo['icono'] . "')",
+                $partial,
+                'el icono «' . $modulo['icono'] . '» de ' . $modulo['nombre'] . ' no está dibujado',
+            );
+        }
+    }
+
+    /** Y no se repiten: nueve tarjetas con el mismo dibujo no dicen nada. */
+    public function test_los_dibujos_no_se_repiten(): void
+    {
+        $iconos = collect(config('fabos.roadmap'))->pluck('icono');
+
+        $this->assertSame($iconos->count(), $iconos->unique()->count(), 'hay iconos repetidos');
+    }
+
+    public function test_los_dibujos_llegan_a_la_portada(): void
+    {
+        $area = $this->area('Impresión 3D');
+        $this->equipo($area, 'Prusa MK4');
+
+        $html = $this->get(route('publico.home'))->assertOk()->getContent();
+
+        $this->assertSame(
+            count(config('fabos.roadmap')),
+            substr_count($html, 'class="icono"'),
+            'cada módulo pinta el suyo',
+        );
+    }
+
     public function test_fabcoins_sale_como_funcionando(): void
     {
         $modulos = collect(config('fabos.roadmap'));

@@ -334,18 +334,18 @@ return [
     | estado: listo | curso | proximo
     */
     'roadmap' => [
-        ['estado' => 'listo',   'nombre' => 'Ingreso sin contraseñas',   'detalle' => 'Código al correo o escaneando el carné digital de la Universidad.'],
-        ['estado' => 'listo',   'nombre' => 'Catálogo de equipos',       'detalle' => 'Los 82 activos del laboratorio, con su área y sus condiciones de uso.'],
-        ['estado' => 'listo',   'nombre' => 'Reservas',                  'detalle' => 'Agenda por equipo, con llegada y salida escaneando el QR de la máquina.'],
-        ['estado' => 'listo',   'nombre' => 'Habilitaciones',            'detalle' => 'Los certifabs que abren cada equipo, verificables públicamente.'],
-        ['estado' => 'listo',   'nombre' => 'Formación',                 'detalle' => 'Los cursos bit, byte, kilo, mega, giga y tera, hasta Fab Academy. Aprobar habilita las máquinas y deja un certificado verificable.'],
-        ['estado' => 'listo',   'nombre' => 'Mantenimiento',             'detalle' => 'Planes preventivos que se vuelven órdenes solos, y órdenes correctivas con evidencia fotográfica.'],
+        ['estado' => 'listo',   'nombre' => 'Ingreso sin contraseñas', 'icono' => 'llave',   'detalle' => 'Código al correo o escaneando el carné digital de la Universidad.'],
+        ['estado' => 'listo',   'nombre' => 'Catálogo de equipos', 'icono' => 'fichas',       'detalle' => 'Los 82 activos del laboratorio, con su área y sus condiciones de uso.'],
+        ['estado' => 'listo',   'nombre' => 'Reservas', 'icono' => 'calendario',                  'detalle' => 'Agenda por equipo, con llegada y salida escaneando el QR de la máquina.'],
+        ['estado' => 'listo',   'nombre' => 'Habilitaciones', 'icono' => 'insignia',            'detalle' => 'Los certifabs que abren cada equipo, verificables públicamente.'],
+        ['estado' => 'listo',   'nombre' => 'Formación', 'icono' => 'birrete',                 'detalle' => 'Los cursos bit, byte, kilo, mega, giga y tera, hasta Fab Academy. Aprobar habilita las máquinas y deja un certificado verificable.'],
+        ['estado' => 'listo',   'nombre' => 'Mantenimiento', 'icono' => 'engranaje',             'detalle' => 'Planes preventivos que se vuelven órdenes solos, y órdenes correctivas con evidencia fotográfica.'],
         // El detalle no dice si el cobro esta encendido: es un interruptor del
         // panel -«cobros.activos»- que se mueve cuando hace falta, y una
         // portada que afirme su estado de hoy miente el dia que cambie.
-        ['estado' => 'listo',   'nombre' => 'FabCoins',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Cotiza cada reserva, retiene lo comprometido y liquida contra lo que de verdad se usó, con recargas, cortesías y el libro de movimientos en el panel.'],
-        ['estado' => 'listo',   'nombre' => 'Tienda',                    'detalle' => 'Venta de insumos y trabajos por encargo. Se pide desde el sitio, se cotiza, se produce y se entrega, descontando el material del inventario.'],
-        ['estado' => 'listo',   'nombre' => 'Proyectos',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero, cronograma y el costo real de lo que consumió.'],
+        ['estado' => 'listo',   'nombre' => 'FabCoins', 'icono' => 'moneda',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Cotiza cada reserva, retiene lo comprometido y liquida contra lo que de verdad se usó, con recargas, cortesías y el libro de movimientos en el panel.'],
+        ['estado' => 'listo',   'nombre' => 'Tienda', 'icono' => 'bolsa',                    'detalle' => 'Venta de insumos y trabajos por encargo. Se pide desde el sitio, se cotiza, se produce y se entrega, descontando el material del inventario.'],
+        ['estado' => 'listo',   'nombre' => 'Proyectos', 'icono' => 'tablero',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero, cronograma y el costo real de lo que consumió.'],
     ],
 
 
