@@ -104,10 +104,18 @@ class AppServiceProvider extends ServiceProvider
             fn (\Filament\Forms\Components\DatePicker $campo) => $campo->timezone(config('app.timezone')),
         );
 
-        // Veinte filas por pagina en todas las listas del panel: con diez, la
-        // lista de proyectos o de personas obligaba a pasar pagina enseguida.
+        /*
+         * Veinticinco filas por pagina en todas las listas del panel: con diez,
+         * la lista de proyectos o de personas obligaba a pasar pagina enseguida.
+         *
+         * Y VEINTICINCO y no veinte a proposito. Aqui decia veinte, y las
+         * listas salian de CINCO en cinco -peor que el diez de fabrica-. Las
+         * opciones que Filament ofrece son [5, 10, 25, 50]: pedir por defecto
+         * un numero que no esta en la lista no da error, se cae a la primera
+         * opcion. El numero tiene que ser uno de los que se pueden elegir.
+         */
         \Filament\Tables\Table::configureUsing(
-            fn (\Filament\Tables\Table $tabla) => $tabla->defaultPaginationPageOption(20),
+            fn (\Filament\Tables\Table $tabla) => $tabla->defaultPaginationPageOption(25),
         );
 
         // La identidad del laboratorio se administra desde el backoffice y pisa
