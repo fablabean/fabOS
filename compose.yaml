@@ -80,6 +80,19 @@ services:
         command: 'tunnel --no-autoupdate run'
         environment:
             TUNNEL_TOKEN: '${CLOUDFLARE_TUNNEL_TOKEN}'
+            # Por HTTP/2 sobre TCP, no por QUIC.
+            #
+            # Por defecto cloudflared habla con Cloudflare por QUIC, o sea UDP,
+            # y el cortafuegos de la red donde vive el servidor no mantiene
+            # abiertos esos flujos: el tunel se caia con «failed to accept QUIC
+            # stream: timeout: no recent network activity» y volvia a conectar.
+            # Ciento veintidos veces en cuarenta y ocho horas, a rachas.
+            #
+            # Cada caida mata las peticiones EN VUELO, asi que quien estaba
+            # cargando una pagina en ese segundo la veia en blanco o a medias.
+            # Parecia cosa del navegador -intermitente, segun la red- y era de
+            # aqui. Por TCP el cortafuegos no se mete.
+            TUNNEL_TRANSPORT_PROTOCOL: 'http2'
         restart: unless-stopped
         networks:
             - sail
