@@ -159,6 +159,38 @@ class Reservation extends Model
         return $this->starts_at->isPast();
     }
 
+    /**
+     * Las reservas que atiende una persona del equipo.
+     *
+     * Se llega a atender una reserva por TRES vias distintas, y ninguna sobra:
+     * su tiempo reservado como asesoria -ella es el recurso-, figurar como
+     * quien acompana o recibe, o estar entre los acompanantes de un espacio.
+     * En el laboratorio de verdad se reparten muy desigual, asi que mirar una
+     * sola dibuja a media plantilla sin trabajo.
+     *
+     * Solo reservas MADRE: el bloque de tiempo del acompanante cuelga de la
+     * que acompana, y contarlo tambien seria contar dos veces la misma tarde.
+     *
+     * Vive aqui, en un sitio, porque la pregunta se hace en dos: las tarjetas
+     * de carga del equipo y el filtro de la tabla. Si fueran dos reglas, la
+     * tarjeta diria un numero y el filtro ensenaria otro.
+     *
+     * @param  int|list<int>  $quien
+     */
+    public function scopeAtendidaPor(\Illuminate\Database\Eloquent\Builder $query, int|array $quien): \Illuminate\Database\Eloquent\Builder
+    {
+        $ids = array_map('intval', (array) $quien);
+
+        return $query
+            ->whereNull('parent_reservation_id')
+            ->where(fn ($suyas) => $suyas
+                ->whereIn('supervisor_id', $ids)
+                ->orWhere(fn ($asesora) => $asesora
+                    ->where('reservable_type', User::class)
+                    ->whereIn('reservable_id', $ids))
+                ->orWhereHas('companions', fn ($c) => $c->whereIn('users.id', $ids)));
+    }
+
     /** Las que cuelgan de esta. */
     public function hijas(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

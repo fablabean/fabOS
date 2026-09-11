@@ -6,6 +6,7 @@ use App\Filament\Pages\Bandeja;
 use App\Models\Asset;
 use App\Models\Project;
 use App\Models\Reservation;
+use App\Models\User;
 use App\Services\Booking\EliminarReserva;
 use Filament\Actions\Action;
 use App\Services\Projects\ProduccionService;
@@ -135,6 +136,23 @@ class ReservationsTable
                 Filter::make('solo_equipos')
                     ->label('Solo equipos')
                     ->query(fn (Builder $query) => $query->where('reservable_type', Asset::class)),
+
+                /*
+                 * Quien la atiende, por las tres vias: es a donde llevan las
+                 * tarjetas de arriba. La regla no se escribe aqui sino en el
+                 * modelo, para que la tarjeta y el filtro no puedan decir
+                 * numeros distintos.
+                 */
+                SelectFilter::make('atiende')
+                    ->label('Quién la atiende')
+                    ->options(fn () => User::role([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN])
+                        ->where('status', 'activo')
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->atendidaPor((int) $data['value'])
+                        : $query),
             ])
             ->recordActions([
                 // Producir lo que se acordó en la asesoría.

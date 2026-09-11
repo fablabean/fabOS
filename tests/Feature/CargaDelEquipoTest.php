@@ -54,6 +54,18 @@ class CargaDelEquipoTest extends TestCase
         return $u;
     }
 
+    /** Con turno: es lo que distingue a quien trabaja de la cuenta de instalacion. */
+    private function conJornada(User $u): User
+    {
+        \App\Models\WorkSchedule::create([
+            'user_id' => $u->id, 'weekday' => 1, 'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_minutes' => 0, 'modalidad' => \App\Models\WorkSchedule::PRESENCIAL,
+            'effective_from' => '2026-01-01',
+        ]);
+
+        return $u;
+    }
+
     private function practicante(string $nombre): User
     {
         $u = User::create(['name' => $nombre, 'email' => uniqid() . '@test.co', 'status' => 'activo']);
@@ -196,7 +208,7 @@ class CargaDelEquipoTest extends TestCase
     /** Lo que no ocurrió no se le apunta a nadie. */
     public function test_lo_cancelado_y_lo_rechazado_no_suma(): void
     {
-        $camilo = $this->admin('Camilo');
+        $camilo = $this->conJornada($this->admin('Camilo'));
 
         $this->reserva('2026-08-25 10:00', '2026-08-25 12:00', 'cancelada', ['supervisor_id' => $camilo->id]);
         $this->reserva('2026-08-26 10:00', '2026-08-26 12:00', 'rechazada', ['supervisor_id' => $camilo->id]);
@@ -208,7 +220,7 @@ class CargaDelEquipoTest extends TestCase
 
     public function test_solo_salen_administradores_y_superadmins(): void
     {
-        $this->admin('Camilo');
+        $this->conJornada($this->admin('Camilo'));
         $this->practicante('Edwin');
 
         $tarjetas = $this->tarjetas();
@@ -220,8 +232,75 @@ class CargaDelEquipoTest extends TestCase
     /** Quien no tiene nada sale igual, en ceros: saber que está libre es el dato. */
     public function test_quien_no_tiene_nada_sale_en_ceros(): void
     {
-        $this->admin('Camilo');
+        $this->conJornada($this->admin('Camilo'));
 
         $this->assertSame(['activas' => 0, 'futuras' => 0, 'cerradas' => 0], $this->tarjetas()['Camilo']);
+    }
+
+    /**
+     * La cuenta con la que se instaló no sale.
+     *
+     * Un superadmin sin jornada y sin nada a su cargo no es alguien que trabaje
+     * en el laboratorio. Se reconoce por eso —ni turno ni trabajo— y no por su
+     * nombre, que cambia.
+     */
+    public function test_la_cuenta_de_sistema_no_sale(): void
+    {
+        $this->conJornada($this->admin('Camilo'));
+
+        $master = User::create(['name' => 'Fablab Master', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $master->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+
+        $tarjetas = $this->tarjetas();
+
+        $this->assertArrayHasKey('Camilo', $tarjetas, 'con jornada se queda aunque esté en ceros');
+        $this->assertArrayNotHasKey('Fablab Master', $tarjetas);
+    }
+
+    /** Pero si tiene trabajo sale, tenga jornada o no: nadie con algo a su cargo se esconde. */
+    public function test_sin_jornada_pero_con_trabajo_si_sale(): void
+    {
+        $suplente = $this->admin('Suplente');
+        $this->reserva('2026-08-25 10:00', '2026-08-25 12:00', 'confirmada', ['supervisor_id' => $suplente->id]);
+
+        $this->assertArrayHasKey('Suplente', $this->tarjetas());
+    }
+
+    // ------------------------------------------------------ la tarjeta lleva al listado
+
+    /**
+     * El filtro de la tabla y la tarjeta cuentan lo mismo.
+     *
+     * Son dos sitios preguntando lo mismo, y por eso la regla vive una sola vez
+     * en el modelo. Si se separaran, la tarjeta diría un número y el listado
+     * enseñaría otro, que es peor que no tener tarjeta.
+     */
+    public function test_el_filtro_da_lo_mismo_que_la_tarjeta(): void
+    {
+        $camilo = $this->conJornada($this->admin('Camilo'));
+        $otro = $this->conJornada($this->admin('Zulema'));
+
+        $this->reserva('2026-08-25 10:00', '2026-08-25 12:00', 'confirmada', ['supervisor_id' => $camilo->id]);
+        $this->reserva('2026-08-26 10:00', '2026-08-26 12:00', 'confirmada', [
+            'reservable_type' => User::class, 'reservable_id' => $camilo->id, 'mode' => 'asesoria',
+        ]);
+        $this->reserva('2026-08-27 10:00', '2026-08-27 12:00', 'confirmada', ['supervisor_id' => $otro->id]);
+
+        $delFiltro = Reservation::query()->atendidaPor($camilo->id)->count();
+        $suyas = $this->tarjetas()['Camilo'];
+
+        $this->assertSame(2, $delFiltro);
+        $this->assertSame($delFiltro, $suyas['activas'] + $suyas['futuras'] + $suyas['cerradas']);
+    }
+
+    public function test_la_tarjeta_enlaza_al_listado_filtrado(): void
+    {
+        $camilo = $this->conJornada($this->admin('Camilo'));
+
+        $enlace = collect(app(CargaDelEquipo::class)->getTarjetas())
+            ->firstWhere('nombre', 'Camilo')['enlace'];
+
+        $this->assertStringContainsString('atiende', $enlace);
+        $this->assertStringContainsString((string) $camilo->id, $enlace);
     }
 }

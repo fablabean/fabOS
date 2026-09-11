@@ -5,8 +5,10 @@
     <style>
         .carga .rejilla { display:grid; gap:.7rem;
                           grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); }
-        .carga .quien { padding:.8rem .9rem; border-radius:.6rem;
-                        border:1px solid rgb(229 231 235); background:rgb(255 255 255); }
+        .carga a.quien { display:block; padding:.8rem .9rem; border-radius:.6rem;
+                        border:1px solid rgb(229 231 235); background:rgb(255 255 255);
+                        text-decoration:none; color:inherit; transition:border-color .12s; }
+        .carga a.quien:hover { border-color:rgb(245 158 11); }
         .carga .nombre { font-size:.82rem; font-weight:600; line-height:1.25; }
         .carga .apellidos { font-size:.82rem; color:rgb(107 114 128); line-height:1.25;
                             margin-bottom:.55rem; }
@@ -22,7 +24,7 @@
         .carga .cero .cuantos { color:rgb(156 163 175); }
         .carga .ahora .cuantos { color:rgb(5 150 105); }
         .carga .nota { font-size:.78rem; color:rgb(107 114 128); margin-top:.7rem; }
-        .dark .carga .quien { border-color:rgb(55 65 81); background:rgb(31 41 55); }
+        .dark .carga a.quien { border-color:rgb(55 65 81); background:rgb(31 41 55); }
     </style>
 
     @php
@@ -44,7 +46,7 @@
 
                 <div class="rejilla">
                     @foreach ($tarjetas as $t)
-                        <div class="quien">
+                        <a class="quien" href="{{ $t['enlace'] }}">
                             <div class="nombre {{ $t['apellidos'] ? '' : 'solo' }}">{{ $t['nombre'] }}</div>
                             @if ($t['apellidos'])
                                 <div class="apellidos">{{ $t['apellidos'] }}</div>
@@ -64,7 +66,7 @@
                                     <div class="que">cerradas</div>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
 
@@ -75,7 +77,8 @@
                     corriendo ahora mismo; <strong>futuras</strong>, lo que tiene por delante,
                     decidido o esperando decisión; <strong>cerradas</strong>, lo que ya terminó.
                     Lo cancelado y lo rechazado no suma: no ocurrió, y contarlo sería apuntarle a
-                    alguien trabajo que no hizo.
+                    alguien trabajo que no hizo. Cada tarjeta abre el listado ya filtrado por
+                    esa persona.
                 </p>
             </x-filament::section>
         </div>

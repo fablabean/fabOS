@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Reservations\Widgets;
 
+use App\Filament\Resources\Reservations\ReservationResource;
 use App\Models\Reservation;
 use App\Models\User;
 use Filament\Widgets\Widget;
@@ -24,6 +25,12 @@ use Illuminate\Support\Carbon;
  * Solo administradores y superadmins: son quienes atienden. Practicantes y
  * consultores no aparecen porque no tienen nada a su cargo, y una fila de
  * ceros no informa, estorba.
+ *
+ * Y fuera las cuentas de sistema. Un superadmin sin jornada y sin nada a su
+ * cargo no es alguien que trabaje en el laboratorio: es la cuenta con la que
+ * se instalo. Se reconoce por eso mismo -ni turno ni trabajo- y no por su
+ * nombre, que cambia. Quien tenga jornada sale aunque este en ceros: saber
+ * quien esta libre tambien es dato.
  */
 class CargaDelEquipo extends Widget
 {
@@ -44,6 +51,7 @@ class CargaDelEquipo extends Widget
     {
         $equipo = User::role([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN])
             ->where('status', 'activo')
+            ->withCount('workSchedules')
             ->orderBy('name')
             ->get();
 
@@ -62,13 +70,7 @@ class CargaDelEquipo extends Widget
          * contar dos veces la misma tarde.
          */
         $reservas = Reservation::query()
-            ->whereNull('parent_reservation_id')
-            ->where(fn ($q) => $q
-                ->whereIn('supervisor_id', $ids)
-                ->orWhere(fn ($suya) => $suya
-                    ->where('reservable_type', User::class)
-                    ->whereIn('reservable_id', $ids))
-                ->orWhereHas('companions', fn ($c) => $c->whereIn('users.id', $ids)))
+            ->atendidaPor($ids)
             ->with('companions:id')
             ->get();
 
@@ -93,8 +95,19 @@ class CargaDelEquipo extends Widget
                 // Terminadas. Lo cancelado y lo rechazado no entra: no ocurrió,
                 // y sumarlo al trabajo de alguien sería contarle lo que no hizo.
                 'cerradas'  => $suyas->filter(fn (Reservation $r) => in_array($r->status, ['completada', 'no_show'], true))->count(),
+                // A la lista, ya filtrada por esta persona: leer «once» y
+                // tener que rehacer a mano el filtro que uno acaba de leer es
+                // lo que hace que nadie vuelva a mirar la tarjeta.
+                'enlace'    => ReservationResource::getUrl('index', [
+                    'tableFilters' => ['atiende' => ['value' => $persona->id]],
+                ]),
             ];
-        })->values()->all();
+        })
+            // Fuera la cuenta con la que se instalo: sin jornada y sin nada a
+            // su cargo. Quien tiene jornada se queda aunque este en ceros.
+            ->reject(fn (array $t) => $t['persona']->work_schedules_count === 0
+                && $t['activas'] === 0 && $t['futuras'] === 0 && $t['cerradas'] === 0)
+            ->values()->all();
     }
 
     /** Las tres maneras de tener una reserva a cargo. */
