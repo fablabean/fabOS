@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Reservations\Pages;
 
 use App\Filament\Pages\Bandeja;
 use App\Filament\Resources\Reservations\ReservationResource;
+use App\Filament\Resources\Reservations\Widgets\CargaDelEquipo;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -11,6 +12,20 @@ use Filament\Resources\Pages\ListRecords;
 class ListReservations extends ListRecords
 {
     protected static string $resource = ReservationResource::class;
+
+    /**
+     * Encima de la tabla: como esta repartido el trabajo.
+     *
+     * La lista dice que reservas hay; no dice quien las atiende ni si alguien
+     * va cargado. Saberlo obligaba a filtrar de a una persona, y por eso no se
+     * miraba.
+     */
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            CargaDelEquipo::class,
+        ];
+    }
 
     protected function getHeaderActions(): array
     {
