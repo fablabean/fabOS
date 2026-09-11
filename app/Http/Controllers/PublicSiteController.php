@@ -237,15 +237,26 @@ class PublicSiteController extends Controller
     }
 
     /** Equipos con foto primero: la vitrina entra por los ojos. */
+    /**
+     * Ocho equipos con foto, distintos en cada visita.
+     *
+     * Salian los seis primeros por orden alfabetico, asi que la portada
+     * ensenaba siempre lo mismo: dos Anycubic, dos BambuLab y el aerografo.
+     * Ochenta y dos equipos y la misma vitrina todos los dias. Al azar, quien
+     * vuelve ve el laboratorio entero con el tiempo.
+     *
+     * Solo con foto: esta seccion es para mirar, y una tarjeta que dice «sin
+     * foto» no invita a nada.
+     */
     private function destacados()
     {
         return Asset::query()
             ->with('area')
             ->where('is_public', true)
             ->where('is_reservable', true)
-            ->orderByRaw('photo_path IS NULL')
-            ->orderBy('name')
-            ->limit(6)
+            ->whereNotNull('photo_path')
+            ->inRandomOrder()
+            ->limit(8)
             ->get();
     }
 }

@@ -340,7 +340,10 @@ return [
         ['estado' => 'listo',   'nombre' => 'Habilitaciones',            'detalle' => 'Los certifabs que abren cada equipo, verificables públicamente.'],
         ['estado' => 'listo',   'nombre' => 'Formación',                 'detalle' => 'Los cursos bit, byte, kilo, mega, giga y tera, hasta Fab Academy. Aprobar habilita las máquinas y deja un certificado verificable.'],
         ['estado' => 'listo',   'nombre' => 'Mantenimiento',             'detalle' => 'Planes preventivos que se vuelven órdenes solos, y órdenes correctivas con evidencia fotográfica.'],
-        ['estado' => 'curso',   'nombre' => 'FabCoins',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Ya calcula y guarda lo que cuesta cada reserva, pero el cobro sigue apagado hasta que se fijen las tarifas: así, cuando se encienda, ya hay histórico con el que contrastar.'],
+        // El detalle no dice si el cobro esta encendido: es un interruptor del
+        // panel -«cobros.activos»- que se mueve cuando hace falta, y una
+        // portada que afirme su estado de hoy miente el dia que cambie.
+        ['estado' => 'listo',   'nombre' => 'FabCoins',                  'detalle' => 'La moneda interna para reservar equipos, espacios y acompañamiento. Cotiza cada reserva, retiene lo comprometido y liquida contra lo que de verdad se usó, con recargas, cortesías y el libro de movimientos en el panel.'],
         ['estado' => 'listo',   'nombre' => 'Tienda',                    'detalle' => 'Venta de insumos y trabajos por encargo. Se pide desde el sitio, se cotiza, se produce y se entrega, descontando el material del inventario.'],
         ['estado' => 'listo',   'nombre' => 'Proyectos',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero, cronograma y el costo real de lo que consumió.'],
     ],

@@ -7,9 +7,16 @@
     .areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
     .area{
         background:var(--surface);border:1px solid var(--rule);border-radius:6px;
-        padding:1rem;text-decoration:none;color:inherit;display:block;
+        overflow:hidden;text-decoration:none;color:inherit;display:block;
     }
     .area:hover{border-color:var(--accent)}
+    /* La foto del area, sobre el nombre: «impresion 3D» se reconoce de un
+       vistazo por la maquina, no por el rotulo. Mas baja que la del equipo
+       -16/9 y no 4/3- porque son nueve tarjetas y no tienen que empujar el
+       resto de la portada fuera de la pantalla. */
+    .area .foto{aspect-ratio:16/9;background:var(--ground);display:block;
+                width:100%;object-fit:cover}
+    .area .txt{padding:1rem}
     .area b{display:block;font-size:1rem;margin-bottom:.15rem}
     .area span{font-size:.85rem;color:var(--muted)}
 
@@ -67,15 +74,28 @@
 <main>
     <section>
         <p class="rotulo">Qué hay</p>
-        <h2 style="margin-bottom:1.2rem">Siete áreas de trabajo</h2>
+        {{-- El numero se cuenta, no se escribe: decia «Siete areas de trabajo»
+             con nueve tarjetas debajo. Un area nueva ya no deja mintiendo a la
+             portada. --}}
+        <h2 style="margin-bottom:1.2rem">
+            {{ $areas->count() }} {{ $areas->count() === 1 ? 'área de trabajo' : 'áreas de trabajo' }}
+        </h2>
         <div class="areas">
             @foreach ($areas as $area)
                 {{-- Al area, no a un ancla: la pagina ya no pinta todas las
                      secciones de golpe, asi que el ancla no llevaba a ningun
                      sitio. --}}
                 <a class="area" href="{{ route('publico.reservas', ['area' => $area->slug]) }}">
-                    <b>{{ $area->name }}</b>
-                    <span>{{ $area->equipos_count }} {{ $area->equipos_count === 1 ? 'equipo' : 'equipos' }}</span>
+                    {{-- Sin foto no se pinta un hueco gris: la tarjeta se queda
+                         como estaba, que es como esta seccion funcionaba hasta
+                         ahora y sigue leyendose bien. --}}
+                    @if ($area->fotoUrl())
+                        <img class="foto" src="{{ $area->fotoUrl() }}" alt="{{ $area->name }}" loading="lazy">
+                    @endif
+                    <div class="txt">
+                        <b>{{ $area->name }}</b>
+                        <span>{{ $area->equipos_count }} {{ $area->equipos_count === 1 ? 'equipo' : 'equipos' }}</span>
+                    </div>
                 </a>
             @endforeach
         </div>
