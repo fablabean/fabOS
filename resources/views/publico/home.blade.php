@@ -37,7 +37,12 @@
     .equipo .txt b{display:block;font-size:.95rem;margin-bottom:.15rem}
     .equipo .txt span{font-size:.8rem;color:var(--muted)}
 
-    .mapa{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.7rem}
+    /* Tres columnas fijas: con `auto-fill` la rejilla metia cinco modulos por
+       fila en un monitor ancho y cada uno quedaba en una columna angosta con
+       el texto partido palabra por palabra. */
+    .mapa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+    @media (max-width:62rem){.mapa{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:40rem){.mapa{grid-template-columns:minmax(0,1fr)}}
     .modulo{
         background:var(--surface);border:1px solid var(--rule);border-radius:6px;
         padding:.9rem 1rem;position:relative;
@@ -154,24 +159,9 @@
         </div>
     </section>
 
-    <section style="padding-top:0">
-        <p class="rotulo">Cómo se usa</p>
-        <h2 style="margin-bottom:1rem">Tres pasos</h2>
-        <div class="areas">
-            <div class="area">
-                <b>1 · Ingresa</b>
-                <span>Con tu correo institucional o escaneando tu carné digital. Sin contraseñas.</span>
-            </div>
-            <div class="area">
-                <b>2 · Habilítate</b>
-                <span>Cada equipo pide un certifab. Si no lo tienes, agendas una asesoría y sales habilitado.</span>
-            </div>
-            <div class="area">
-                <b>3 · Reserva</b>
-                <span>Eliges día y hora. Al llegar escaneas el QR de la máquina y empiezas.</span>
-            </div>
-        </div>
-    </section>
+    {{-- «Tres pasos» —ingresa, habilitate, reserva— se retira: lo que hay que
+         hacer se dice en cada sitio donde toca hacerlo, y repetirlo al final
+         de la portada alargaba la pagina sin añadir nada. --}}
 </main>
 
 @endsection
