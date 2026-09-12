@@ -48,8 +48,14 @@ class AreasDelCatalogo extends Widget
                 'nombre'  => $a->name,
                 'foto'    => $a->fotoUrl(),
                 'cuantos' => $a->assets_count,
+                /*
+                 * `values`, en plural y en array: el filtro de area admite
+                 * varias, y un SelectFilter multiple guarda su estado ahi.
+                 * Con `value` en singular el enlace se veia bien -llevaba el
+                 * id y todo- y no filtraba nada.
+                 */
                 'enlace'  => AssetResource::getUrl('index', [
-                    'tableFilters' => ['area' => ['value' => $a->id]],
+                    'tableFilters' => ['area' => ['values' => [$a->id]]],
                 ]),
             ])
             ->values()
@@ -59,6 +65,6 @@ class AreasDelCatalogo extends Widget
     /** Para volver al catálogo entero sin tener que buscar cómo se quita el filtro. */
     public function getEnlaceATodos(): string
     {
-        return AssetResource::getUrl('index', ['tableFilters' => ['area' => ['value' => null]]]);
+        return AssetResource::getUrl('index', ['tableFilters' => ['area' => ['values' => []]]]);
     }
 }

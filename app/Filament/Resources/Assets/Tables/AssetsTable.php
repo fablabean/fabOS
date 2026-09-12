@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Filters\SelectFilter;
@@ -33,15 +34,33 @@ class AssetsTable
              * seguidas no se leen, y casi siempre se viene a por las de un
              * area concreta. Se despliega la que interese.
              *
-             * Ojo: la rejilla agrupa lo que hay en la PAGINA, asi que plegada
-             * solo salen las areas de esas veinticinco fichas. Para el indice
-             * completo estan las tarjetas de arriba, que no dependen de la
-             * paginacion.
+             * Y por eso se cargan TODAS de una: la rejilla agrupa lo que hay
+             * en la pagina, asi que con veinticinco fichas la lista plegada
+             * ensenaba tres areas y las demas aparecian al pasar pagina. Una
+             * lista que parece completa y no lo esta es peor que una larga.
+             *
+             * Se puede porque son ciento y pico fichas y van plegadas. Si el
+             * catalogo llegara a miles, aqui es donde hay que volver.
              */
             ->defaultGroup(Group::make('area.name')->label('Área')->collapsible())
             ->collapsedGroupsByDefault()
+            ->paginated([50, 100, 'all'])
+            ->defaultPaginationPageOption('all')
             ->defaultSort('name')
             ->columns([
+                /*
+                 * La foto de la maquina, pequena y a la izquierda.
+                 *
+                 * «Anycubic PHOTON M3 MAX» y «Anycubic Lavado y Curado 2» se
+                 * distinguen de un vistazo por la foto y no por el nombre, que
+                 * hay que leer entero.
+                 */
+                ImageColumn::make('foto')
+                    ->label('')
+                    ->height(34)
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
+                    ->getStateUsing(fn (Asset $record) => $record->photoUrl()),
+
                 TextColumn::make('name')
                     ->label('Equipo')
                     ->searchable()

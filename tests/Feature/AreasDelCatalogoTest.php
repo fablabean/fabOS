@@ -129,23 +129,50 @@ class AreasDelCatalogoTest extends TestCase
         $this->assertCount(8, $this->tarjetas(), 'las ocho áreas, no solo las de la primera página');
     }
 
-    public function test_la_tarjeta_enlaza_al_catalogo_filtrado_por_esa_area(): void
+    /**
+     * La tarjeta FILTRA de verdad la tabla de abajo.
+     *
+     * Antes esta prueba solo miraba que la URL llevara la palabra «area» y el
+     * id, y los llevaba: el enlace se veía impecable y no filtraba nada,
+     * porque el filtro admite varias áreas y guarda su estado en `values`, en
+     * plural. Comprobar el texto de un enlace no comprueba que funcione.
+     */
+    public function test_la_tarjeta_filtra_de_verdad_la_tabla(): void
     {
-        $area = $this->area('Impresión 3D');
-        $this->equipo($area, 'Prusa MK4');
+        $impresion = $this->area('Impresión 3D');
+        $prusa = $this->equipo($impresion, 'Prusa MK4');
 
-        $enlace = app(AreasDelCatalogo::class)->getAreas()[0]['enlace'];
+        $laser = $this->area('Corte Láser');
+        $xtool = $this->equipo($laser, 'xTool F1');
 
-        $this->assertStringContainsString('area', $enlace);
-        $this->assertStringContainsString((string) $area->id, $enlace);
+        $this->entraComoAdmin();
+
+        // Lo que el enlace de la tarjeta le pide a la tabla, tal cual.
+        $filtros = [];
+        parse_str(parse_url(
+            collect(app(AreasDelCatalogo::class)->getAreas())
+                ->firstWhere('nombre', 'Impresión 3D')['enlace'],
+            PHP_URL_QUERY,
+        ) ?? '', $filtros);
+
+        Livewire::test(ListAssets::class, $filtros)
+            ->assertCanSeeTableRecords([$prusa])
+            ->assertCanNotSeeTableRecords([$xtool]);
     }
 
-    /** Y hay salida: quitar un filtro que uno no puso a mano no es evidente. */
-    public function test_hay_una_manera_de_volver_al_catalogo_entero(): void
+    /** Y el enlace de salida los devuelve a todos. */
+    public function test_ver_todo_el_catalogo_quita_el_filtro(): void
     {
-        $this->equipo($this->area('Impresión 3D'), 'Prusa MK4');
+        $prusa = $this->equipo($this->area('Impresión 3D'), 'Prusa MK4');
+        $xtool = $this->equipo($this->area('Corte Láser'), 'xTool F1');
 
-        $this->assertNotEmpty(app(AreasDelCatalogo::class)->getEnlaceATodos());
+        $this->entraComoAdmin();
+
+        $filtros = [];
+        parse_str(parse_url(app(AreasDelCatalogo::class)->getEnlaceATodos(), PHP_URL_QUERY) ?? '', $filtros);
+
+        Livewire::test(ListAssets::class, $filtros)
+            ->assertCanSeeTableRecords([$prusa, $xtool]);
     }
 
     // ------------------------------------------------------------- la tabla
@@ -159,6 +186,10 @@ class AreasDelCatalogoTest extends TestCase
 
         $this->assertSame('area.name', $tabla->getDefaultGroup()?->getId());
         $this->assertTrue($tabla->areGroupsCollapsedByDefault());
+
+        // Y con todo cargado: agrupar lo que hay en una pagina de veinticinco
+        // ensenaba tres areas y escondia las demas detras del paginador.
+        $this->assertSame('all', $tabla->getDefaultPaginationPageOption());
     }
 
     public function test_la_pantalla_pinta_las_tarjetas(): void
