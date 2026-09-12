@@ -132,47 +132,44 @@ class AreasDelCatalogoTest extends TestCase
     /**
      * La tarjeta FILTRA de verdad la tabla de abajo.
      *
-     * Antes esta prueba solo miraba que la URL llevara la palabra «area» y el
-     * id, y los llevaba: el enlace se veía impecable y no filtraba nada,
-     * porque el filtro admite varias áreas y guarda su estado en `values`, en
-     * plural. Comprobar el texto de un enlace no comprueba que funcione.
+     * Se ABRE LA URL, como haría el navegador, en vez de asignarle las
+     * propiedades al componente a mano. Es la diferencia que dejó pasar el
+     * fallo: `Livewire::test($componente, $params)` rellena propiedades
+     * públicas por su nombre, y el navegador no hace eso — solo lee de la URL
+     * las que están publicadas con `#[Url]`, y `tableFilters` sale publicada
+     * con el nombre `filters`. La prueba vieja pasaba con el enlace roto.
      */
     public function test_la_tarjeta_filtra_de_verdad_la_tabla(): void
     {
         $impresion = $this->area('Impresión 3D');
-        $prusa = $this->equipo($impresion, 'Prusa MK4');
+        $this->equipo($impresion, 'Prusa MK4');
 
         $laser = $this->area('Corte Láser');
-        $xtool = $this->equipo($laser, 'xTool F1');
+        $this->equipo($laser, 'xTool F1');
 
         $this->entraComoAdmin();
 
-        // Lo que el enlace de la tarjeta le pide a la tabla, tal cual.
-        $filtros = [];
-        parse_str(parse_url(
-            collect(app(AreasDelCatalogo::class)->getAreas())
-                ->firstWhere('nombre', 'Impresión 3D')['enlace'],
-            PHP_URL_QUERY,
-        ) ?? '', $filtros);
+        $enlace = collect(app(AreasDelCatalogo::class)->getAreas())
+            ->firstWhere('nombre', 'Impresión 3D')['enlace'];
 
-        Livewire::test(ListAssets::class, $filtros)
-            ->assertCanSeeTableRecords([$prusa])
-            ->assertCanNotSeeTableRecords([$xtool]);
+        $this->get($enlace)
+            ->assertOk()
+            ->assertSee('Prusa MK4')
+            ->assertDontSee('xTool F1');
     }
 
     /** Y el enlace de salida los devuelve a todos. */
     public function test_ver_todo_el_catalogo_quita_el_filtro(): void
     {
-        $prusa = $this->equipo($this->area('Impresión 3D'), 'Prusa MK4');
-        $xtool = $this->equipo($this->area('Corte Láser'), 'xTool F1');
+        $this->equipo($this->area('Impresión 3D'), 'Prusa MK4');
+        $this->equipo($this->area('Corte Láser'), 'xTool F1');
 
         $this->entraComoAdmin();
 
-        $filtros = [];
-        parse_str(parse_url(app(AreasDelCatalogo::class)->getEnlaceATodos(), PHP_URL_QUERY) ?? '', $filtros);
-
-        Livewire::test(ListAssets::class, $filtros)
-            ->assertCanSeeTableRecords([$prusa, $xtool]);
+        $this->get(app(AreasDelCatalogo::class)->getEnlaceATodos())
+            ->assertOk()
+            ->assertSee('Prusa MK4')
+            ->assertSee('xTool F1');
     }
 
     // ------------------------------------------------------------- la tabla

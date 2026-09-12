@@ -98,8 +98,11 @@ class CargaDelEquipo extends Widget
                 // A la lista, ya filtrada por esta persona: leer «once» y
                 // tener que rehacer a mano el filtro que uno acaba de leer es
                 // lo que hace que nadie vuelva a mirar la tarjeta.
+                // `filters`, no `tableFilters`: `ListRecords` publica esa
+                // propiedad en la URL con ese nombre. Con el otro, Livewire
+                // ni la mira y el enlace no filtra nada.
                 'enlace'    => ReservationResource::getUrl('index', [
-                    'tableFilters' => ['atiende' => ['value' => $persona->id]],
+                    'filters' => ['atiende' => ['value' => $persona->id]],
                 ]),
             ];
         })

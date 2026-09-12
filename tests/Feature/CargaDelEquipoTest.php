@@ -100,6 +100,18 @@ class CargaDelEquipoTest extends TestCase
         ], $extra));
     }
 
+    private function entraComoAdmin(): void
+    {
+        $admin = $this->admin('Jefa que mira');
+
+        $factores = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $factores->generarSecreto($admin);
+        $factores->confirmar($admin, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($admin->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+    }
+
     /** @return array<string,array<string,int>> nombre => casillas */
     private function tarjetas(): array
     {
@@ -293,14 +305,39 @@ class CargaDelEquipoTest extends TestCase
         $this->assertSame($delFiltro, $suyas['activas'] + $suyas['futuras'] + $suyas['cerradas']);
     }
 
-    public function test_la_tarjeta_enlaza_al_listado_filtrado(): void
+    /**
+     * La tarjeta FILTRA de verdad el listado.
+     *
+     * Se abre la URL, como haría el navegador. La prueba vieja solo miraba que
+     * el enlace contuviera la palabra «atiende» y el id —los contenía— y pasó
+     * en verde sobre un enlace que no filtraba nada: la propiedad se llama
+     * `tableFilters` pero sale publicada en la URL como `filters`, y con la
+     * clave equivocada Livewire ni la mira.
+     */
+    public function test_la_tarjeta_filtra_de_verdad_el_listado(): void
     {
         $camilo = $this->conJornada($this->admin('Camilo'));
+        $zulema = $this->conJornada($this->admin('Zulema'));
+
+        $otro = Asset::create([
+            'area_id' => $this->equipo->area_id, 'name' => 'Fresadora de Zulema', 'kind' => 'fijo',
+            'status' => 'operativo', 'is_reservable' => true, 'booking_mode' => 'directa',
+            'min_minutes' => 30, 'autonomous_minutes' => 480, 'max_minutes' => 720,
+        ]);
+
+        $this->reserva('2026-08-25 10:00', '2026-08-25 12:00', 'confirmada', ['supervisor_id' => $camilo->id]);
+        $this->reserva('2026-08-25 10:00', '2026-08-25 12:00', 'confirmada', [
+            'supervisor_id' => $zulema->id, 'reservable_id' => $otro->id,
+        ]);
 
         $enlace = collect(app(CargaDelEquipo::class)->getTarjetas())
             ->firstWhere('nombre', 'Camilo')['enlace'];
 
-        $this->assertStringContainsString('atiende', $enlace);
-        $this->assertStringContainsString((string) $camilo->id, $enlace);
+        $this->entraComoAdmin();
+
+        $this->get($enlace)
+            ->assertOk()
+            ->assertSee('Prusa MK4')
+            ->assertDontSee('Fresadora de Zulema');
     }
 }

@@ -49,13 +49,22 @@ class AreasDelCatalogo extends Widget
                 'foto'    => $a->fotoUrl(),
                 'cuantos' => $a->assets_count,
                 /*
-                 * `values`, en plural y en array: el filtro de area admite
-                 * varias, y un SelectFilter multiple guarda su estado ahi.
-                 * Con `value` en singular el enlace se veia bien -llevaba el
-                 * id y todo- y no filtraba nada.
+                 * `filters`, no `tableFilters`.
+                 *
+                 * La propiedad se llama `tableFilters` pero `ListRecords` la
+                 * publica en la URL con otro nombre:
+                 *
+                 *     #[Url(as: 'filters')]
+                 *     public ?array $tableFilters = null;
+                 *
+                 * Con la clave equivocada Livewire ni la mira, y el enlace se
+                 * ve impecable -lleva el id y todo- sin filtrar nada.
+                 *
+                 * Y `values` en plural y en array, que el filtro de area
+                 * admite varias a la vez.
                  */
                 'enlace'  => AssetResource::getUrl('index', [
-                    'tableFilters' => ['area' => ['values' => [$a->id]]],
+                    'filters' => ['area' => ['values' => [$a->id]]],
                 ]),
             ])
             ->values()
@@ -65,6 +74,6 @@ class AreasDelCatalogo extends Widget
     /** Para volver al catálogo entero sin tener que buscar cómo se quita el filtro. */
     public function getEnlaceATodos(): string
     {
-        return AssetResource::getUrl('index', ['tableFilters' => ['area' => ['values' => []]]]);
+        return AssetResource::getUrl('index', ['filters' => ['area' => ['values' => []]]]);
     }
 }
