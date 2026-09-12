@@ -189,6 +189,36 @@ class AreasDelCatalogoTest extends TestCase
         $this->assertSame('all', $tabla->getDefaultPaginationPageOption());
     }
 
+    /**
+     * Pero filtrada a un área sola, ese grupo abre de una vez.
+     *
+     * Quien pulsa la tarjeta ya dijo lo que quiere: dejarle un único grupo
+     * cerrado le cobra un clic por algo que acaba de pedir.
+     *
+     * Se abre la URL, no se monta el componente a mano: la condición lee la
+     * petición, y montar el componente con parámetros no la reproduce.
+     */
+    public function test_filtrada_a_un_area_el_grupo_abre_solo(): void
+    {
+        $area = $this->area('Impresión 3D');
+        $this->equipo($area, 'Prusa MK4');
+        $this->equipo($this->area('Corte Láser'), 'xTool F1');
+
+        $this->entraComoAdmin();
+
+        $enlace = collect(app(AreasDelCatalogo::class)->getAreas())
+            ->firstWhere('nombre', 'Impresión 3D')['enlace'];
+
+        // Es lo que la tabla le pasa a Alpine para decidir si arranca plegada.
+        $this->get($enlace)
+            ->assertOk()
+            ->assertSee('areGroupsCollapsedByDefault: false', false);
+
+        $this->get(app(AreasDelCatalogo::class)->getEnlaceATodos())
+            ->assertOk()
+            ->assertSee('areGroupsCollapsedByDefault: true', false);
+    }
+
     public function test_la_pantalla_pinta_las_tarjetas(): void
     {
         $this->equipo($this->area('Impresión 3D'), 'Prusa MK4');

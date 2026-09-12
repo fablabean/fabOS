@@ -43,7 +43,21 @@ class AssetsTable
              * catalogo llegara a miles, aqui es donde hay que volver.
              */
             ->defaultGroup(Group::make('area.name')->label('Área')->collapsible())
-            ->collapsedGroupsByDefault()
+            /*
+             * Plegadas, SALVO cuando ya se filtro a un area sola.
+             *
+             * Quien pulsa la tarjeta de «Impresion 3D» ya dijo lo que quiere:
+             * dejarle un unico grupo cerrado le cobra un clic por algo que
+             * acaba de pedir.
+             *
+             * Se mira la peticion y no un parametro inyectado: al llegar por
+             * la tarjeta es una carga de pagina entera, asi que el filtro
+             * viene en la URL. Y `filters`, que es como `ListRecords` publica
+             * esa propiedad.
+             */
+            ->collapsedGroupsByDefault(
+                fn (): bool => count((array) request()->input('filters.area.values', [])) !== 1,
+            )
             ->paginated([50, 100, 'all'])
             ->defaultPaginationPageOption('all')
             ->defaultSort('name')
