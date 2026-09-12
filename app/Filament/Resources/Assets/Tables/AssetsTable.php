@@ -17,6 +17,7 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -27,7 +28,18 @@ class AssetsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultGroup('area.name')
+            /*
+             * Agrupada por area y PLEGADA de entrada: ochenta y dos filas
+             * seguidas no se leen, y casi siempre se viene a por las de un
+             * area concreta. Se despliega la que interese.
+             *
+             * Ojo: la rejilla agrupa lo que hay en la PAGINA, asi que plegada
+             * solo salen las areas de esas veinticinco fichas. Para el indice
+             * completo estan las tarjetas de arriba, que no dependen de la
+             * paginacion.
+             */
+            ->defaultGroup(Group::make('area.name')->label('Área')->collapsible())
+            ->collapsedGroupsByDefault()
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('name')
