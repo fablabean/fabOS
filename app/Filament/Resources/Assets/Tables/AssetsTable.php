@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\Assets\Tables;
 
 use App\Models\Asset;
+use App\Services\Assets\DuplicarActivo;
 use App\Services\Qr\QrRenderer;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Filament\Actions\BulkActionGroup;
@@ -130,9 +133,17 @@ class AssetsTable
                     ->openUrlInNewTab()
                     ->tooltip('Los QR para pegar en cada máquina, listos para imprimir'),
             ])
+            /*
+             * Solo iconos, con su globo al pasar por encima.
+             *
+             * Con el texto al lado, tres acciones se comen el ancho de la
+             * ultima columna y empujan fuera de pantalla lo que se vino a
+             * leer. Es lo mismo que ya se hizo en la tabla de reservas.
+             */
             ->recordActions([
+                self::duplicar(),
                 self::verQr(),
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -167,6 +178,8 @@ class AssetsTable
     {
         return Action::make('qr')
             ->label('QR')
+            ->iconButton()
+            ->tooltip('Ver el QR de esta maquina')
             ->icon('heroicon-o-qr-code')
             ->color('gray')
             ->modalHeading(fn (Asset $record) => 'QR de ' . $record->name)
@@ -191,6 +204,58 @@ class AssetsTable
                     . 'Imprime esta ventana, o usa la hoja completa para etiquetar varias máquinas.'
                     . '</p></div>'
                 );
+            });
+    }
+
+    /**
+     * Copiar una ficha que ya existe, una o varias veces (§7).
+     *
+     * Llega una tanda de multimetros iguales al que ya esta fichado. Volver a
+     * llenar el formulario entero -familia de riesgo, modo de reserva,
+     * autonomia, dependencias- es la clase de tarea que se hace mal a la
+     * cuarta, y una ficha mal copiada es una maquina que se reserva con las
+     * reglas de otra.
+     *
+     * El alta por cantidad ya existia para lo que se ficha de cero; esto es lo
+     * mismo cuando la primera ya esta puesta.
+     */
+    private static function duplicar(): Action
+    {
+        return Action::make('duplicar')
+            ->label('Duplicar')
+            ->iconButton()
+            ->tooltip('Crear copias de esta maquina')
+            ->icon('heroicon-o-square-2-stack')
+            ->color('gray')
+            ->modalHeading(fn (Asset $record) => 'Duplicar ' . $record->name)
+            ->modalDescription(
+                'Cada copia es una ficha aparte, numerada, con su hoja de vida y su '
+                . 'mantenimiento. Se copian las condiciones de uso, las dependencias y quienes '
+                . 'pueden asesorar. La placa, el serie y el QR no: son de cada aparato y se '
+                . 'anotan con el aparato delante.'
+            )
+            ->modalSubmitActionLabel('Crear las copias')
+            ->schema([
+                TextInput::make('cuantas')
+                    ->label('Cuantas copias')
+                    ->numeric()
+                    ->default(1)
+                    ->minValue(1)
+                    ->maxValue(DuplicarActivo::MAXIMAS)
+                    ->required()
+                    ->helperText('Hasta ' . DuplicarActivo::MAXIMAS . '. Se numeran siguiendo a las que ya hay.'),
+            ])
+            ->action(function (Asset $record, array $data) {
+                $copias = app(DuplicarActivo::class)->copiar($record, (int) $data['cuantas']);
+
+                Notification::make()
+                    ->success()
+                    ->title($copias->count() === 1
+                        ? 'Copia creada: ' . $copias->first()->name
+                        : 'Se crearon ' . $copias->count() . ' fichas')
+                    ->body('De ' . $copias->first()->name . ' a ' . $copias->last()->name
+                        . '. Falta anotarles la placa y el serie.')
+                    ->send();
             });
     }
 }
