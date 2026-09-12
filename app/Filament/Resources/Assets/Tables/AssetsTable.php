@@ -57,7 +57,18 @@ class AssetsTable
                  */
                 ImageColumn::make('foto')
                     ->label('')
-                    ->height(34)
+                    /*
+                     * Cuadradas y recortadas, no encajadas.
+                     *
+                     * Con solo la altura fijada cada foto conservaba su
+                     * proporcion: las apaisadas salian anchas y las verticales
+                     * como una tira, y la columna quedaba en zigzag. `square`
+                     * fija los dos lados y `cover` recorta lo que sobra por el
+                     * lado largo, que es lo que hace que se lean como una
+                     * cuadricula.
+                     */
+                    ->square()
+                    ->height(38)
                     ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
                     ->getStateUsing(fn (Asset $record) => $record->photoUrl()),
 
