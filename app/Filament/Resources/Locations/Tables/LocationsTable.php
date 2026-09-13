@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Locations\Tables;
 
 use App\Models\Location;
 use App\Models\Space;
-use App\Services\Inventory\ConteoDeEquipos;
+use App\Services\Inventory\ConteoPorUbicacion;
 use App\Services\Inventory\UbicacionesEnSerie;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Filters\SelectFilter;
@@ -110,32 +110,35 @@ class LocationsTable
                     ->formatStateUsing(fn (Location $record, $state) => ($record->parent_id ? '↳ ' : '') . $state),
 
                 /*
-                 * El total, contando lo que cuelga.
+                 * Activos e insumos, por separado.
                  *
-                 * Un rack con dieciseis gavetas no tiene ningun equipo
-                 * asignado a el: los tienen las gavetas. Decir «Rack: 0» al
-                 * lado de una gaveta con veinte hacia que quien busca un
-                 * multimetro abriera el rack y lo creyera vacio.
+                 * En una gaveta caben dos cosas que no se mezclan: un
+                 * multimetro es un ACTIVO -se ficha, se reserva, tiene hoja de
+                 * vida- y un carrete de filamento es un INSUMO, que se gasta.
+                 * Sumarlos diria «23» sin decir si son veintitres aparatos o
+                 * veintitres carretes, y son dos preguntas distintas.
                  *
-                 * Debajo, cuantos hay ahi mismo: es el dato que se pierde al
-                 * sumar, y el que hace falta para ir a cogerlo.
+                 * Los dos totales cuentan lo que cuelga, y debajo va lo que hay
+                 * ahi mismo: es el dato que se pierde al sumar, y el que hace
+                 * falta para ir a cogerlo.
                  */
-                TextColumn::make('equipos')
-                    ->label('Equipos')
-                    ->state(fn (Location $record) => app(ConteoDeEquipos::class)->conLoQueCuelga($record->id))
-                    ->description(function (Location $record) {
-                        $conteo = app(ConteoDeEquipos::class);
-                        $aqui = $conteo->directos($record->id);
-                        $total = $conteo->conLoQueCuelga($record->id);
+                TextColumn::make('activos')
+                    ->label('Activos')
+                    ->state(fn (Location $record) => app(ConteoPorUbicacion::class)->activosConLoQueCuelga($record->id))
+                    ->description(fn (Location $record) => self::deDondeSalen(
+                        app(ConteoPorUbicacion::class)->activosAqui($record->id),
+                        app(ConteoPorUbicacion::class)->activosConLoQueCuelga($record->id),
+                    ))
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'gray' : null),
 
-                        if ($total === 0 || $aqui === $total) {
-                            return null;
-                        }
-
-                        return $aqui === 0
-                            ? 'todos en lo que cuelga'
-                            : $aqui . ' aquí mismo';
-                    })
+                TextColumn::make('insumos')
+                    ->label('Insumos')
+                    ->state(fn (Location $record) => app(ConteoPorUbicacion::class)->insumosConLoQueCuelga($record->id))
+                    ->description(fn (Location $record) => self::deDondeSalen(
+                        app(ConteoPorUbicacion::class)->insumosAqui($record->id),
+                        app(ConteoPorUbicacion::class)->insumosConLoQueCuelga($record->id),
+                    ))
                     ->badge()
                     ->color(fn ($state) => $state ? 'gray' : null),
                 TextColumn::make('children_count')->label('Sub-ubicaciones')->counts('children')->badge()->color('gray'),
@@ -248,5 +251,23 @@ class LocationsTable
                         ->send();
                 }
             });
+    }
+
+    /**
+     * Si el total no esta todo aqui, decir donde esta el resto.
+     *
+     * Un total a secas esconde algo que si hace falta: si el rack dice veinte,
+     * ¿voy al rack o a una gaveta? Cuando coinciden no se dice nada, que
+     * repetirlo en cada fila es ruido.
+     */
+    private static function deDondeSalen(int $aqui, int $total): ?string
+    {
+        if ($total === 0 || $aqui === $total) {
+            return null;
+        }
+
+        return $aqui === 0
+            ? 'todos en lo que cuelga'
+            : $aqui . ' aquí mismo';
     }
 }

@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
          * Uno por peticion: calcula el arbol de ubicaciones entero de una vez
          * y lo guarda. Sin esto, cada fila de la lista lo recalcularia.
          */
-        $this->app->singleton(\App\Services\Inventory\ConteoDeEquipos::class);
+        $this->app->singleton(\App\Services\Inventory\ConteoPorUbicacion::class);
 
         /*
          * Si el sitio se sirve por https, sus enlaces tambien.

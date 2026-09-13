@@ -158,12 +158,12 @@ class UbicacionesPorEspacioTest extends TestCase
             $this->equipo($gaveta, 'Multímetro ' . $n);
         }
 
-        $conteo = app(\App\Services\Inventory\ConteoDeEquipos::class);
+        $conteo = app(\App\Services\Inventory\ConteoPorUbicacion::class);
 
-        $this->assertSame(20, $conteo->conLoQueCuelga($rack->id), 'el rack los tiene dentro');
-        $this->assertSame(0, $conteo->directos($rack->id), 'pero ninguno asignado a él');
-        $this->assertSame(20, $conteo->conLoQueCuelga($gaveta->id));
-        $this->assertSame(0, $conteo->conLoQueCuelga($vacia->id));
+        $this->assertSame(20, $conteo->activosConLoQueCuelga($rack->id), 'el rack los tiene dentro');
+        $this->assertSame(0, $conteo->activosAqui($rack->id), 'pero ninguno asignado a él');
+        $this->assertSame(20, $conteo->activosConLoQueCuelga($gaveta->id));
+        $this->assertSame(0, $conteo->activosConLoQueCuelga($vacia->id));
     }
 
     /** Y sube hasta arriba del todo, no solo un escalón. */
@@ -177,12 +177,12 @@ class UbicacionesPorEspacioTest extends TestCase
         $this->equipo($caja, 'Destornillador');
         $this->equipo($estante, 'Martillo');
 
-        $conteo = app(\App\Services\Inventory\ConteoDeEquipos::class);
+        $conteo = app(\App\Services\Inventory\ConteoPorUbicacion::class);
 
-        $this->assertSame(2, $conteo->conLoQueCuelga($armario->id));
-        $this->assertSame(2, $conteo->conLoQueCuelga($estante->id));
-        $this->assertSame(1, $conteo->directos($estante->id), 'el martillo está ahí mismo');
-        $this->assertSame(1, $conteo->conLoQueCuelga($caja->id));
+        $this->assertSame(2, $conteo->activosConLoQueCuelga($armario->id));
+        $this->assertSame(2, $conteo->activosConLoQueCuelga($estante->id));
+        $this->assertSame(1, $conteo->activosAqui($estante->id), 'el martillo está ahí mismo');
+        $this->assertSame(1, $conteo->activosConLoQueCuelga($caja->id));
     }
 
     /** Un ciclo no da vueltas sumando lo mismo para siempre. */
@@ -196,7 +196,7 @@ class UbicacionesPorEspacioTest extends TestCase
         $a->forceFill(['parent_id' => $b->id])->save();
 
         // Lo que importa es que termine y devuelva algo acotado.
-        $this->assertGreaterThan(0, app(\App\Services\Inventory\ConteoDeEquipos::class)->conLoQueCuelga($a->id));
+        $this->assertGreaterThan(0, app(\App\Services\Inventory\ConteoPorUbicacion::class)->activosConLoQueCuelga($a->id));
     }
 
     /** Y la lista lo enseña: el total arriba, lo que hay aquí mismo debajo. */
@@ -216,6 +216,38 @@ class UbicacionesPorEspacioTest extends TestCase
 
         $this->assertStringContainsString('20', $html);
         $this->assertStringContainsString('todos en lo que cuelga', $html);
+    }
+
+    /**
+     * Un activo y un insumo en la misma gaveta no se suman.
+     *
+     * Un multímetro se ficha y se reserva; un carrete de filamento se gasta.
+     * Un solo número diría «2» sin decir si hay dos aparatos o dos carretes, y
+     * son dos preguntas distintas.
+     */
+    public function test_los_activos_y_los_insumos_se_cuentan_aparte(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $rack = $this->raiz($sala, 'Rack');
+        $gaveta = $this->dentroDe($rack, 'Gaveta 1');
+
+        $this->equipo($gaveta, 'Multímetro 1');
+
+        $area = \App\Models\Area::firstOrCreate(['slug' => 'electronica'], ['name' => 'Electrónica']);
+        \App\Models\Supply::create([
+            'area_id' => $area->id, 'location_id' => $gaveta->id,
+            'name' => 'Filamento PLA', 'unit' => 'g', 'stock' => 1000, 'is_active' => true,
+        ]);
+
+        $conteo = app(\App\Services\Inventory\ConteoPorUbicacion::class);
+
+        $this->assertSame(1, $conteo->activosConLoQueCuelga($gaveta->id));
+        $this->assertSame(1, $conteo->insumosConLoQueCuelga($gaveta->id));
+
+        // Y los dos suben al rack, cada uno por su lado.
+        $this->assertSame(1, $conteo->activosConLoQueCuelga($rack->id));
+        $this->assertSame(1, $conteo->insumosConLoQueCuelga($rack->id));
+        $this->assertSame(0, $conteo->insumosAqui($rack->id));
     }
 
     // ------------------------------------------------------------- el filtro
