@@ -196,6 +196,39 @@ class UbicacionesPorEspacioTest extends TestCase
         $this->assertSame('espacio', $tabla->getDefaultGroup()?->getId());
     }
 
+    /**
+     * Cada nivel sabe a qué profundidad está.
+     *
+     * De ahí salen el color y la sangría de la lista. Se prueba con tres
+     * niveles aunque hoy el laboratorio solo tenga dos: el árbol admite más, y
+     * el día que alguien meta una caja dentro de una gaveta la lista tiene que
+     * seguir leyéndose.
+     */
+    public function test_cada_ubicacion_sabe_su_nivel(): void
+    {
+        $sala = $this->espacio('Taller');
+        $armario = $this->raiz($sala, 'Armario');
+        $estante = $this->dentroDe($armario, 'Estante 1');
+        $caja = $this->dentroDe($estante, 'Caja roja');
+
+        $this->assertSame(0, $armario->nivel());
+        $this->assertSame(1, $estante->fresh()->nivel());
+        $this->assertSame(2, $caja->fresh()->nivel());
+    }
+
+    /** Un ciclo no cuelga el proceso: se corta y se devuelve lo contado. */
+    public function test_un_arbol_con_ciclo_no_cuelga(): void
+    {
+        $sala = $this->espacio('Taller');
+        $a = $this->raiz($sala, 'A');
+        $b = $this->dentroDe($a, 'B');
+
+        // A dentro de B, y B dentro de A: imposible de recorrer hasta el final.
+        $a->forceFill(['parent_id' => $b->id])->save();
+
+        $this->assertLessThanOrEqual(20, $a->fresh()->nivel());
+    }
+
     /** Y cada mueble dice de cuál cuelga, con su flecha. */
     public function test_las_hijas_salen_anidadas(): void
     {

@@ -77,28 +77,40 @@ class LocationsTable
                 ->orderByRaw('coalesce(parent_id, id)')
                 ->orderByRaw('parent_id is null desc')
                 ->orderBy('name'))
+            // Las madres cargadas de una: saber a que nivel esta cada mueble
+            // es subir por el arbol, y sin esto seria una consulta por fila.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('parent.parent.parent'))
             ->columns([
                 TextColumn::make('name')
                     ->label('Ubicación')
                     ->searchable()
                     ->weight('medium')
-                    // Sangrada y con la flecha si cuelga de otra: se ve de un
-                    // vistazo que la gaveta va dentro del estante de arriba.
+                    /*
+                     * Cada nivel, su color y su sangria.
+                     *
+                     * El color se pide por NOMBRE y no como estilo escrito a
+                     * mano, para que el panel lo resuelva tambien en modo
+                     * oscuro; un color fijo se ve bien en claro y se pierde en
+                     * el otro.
+                     *
+                     * Y la sangria acompana al color: quien no distingue estos
+                     * tonos sigue viendo la jerarquia por la posicion y por la
+                     * flecha. El color ayuda, no es lo unico que lo dice.
+                     */
+                    ->color(fn (Location $record) => match (min($record->nivel(), 3)) {
+                        0       => null,
+                        1       => 'primary',
+                        2       => 'info',
+                        default => 'gray',
+                    })
+                    ->extraAttributes(fn (Location $record) => $record->nivel()
+                        ? ['style' => 'padding-left:' . min($record->nivel(), 6) * 1.15 . 'rem']
+                        : [])
                     ->formatStateUsing(fn (Location $record, $state) => ($record->parent_id ? '↳ ' : '') . $state),
 
-                TextColumn::make('parent.name')->label('Dentro de')->placeholder('raíz')->searchable(),
                 TextColumn::make('assets_count')->label('Equipos aquí')->counts('assets')->badge()->color('gray'),
                 TextColumn::make('children_count')->label('Sub-ubicaciones')->counts('children')->badge()->color('gray'),
 
-                // El efectivo, no el declarado: lo que importa es donde esta
-                // esa gaveta, no si el dato lo puso ella o su estante.
-                TextColumn::make('espacio')
-                    ->label('Espacio')
-                    ->state(fn (\App\Models\Location $record) => $record->espacio()?->name)
-                    ->placeholder('sin asignar')
-                    ->description(fn (\App\Models\Location $record) => $record->space_id ? null : 'heredado')
-                    ->badge()
-                    ->color(fn ($state) => $state ? 'success' : 'warning'),
             ])
             ->filters([
                 /*
@@ -114,7 +126,7 @@ class LocationsTable
                         : $query),
             ])
             ->headerActions([self::crearEnSerie()])
-            ->recordActions([EditAction::make()])
+            ->recordActions([EditAction::make()->iconButton()->tooltip('Editar')])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 

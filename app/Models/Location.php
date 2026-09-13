@@ -130,6 +130,32 @@ class Location extends Model
         return $ids;
     }
 
+    /**
+     * A qué profundidad cuelga: 0 la raíz, 1 sus hijas, y así.
+     *
+     * Con el mismo tope que `espacio()`, y por la misma razón: un ciclo en el
+     * árbol —un estante dentro de sí mismo— colgaría el proceso sin decir por
+     * qué. Llegado al tope se devuelve lo contado, que es una respuesta rara
+     * pero acotada.
+     */
+    public function nivel(): int
+    {
+        $nivel = 0;
+        $nodo = $this;
+
+        while ($nodo->parent_id && $nivel < 20) {
+            $nodo = $nodo->parent;
+
+            if (! $nodo) {
+                break;
+            }
+
+            $nivel++;
+        }
+
+        return $nivel;
+    }
+
     /** Solo la raíz declara espacio; el resto lo hereda. */
     public function declaraEspacio(): bool
     {
