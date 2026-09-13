@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Locations\Tables;
 
 use App\Models\Location;
 use App\Models\Space;
+use App\Services\Inventory\ConteoDeEquipos;
 use App\Services\Inventory\UbicacionesEnSerie;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Filters\SelectFilter;
@@ -108,7 +109,35 @@ class LocationsTable
                         : [])
                     ->formatStateUsing(fn (Location $record, $state) => ($record->parent_id ? '↳ ' : '') . $state),
 
-                TextColumn::make('assets_count')->label('Equipos aquí')->counts('assets')->badge()->color('gray'),
+                /*
+                 * El total, contando lo que cuelga.
+                 *
+                 * Un rack con dieciseis gavetas no tiene ningun equipo
+                 * asignado a el: los tienen las gavetas. Decir «Rack: 0» al
+                 * lado de una gaveta con veinte hacia que quien busca un
+                 * multimetro abriera el rack y lo creyera vacio.
+                 *
+                 * Debajo, cuantos hay ahi mismo: es el dato que se pierde al
+                 * sumar, y el que hace falta para ir a cogerlo.
+                 */
+                TextColumn::make('equipos')
+                    ->label('Equipos')
+                    ->state(fn (Location $record) => app(ConteoDeEquipos::class)->conLoQueCuelga($record->id))
+                    ->description(function (Location $record) {
+                        $conteo = app(ConteoDeEquipos::class);
+                        $aqui = $conteo->directos($record->id);
+                        $total = $conteo->conLoQueCuelga($record->id);
+
+                        if ($total === 0 || $aqui === $total) {
+                            return null;
+                        }
+
+                        return $aqui === 0
+                            ? 'todos en lo que cuelga'
+                            : $aqui . ' aquí mismo';
+                    })
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'gray' : null),
                 TextColumn::make('children_count')->label('Sub-ubicaciones')->counts('children')->badge()->color('gray'),
 
             ])

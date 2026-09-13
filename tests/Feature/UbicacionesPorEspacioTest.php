@@ -124,6 +124,100 @@ class UbicacionesPorEspacioTest extends TestCase
         $this->assertArrayNotHasKey('Sala vacía', $this->tarjetas());
     }
 
+    // ------------------------------------------------------ los equipos, sumando
+
+    private function equipo(Location $donde, string $nombre): \App\Models\Asset
+    {
+        $area = \App\Models\Area::firstOrCreate(
+            ['slug' => 'electronica'],
+            ['name' => 'Electrónica'],
+        );
+
+        return \App\Models\Asset::create([
+            'area_id' => $area->id, 'location_id' => $donde->id, 'name' => $nombre,
+            'kind' => 'herramienta', 'status' => 'operativo', 'is_reservable' => true,
+            'booking_mode' => 'directa',
+            'min_minutes' => 30, 'autonomous_minutes' => 480, 'max_minutes' => 720,
+        ]);
+    }
+
+    /**
+     * El caso real: un rack sin nada asignado y una gaveta llena.
+     *
+     * Decir «Rack: 0» al lado de «Gaveta 1: 20» hace que quien busca un
+     * multímetro abra el rack y lo crea vacío.
+     */
+    public function test_el_total_sube_por_el_arbol(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $rack = $this->raiz($sala, 'Rack');
+        $gaveta = $this->dentroDe($rack, 'Gaveta 1');
+        $vacia = $this->dentroDe($rack, 'Gaveta 2');
+
+        foreach (range(1, 20) as $n) {
+            $this->equipo($gaveta, 'Multímetro ' . $n);
+        }
+
+        $conteo = app(\App\Services\Inventory\ConteoDeEquipos::class);
+
+        $this->assertSame(20, $conteo->conLoQueCuelga($rack->id), 'el rack los tiene dentro');
+        $this->assertSame(0, $conteo->directos($rack->id), 'pero ninguno asignado a él');
+        $this->assertSame(20, $conteo->conLoQueCuelga($gaveta->id));
+        $this->assertSame(0, $conteo->conLoQueCuelga($vacia->id));
+    }
+
+    /** Y sube hasta arriba del todo, no solo un escalón. */
+    public function test_el_total_sube_hasta_la_raiz(): void
+    {
+        $sala = $this->espacio('Taller');
+        $armario = $this->raiz($sala, 'Armario');
+        $estante = $this->dentroDe($armario, 'Estante 1');
+        $caja = $this->dentroDe($estante, 'Caja roja');
+
+        $this->equipo($caja, 'Destornillador');
+        $this->equipo($estante, 'Martillo');
+
+        $conteo = app(\App\Services\Inventory\ConteoDeEquipos::class);
+
+        $this->assertSame(2, $conteo->conLoQueCuelga($armario->id));
+        $this->assertSame(2, $conteo->conLoQueCuelga($estante->id));
+        $this->assertSame(1, $conteo->directos($estante->id), 'el martillo está ahí mismo');
+        $this->assertSame(1, $conteo->conLoQueCuelga($caja->id));
+    }
+
+    /** Un ciclo no da vueltas sumando lo mismo para siempre. */
+    public function test_un_ciclo_no_hace_bucle_al_sumar(): void
+    {
+        $sala = $this->espacio('Taller');
+        $a = $this->raiz($sala, 'A');
+        $b = $this->dentroDe($a, 'B');
+        $this->equipo($b, 'Un aparato');
+
+        $a->forceFill(['parent_id' => $b->id])->save();
+
+        // Lo que importa es que termine y devuelva algo acotado.
+        $this->assertGreaterThan(0, app(\App\Services\Inventory\ConteoDeEquipos::class)->conLoQueCuelga($a->id));
+    }
+
+    /** Y la lista lo enseña: el total arriba, lo que hay aquí mismo debajo. */
+    public function test_la_lista_ensena_el_total_y_lo_de_aqui(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $rack = $this->raiz($sala, 'Rack');
+        $gaveta = $this->dentroDe($rack, 'Gaveta 1');
+
+        foreach (range(1, 20) as $n) {
+            $this->equipo($gaveta, 'Multímetro ' . $n);
+        }
+
+        $this->entraComoAdmin();
+
+        $html = Livewire::test(ListLocations::class)->html();
+
+        $this->assertStringContainsString('20', $html);
+        $this->assertStringContainsString('todos en lo que cuelga', $html);
+    }
+
     // ------------------------------------------------------------- el filtro
 
     /**

@@ -59,6 +59,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         /*
+         * Uno por peticion: calcula el arbol de ubicaciones entero de una vez
+         * y lo guarda. Sin esto, cada fila de la lista lo recalcularia.
+         */
+        $this->app->singleton(\App\Services\Inventory\ConteoDeEquipos::class);
+
+        /*
          * Si el sitio se sirve por https, sus enlaces tambien.
          *
          * Detras del tunel de Cloudflare la peticion llega a nginx en http, y
