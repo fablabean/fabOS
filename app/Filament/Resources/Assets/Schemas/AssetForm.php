@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Assets\Schemas;
 
 use App\Models\Asset;
+use App\Models\Location;
 use App\Models\RiskFamily;
 use Filament\Forms\Components\DatePicker;
 use App\Services\Media\OptimizadorDeImagen;
@@ -90,6 +91,36 @@ class AssetForm
 
                             ->preload()
 
+                            ->live()
+
+                            /*
+                             * Al cambiar de sala, la ubicacion elegida se
+                             * queda vacia SI ya no vale.
+                             *
+                             * Guardar «Lab. Impresion 3D» con un mueble del
+                             * taller deja una ficha que se contradice a si
+                             * misma, y nadie lo nota hasta que va a buscar el
+                             * aparato. Si el mueble sigue siendo de la sala
+                             * nueva no se toca: borrarlo por borrar obliga a
+                             * volver a elegir lo mismo.
+                             */
+                            ->afterStateUpdated(function ($state, $get, $set) {
+                                $ubicacion = $get('location_id');
+
+                                if (blank($ubicacion) || blank($state)) {
+                                    return;
+                                }
+
+                                $sigueValiendo = Location::query()
+                                    ->whereKey($ubicacion)
+                                    ->enElEspacio((int) $state)
+                                    ->exists();
+
+                                if (! $sigueValiendo) {
+                                    $set('location_id', null);
+                                }
+                            })
+
                             ->helperText('La sala o taller donde se usa. Distinto de la ubicación, que es el mueble donde se guarda.'),
 
 
@@ -113,11 +144,24 @@ Select::make('status')
                             ->required()
                             ->helperText('Un estado distinto de operativo bloquea la agenda.'),
 
+                        /*
+                         * Solo los muebles de la sala elegida.
+                         *
+                         * Ofrecer los ochenta de todo el laboratorio invita a
+                         * poner uno de otra sala, y entonces la ficha dice que
+                         * el aparato vive en un sitio y se guarda en otro.
+                         */
                         Select::make('location_id')
                             ->label('Ubicación')
-                            ->relationship('location', 'name')
+                            ->options(fn ($get, $record) => self::ubicacionesDe(
+                                $get('space_id') ? (int) $get('space_id') : null,
+                                $record?->location_id,
+                            ))
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->helperText(fn ($get) => blank($get('space_id'))
+                                ? 'Elige primero el espacio y aquí saldrán solo sus muebles.'
+                                : 'Los muebles de esa sala, con lo que cuelga de ellos.'),
 
                         TextInput::make('asset_tag')
                             ->label('Placa')
@@ -317,5 +361,36 @@ Select::make('status')
                             ->itemLabel(fn (array $state) => Asset::find($state['depends_on_asset_id'] ?? null)?->name),
                     ]),
             ]);
+    }
+
+    /**
+     * Los muebles que se pueden elegir para un activo de esa sala.
+     *
+     * Sin sala elegida se ofrecen todos: un activo puede no tener espacio, y
+     * dejar el desplegable vacio seria impedir asignarle sitio.
+     *
+     * **La que ya tenia se conserva aunque no sea de esa sala.** Si
+     * desapareciera del desplegable, guardar el formulario la borraria sin
+     * decir nada y el aparato se quedaria sin ubicacion por haber abierto su
+     * ficha. Sale marcada, para que quien la vea sepa que hay algo que
+     * cuadrar.
+     *
+     * @return array<int,string>
+     */
+    public static function ubicacionesDe(?int $espacioId, ?int $actual = null): array
+    {
+        $opciones = $espacioId
+            ? Location::query()->enElEspacio($espacioId)->orderBy('name')->pluck('name', 'id')
+            : Location::query()->orderBy('name')->pluck('name', 'id');
+
+        if ($actual && ! $opciones->has($actual)) {
+            $mueble = Location::find($actual);
+
+            if ($mueble) {
+                $opciones = $opciones->put($mueble->id, $mueble->name . ' — en otra sala');
+            }
+        }
+
+        return $opciones->all();
     }
 }
