@@ -71,6 +71,19 @@ class LocationsTable
                 fn (): bool => blank(request()->input('filters.espacio.value')),
             )
             /*
+             * Y todas cargadas de una, como el catalogo de activos.
+             *
+             * La rejilla agrupa lo que hay en la PAGINA: con veinticinco de
+             * treinta y ocho, plegada salian cuatro salas y las otras dos
+             * aparecian al pasar pagina. Una lista que parece completa y no lo
+             * esta es peor que una larga.
+             *
+             * Se puede porque son unas decenas de muebles y van plegados. Si
+             * el arbol llegara a miles, aqui es donde hay que volver.
+             */
+            ->paginated([50, 100, 'all'])
+            ->defaultPaginationPageOption('all')
+            /*
              * Y dentro del grupo, cada arbol junto y la madre primero. Una
              * gaveta suelta entre otros muebles no dice de donde sale.
              */

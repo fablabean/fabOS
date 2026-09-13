@@ -398,6 +398,29 @@ class UbicacionesPorEspacioTest extends TestCase
         $tabla = Livewire::test(ListLocations::class)->instance()->getTable();
 
         $this->assertSame('espacio', $tabla->getDefaultGroup()?->getId());
+
+        // Y con todas cargadas: agrupar lo que hay en una pagina dejaria salas
+        // enteras escondidas detras del paginador.
+        $this->assertSame('all', $tabla->getDefaultPaginationPageOption());
+        $this->assertContains(
+            $tabla->getDefaultPaginationPageOption(),
+            $tabla->getPaginationPageOptions(),
+            'un número que no está entre las opciones no se aplica: Filament cae a la primera',
+        );
+    }
+
+    /** Y de verdad: con más muebles que una página, siguen saliendo todos. */
+    public function test_salen_todas_aunque_pasen_de_una_pagina(): void
+    {
+        $sala = $this->espacio('Taller');
+
+        foreach (range(1, 30) as $n) {
+            $this->raiz($sala, 'Mueble ' . $n);
+        }
+
+        $this->entraComoAdmin();
+
+        Livewire::test(ListLocations::class)->assertCountTableRecords(30);
     }
 
     /**
