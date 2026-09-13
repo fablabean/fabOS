@@ -211,7 +211,17 @@ $ARTISAN db:seed --class=NotificationTemplateSeeder --force
 # aparece una seccion o una accion nueva. No pisa lo que el laboratorio haya
 # decidido en «Roles y accesos».
 $ARTISAN fabos:accesos
-$ARTISAN storage:link || true
+# El enlace de `public/storage`, solo si falta.
+#
+# Correrlo cuando ya existe imprime «The [public/storage] link already exists»
+# en rojo y como ERROR, justo antes de «Todo en orden». Nunca fallaba nada: es
+# que ese comando no distingue entre «no pude» y «ya estaba». Un despliegue que
+# grita en rojo cuando todo fue bien ensena a no leer lo que grita.
+if [ -L "$DESTINO/public/storage" ] || [ -e "$DESTINO/public/storage" ]; then
+    echo "  el enlace de storage ya estaba"
+else
+    $ARTISAN storage:link
+fi
 
 # Cachés: se rehacen en cada despliegue, no una sola vez.
 $ARTISAN config:cache
