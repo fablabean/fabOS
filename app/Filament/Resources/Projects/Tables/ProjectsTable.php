@@ -75,6 +75,7 @@ class ProjectsTable
 
                 ImageColumn::make('reference_image_path')
                     ->label('')
+                    ->square()
                     ->height(38)
                     ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
                     // Por la ruta con permiso, no por /storage.

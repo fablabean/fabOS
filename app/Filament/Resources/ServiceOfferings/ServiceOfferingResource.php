@@ -200,6 +200,7 @@ class ServiceOfferingResource extends Resource
                 ImageColumn::make('photo_path')
                     ->label('')
                     ->disk('public')
+                    ->square()
                     ->height(40)
                     ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover']),
 

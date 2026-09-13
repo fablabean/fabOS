@@ -24,7 +24,9 @@ class BannersTable
             ->columns([
                 ImageColumn::make('fondo_path')
                     ->label('Fondo')
+                    ->square()
                     ->height(38)
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
                     /*
                      * La URL entera, no la ruta.
                      *

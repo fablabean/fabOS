@@ -29,6 +29,11 @@ class UsersTable
                     ->disk('public')
                     ->circular()
                     ->height(32)
+                    // `circular` ya iguala el ancho a la altura, pero sin
+                    // `cover` la foto se ESTIRA para llenar el circulo en vez
+                    // de recortarse: una cara mas ancha que alta salia
+                    // deformada, no encuadrada.
+                    ->extraImgAttributes(['style' => 'object-fit:cover'])
                     ->defaultImageUrl(fn (User $u) => 'data:image/svg+xml;utf8,' . rawurlencode(
                         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#0D6E63"/>'
                         . '<text x="32" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="#fff">'

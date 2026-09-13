@@ -21,7 +21,11 @@ class AreasTable
                 \Filament\Tables\Columns\ImageColumn::make('photo_path')
                     ->label('Foto')
                     ->disk('public')
+                    // Cuadrada y recortada: con solo la altura, cada foto
+                    // conserva su proporcion y la columna queda en zigzag.
+                    ->square()
                     ->height(38)
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
                     ->defaultImageUrl(null),
 
                 TextColumn::make('name')->label('Área')->searchable()->weight('medium'),

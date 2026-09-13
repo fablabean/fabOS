@@ -24,7 +24,17 @@ class LogosTable
                 ImageColumn::make('imagen_path')
                     ->label('Logo')
                     ->disk('public')
+                    /*
+                     * Este NO se recorta.
+                     *
+                     * Un logo apaisado cortado en cuadrado deja de ser un
+                     * logo: se come el nombre de quien firma. La columna se
+                     * alinea igual dandole a todas las celdas la misma caja y
+                     * metiendo el logo DENTRO -`contain`- en vez de llenarla.
+                     */
+                    ->width(96)
                     ->height(40)
+                    ->extraImgAttributes(['style' => 'object-fit:contain'])
                     ->placeholder('—'),
 
                 TextColumn::make('nombre')

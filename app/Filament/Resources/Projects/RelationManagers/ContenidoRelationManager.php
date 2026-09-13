@@ -35,6 +35,7 @@ class ContenidoRelationManager extends RelationManager
             ->columns([
                 ImageColumn::make('miniatura')
                     ->label('')
+                    ->square()
                     ->height(56)
                     ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
                     ->getStateUsing(fn (Contenido $r) => $r->esVideo() ? null : $r->enlace()),
