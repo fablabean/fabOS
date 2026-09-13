@@ -3,7 +3,11 @@
 namespace App\Filament\Resources\Locations\Tables;
 
 use App\Models\Location;
+use App\Models\Space;
 use App\Services\Inventory\UbicacionesEnSerie;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Placeholder;
@@ -21,9 +25,67 @@ class LocationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('name')
+            /*
+             * Agrupadas por ESPACIO, no por area.
+             *
+             * Un mueble no pertenece a un area: esta en una sala. Y ni siquiera
+             * directamente —`space_id` solo se declara en la raiz del arbol y
+             * lo demas lo hereda— asi que el titulo del grupo se resuelve por
+             * el modelo, subiendo, y no con un `group by` sobre una columna que
+             * no existe.
+             */
+            ->defaultGroup(
+                Group::make('espacio')
+                    ->label('Espacio')
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Location $record) => $record->espacio()?->name ?? 'Sin espacio asignado')
+                    ->getKeyFromRecordUsing(fn (Location $record) => (string) ($record->espacio()?->id ?? 0))
+                    /*
+                     * Para que cada grupo salga junto hay que ORDENAR por el
+                     * espacio efectivo, y eso si toca resolverlo en SQL. Se
+                     * mira el propio y el de la madre, que cubre el arbol que
+                     * hay. Mas hondo, el titulo del grupo sigue siendo correcto
+                     * -lo calcula el modelo- y lo unico que podria pasar es que
+                     * un espacio saliera en dos tramos.
+                     */
+                    /*
+                     * Como se acota la consulta a UN grupo, que es lo que pasa
+                     * al plegar y desplegar. Sin esto Filament intenta
+                     * `where espacio = 13` sobre una columna que no existe y
+                     * la pantalla revienta al abrir un grupo.
+                     *
+                     * Los parametros se llaman `query` y `key` a proposito:
+                     * Filament los inyecta por NOMBRE.
+                     */
+                    ->scopeQueryByKeyUsing(fn (Builder $query, ?string $key) => (int) $key
+                        ? $query->enElEspacio((int) $key)
+                        : $query->sinEspacio())
+                    ->orderQueryUsing(fn (Builder $query) => $query->orderByRaw(
+                        'coalesce(locations.space_id, (select p.space_id from locations p where p.id = locations.parent_id)) nulls last',
+                    )),
+            )
+            // Plegados, salvo cuando ya se filtro a un espacio solo: quien
+            // pulso la tarjeta ya dijo lo que quiere.
+            ->collapsedGroupsByDefault(
+                fn (): bool => blank(request()->input('filters.espacio.value')),
+            )
+            /*
+             * Y dentro del grupo, cada arbol junto y la madre primero. Una
+             * gaveta suelta entre otros muebles no dice de donde sale.
+             */
+            ->defaultSort(fn (Builder $query) => $query
+                ->orderByRaw('coalesce(parent_id, id)')
+                ->orderByRaw('parent_id is null desc')
+                ->orderBy('name'))
             ->columns([
-                TextColumn::make('name')->label('Ubicación')->searchable()->weight('medium'),
+                TextColumn::make('name')
+                    ->label('Ubicación')
+                    ->searchable()
+                    ->weight('medium')
+                    // Sangrada y con la flecha si cuelga de otra: se ve de un
+                    // vistazo que la gaveta va dentro del estante de arriba.
+                    ->formatStateUsing(fn (Location $record, $state) => ($record->parent_id ? '↳ ' : '') . $state),
+
                 TextColumn::make('parent.name')->label('Dentro de')->placeholder('raíz')->searchable(),
                 TextColumn::make('assets_count')->label('Equipos aquí')->counts('assets')->badge()->color('gray'),
                 TextColumn::make('children_count')->label('Sub-ubicaciones')->counts('children')->badge()->color('gray'),
@@ -37,6 +99,19 @@ class LocationsTable
                     ->description(fn (\App\Models\Location $record) => $record->space_id ? null : 'heredado')
                     ->badge()
                     ->color(fn ($state) => $state ? 'success' : 'warning'),
+            ])
+            ->filters([
+                /*
+                 * Por espacio, con la regla del modelo: lo que lo declara y
+                 * todo lo que cuelga. Es a donde llevan las tarjetas de arriba,
+                 * y por eso la regla vive en un solo sitio.
+                 */
+                SelectFilter::make('espacio')
+                    ->label('Espacio')
+                    ->options(fn () => Space::orderBy('name')->pluck('name', 'id')->all())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->enElEspacio((int) $data['value'])
+                        : $query),
             ])
             ->headerActions([self::crearEnSerie()])
             ->recordActions([EditAction::make()])

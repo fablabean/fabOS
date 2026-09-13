@@ -64,6 +64,72 @@ class Location extends Model
         return null;
     }
 
+    /**
+     * Todo lo que vive en un espacio: lo que lo declara y lo que cuelga de ello.
+     *
+     * No se puede preguntar por una columna: `space_id` solo existe en la raíz
+     * del árbol —es deliberado, dos fuentes del mismo dato acaban
+     * discrepando— así que se baja desde las raíces de ese espacio recogiendo
+     * descendencia.
+     *
+     * Sin límite de profundidad y a prueba de ciclos: una gaveta dentro de un
+     * estante dentro de sí mismo colgaría el proceso sin decir por qué, que es
+     * la misma precaución que toma `espacio()` al subir.
+     */
+    public function scopeEnElEspacio(\Illuminate\Database\Eloquent\Builder $query, int $espacioId): \Illuminate\Database\Eloquent\Builder
+    {
+        $ids = static::conSuDescendencia(
+            static::query()->where('space_id', $espacioId)->pluck('id')->all(),
+        );
+
+        return $query->whereIn('id', $ids ?: [0]);
+    }
+
+    /**
+     * Lo que no está en ninguna sala.
+     *
+     * Es el complemento: todo menos lo que cuelga de una raíz con espacio. Sale
+     * en su propio grupo y no escondido, porque un mueble sin sala no se
+     * encuentra yendo a buscarlo y hay que poder verlo para arreglarlo.
+     */
+    public function scopeSinEspacio(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $ubicadas = static::conSuDescendencia(
+            static::query()->whereNotNull('space_id')->pluck('id')->all(),
+        );
+
+        return $query->whereNotIn('id', $ubicadas ?: [0]);
+    }
+
+    /**
+     * Esas ubicaciones y todo lo que cuelgue de ellas, hasta el fondo.
+     *
+     * A prueba de ciclos: si algo ya estaba en la lista no se vuelve a
+     * recorrer, así que un estante dentro de sí mismo termina el recorrido en
+     * vez de colgar el proceso.
+     *
+     * @param  list<int>  $ids
+     * @return list<int>
+     */
+    private static function conSuDescendencia(array $ids): array
+    {
+        $pendientes = $ids;
+
+        while ($pendientes !== []) {
+            $hijas = static::query()->whereIn('parent_id', $pendientes)->pluck('id')->all();
+            $nuevas = array_values(array_diff($hijas, $ids));
+
+            if ($nuevas === []) {
+                break;
+            }
+
+            $ids = array_merge($ids, $nuevas);
+            $pendientes = $nuevas;
+        }
+
+        return $ids;
+    }
+
     /** Solo la raíz declara espacio; el resto lo hereda. */
     public function declaraEspacio(): bool
     {
