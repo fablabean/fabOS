@@ -250,6 +250,84 @@ class UbicacionesPorEspacioTest extends TestCase
         $this->assertSame(0, $conteo->insumosAqui($rack->id));
     }
 
+    private function insumo(Location $donde, string $nombre, string $unidad, float $cuanto): \App\Models\Supply
+    {
+        $area = \App\Models\Area::firstOrCreate(['slug' => 'electronica'], ['name' => 'Electrónica']);
+
+        return \App\Models\Supply::create([
+            'area_id' => $area->id, 'location_id' => $donde->id, 'name' => $nombre,
+            'unit' => $unidad, 'stock' => $cuanto, 'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Las cantidades se desglosan POR UNIDAD, nunca en un solo número.
+     *
+     * En el laboratorio conviven láminas, kilos, metros y mililitros. Sumar
+     * «35 + 2» daría treinta y siete de nada.
+     */
+    public function test_las_cantidades_se_desglosan_por_unidad(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $rack = $this->raiz($sala, 'Rack');
+        $gaveta = $this->dentroDe($rack, 'Gaveta 1');
+
+        $this->insumo($gaveta, 'MDF 3 mm', 'lámina', 35);
+        $this->insumo($gaveta, 'MDF 5 mm', 'lámina', 30);
+        $this->insumo($gaveta, 'Resina', 'kg', 2.5);
+
+        $conteo = app(\App\Services\Inventory\ConteoPorUbicacion::class);
+
+        $this->assertSame(3, $conteo->insumosConLoQueCuelga($gaveta->id), 'tres referencias');
+        $this->assertSame(
+            ['kg' => 2.5, 'lámina' => 65.0],
+            $conteo->cantidadesConLoQueCuelga($gaveta->id),
+            'las láminas se suman entre sí; los kilos van aparte',
+        );
+    }
+
+    /** Y el desglose sube por el árbol igual que la cuenta. */
+    public function test_las_cantidades_suben_por_el_arbol(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $rack = $this->raiz($sala, 'Rack');
+        $una = $this->dentroDe($rack, 'Gaveta 1');
+        $otra = $this->dentroDe($rack, 'Gaveta 2');
+
+        $this->insumo($una, 'MDF 3 mm', 'lámina', 35);
+        $this->insumo($otra, 'MDF 5 mm', 'lámina', 30);
+
+        $conteo = app(\App\Services\Inventory\ConteoPorUbicacion::class);
+
+        $this->assertSame(['lámina' => 65.0], $conteo->cantidadesConLoQueCuelga($rack->id));
+        $this->assertSame(['lámina' => 35.0], $conteo->cantidadesConLoQueCuelga($una->id));
+    }
+
+    /** Una ubicación sin material no inventa un cero. */
+    public function test_sin_material_no_hay_desglose(): void
+    {
+        $sala = $this->espacio('Taller');
+        $armario = $this->raiz($sala, 'Armario');
+
+        $this->assertSame([], app(\App\Services\Inventory\ConteoPorUbicacion::class)
+            ->cantidadesConLoQueCuelga($armario->id));
+    }
+
+    /** Y la lista lo enseña. */
+    public function test_la_lista_ensena_el_desglose(): void
+    {
+        $sala = $this->espacio('Lab. Corte Láser');
+        $gaveta = $this->raiz($sala, 'Gaveta 1');
+        $this->insumo($gaveta, 'MDF 3 mm', 'lámina', 35);
+
+        $this->entraComoAdmin();
+
+        $this->assertStringContainsString(
+            '35 lámina',
+            Livewire::test(ListLocations::class)->html(),
+        );
+    }
+
     // ------------------------------------------------------------- el filtro
 
     /**

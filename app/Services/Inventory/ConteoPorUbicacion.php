@@ -30,6 +30,9 @@ class ConteoPorUbicacion
     /** @var array<int,int|null>|null  de quién cuelga cada ubicación */
     private ?array $madres = null;
 
+    /** @var array<int,array<string,float>>|null  cuánto material, por unidad */
+    private ?array $cantidadesPorUbicacion = null;
+
     public function activosAqui(int $ubicacionId): int
     {
         return $this->mapa(Asset::class)['directos'][$ubicacionId] ?? 0;
@@ -48,6 +51,65 @@ class ConteoPorUbicacion
     public function insumosConLoQueCuelga(int $ubicacionId): int
     {
         return $this->mapa(Supply::class)['totales'][$ubicacionId] ?? 0;
+    }
+
+    /**
+     * Cuánto material hay, POR UNIDAD, contando lo que cuelga.
+     *
+     * Nunca en un solo número: en el laboratorio conviven láminas, kilos,
+     * metros y mililitros. Sumar «35 + 2» daría treinta y siete de nada.
+     *
+     * @return array<string,float>  unidad => cantidad
+     */
+    public function cantidadesConLoQueCuelga(int $ubicacionId): array
+    {
+        $cantidades = $this->cantidades();
+        $totales = [];
+
+        foreach ($cantidades as $ubicacion => $porUnidad) {
+            // Sube desde cada ubicación con material hasta sus madres, y solo
+            // se queda con lo que pasa por la que se pregunta.
+            $nodo = (int) $ubicacion;
+            $saltos = 0;
+
+            while ($nodo && $saltos++ < 20) {
+                if ($nodo === $ubicacionId) {
+                    foreach ($porUnidad as $unidad => $cuanto) {
+                        $totales[$unidad] = ($totales[$unidad] ?? 0) + $cuanto;
+                    }
+
+                    break;
+                }
+
+                $nodo = (int) ($this->madres()[$nodo] ?? 0);
+            }
+        }
+
+        ksort($totales);
+
+        return $totales;
+    }
+
+    /**
+     * Cuánto hay en cada ubicación, por unidad. Una consulta para todo.
+     *
+     * @return array<int,array<string,float>>
+     */
+    private function cantidades(): array
+    {
+        if ($this->cantidadesPorUbicacion !== null) {
+            return $this->cantidadesPorUbicacion;
+        }
+
+        $mapa = [];
+
+        foreach (Supply::query()->whereNotNull('location_id')->get(['location_id', 'unit', 'stock']) as $insumo) {
+            $unidad = trim((string) $insumo->unit) ?: 'unidad';
+            $mapa[(int) $insumo->location_id][$unidad] =
+                ($mapa[(int) $insumo->location_id][$unidad] ?? 0) + (float) $insumo->stock;
+        }
+
+        return $this->cantidadesPorUbicacion = $mapa;
     }
 
     /**

@@ -74,6 +74,40 @@ fi
 
 tar -xzf "$PAQUETE" -C "$DESTINO"
 
+# Y se va lo que ya no esta en el paquete.
+#
+# `tar` extrae ENCIMA: lo que se borra del repositorio se queda en el
+# servidor para siempre. Asi se habian quedado tres ficheros muertos, dos de
+# ellos de meses atras. Hoy solo es basura; el dia que se borre una clase y
+# quede una referencia colgando, el servidor la encuentra y se comporta
+# distinto que la maquina de quien programa, que es el fallo mas caro de
+# diagnosticar.
+#
+# Solo los directorios de CODIGO. `storage` queda fuera a proposito -ahi
+# viven las fotos que sube la gente, que no estan en el repositorio-, y
+# tambien `public`, `vendor`, `node_modules` y `bootstrap/cache`, que son
+# cosas generadas.
+paso 'Quitando lo que ya no esta en el codigo'
+
+LISTA="$(mktemp)"
+tar -tzf "$PAQUETE" | sed 's#/$##' | sort -u > "$LISTA"
+SOBRAN=0
+
+for carpeta in app config database resources routes tests; do
+    [ -d "$DESTINO/$carpeta" ] || continue
+
+    while IFS= read -r fichero; do
+        if ! grep -qxF "$fichero" "$LISTA"; then
+            rm -f "$DESTINO/$fichero"
+            echo "  · sobraba: $fichero"
+            SOBRAN=$((SOBRAN + 1))
+        fi
+    done < <(cd "$DESTINO" && find "$carpeta" -type f | sort)
+done
+
+rm -f "$LISTA"
+[ "$SOBRAN" -eq 0 ] && echo "  nada que quitar"
+
 if [ -f "/tmp/fabos-env-respaldo-$$" ]; then
     mv "/tmp/fabos-env-respaldo-$$" "$DESTINO/.env"
     echo "  .env conservado"

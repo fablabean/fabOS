@@ -132,10 +132,25 @@ class LocationsTable
                     ->badge()
                     ->color(fn ($state) => $state ? 'gray' : null),
 
+                /*
+                 * El numero son REFERENCIAS distintas -«dos materiales»- y
+                 * debajo va cuanto hay de cada cosa.
+                 *
+                 * Por unidad y nunca en un solo numero: en el laboratorio
+                 * conviven laminas, kilos, metros y mililitros, y sumar
+                 * «35 + 2» daria treinta y siete de nada.
+                 *
+                 * Donde esta -aqui o en lo que cuelga- se pasa al globo: en
+                 * dos lineas no caben las dos cosas, y la cantidad es lo que
+                 * se viene a mirar.
+                 */
                 TextColumn::make('insumos')
                     ->label('Insumos')
                     ->state(fn (Location $record) => app(ConteoPorUbicacion::class)->insumosConLoQueCuelga($record->id))
-                    ->description(fn (Location $record) => self::deDondeSalen(
+                    ->description(fn (Location $record) => self::cuantoHay(
+                        app(ConteoPorUbicacion::class)->cantidadesConLoQueCuelga($record->id),
+                    ))
+                    ->tooltip(fn (Location $record) => self::deDondeSalen(
                         app(ConteoPorUbicacion::class)->insumosAqui($record->id),
                         app(ConteoPorUbicacion::class)->insumosConLoQueCuelga($record->id),
                     ))
@@ -269,5 +284,34 @@ class LocationsTable
         return $aqui === 0
             ? 'todos en lo que cuelga'
             : $aqui . ' aquí mismo';
+    }
+
+    /**
+     * «35 laminas», o «30 laminas · 2 kg» cuando hay de varias clases.
+     *
+     * Cada unidad por su lado: sumarlas daria un numero que no significa nada.
+     * Y si hay muchas se corta, que la celda de una tabla no es un inventario.
+     *
+     * @param  array<string,float>  $porUnidad
+     */
+    private static function cuantoHay(array $porUnidad): ?string
+    {
+        if ($porUnidad === []) {
+            return null;
+        }
+
+        $partes = collect($porUnidad)
+            ->map(fn (float $cuanto, string $unidad) => self::sinCerosDeMas($cuanto) . ' ' . $unidad)
+            ->values();
+
+        return $partes->count() > 3
+            ? $partes->take(2)->implode(' · ') . ' y ' . ($partes->count() - 2) . ' mas'
+            : $partes->implode(' · ');
+    }
+
+    /** 35,00 se lee peor que 35; 2,50 tiene que seguir diciendo 2,5. */
+    private static function sinCerosDeMas(float $cuanto): string
+    {
+        return rtrim(rtrim(number_format($cuanto, 2, ',', '.'), '0'), ',');
     }
 }
