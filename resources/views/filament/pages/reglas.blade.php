@@ -394,6 +394,43 @@
                 con la orden de compra.
             </div>
 
+            <h3 style="margin-top:1.2rem">La lista de deseos</h3>
+            <div class="porque">
+                <b>Antes de pedir hay algo que anotar.</b> «Nos hace falta una fresadora», «habría
+                que probar resina flexible»: cosas que no comprometen plata, que a veces ni tienen
+                precio todavía, y que sin un sitio donde vivir se pierden dos veces —cuando aparece
+                presupuesto a mitad de año y nadie recuerda qué se quería, y cuando hay que proponer
+                el del año siguiente y la cifra se inventa desde cero—. De la lista salen los dos
+                caminos: se marcan los deseos que caben y se arma un carrito, y la lista entera de
+                un año se suma por área para proponer el presupuesto.
+            </div>
+            <div class="porque">
+                <b>La lista es el filtro, no una tabla aparte.</b> Un deseo es una fila suelta con
+                año destino y área; «Deseos 2027 · Fabricación» es una consulta, no un objeto que
+                haya que crear y nombrar. Lo que no alcanzó se pasa al año siguiente cambiándole el
+                año: copiarlo a otra lista es como acaban existiendo tres que dicen cosas distintas
+                de lo mismo.
+            </div>
+            <div class="porque">
+                <b>El estado del deseo se deriva de su línea de compra.</b> Si la solicitud se
+                cancela, o alguien quita la línea, el deseo <b>vuelve solo</b> a la lista. Un estado
+                escrito habría que actualizarlo por tres caminos distintos, y el que se olvidara
+                dejaría un deseo marcado «en solicitud» para siempre.
+            </div>
+            <div class="porque">
+                <b>El estimado puede faltar</b>, y entonces no vale cero: un cero suma bien y miente.
+                Los deseos sin cotizar se cuentan aparte y a la vista, porque tomar el total por
+                completo es pedir de menos sin saber por qué. El presupuesto que sale de aquí nace
+                <b>en borrador</b> —es una propuesta para conversar con la Universidad, no plata
+                asignada— y lleva escrito de dónde salió la cifra.
+            </div>
+            <div class="porque">
+                <b>Desear no es reponer.</b> Lo que se acaba ya tiene camino corto: el carrito de
+                reposición lo lleva directo a comprarse. El deseo es para lo que el laboratorio
+                <em>no tiene</em> —un torno, una licencia, un material que nunca se ha probado—, y
+                por eso no hay «apuntar como deseo» en un insumo bajo mínimos.
+            </div>
+
             <h3 style="margin-top:1.2rem">El camino de una compra</h3>
             <ul>
                 <li><b>Carrito</b> — un borrador de quien necesita algo. No compromete nada.</li>
@@ -455,6 +492,14 @@
                     compras trabaja</dd>
                 <dt>Solicitudes abiertas</dt>
                 <dd>{{ $compras['abiertas'] }}</dd>
+                <dt>Deseos en la lista</dt>
+                <dd>{{ $compras['deseos'] }} sin pedir ·
+                    {{ $compras['deseosAno']['cuantos'] }} para {{ $compras['deseosAno']['anio'] }},
+                    que costarían <b>{{ $enPesos($compras['deseosAno']['conImpuesto']) }}</b> con impuesto
+                    @if ($compras['deseosAno']['sinEstimar'] > 0)
+                        ({{ $compras['deseosAno']['sinEstimar'] }} sin cotizar, fuera de esa cifra)
+                    @endif
+                </dd>
                 <dt>Insumos activos</dt>
                 <dd>{{ $compras['insumos'] }}, de los cuales
                     <b>{{ $compras['bajoMinimos'] }}</b> están bajo mínimos</dd>

@@ -19,6 +19,7 @@ use App\Models\RiskFamily;
 use App\Models\Sale;
 use App\Models\Supply;
 use App\Models\User;
+use App\Models\Wish;
 use App\Models\UserCategory;
 use App\Services\Ledger\LedgerService;
 use App\Services\Shop\ShopService;
@@ -92,6 +93,8 @@ class Reglas extends Page
             'compras'    => [
                 'presupuestos' => Budget::where('status', 'vigente')->get(),
                 'abiertas'     => PurchaseRequest::whereNotIn('status', PurchaseRequest::CERRADAS)->count(),
+                'deseos'       => Wish::enEstado('abierto')->count(),
+                'deseosAno'    => Wish::resumenDelAno(Wish::anoPorDefecto()),
                 'insumos'      => Supply::where('is_active', true)->count(),
                 'bajoMinimos'  => Supply::where('is_active', true)
                     ->whereNotNull('reorder_point')

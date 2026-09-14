@@ -566,6 +566,47 @@ Ver `docs/ASESORIAS.md`.
   ventas viven en FabCoins y el presupuesto en pesos: la conversión usa la tasa
   configurada, así que es una **equivalencia**, no un extracto bancario.
 
+### La lista de deseos (§13)
+
+Lo que hace falta y todavía no se ha pedido. Existe porque la conversación
+anterior a la compra —«nos hace falta una fresadora», «habría que probar resina
+flexible»— no tenía dónde vivir, y se perdía dos veces: cuando aparecía plata a
+mitad de año y nadie recordaba qué se quería, y cuando la Universidad pedía el
+presupuesto del año siguiente y la cifra se inventaba desde cero. De la lista
+salen los dos caminos: el carrito, cuando hay con qué, y el presupuesto del año.
+
+- **Una sola lista viva.** El deseo es una fila suelta con año destino y área; la
+  lista es el **filtro**, no una tabla aparte que haya que crear y nombrar. Lo
+  que no alcanzó se pasa al año siguiente cambiándole el año: copiarlo a otra
+  lista es como acaban existiendo tres que dicen cosas distintas de lo mismo.
+- **El estado no se guarda, se deriva** (`wishes.purchase_request_item_id`).
+  Abierto, en solicitud, comprado; descartado es lo único que alguien decide y
+  se escribe. Si la solicitud se cancela, o se quita la línea, o se borra la
+  solicitud entera, el deseo **vuelve solo** a la lista. Un estado escrito habría
+  que actualizarlo por tres caminos distintos, y el que se olvidara dejaría un
+  deseo marcado «en solicitud» que nadie vuelve a mirar. Hay una prueba que
+  compara fila a fila la lectura en PHP con la consulta en SQL: si se separan, el
+  badge diría una cosa y el filtro otra.
+- **El estimado puede faltar** (`unit_price` nulo, no cero). Un cero suma bien y
+  miente: el año siguiente se pediría de menos y nadie sabría por qué. Los
+  deseos sin cotizar se cuentan aparte y se dicen en el resumen, en la tabla y
+  en el modal de presupuestar.
+- **Pasar a compra es seleccionar y un botón.** Se arma un carrito en borrador
+  con una línea por deseo —hereda unidad y último costo si repone un insumo del
+  catálogo— y lleva directo a editarlo. Los que ya se pidieron se saltan en
+  silencio: quien marca diez filas no tiene por qué revisar cuál ya había ido.
+  El carrito nace en pesos; si la compra acaba yendo por Amazon, se le cambia la
+  moneda allí, donde de verdad se cotiza.
+- **El presupuesto nace en borrador.** Lo que sale de la lista es una propuesta
+  para conversar con la Universidad, no plata asignada: darlo por vigente
+  enseñaría como disponible un dinero que nadie ha girado. Lleva en `notes` de
+  dónde salió la cifra —cuántos deseos, cuánto suman, cuántos quedaron sin
+  cotizar—, igual que el ejecutado de arranque.
+- **Desear no es reponer.** Lo que se acaba ya tiene camino corto: el carrito de
+  reposición. El deseo es para lo que el laboratorio *no tiene*, y por eso no hay
+  «apuntar como deseo» en un insumo bajo mínimos: dos formas de reponer lo mismo
+  habría que cuadrarlas entre sí.
+
 ### Insumos: categorías, existencia inicial y reposición (§13)
 
 - **Categorías anidadas** (`supply_categories`), a cualquier profundidad:

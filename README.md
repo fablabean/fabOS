@@ -140,6 +140,12 @@ Implementado y verificado:
   el catálogo se pide con sus palabras. El saldo del presupuesto se deriva
   igual que en el libro contable: comprometido por lo aprobado, ejecutado por lo
   recibido, nunca un campo editable a mano.
+- **Lista de deseos.** Antes de pedir hay algo que anotar: lo que hace falta y
+  todavía no se ha comprado. No compromete plata y puede no tener precio. Se
+  marcan los que caben ahora y se arma un carrito con ellos —el deseo queda
+  enlazado a su línea, y si la solicitud se cancela vuelve solo a la lista—, y la
+  lista de un año se suma por área para proponer el presupuesto del siguiente,
+  que nace en borrador y dice de dónde salió la cifra.
 - **Insumos con existencias.** Distintos de los activos: un activo es una unidad
   con placa y QR, un insumo es una cantidad. La existencia se mueve solo con
   movimientos registrados —corregir es un *ajuste* con motivo obligatorio— y lo
@@ -228,8 +234,8 @@ Implementado y verificado:
   No hay tabla de estadísticas que alimentar — se calcula al abrirlo.
 - **Backoffice Filament** en `/admin`, con pantallas para personas, categorías,
   áreas, familias de riesgo, ubicaciones, espacios, activos, reservas,
-  mantenimiento, tarifas, cuentas, movimientos, presupuestos, solicitudes de
-  compra, insumos, ventas, plantillas de aviso, bitácora de envíos, cursos y
+  mantenimiento, tarifas, cuentas, movimientos, presupuestos, lista de deseos,
+  solicitudes de compra, insumos, ventas, plantillas de aviso, bitácora de envíos, cursos y
   ediciones con sus inscritos, encargos, y proyectos con su equipo, documentos,
   tareas y horas.
 
