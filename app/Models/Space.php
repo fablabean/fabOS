@@ -12,13 +12,19 @@ class Space extends Model
     protected $fillable = [
         'slug', 'name', 'type', 'capacity',
         'is_reservable', 'is_production_space', 'es_todo', 'shares_seats', 'setup_minutes', 'cleanup_minutes',
-        'host_id',
     ];
 
-    /** Quien recibe en este espacio por defecto, si esta en jornada (§10). */
-    public function host(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /**
+     * Quienes reciben en este espacio, si estan en jornada (§10).
+     *
+     * Varios a proposito. Con uno solo, cuando esa persona no esta -el
+     * almuerzo, un dia libre- la sala se queda sin nadie preferente y quien
+     * recibe sale del reparto general del laboratorio. Con varios, el sistema
+     * elige entre ellos por carga y solo sale del grupo cuando ninguno puede.
+     */
+    public function hosts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsTo(User::class, 'host_id');
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 
     protected function casts(): array

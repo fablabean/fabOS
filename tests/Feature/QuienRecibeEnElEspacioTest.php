@@ -113,7 +113,7 @@ class QuienRecibeEnElEspacioTest extends TestCase
         $ana = $this->colaborador('Ana');
         $beto = $this->colaborador('Beto');
         $this->area->responsibles()->attach($ana->id);
-        $this->sala->update(['host_id' => $beto->id]);
+        $this->sala->hosts()->sync([$beto->id]);
 
         $r = $this->reserva(User::factory()->create(['status' => 'activo']));
 
@@ -121,7 +121,8 @@ class QuienRecibeEnElEspacioTest extends TestCase
 
         // Sin jornada ese día, recibe quien esté: el responsable del área.
         \App\Models\WorkSchedule::where('user_id', $beto->id)->delete();
-        $otra = Space::create(['slug' => 'otra', 'name' => 'Otra sala', 'capacity' => 5, 'is_reservable' => true, 'host_id' => $beto->id]);
+        $otra = Space::create(['slug' => 'otra', 'name' => 'Otra sala', 'capacity' => 5, 'is_reservable' => true]);
+        $otra->hosts()->sync([$beto->id]);
         $otra->areas()->attach($this->area);
 
         $r2 = app(EspacioBookingService::class)->reservar(User::factory()->create(['status' => 'activo']), $otra, $this->hora('14:00'), $this->hora('15:00'));
@@ -238,5 +239,63 @@ class QuienRecibeEnElEspacioTest extends TestCase
 
         $this->assertSame($beto->id, $r->fresh()->supervisor_id);
         $this->assertFalse($r->fresh()->laRecibe($ana));
+    }
+    /**
+     * Con dos anfitriones, si uno no está recibe el otro.
+     *
+     * Es lo que motivó el cambio. Una persona era anfitriona de diez de los
+     * doce espacios y su descanso cae a las 12:00, así que TODAS las reservas
+     * de mediodía salían del reparto general del laboratorio: el anfitrión no
+     * está en jornada a esa hora y su preferencia ni se evaluaba.
+     */
+    public function test_con_dos_anfitriones_recibe_el_que_esta(): void
+    {
+        $michael = $this->colaborador('Michael');
+        $jhonatan = $this->colaborador('Jhonatan');
+
+        // Michael almuerza justo a la hora de la reserva.
+        WorkSchedule::where('user_id', $michael->id)
+            ->update(['break_starts_at' => '12:00', 'break_minutes' => 60]);
+
+        $this->sala->hosts()->sync([$michael->id, $jhonatan->id]);
+
+        $quien = app(EspacioBookingService::class)->quienRecibe($this->sala, $this->hora('12:00'));
+
+        $this->assertSame($jhonatan->id, $quien?->id, 'el otro anfitrión cubre el hueco');
+    }
+
+    /** Y entre varios anfitriones se reparte, no recibe siempre el mismo. */
+    public function test_entre_anfitriones_se_reparte_por_carga(): void
+    {
+        $uno = $this->colaborador('Ana');
+        $dos = $this->colaborador('Zoe');
+
+        $this->sala->hosts()->sync([$uno->id, $dos->id]);
+
+        $primera = $this->reserva(User::factory()->create(['status' => 'activo']), '10:00', '11:00');
+        $segunda = $this->reserva(User::factory()->create(['status' => 'activo']), '11:00', '12:00');
+
+        $this->assertNotSame(
+            $primera->supervisor_id,
+            $segunda->supervisor_id,
+            'dos anfitriones y siempre el mismo no reparte nada',
+        );
+    }
+
+    /** Los anfitriones mandan sobre el responsable del área. */
+    public function test_el_anfitrion_va_antes_que_el_responsable_del_area(): void
+    {
+        $anfitrion = $this->colaborador('Zulema');
+        $responsable = $this->colaborador('Ana');
+
+        $area = Area::create(['slug' => 'a-' . uniqid(), 'name' => 'Electrónica']);
+        $area->responsibles()->attach($responsable->id);
+        $this->sala->areas()->attach($area->id);
+
+        $this->sala->hosts()->sync([$anfitrion->id]);
+
+        $quien = app(EspacioBookingService::class)->quienRecibe($this->sala, $this->hora('10:00'));
+
+        $this->assertSame($anfitrion->id, $quien?->id, 'aunque alfabéticamente iría después');
     }
 }

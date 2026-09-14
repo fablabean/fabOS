@@ -60,16 +60,26 @@ class SpaceForm
                          * tome un puesto; el taller si, porque una actividad
                          * no convive con otra. Lo dice cada espacio.
                          */
-                        // Quien recibe a quien reserva esta sala: si esta en
-                        // jornada a esa hora, es la persona; si no, se elige
-                        // entre quienes esten. Manda sobre el responsable del
-                        // area. No le compromete la hora: son minutos.
-                        Select::make('host_id')
-                            ->label('Quién recibe en este espacio')
+                        /*
+                         * Quienes reciben a quien reserva esta sala.
+                         *
+                         * Varios a proposito: con uno solo, sus reservas de la
+                         * hora del almuerzo caian siempre en otra persona,
+                         * porque a esa hora no esta en jornada. Entre los que
+                         * se pongan aqui, el sistema elige por carga.
+                         *
+                         * No les compromete la hora: son los minutos de ubicar
+                         * a alguien y abrirle.
+                         */
+                        Select::make('hosts')
+                            ->label('Quiénes reciben en este espacio')
+                            ->relationship('hosts', 'name')
+                            ->multiple()
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
+                            ->preload()
                             ->placeholder('Quien esté en jornada, por turno')
-                            ->helperText('Recibe a quien reserva: ubicarlo, abrirle, darle una herramienta. Si no está en jornada, recibe quien esté.')
+                            ->helperText('Reciben a quien reserva: ubicarlo, abrirle, darle una herramienta. Si ninguno está en jornada, recibe quien esté.')
                             ->columnSpanFull(),
 
                         Toggle::make('shares_seats')

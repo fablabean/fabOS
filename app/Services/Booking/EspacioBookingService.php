@@ -63,15 +63,10 @@ class EspacioBookingService
 
         $reservas = app(BookingService::class);
 
-        // La persona fija de la sala manda, si esta en jornada y libre en ese
-        // momento. Si no esta, recibe quien este: la sala no se queda sin nadie.
-        if ($espacio->host_id) {
-            $fijo = $enJornada->firstWhere('id', (int) $espacio->host_id);
-
-            if ($fijo && $reservas->personaLibre($fijo, $desde, $hasta)) {
-                return $fijo;
-            }
-        }
+        // Quienes reciben en esta sala. Mandan sobre el resto, pero entre
+        // ellos deciden la carga y el turno, igual que en el reparto general:
+        // tener dos anfitriones y que siempre reciba el mismo no reparte nada.
+        $anfitriones = $espacio->hosts->pluck('id');
 
         $responsables = $espacio->areas()->with('responsibles')->get()
             ->flatMap(fn ($area) => $area->responsibles)
@@ -91,6 +86,7 @@ class EspacioBookingService
 
         return $candidatos
             ->sortBy(fn (User $u) => [
+                $anfitriones->contains($u->id) ? 0 : 1,
                 $responsables->contains($u->id) ? 0 : 1,
                 (int) ($carga[$u->id] ?? 0),
                 $u->name,
