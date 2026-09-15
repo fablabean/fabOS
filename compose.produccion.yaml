@@ -63,3 +63,32 @@ services:
 
     cloudflared:
         restart: unless-stopped
+
+    # Quien atiende la cola.
+    #
+    # `.env` declara `QUEUE_CONNECTION=redis`, y sin alguien que la atienda todo
+    # lo que se encole se queda en Redis para siempre, **sin dar ningún error**.
+    # Hoy nada crítico se encola —el código de ingreso y los avisos se mandan en
+    # el acto, a propósito— pero la trampa estaba puesta: bastaba que alguien
+    # marcara un correo como encolable para que dejara de salir en silencio.
+    #
+    # `--tries=3` y `--backoff` para que un proveedor de correo que parpadea no
+    # se lleve por delante el trabajo; `--max-time` recicla el proceso cada hora,
+    # que es la forma barata de que una fuga de memoria no crezca sin final.
+    worker:
+        restart: unless-stopped
+        build:
+            context: './docker/aplicacion'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        command: ['php', 'artisan', 'queue:work', '--tries=3', '--backoff=10', '--max-time=3600', '--sleep=3']
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+            - redis
+        environment:
+            XDEBUG_MODE: 'off'
