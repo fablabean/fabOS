@@ -169,6 +169,22 @@ Implementado y verificado:
   entregada sin cobrar. Anular no borra: devuelve el saldo y la mercancía con
   movimientos nuevos. Un insumo sin tarifa propia toma su precio del costo de
   compra convertido a FabCoins, y se muestra marcado como *estimado*.
+- **Páginas del sitio, escritas desde el panel.** El portal público deja de ser
+  algo que solo cambia quien despliega: una página es una pila de bloques
+  —texto, imagen, galería, video, cifras, ficha, hitos, botones— que se
+  ordenan arrastrando, se publica en `/p/<slug>` y puede nacer y apagarse con
+  fecha, como el banner. Un borrador devuelve «no existe» a quien llegue de
+  fuera, y se ve tal cual va a salir para quien puede editarlo.
+- **Contar un proyecto en el sitio, sin volver a escribirlo.** Desde la lista
+  de proyectos, un botón deja el borrador de una página con lo que ya está
+  registrado: el resumen, el área, el responsable, lo que se entregó y las
+  fotos del banco de contenido. Se **copia** y queda editable, no se lee el
+  proyecto en vivo: en esa ficha están el valor acordado y los datos del
+  cliente, y una página que los leyera publicaría lo que alguien escriba
+  mañana en un campo que nadie miró. Nace apagada, porque entre lo que se
+  anota para trabajar y lo que lee alguien de fuera hay una lectura que tiene
+  que hacer una persona. Retirar una foto del banco la quita también de la
+  página, sin que nadie tenga que acordarse.
 - **Comunicaciones con plantillas editables.** El sistema decide cuándo avisa;
   el texto lo escribe quien atiende a la gente, desde el backoffice y sin
   desplegar. Todo intento queda en bitácora —incluido lo que no se envió y por

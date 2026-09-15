@@ -8,6 +8,7 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LabelController;
+use App\Http\Controllers\PaginaPublicaController;
 use App\Http\Controllers\PreguntaController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\ProjectBoardController;
@@ -30,6 +31,18 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
 // Preguntas del laboratorio: leer es publico, preguntar exige cuenta (§20).
 Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');
+
+/*
+ * Las paginas que se escriben en el panel (§3).
+ *
+ * Bajo `/p/` y no en la raiz: en la raiz, el slug seria un comodin compitiendo
+ * con todas las rutas de aqui abajo, y una pagina llamada «tienda» o «equipos»
+ * romperia el sitio en silencio. Con el prefijo, quien comunica elige el nombre
+ * que quiera sin tener que saber que direcciones existen ya.
+ */
+Route::get('/p/{slug}', PaginaPublicaController::class)
+    ->where('slug', '[a-z0-9-]+')
+    ->name('publico.pagina');
 
 /*
  * Reservas: la direccion dice lo que es.

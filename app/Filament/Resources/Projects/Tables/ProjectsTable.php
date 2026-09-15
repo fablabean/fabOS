@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Tables;
 
+use App\Filament\Resources\Projects\Actions\PaginaDelProyecto;
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Models\Project;
 use App\Models\Reservation;
@@ -495,6 +496,12 @@ class ProjectsTable
                     ->visible(fn (Project $r) => self::puedeManejar($r) && filled($r->correoDeLaPropuesta())),
 
                 self::tablero(),
+
+                // Contarlo en el sitio publico: crea el borrador de una pagina
+                // con lo que ya esta registrado (§3). Lo que se socializa sale
+                // de aqui porque aqui es donde ya esta escrito.
+                PaginaDelProyecto::make()->iconButton(),
+
                 self::avanzar(),
                 self::mover(),
                 self::pausar(),

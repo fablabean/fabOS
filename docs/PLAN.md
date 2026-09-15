@@ -861,6 +861,67 @@ mirar entera—. Se puede borrar de verdad, con condiciones:
 - Queda **en la bitácora** quién borró qué: un borrado sin rastro es
   indistinguible de un dato que nunca existió, y alguien va a preguntar.
 
+### Páginas del sitio (§3)
+
+El banner deja cambiar la frase de la portada sin desplegar. Faltaba el sitio
+donde cabe lo que **no es una frase**: contar un proyecto entero, anunciar una
+convocatoria, armar la página a la que lleva el botón del banner. Se escribe en
+*Comunicaciones → Páginas del sitio* y sale en `/p/<slug>`.
+
+- **Una página es una pila de bloques**, no un editor de texto largo: texto,
+  imagen, galería, video, cifras, ficha de datos, hitos y botones. Lo que se
+  publica aquí es material heterogéneo que hay que poder reordenar, y el
+  trabajo de verdad es decidir el orden. Un bloque cuyo tipo desaparezca del
+  código deja de pintarse en vez de tumbar la página.
+- **Bajo `/p/` y no en la raíz.** En la raíz el slug sería un comodín
+  compitiendo con todas las rutas del sitio, y una página llamada «tienda» o
+  «equipos» lo rompería en silencio. Con el prefijo, quien comunica elige el
+  nombre que quiera sin saber qué direcciones existen ya. Corto a propósito:
+  esa dirección se dice en voz alta y se imprime en un QR.
+- **La vigencia, igual que el banner.** Sin fechas vale siempre; con ellas
+  aparece y desaparece sola.
+- **Un borrador devuelve 404, no 403.** Un 403 confirmaría que la dirección
+  existe y está por salir. Quien puede editarla sí la ve —con un aviso arriba
+  de que lo es—, y se ve **la página de verdad**: una vista previa aparte es
+  otra plantilla que puede mentir.
+- **El HTML del editor se limpia antes de salir** (`App\Support\TextoRico`).
+  No es desconfiar de quien escribe: lo que se guarda ahí lo lee cualquiera
+  desde internet sin sesión, y el texto se **pega** desde Word más veces de las
+  que se escribe. Se quita el envoltorio y se queda el contenido.
+
+### Contar un proyecto en el sitio (§3 + §11)
+
+Socializar un proyecto era escribirlo otra vez desde cero en otra parte —el
+nombre, de qué iba, qué se entregó, buscar las fotos— y por eso casi nunca se
+hacía. Desde la lista de proyectos, **«Contarlo en el sitio»** deja el borrador
+de una página con lo que ya está registrado.
+
+- **Se copia una vez; no se lee el proyecto en vivo.** La ficha de un proyecto
+  tiene el valor acordado, el documento del cliente, el representante legal y
+  las notas internas. Una página que leyera el proyecto publicaría lo que
+  alguien escriba mañana en un campo que nadie miró. Sale una lista corta de
+  campos elegidos uno a uno —resumen, área, responsable, etapa, fechas, lo
+  entregado, las fotos del banco— y lo demás no existe para el sitio.
+- **Nace apagada**, al revés que el banner. Lo que se registra durante un
+  proyecto está escrito para trabajar, no para que lo lea alguien de fuera:
+  entre lo uno y lo otro hay una lectura que tiene que hacer una persona. El
+  botón crea el borrador y lleva a editarlo; no publica.
+- **Solo los compromisos cumplidos.** Una página pública que lista lo que
+  todavía se debe es un acta de seguimiento, no una forma de contar lo que se
+  hizo.
+- **Las fotos salen del banco de contenido**, que es el material subido con la
+  autorización firmada (§21) —no los soportes que adjuntó el cliente, que no
+  traen ninguna—. Se copian al disco público, porque el original vive en el
+  privado y se sirve por una ruta con permiso; cada copia se queda apuntando a
+  su `contenido_id`, de modo que **retirar el aporte del banco lo quita también
+  de la página**. Si además hubiera que acordarse de venir a editar cada página
+  donde salga, la foto que alguien pidió quitar seguiría publicada.
+- **El permiso que se pregunta es el de Páginas, no el del proyecto**: que
+  alguien lidere un proyecto no le da la portada del laboratorio.
+- Si el proyecto ya tiene página, el mismo botón la abre en vez de crear una
+  segunda: dos páginas del mismo proyecto es cómo circula la dirección
+  equivocada.
+
 ## Trampas que costaron caro, y ya están fijadas con pruebas
 
 | Qué pasó | Por qué no se veía |
