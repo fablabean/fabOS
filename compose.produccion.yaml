@@ -91,4 +91,10 @@ services:
             - pgsql
             - redis
         environment:
+            # Sin esto el contenedor arranca y muere en bucle sin decir por qué:
+            # el arranque de la imagen hace `gosu $WWWUSER ...`, y con la
+            # variable vacía toma la primera palabra del comando como nombre de
+            # usuario —«unable to find user php»—.
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
             XDEBUG_MODE: 'off'
