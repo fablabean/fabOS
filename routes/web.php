@@ -102,6 +102,18 @@ Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'stor
     ->middleware('throttle:40,60')
     ->name('proyectos.solicitar.store');
 
+// Postularse a una practica. Sin cuenta a proposito: pedirle a quien quiere
+// dejar su hoja de vida que primero se registre es la forma mas segura de que
+// no lo haga. El limite es el mismo que el de solicitar un proyecto, y por la
+// misma razon: toda la universidad sale a internet con una sola IP.
+Route::get('/practicas', [\App\Http\Controllers\PracticasController::class, 'index'])->name('practicas.index');
+Route::get('/practicas/{call:slug}', [\App\Http\Controllers\PracticasController::class, 'create'])->name('practicas.postular');
+Route::post('/practicas/{call:slug}', [\App\Http\Controllers\PracticasController::class, 'store'])
+    ->middleware('throttle:40,60')
+    ->name('practicas.postular.store');
+Route::get('/practicas/{call:slug}/gracias', [\App\Http\Controllers\PracticasController::class, 'gracias'])
+    ->name('practicas.gracias');
+
 // La propuesta con que se responde. Se entra por el enlace firmado del correo o
 // con la sesion de quien la pidio: la comprobacion vive en el controlador
 // porque las dos puertas tienen que valer.
