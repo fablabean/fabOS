@@ -228,8 +228,22 @@ class PaginaForm
                         ->visibility('public')
                         ->directory('paginas')
                         ->acceptedFileTypes(['video/mp4', 'video/webm'])
-                        ->maxSize(51200)
-                        ->helperText('MP4 o WebM. Por debajo de 25 MB va sobrado: lo que pesa, tarda en aparecer en un teléfono.')
+                        /*
+                         * 25 MB, como el banner. El tope NO lo decide el gusto.
+                         *
+                         * Esto nacio en 50 MB «por si acaso», y un video de 49
+                         * fallaba sin decir nada: pasaba el validador y se moria
+                         * despues, en el tunel, que es donde revientan las
+                         * peticiones largas. El formulario solo decia «error
+                         * durante la subida».
+                         *
+                         * La leccion ya estaba escrita para el banco de
+                         * contenido y este bloque nacio sin heredarla: mas vale
+                         * un «no» del validador, inmediato y con su motivo, que
+                         * un limite generoso que se cobra a mitad de camino.
+                         */
+                        ->maxSize(25600)
+                        ->helperText('MP4 o WebM, hasta 25 MB. Un minuto de pantalla grabada cabe de sobra: si tu archivo pesa más, está sin comprimir. Lo que pesa tarda en aparecer en un teléfono, y por encima de ese tamaño la subida se cae por el camino sin poder explicarte por qué.')
                         ->columnSpanFull(),
 
                     self::imagen('poster')
