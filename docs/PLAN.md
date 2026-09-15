@@ -566,6 +566,49 @@ Ver `docs/ASESORIAS.md`.
   ventas viven en FabCoins y el presupuesto en pesos: la conversión usa la tasa
   configurada, así que es una **equivalencia**, no un extracto bancario.
 
+### Perfiles profesionales (§5)
+
+La lista de quién puede trabajar con el laboratorio —un tallerista de textiles,
+un técnico de CNC, un diseñador— con los datos que pide una contratación en
+Colombia, para poder presentarlos a la Universidad y que los inscriba como
+proveedores. Vivía en la cabeza de quien coordina, y cada inscripción empezaba
+con una cacería por WhatsApp del RUT, la cédula y la certificación bancaria.
+
+- **Un perfil no es una cuenta.** Es la ficha de alguien que todavía no es nada
+  en el sistema: sin usuario, sin rol, y puede que nunca los tenga —la mayoría
+  presta un servicio y se va—. El día que alguien pase a trabajar de forma
+  estable se le crea la cuenta desde su propia ficha, reutilizando la pieza que
+  ya existía (`NuevaPersona`), que deduplica por correo: dos cuentas con el mismo
+  correo parten un historial en dos. Nace **sin rol del panel**: un contratista
+  no administra el laboratorio.
+- **Y tampoco es todavía un proveedor.** Lo es cuando la Universidad lo inscribe
+  y devuelve un código. Por eso la tabla no se llama `suppliers`: nombrarla por
+  el final del camino obligaría a explicar que la mitad de las filas no son lo
+  que dice el nombre, que es el problema que ya se resolvió separando candidato
+  de proyecto (§11).
+- **El estado se escribe; lo que falta se deriva.** «Presentado» e «inscrito» son
+  hechos de fuera que nada en la base implica, así que se guardan. Pero qué
+  documentos tiene y qué datos están vacíos se cuenta solo, y la lista lo enseña:
+  una casilla de «completo» marcada a mano queda marcada el día que se marcó.
+- **El número de cuenta bancaria no se guarda.** Banco y tipo sí —compras los
+  pide y no identifican a nadie por sí solos—; el número vive únicamente dentro
+  del PDF de la certificación, en el disco privado. Una columna se exporta, se
+  filtra y acaba en un chat.
+- **La entrega es un PDF y una planilla, sin enlaces.** Una hoja por perfil que
+  dice *qué* documentos existen —no los adjunta— y un CSV con las columnas de
+  compras. A diferencia del resumen de un lote de candidatos, aquí no hay enlace
+  firmado: hay cédulas de por medio y un enlace se reenvía solo.
+- **Ley 1581 de 2012.** Se anota cuándo autorizó el tratamiento de sus datos, por
+  qué vía y para qué: es lo que hay que responder el día que pida que se borren.
+  Y borrar un perfil se lleva de verdad sus archivos del disco, uno a uno —una
+  cascada en la base no pasa por Eloquent y dejaría las cédulas huérfanas—.
+- **Papeles y participación, nunca horas.** Por la primacía de la realidad sobre
+  las formas: un sistema que registra cumplimiento de horario produce la
+  evidencia de una relación laboral. De aquí no cuelga ninguna jornada.
+- **(?)** Si algún día hace falta, queda por decidir si se crea una categoría de
+  persona «proveedor» —hoy usan la de externo— y si un perfil se enlaza con el
+  equipo de un proyecto (`project_members.profile_id`).
+
 ### La lista de deseos (§13)
 
 Lo que hace falta y todavía no se ha pedido. Existe porque la conversación

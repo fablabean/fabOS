@@ -205,7 +205,40 @@
             <div class="porque">
                 <b>Voluntarios y proveedores no llevan jornada.</b> En Colombia rige la primacía de la
                 realidad sobre las formas: un sistema que registra cumplimiento de horario produce la
-                evidencia de una relación laboral. Se les registra participación y entregables.
+                evidencia de una relación laboral. Se les registra participación y entregables. Es la
+                razón de que un <b>perfil profesional</b> guarde papeles y no horas.
+            </div>
+
+            <h3 style="margin-top:1.2rem">Perfiles profesionales</h3>
+            <div class="porque">
+                <b>Un perfil no es una cuenta.</b> Es la ficha de alguien que puede trabajar con el
+                laboratorio —un tallerista, un técnico, un diseñador— y que todavía no es nada en el
+                sistema: sin usuario, sin rol, y puede que nunca los tenga. Sirve para dos cosas: que
+                no haya que acordarse de a quién llamar, y poder presentar a alguien a la Universidad
+                con sus papeles en orden. El día que pase a trabajar de forma estable, se le crea la
+                cuenta desde su propia ficha, y nace sin rol del panel: usa el sitio, no el
+                backoffice.
+            </div>
+            <div class="porque">
+                <b>Y tampoco es todavía un proveedor.</b> Lo es cuando la Universidad lo inscribe y
+                devuelve un código, que es un hecho de fuera. Por eso el estado se escribe —presentado
+                e inscrito no se pueden calcular— pero <b>lo que falta para presentarlo se deriva</b>:
+                qué documentos tiene y qué datos están vacíos se cuenta solo. Una casilla de «completo»
+                marcada a mano queda marcada el día que se marcó y miente desde el día siguiente.
+            </div>
+            <div class="porque">
+                <b>El número de cuenta bancaria no se guarda.</b> Se escriben el banco y el tipo de
+                cuenta —compras los pide en la planilla y no identifican a nadie por sí solos—, pero el
+                número vive únicamente dentro del PDF de la certificación, en el disco privado. Una
+                columna se exporta, se filtra, se copia a un Excel y acaba en un chat. Por lo mismo, la
+                hoja que se le manda a la Universidad dice <em>qué</em> documentos existen y no los
+                adjunta, y no hay ningún enlace público: se abren desde el panel o no se abren.
+            </div>
+            <div class="porque">
+                <b>Aquí hay datos personales de alguien</b> (Ley 1581 de 2012). Por eso la ficha anota
+                cuándo autorizó su tratamiento, por qué vía y para qué: es lo que hay que poder
+                responder el día que pida que se borren. Y borrar un perfil se lleva de verdad sus
+                archivos del servidor, no solo sus filas.
             </div>
         </x-filament::section>
 

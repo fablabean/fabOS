@@ -199,6 +199,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/acuerdo/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'vista'])
         ->name('panel.acuerdo');
 
+    // La hoja de un perfil profesional, para mandarla a compras de la
+    // Universidad. Con sesion y no con enlace firmado: aqui hay cedulas y
+    // certificaciones bancarias, y un enlace se reenvia solo.
+    Route::get('/panel/perfiles/{profile}/hoja', [\App\Http\Controllers\PerfilesController::class, 'hoja'])
+        ->name('perfiles.hoja');
+
     // La vista previa de un cobro: el correo con el QR, y la seccion de pago.
     Route::get('/panel/cobro/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'pago'])
         ->name('panel.cobro');

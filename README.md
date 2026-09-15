@@ -140,6 +140,13 @@ Implementado y verificado:
   el catálogo se pide con sus palabras. El saldo del presupuesto se deriva
   igual que en el libro contable: comprometido por lo aprobado, ejecutado por lo
   recibido, nunca un campo editable a mano.
+- **Perfiles profesionales.** La lista de quién puede trabajar con el laboratorio
+  —talleristas, técnicos, diseñadores—, con los datos que pide una contratación
+  en Colombia: persona natural o jurídica, RUT, seguridad social y sus papeles
+  adjuntos en disco privado. De ahí sale la hoja en PDF y la planilla que se le
+  entrega a la Universidad para inscribirlos como proveedores, y de ahí se le
+  crea cuenta a quien acabe trabajando de forma estable. El número de cuenta
+  bancaria no se guarda: va dentro de la certificación adjunta.
 - **Lista de deseos.** Antes de pedir hay algo que anotar: lo que hace falta y
   todavía no se ha comprado. No compromete plata y puede no tener precio. Se
   marcan los que caben ahora y se arma un carrito con ellos —el deseo queda
