@@ -11,6 +11,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -35,7 +36,18 @@ class WishesTable
                 ->orderBy('target_year')
                 ->orderByRaw("array_position(ARRAY['alta','media','baja'], priority)")
                 ->orderByDesc('unit_price'))
-            ->defaultGroup(Group::make('area.name')->label('Área')->collapsible())
+            /*
+             * Agrupada por rubro y no por area: la pregunta con la que se abre
+             * esta pantalla en septiembre es «cuanto hay que pedir de cada
+             * bolsillo», que es como la Universidad asigna la plata. El area
+             * queda a un clic, para cuando la pregunta es a quien le hace falta.
+             */
+            ->defaultGroup(Group::make('budget_line')->label('Rubro')->collapsible())
+            ->groups([
+                Group::make('budget_line')->label('Rubro')->collapsible(),
+                Group::make('area.name')->label('Área')->collapsible(),
+                Group::make('target_year')->label('Año')->collapsible(),
+            ])
             ->columns([
                 TextColumn::make('description')
                     ->label('Qué se desea')
@@ -45,6 +57,14 @@ class WishesTable
                     ->description(fn (Wish $r) => $r->justification),
 
                 TextColumn::make('target_year')->label('Para')->sortable(),
+
+                TextColumn::make('budget_line')
+                    ->label('Rubro')
+                    ->searchable()
+                    ->toggleable()
+                    // Sin rubro no es un error, es algo por decidir: y hasta que
+                    // se decida, esa plata no está en ningún bolsillo.
+                    ->placeholder('sin decidir'),
 
                 TextColumn::make('priority')
                     ->label('Prioridad')
@@ -103,6 +123,10 @@ class WishesTable
                         ->pluck('target_year', 'target_year')
                         ->all())
                     ->default(Wish::anoPorDefecto()),
+
+                SelectFilter::make('budget_line')
+                    ->label('Rubro')
+                    ->options(fn () => Wish::rubrosDisponibles()),
 
                 SelectFilter::make('area_id')->label('Área')->relationship('area', 'name'),
 
@@ -177,6 +201,41 @@ class WishesTable
                     ->deselectRecordsAfterCompletion(),
 
                 BulkActionGroup::make([
+                    /*
+                     * Clasificar una lista ya escrita, de diez en diez. Rubro
+                     * por rubro y de uno en uno es el trabajo que nadie hace, y
+                     * entonces el reparto del ano siguiente sale en blanco.
+                     */
+                    BulkAction::make('asignarRubro')
+                        ->label('Asignar rubro')
+                        ->icon('heroicon-o-rectangle-stack')
+                        ->color('gray')
+                        ->modalHeading('A qué rubro van los deseos seleccionados')
+                        ->modalDescription('Es contra qué presupuesto se pagarían. Reparte la cifra del año siguiente y hace que el carrito nazca apuntando al presupuesto correcto.')
+                        ->schema([
+                            Select::make('budget_line')
+                                ->label('Rubro')
+                                ->options(fn () => Wish::rubrosDisponibles())
+                                ->searchable()
+                                ->required()
+                                ->createOptionForm([
+                                    TextInput::make('name')
+                                        ->label('Nombre del rubro')
+                                        ->required()
+                                        ->maxLength(120),
+                                ])
+                                ->createOptionUsing(fn (array $data) => $data['name']),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each->update(['budget_line' => $data['budget_line']]);
+
+                            Notification::make()
+                                ->title('Van a «' . $data['budget_line'] . '»')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
                     /*
                      * Pasar de ano no es un cambio de estado: es la misma cosa
                      * que se sigue deseando, un ano mas tarde. Por eso se cambia

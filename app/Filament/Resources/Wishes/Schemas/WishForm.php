@@ -46,13 +46,32 @@ class WishForm
                     ->required()
                     ->helperText('Para saber qué entra primero cuando no alcance para todo.'),
 
+                Select::make('budget_line')
+                    ->label('Rubro del presupuesto')
+                    ->options(fn () => Wish::rubrosDisponibles())
+                    ->searchable()
+                    ->placeholder('Todavía sin decidir')
+                    // Salen de los presupuestos que ya existen, y se puede
+                    // escribir uno nuevo para un rubro que solo va a existir el
+                    // año que viene.
+                    ->createOptionForm([
+                        TextInput::make('name')
+                            ->label('Nombre del rubro')
+                            ->required()
+                            ->maxLength(120)
+                            ->helperText('Como se va a llamar el presupuesto: «Formación externa».'),
+                    ])
+                    ->createOptionUsing(fn (array $data) => $data['name'])
+                    ->createOptionModalHeading('Un rubro que todavía no existe')
+                    ->helperText('Contra qué presupuesto se pagaría. Es lo que reparte la cifra del año siguiente, y lo que hace que el carrito nazca apuntando al presupuesto correcto.'),
+
                 Select::make('area_id')
                     ->label('Área')
                     ->relationship('area', 'name')
                     ->searchable()
                     ->preload()
                     ->placeholder('Todo el laboratorio')
-                    ->helperText('Es lo que agrupa la lista cuando llega el momento de presupuestar.'),
+                    ->helperText('A quién le hace falta. El rubro dice contra qué se paga; el área, para quién es.'),
 
                 Select::make('supply_id')
                     ->label('Repone un insumo')

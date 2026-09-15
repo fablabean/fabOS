@@ -640,11 +640,30 @@ salen los dos caminos: el carrito, cuando hay con qué, y el presupuesto del añ
   silencio: quien marca diez filas no tiene por qué revisar cuál ya había ido.
   El carrito nace en pesos; si la compra acaba yendo por Amazon, se le cambia la
   moneda allí, donde de verdad se cotiza.
-- **El presupuesto nace en borrador.** Lo que sale de la lista es una propuesta
-  para conversar con la Universidad, no plata asignada: darlo por vigente
-  enseñaría como disponible un dinero que nadie ha girado. Lleva en `notes` de
-  dónde salió la cifra —cuántos deseos, cuánto suman, cuántos quedaron sin
-  cotizar—, igual que el ejecutado de arranque.
+- **Cada deseo dice a qué rubro del presupuesto iría** (`wishes.budget_line`).
+  El presupuesto no se pide en una cifra: se pide repartido —«Materiales
+  laboratorio», «Licencias y software»—, que es como la Universidad lo asigna y
+  como luego hay que ejecutarlo. Sin esto había que acordarse, una por una, de
+  contra qué iba cada compra, y del año siguiente salía un total del que no se
+  podía sacar el reparto. Con esto el carrito **nace apuntando al presupuesto**
+  cuando todos los deseos comparten rubro y hay uno vigente de este año que se
+  llame así; con rubros mezclados no se adivina, porque una compra solo va
+  contra un presupuesto.
+- **Se guarda el nombre del rubro, no el presupuesto**, y las opciones salen de
+  los presupuestos que ya existen. Un deseo es para el año que viene y ese
+  presupuesto todavía no existe: apuntar con clave foránea al de este año ataría
+  el deseo de 2027 a una fila de 2026. El nombre es lo que se repite de un año a
+  otro y hace de puente —por eso el desplegable solo admite los que existen: una
+  errata lo rompería en silencio— y no hay catálogo de rubros que mantener
+  aparte.
+- **El presupuesto nace en borrador, y sale uno por rubro.** Lo que sale de la
+  lista es una propuesta para conversar con la Universidad, no plata asignada:
+  darlo por vigente enseñaría como disponible un dinero que nadie ha girado.
+  Cada uno se llama como su rubro y lleva en `notes` de dónde salió la cifra
+  —cuántos deseos, cuánto suman, cuántos quedaron sin cotizar—, igual que el
+  ejecutado de arranque. Teclear cinco veces el mismo formulario acaba en cinco
+  nombres que no coinciden con los del año pasado, y entonces los años no se
+  pueden comparar.
 - **Desear no es reponer.** Lo que se acaba ya tiene camino corto: el carrito de
   reposición. El deseo es para lo que el laboratorio *no tiene*, y por eso no hay
   «apuntar como deseo» en un insumo bajo mínimos: dos formas de reponer lo mismo

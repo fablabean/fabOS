@@ -451,6 +451,16 @@
                 dejaría un deseo marcado «en solicitud» para siempre.
             </div>
             <div class="porque">
+                <b>Cada deseo dice a qué rubro iría.</b> El presupuesto no se pide en una cifra: se
+                pide repartido —«Materiales laboratorio», «Licencias y software»—, que es como la
+                Universidad lo asigna y como después hay que ejecutarlo. Los rubros salen de los
+                presupuestos que ya existen, así que no hay dos listas que cuadrar; se guarda el
+                nombre y no el presupuesto, porque un deseo es para el año que viene y ese
+                presupuesto todavía no existe. Ese nombre es el puente entre un año y el siguiente:
+                el carrito nace apuntando al presupuesto del rubro, y del año que viene sale un
+                presupuesto por cada uno.
+            </div>
+            <div class="porque">
                 <b>El estimado puede faltar</b>, y entonces no vale cero: un cero suma bien y miente.
                 Los deseos sin cotizar se cuentan aparte y a la vista, porque tomar el total por
                 completo es pedir de menos sin saber por qué. El presupuesto que sale de aquí nace

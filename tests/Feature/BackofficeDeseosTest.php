@@ -223,28 +223,92 @@ class BackofficeDeseosTest extends TestCase
 
     // -------------------------------------------------------- el presupuesto
 
-    public function test_crear_el_presupuesto_desde_la_lista_lo_deja_en_borrador(): void
+    public function test_crear_los_presupuestos_desde_la_lista_los_deja_en_borrador_uno_por_rubro(): void
     {
+        config(['fabos.money.tax_rate' => 0.19]);
         $this->admin();
         $ano = (int) now()->year + 1;
-        $this->deseo(['target_year' => $ano, 'unit_price' => 10_000_000]);
+        $this->deseo(['target_year' => $ano, 'budget_line' => 'Materiales laboratorio', 'unit_price' => 10_000_000]);
+        $this->deseo(['target_year' => $ano, 'budget_line' => 'Licencias y software', 'unit_price' => 2_000_000]);
 
         Livewire::test(ListWishes::class)
             ->callAction('presupuestar', [
                 'ano'     => $ano,
+                'rubros'  => ['Materiales laboratorio', 'Licencias y software'],
                 'area_id' => null,
-                'name'    => 'Deseos ' . $ano,
-                'amount'  => 11_900_000,
             ])
             ->assertHasNoActionErrors();
 
-        $presupuesto = Budget::latest('id')->first();
+        $this->assertSame(2, Budget::where('year', $ano)->count());
 
-        $this->assertNotNull($presupuesto);
-        $this->assertSame('borrador', $presupuesto->status, 'es una propuesta, no plata asignada');
-        $this->assertSame($ano, (int) $presupuesto->year);
-        $this->assertSame(11_900_000, (int) $presupuesto->amount);
-        $this->assertStringContainsString('lista de deseos', $presupuesto->notes);
+        $materiales = Budget::where('name', 'Materiales laboratorio')->first();
+        $this->assertNotNull($materiales);
+        $this->assertSame('borrador', $materiales->status, 'es una propuesta, no plata asignada');
+        $this->assertSame(11_900_000, (int) $materiales->amount);
+        $this->assertStringContainsString('lista de deseos', $materiales->notes);
+    }
+
+    public function test_el_rubro_se_puede_asignar_por_lotes(): void
+    {
+        $this->admin();
+        // El rubro sale de un presupuesto que ya existe, que es de donde salen
+        // todos: así se clasifica una lista ya escrita sin ir de uno en uno.
+        Budget::create([
+            'name' => 'Herramientas y accesorios', 'year' => (int) now()->year,
+            'amount' => 1_000_000, 'status' => 'vigente',
+        ]);
+        $a = $this->deseo();
+        $b = $this->deseo(['description' => 'Torno']);
+
+        Livewire::test(ListWishes::class)
+            ->selectTableRecords([$a->getKey(), $b->getKey()])
+            ->callAction(TestAction::make('asignarRubro')->table()->bulk(), [
+                'budget_line' => 'Herramientas y accesorios',
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('Herramientas y accesorios', $a->fresh()->budget_line);
+        $this->assertSame('Herramientas y accesorios', $b->fresh()->budget_line);
+    }
+
+    public function test_un_rubro_que_no_existe_no_se_puede_elegir(): void
+    {
+        $this->admin();
+        $deseo = $this->deseo();
+
+        Livewire::test(ListWishes::class)
+            ->selectTableRecords([$deseo->getKey()])
+            ->callAction(TestAction::make('asignarRubro')->table()->bulk(), [
+                'budget_line' => 'Materiales laboratoria',
+            ])
+            ->assertHasActionErrors(['budget_line']);
+
+        // El nombre del rubro es el puente entre un año y el siguiente: una
+        // errata lo rompe en silencio y los años dejan de poder compararse.
+        $this->assertNull($deseo->fresh()->budget_line);
+    }
+
+    public function test_el_filtro_de_rubro_se_puede_aplicar(): void
+    {
+        $this->admin();
+        $conRubro = $this->deseo(['budget_line' => 'Materiales laboratorio']);
+        $otro = $this->deseo(['description' => 'Torno', 'budget_line' => 'Licencias y software']);
+
+        Livewire::test(ListWishes::class)
+            ->filterTable('budget_line', 'Materiales laboratorio')
+            ->assertCanSeeTableRecords([$conRubro])
+            ->assertCanNotSeeTableRecords([$otro]);
+    }
+
+    public function test_el_resumen_reparte_el_ano_por_rubro(): void
+    {
+        $this->admin();
+        $this->deseo(['budget_line' => 'Herramientas y accesorios', 'unit_price' => 12_000_000]);
+
+        $this->get('/admin/wishes')
+            ->assertOk()
+            ->assertSee('Rubro del presupuesto')
+            ->assertSee('Herramientas y accesorios');
     }
 
     // ------------------------------------------------------------ documentado

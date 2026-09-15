@@ -16,8 +16,12 @@
         .des td { padding:.35rem .5rem .35rem 0; border-top:1px solid rgb(229 231 235); }
         .des td.cifra, .des th.cifra { text-align:right; font-variant-numeric:tabular-nums; }
         .des tfoot td { font-weight:600; border-top:2px solid rgb(209 213 219); }
+        .des .pordecidir { color:rgb(180 83 9); }
+        .des .areas { margin-top:.9rem; }
+        .des .areas summary { font-size:.8rem; color:rgb(107 114 128); cursor:pointer; }
         .des .nota { font-size:.78rem; color:rgb(107 114 128); margin-top:.7rem; }
         .des .aviso { font-size:.78rem; color:rgb(180 83 9); margin-top:.7rem; }
+        .dark .des .pordecidir { color:rgb(252 211 77); }
         .dark .des td { border-top-color:rgb(55 65 81); }
         .dark .des tfoot td { border-top-color:rgb(75 85 99); }
         .dark .des .aviso { color:rgb(252 211 77); }
@@ -68,19 +72,28 @@
                 </div>
             </dl>
 
-            @if (count($resumen['areas']) > 0)
+            {{-- Por rubro primero: es el reparto que se le entrega a la
+                 Universidad, y con el que nace un presupuesto por cada uno. --}}
+            @if (count($resumen['rubros']) > 0)
                 <table>
                     <thead>
                         <tr>
-                            <th>Área</th>
+                            <th>Rubro del presupuesto</th>
                             <th class="cifra">Deseos</th>
                             <th class="cifra">Estimado</th>
+                            <th class="cifra">Con impuesto</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($resumen['areas'] as $fila)
+                        @foreach ($resumen['rubros'] as $fila)
                             <tr>
-                                <td>{{ $fila['area'] ?? 'Todo el laboratorio' }}</td>
+                                <td>
+                                    @if ($fila['rubro'])
+                                        {{ $fila['rubro'] }}
+                                    @else
+                                        <span class="pordecidir">Sin rubro todavía</span>
+                                    @endif
+                                </td>
                                 <td class="cifra">
                                     {{ $fila['cuantos'] }}
                                     @if ($fila['sinEstimar'] > 0)
@@ -88,6 +101,7 @@
                                     @endif
                                 </td>
                                 <td class="cifra">{{ $pesos($fila['estimado']) }}</td>
+                                <td class="cifra">{{ $pesos($fila['conImpuesto']) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -96,9 +110,37 @@
                             <td>Total</td>
                             <td class="cifra">{{ $resumen['cuantos'] }}</td>
                             <td class="cifra">{{ $pesos($resumen['estimado']) }}</td>
+                            <td class="cifra">{{ $pesos($resumen['conImpuesto']) }}</td>
                         </tr>
                     </tfoot>
                 </table>
+            @endif
+
+            @if (count($resumen['areas']) > 1)
+                {{-- El área responde otra pregunta —a quién le hace falta—, así
+                     que va debajo y plegada: leerlas a la vez confunde dos
+                     repartos del mismo dinero. --}}
+                <details class="areas">
+                    <summary>Y por área, a quién le hace falta</summary>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Área</th>
+                                <th class="cifra">Deseos</th>
+                                <th class="cifra">Estimado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($resumen['areas'] as $fila)
+                                <tr>
+                                    <td>{{ $fila['area'] ?? 'Todo el laboratorio' }}</td>
+                                    <td class="cifra">{{ $fila['cuantos'] }}</td>
+                                    <td class="cifra">{{ $pesos($fila['estimado']) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </details>
             @endif
 
             @if ($resumen['sinEstimar'] > 0)

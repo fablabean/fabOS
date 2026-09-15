@@ -10,8 +10,8 @@ use App\Models\Wish;
 use App\Services\Purchasing\ListaDeDeseos;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Utilities\Get;
@@ -38,12 +38,12 @@ class ListWishes extends ListRecords
              * se busca.
              */
             Action::make('presupuestar')
-                ->label('Crear el presupuesto del año')
+                ->label('Crear los presupuestos del año')
                 ->icon('heroicon-o-chart-pie')
                 ->color('gray')
-                ->modalHeading('Crear el presupuesto con lo que cuesta la lista')
-                ->modalDescription('Nace en BORRADOR: es una propuesta para conversar con la Universidad, no plata asignada. El monto viene de la lista y se puede corregir.')
-                ->modalSubmitActionLabel('Crear el presupuesto')
+                ->modalHeading('Crear los presupuestos con lo que cuesta la lista')
+                ->modalDescription('Uno por rubro, que es como se pide y como se ejecuta. Nacen en BORRADOR: son una propuesta para conversar con la Universidad, no plata asignada.')
+                ->modalSubmitActionLabel('Crear los presupuestos')
                 ->visible(fn () => BudgetResource::canCreate())
                 ->schema([
                     Select::make('ano')
@@ -58,44 +58,53 @@ class ListWishes extends ListRecords
                         ->required()
                         ->live(),
 
+                    CheckboxList::make('rubros')
+                        ->label('Qué rubros')
+                        ->options(fn (Get $get) => self::rubrosDelAno((int) ($get('ano') ?? Wish::anoPorDefecto())))
+                        ->default(fn (Get $get) => array_keys(self::rubrosDelAno((int) ($get('ano') ?? Wish::anoPorDefecto()))))
+                        ->required()
+                        ->bulkToggleable()
+                        ->helperText('Cada uno nace con su propio monto, con impuesto incluido, y se llama como el rubro: ese nombre es lo que permite comparar un año con el siguiente.'),
+
                     Select::make('area_id')
                         ->label('Área')
                         ->options(fn () => Area::orderBy('name')->pluck('name', 'id')->all())
                         ->placeholder('Todo el laboratorio')
-                        ->helperText('Deja vacío para presupuestar la lista entera de ese año.'),
-
-                    TextInput::make('name')
-                        ->label('Nombre del presupuesto')
-                        ->required()
-                        ->maxLength(255)
-                        ->default(fn (Get $get) => 'Deseos ' . ($get('ano') ?? Wish::anoPorDefecto())),
-
-                    TextInput::make('amount')
-                        ->label('Monto')
-                        ->numeric()
-                        ->required()
-                        ->prefix(config('fabos.money.symbol'))
-                        // Con impuesto, que es como trabaja compras: el subtotal
-                        // a secas hace creer que alcanza para mas de lo que
-                        // alcanza.
-                        ->default(fn (Get $get) => Wish::resumenDelAno((int) ($get('ano') ?? Wish::anoPorDefecto()))['conImpuesto'])
-                        ->helperText(fn (Get $get) => self::deDondeSale((int) ($get('ano') ?? Wish::anoPorDefecto()))),
+                        ->helperText('Deja vacío si los presupuestos no van partidos por área.'),
                 ])
                 ->action(function (array $data) {
-                    $presupuesto = app(ListaDeDeseos::class)->presupuestar(
-                        (int) $data['ano'],
-                        $data['area_id'] ? Area::find($data['area_id']) : null,
-                        $data['name'],
-                        (int) $data['amount'],
+                    // El «sin rubro» viaja como cadena vacia por el formulario;
+                    // en el resumen es nulo, que es lo que espera el servicio.
+                    $rubros = array_map(
+                        fn (string $rubro) => $rubro === '' ? null : $rubro,
+                        $data['rubros'] ?? [],
                     );
 
+                    $creados = app(ListaDeDeseos::class)->presupuestarPorRubro(
+                        (int) $data['ano'],
+                        $rubros,
+                        $data['area_id'] ? Area::find($data['area_id']) : null,
+                    );
+
+                    if ($creados->isEmpty()) {
+                        Notification::make()
+                            ->title('No se creó ninguno')
+                            ->body('Los rubros elegidos no tienen deseos pendientes ese año.')
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
                     Notification::make()
-                        ->title('Presupuesto creado en borrador')
-                        ->body('Revísalo y déjalo vigente cuando la Universidad lo confirme.')
+                        ->title($creados->count() === 1
+                            ? 'Un presupuesto en borrador'
+                            : $creados->count() . ' presupuestos en borrador')
+                        ->body('Revísalos y déjalos vigentes cuando la Universidad los confirme.')
                         ->success()
                         ->send();
 
-                    $this->redirect(BudgetResource::getUrl('edit', ['record' => $presupuesto]));
+                    $this->redirect(BudgetResource::getUrl('index'));
                 }),
         ];
     }
@@ -107,27 +116,38 @@ class ListWishes extends ListRecords
         ];
     }
 
-    /** La cuenta, dicha entera: lo que entra y lo que quedó fuera. */
-    private static function deDondeSale(int $ano): string
+    /**
+     * Los rubros del año con lo que cuesta cada uno, para elegirlos sabiendo.
+     *
+     * La etiqueta lleva el monto y los que quedaron sin cotizar: elegir a
+     * ciegas y descubrir la cifra después obliga a deshacer.
+     *
+     * @return array<string, string>
+     */
+    private static function rubrosDelAno(int $ano): array
     {
-        $resumen = Wish::resumenDelAno($ano);
         $simbolo = config('fabos.money.symbol');
+        $opciones = [];
 
-        $frase = sprintf(
-            '%d deseos · %s%s + %d%% de impuesto.',
-            $resumen['cuantos'],
-            $simbolo,
-            number_format($resumen['estimado'], 0, ',', '.'),
-            round($resumen['tasa'] * 100),
-        );
-
-        if ($resumen['sinEstimar'] > 0) {
-            $frase .= sprintf(
-                ' %d sin cotizar, que no están en esta cifra.',
-                $resumen['sinEstimar'],
+        foreach (Wish::resumenDelAno($ano)['rubros'] as $fila) {
+            $etiqueta = sprintf(
+                '%s · %s%s (%d %s)',
+                $fila['rubro'] ?? Wish::SIN_RUBRO,
+                $simbolo,
+                number_format($fila['conImpuesto'], 0, ',', '.'),
+                $fila['cuantos'],
+                $fila['cuantos'] === 1 ? 'deseo' : 'deseos',
             );
+
+            if ($fila['sinEstimar'] > 0) {
+                $etiqueta .= sprintf(' · %d sin cotizar', $fila['sinEstimar']);
+            }
+
+            // La clave vacia es «sin rubro»: un checkbox no puede tener nulo por
+            // valor, y se traduce de vuelta al crear.
+            $opciones[$fila['rubro'] ?? ''] = $etiqueta;
         }
 
-        return $frase;
+        return $opciones;
     }
 }

@@ -57,6 +57,7 @@ class ListaDeDeseos
 
             $carrito = $this->compras->abrirCarrito(
                 $quien,
+                $this->presupuestoDelRubro($pasan),
                 justificacion: 'De la lista de deseos ' . $anos,
             );
 
@@ -90,6 +91,37 @@ class ListaDeDeseos
     }
 
     /**
+     * Contra qué presupuesto nace el carrito.
+     *
+     * Si todos los deseos van al mismo rubro y hay un presupuesto **vigente de
+     * este año** que se llama así, el carrito nace apuntando a él: es media
+     * razón de que el deseo lleve rubro. Se elige el del año en curso y no el
+     * del año del deseo, porque lo que se compra hoy se paga con la plata de
+     * hoy.
+     *
+     * Con rubros mezclados no se adivina: quien arme la solicitud lo elige,
+     * porque una compra solo puede ir contra un presupuesto y repartirla es una
+     * decisión suya.
+     *
+     * @param  Collection<int, Wish>  $deseos
+     */
+    private function presupuestoDelRubro(Collection $deseos): ?Budget
+    {
+        $rubros = $deseos->pluck('budget_line')->filter()->unique();
+
+        if ($rubros->count() !== 1) {
+            return null;
+        }
+
+        return Budget::query()
+            ->where('name', $rubros->first())
+            ->where('status', 'vigente')
+            ->where('kind', '!=', 'venta')
+            ->where('year', now(config('fabos.lab.timezone'))->year)
+            ->first();
+    }
+
+    /**
      * Crea el presupuesto del año con lo que cuesta la lista.
      *
      * Nace en **borrador**, y eso no es un detalle: lo que sale de aquí es una
@@ -115,16 +147,57 @@ class ListaDeDeseos
         ]);
     }
 
+    /**
+     * Crea un presupuesto por cada rubro elegido, de una vez.
+     *
+     * El presupuesto no se pide en una cifra: se pide repartido, que es como la
+     * Universidad lo asigna y como después hay que ejecutarlo. Tecleando cinco
+     * veces el mismo formulario se acaba con cinco nombres que no coinciden con
+     * los del año pasado, y entonces no se pueden comparar los años.
+     *
+     * El de cada rubro se llama **como el rubro**: ese nombre es el puente entre
+     * el deseo de este año y el presupuesto del siguiente, y cambiarlo lo rompe.
+     *
+     * Los rubros que no existan en la lista del año se saltan en silencio.
+     *
+     * @param  array<int, string|null>  $rubros  null es «lo que no tiene rubro»
+     * @return Collection<int, Budget>
+     */
+    public function presupuestarPorRubro(int $ano, array $rubros, ?Area $area = null): Collection
+    {
+        $resumen = Wish::resumenDelAno($ano);
+
+        return DB::transaction(function () use ($ano, $rubros, $area, $resumen) {
+            $creados = collect();
+
+            foreach ($resumen['rubros'] as $fila) {
+                if (! in_array($fila['rubro'], $rubros, true)) {
+                    continue;
+                }
+
+                $creados->push(Budget::create([
+                    'name'    => $fila['rubro'] ?? 'Sin rubro ' . $ano,
+                    'kind'    => 'gasto',
+                    'year'    => $ano,
+                    'area_id' => $area?->id,
+                    'amount'  => $fila['conImpuesto'],
+                    'status'  => 'borrador',
+                    'notes'   => $this->procedenciaDelRubro($fila, $resumen),
+                ]));
+            }
+
+            return $creados;
+        });
+    }
+
     /** La frase que explica la cifra, para que no haya que reconstruirla. */
     private function procedencia(array $resumen): string
     {
-        $pesos = fn (int $monto) => config('fabos.money.symbol') . number_format($monto, 0, ',', '.');
-
         $frase = sprintf(
             'Precargado desde la lista de deseos de %d: %d deseos por %s, más %d%% de impuesto.',
             $resumen['anio'],
             $resumen['cuantos'],
-            $pesos($resumen['estimado']),
+            $this->pesos($resumen['estimado']),
             round($resumen['tasa'] * 100),
         );
 
@@ -136,5 +209,32 @@ class ListaDeDeseos
         }
 
         return $frase;
+    }
+
+    /** Lo mismo, pero de un solo rubro: es la cifra que hay que defender. */
+    private function procedenciaDelRubro(array $fila, array $resumen): string
+    {
+        $frase = sprintf(
+            'Precargado desde la lista de deseos de %d, rubro «%s»: %d deseos por %s, más %d%% de impuesto.',
+            $resumen['anio'],
+            $fila['rubro'] ?? 'sin rubro',
+            $fila['cuantos'],
+            $this->pesos($fila['estimado']),
+            round($resumen['tasa'] * 100),
+        );
+
+        if ($fila['sinEstimar'] > 0) {
+            $frase .= sprintf(
+                ' Quedan %d deseos sin cotizar, que no están en esta cifra.',
+                $fila['sinEstimar'],
+            );
+        }
+
+        return $frase;
+    }
+
+    private function pesos(int $monto): string
+    {
+        return config('fabos.money.symbol') . number_format($monto, 0, ',', '.');
     }
 }

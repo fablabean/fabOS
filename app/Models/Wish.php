@@ -21,11 +21,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Wish extends Model
 {
     protected $fillable = [
-        'target_year', 'area_id', 'supply_id', 'description', 'justification',
+        'target_year', 'area_id', 'budget_line', 'supply_id', 'description', 'justification',
         'unit', 'quantity', 'unit_price', 'priority', 'reference_url',
         'requested_by', 'purchase_request_item_id',
         'discarded_at', 'discarded_reason', 'notes',
     ];
+
+    /** Lo que se enseña cuando un deseo todavía no tiene rubro. */
+    public const SIN_RUBRO = 'Sin rubro';
 
     public const PRIORIDADES = [
         'alta'  => 'Alta',
@@ -191,6 +194,41 @@ class Wish extends Model
     }
 
     /**
+     * Los rubros que se pueden elegir: los presupuestos que ya existen.
+     *
+     * No hay catálogo de rubros y no debería haberlo. Las opciones salen de los
+     * presupuestos de gasto que alguien ya creó —sin repetir nombres, porque el
+     * mismo rubro se repite cada año— y así el día que aparezca «Formación
+     * externa» está en la lista sin que nadie despliegue nada. Dos listas que
+     * hay que cuadrar entre sí es justo lo que se evita.
+     *
+     * @return array<string, string>
+     */
+    public static function rubrosDisponibles(): array
+    {
+        $deLosPresupuestos = Budget::query()
+            ->where('kind', '!=', 'venta')
+            ->orderBy('name')
+            ->pluck('name')
+            ->unique();
+
+        // Y los que ya se escribieron en algún deseo, aunque todavía no tengan
+        // presupuesto: es el caso de un rubro que solo existirá el año que viene.
+        $delosDeseos = static::query()
+            ->whereNotNull('budget_line')
+            ->orderBy('budget_line')
+            ->pluck('budget_line')
+            ->unique();
+
+        return $deLosPresupuestos
+            ->merge($delosDeseos)
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $nombre) => [$nombre => $nombre])
+            ->all();
+    }
+
+    /**
      * Lo que todavía hay que comprar: abierto y en solicitud juntos.
      *
      * Es lo que se presupuesta. Lo ya comprado no se vuelve a pedir y lo
@@ -216,11 +254,37 @@ class Wish extends Model
      * en la suma —no se sabe cuánto valen— pero se dicen, para que nadie tome
      * el total por completo cuando no lo está.
      *
-     * @return array{anio:int, tasa:float, areas:list<array{area:?string, cuantos:int, estimado:int, sinEstimar:int}>, cuantos:int, estimado:int, conImpuesto:int, sinEstimar:int}
+     * Se reparte **por rubro** y también por área, porque son dos preguntas
+     * distintas: el rubro es contra qué se paga —y es como la Universidad
+     * asigna la plata—, el área es a quién le hace falta.
+     *
+     * @return array{anio:int, tasa:float, rubros:list<array{rubro:?string, cuantos:int, estimado:int, conImpuesto:int, sinEstimar:int}>, areas:list<array{area:?string, cuantos:int, estimado:int, sinEstimar:int}>, cuantos:int, estimado:int, conImpuesto:int, sinEstimar:int}
      */
     public static function resumenDelAno(int $ano): array
     {
         $deseos = static::query()->porComprar()->delAno($ano)->with('area')->get();
+        $tasa = (float) config('fabos.money.tax_rate');
+
+        $rubros = $deseos
+            ->groupBy(fn (self $d) => $d->budget_line ?? '')
+            ->map(function ($grupo, $nombre) use ($tasa) {
+                $estimado = (int) $grupo->sum(fn (self $d) => $d->estimado() ?? 0);
+
+                return [
+                    'rubro'       => $nombre === '' ? null : $nombre,
+                    'cuantos'     => $grupo->count(),
+                    'estimado'    => $estimado,
+                    // Con impuesto por rubro, que es el monto con el que nace
+                    // cada presupuesto: repartir el total despues daria centavos
+                    // de diferencia y una cifra que no cuadra con su origen.
+                    'conImpuesto' => (int) round($estimado * (1 + $tasa)),
+                    'sinEstimar'  => $grupo->filter(fn (self $d) => $d->estimado() === null)->count(),
+                ];
+            })
+            // Lo que no tiene rubro, al final: es lo que falta por decidir.
+            ->sortBy(fn (array $fila) => [$fila['rubro'] === null ? 1 : 0, $fila['rubro']])
+            ->values()
+            ->all();
 
         $areas = $deseos
             ->groupBy(fn (self $d) => $d->area?->name ?? '')
@@ -237,11 +301,11 @@ class Wish extends Model
             ->all();
 
         $estimado = (int) $deseos->sum(fn (self $d) => $d->estimado() ?? 0);
-        $tasa = (float) config('fabos.money.tax_rate');
 
         return [
             'anio'        => $ano,
             'tasa'        => $tasa,
+            'rubros'      => $rubros,
             'areas'       => $areas,
             'cuantos'     => $deseos->count(),
             'estimado'    => $estimado,

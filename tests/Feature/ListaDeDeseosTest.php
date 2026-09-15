@@ -405,6 +405,149 @@ class ListaDeDeseosTest extends TestCase
         $this->assertSame(7_000_000, Wish::resumenDelAno(2028)['estimado']);
     }
 
+    // ------------------------------------------------------------ el rubro
+
+    public function test_los_rubros_salen_de_los_presupuestos_que_ya_existen(): void
+    {
+        Budget::create(['name' => 'Materiales laboratorio', 'year' => 2026, 'amount' => 1, 'status' => 'vigente']);
+        Budget::create(['name' => 'Licencias y software', 'year' => 2026, 'amount' => 1, 'status' => 'vigente']);
+        // El mismo rubro se repite cada año: en la lista aparece una sola vez.
+        Budget::create(['name' => 'Materiales laboratorio', 'year' => 2027, 'amount' => 1, 'status' => 'borrador']);
+
+        $rubros = Wish::rubrosDisponibles();
+
+        $this->assertSame(['Licencias y software', 'Materiales laboratorio'], array_values($rubros));
+    }
+
+    public function test_un_presupuesto_de_venta_no_es_un_rubro_de_gasto(): void
+    {
+        Budget::create(['name' => 'Ventas fablab', 'kind' => 'venta', 'year' => 2026, 'amount' => 1, 'status' => 'vigente']);
+
+        $this->assertSame([], array_values(Wish::rubrosDisponibles()));
+    }
+
+    public function test_un_rubro_escrito_a_mano_queda_disponible_aunque_no_tenga_presupuesto(): void
+    {
+        // El caso de un rubro que solo va a existir el año que viene.
+        $this->deseo(['budget_line' => 'Formación externa']);
+
+        $this->assertContains('Formación externa', Wish::rubrosDisponibles());
+    }
+
+    public function test_el_resumen_reparte_el_ano_por_rubro(): void
+    {
+        $this->deseo(['budget_line' => 'Herramientas y accesorios', 'unit_price' => 12_000_000]);
+        $this->deseo(['budget_line' => 'Herramientas y accesorios', 'quantity' => 2, 'unit_price' => 850_000]);
+        $this->deseo(['budget_line' => 'Licencias y software', 'unit_price' => 3_120_000]);
+        $this->deseo(['budget_line' => null, 'unit_price' => 640_000]);
+
+        $resumen = Wish::resumenDelAno(2027);
+
+        $this->assertSame('Herramientas y accesorios', $resumen['rubros'][0]['rubro']);
+        $this->assertSame(13_700_000, $resumen['rubros'][0]['estimado']);
+        $this->assertSame('Licencias y software', $resumen['rubros'][1]['rubro']);
+        // Lo que falta por decidir, al final.
+        $this->assertNull($resumen['rubros'][2]['rubro']);
+        $this->assertSame(640_000, $resumen['rubros'][2]['estimado']);
+    }
+
+    public function test_cada_rubro_trae_su_propia_cifra_con_impuesto(): void
+    {
+        config(['fabos.money.tax_rate' => 0.19]);
+        $this->deseo(['budget_line' => 'Materiales laboratorio', 'unit_price' => 1_000_000]);
+
+        $resumen = Wish::resumenDelAno(2027);
+
+        // Con impuesto por rubro y no repartiendo el total: es el monto con el
+        // que nace cada presupuesto.
+        $this->assertSame(1_190_000, $resumen['rubros'][0]['conImpuesto']);
+    }
+
+    public function test_presupuestar_por_rubro_crea_uno_por_cada_uno_en_borrador(): void
+    {
+        config(['fabos.money.tax_rate' => 0.19]);
+        $this->deseo(['budget_line' => 'Materiales laboratorio', 'unit_price' => 1_000_000]);
+        $this->deseo(['budget_line' => 'Licencias y software', 'unit_price' => 2_000_000]);
+
+        $creados = $this->deseos()->presupuestarPorRubro(2027, ['Materiales laboratorio', 'Licencias y software']);
+
+        $this->assertCount(2, $creados);
+        $this->assertSame(2, Budget::where('year', 2027)->count());
+
+        $materiales = Budget::where('name', 'Materiales laboratorio')->where('year', 2027)->first();
+        $this->assertSame('borrador', $materiales->status);
+        $this->assertSame(1_190_000, (int) $materiales->amount);
+        // El nombre es el puente entre un año y el siguiente: si cambia, no se
+        // pueden comparar.
+        $this->assertStringContainsString('Materiales laboratorio', $materiales->notes);
+    }
+
+    public function test_presupuestar_por_rubro_solo_crea_los_elegidos(): void
+    {
+        $this->deseo(['budget_line' => 'Materiales laboratorio', 'unit_price' => 1_000_000]);
+        $this->deseo(['budget_line' => 'Licencias y software', 'unit_price' => 2_000_000]);
+
+        $creados = $this->deseos()->presupuestarPorRubro(2027, ['Materiales laboratorio']);
+
+        $this->assertCount(1, $creados);
+        $this->assertSame(0, Budget::where('name', 'Licencias y software')->count());
+    }
+
+    public function test_un_rubro_sin_deseos_no_crea_presupuesto(): void
+    {
+        $this->deseo(['budget_line' => 'Materiales laboratorio', 'unit_price' => 1_000_000]);
+
+        $creados = $this->deseos()->presupuestarPorRubro(2027, ['Un rubro que nadie pidió']);
+
+        $this->assertCount(0, $creados);
+    }
+
+    public function test_el_carrito_nace_apuntando_al_presupuesto_del_rubro(): void
+    {
+        $presupuesto = Budget::create([
+            'name' => 'Materiales laboratorio', 'year' => (int) now()->year,
+            'amount' => 50_000_000, 'status' => 'vigente',
+        ]);
+        $deseo = $this->deseo(['budget_line' => 'Materiales laboratorio']);
+
+        $carrito = $this->deseos()->pasarACompra($this->lote([$deseo]), $this->persona());
+
+        // Media razón de que el deseo lleve rubro: no hay que acordarse de
+        // contra qué presupuesto iba cada cosa.
+        $this->assertSame($presupuesto->id, $carrito->budget_id);
+    }
+
+    public function test_con_rubros_mezclados_el_carrito_no_adivina_el_presupuesto(): void
+    {
+        Budget::create([
+            'name' => 'Materiales laboratorio', 'year' => (int) now()->year,
+            'amount' => 50_000_000, 'status' => 'vigente',
+        ]);
+
+        $carrito = $this->deseos()->pasarACompra($this->lote([
+            $this->deseo(['budget_line' => 'Materiales laboratorio']),
+            $this->deseo(['budget_line' => 'Licencias y software']),
+        ]), $this->persona());
+
+        // Una compra solo va contra un presupuesto: repartirla es decisión de
+        // quien la arma.
+        $this->assertNull($carrito->budget_id);
+    }
+
+    public function test_un_presupuesto_del_rubro_que_no_esta_vigente_no_se_usa(): void
+    {
+        Budget::create([
+            'name' => 'Materiales laboratorio', 'year' => (int) now()->year,
+            'amount' => 50_000_000, 'status' => 'borrador',
+        ]);
+        $deseo = $this->deseo(['budget_line' => 'Materiales laboratorio']);
+
+        $carrito = $this->deseos()->pasarACompra($this->lote([$deseo]), $this->persona());
+
+        // Un borrador todavía no es plata que se pueda comprometer.
+        $this->assertNull($carrito->budget_id);
+    }
+
     // ------------------------------------------------------- el presupuesto
 
     public function test_presupuestar_crea_el_presupuesto_en_borrador_con_el_monto_precargado(): void
