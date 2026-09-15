@@ -191,6 +191,39 @@ class Reservation extends Model
                 ->orWhereHas('companions', fn ($c) => $c->whereIn('users.id', $ids)));
     }
 
+    /**
+     * Lo que pasa hoy en el laboratorio, sea de quien sea.
+     *
+     * Es la pregunta de cada mañana al abrir —«¿qué hay hoy?»— y no tenía
+     * respuesta directa: había que ordenar por fecha y leer hasta donde
+     * cambiaba el día.
+     *
+     * Por **solapamiento** y no por hora de inicio: una reserva que empezó
+     * anoche y termina esta mañana está ocupando la máquina hoy, y quien mira
+     * la lista tiene que verla.
+     *
+     * El día es el del laboratorio, no el del servidor: las horas se guardan en
+     * UTC y a las 19:00 de Bogotá ya es mañana en Londres.
+     *
+     * Por eso los dos extremos se calculan en la zona del laboratorio y **se
+     * pasan a UTC antes de comparar**. Sin ese paso, la consulta manda a la
+     * base «2026-08-25 23:59:59» leído como hora de Bogotá y compara ese texto
+     * con instantes en UTC: todo lo reservado después de las 19:00 se caía del
+     * día, que es justo la franja de la tarde en el laboratorio.
+     *
+     * Vive aquí, en un sitio, porque la pregunta se hace en dos: el botón que
+     * lleva a la lista y el filtro de la tabla. Si fueran dos reglas, el botón
+     * diría un número y la lista enseñaría otro.
+     */
+    public function scopeDeHoy(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $tz = config('fabos.lab.timezone');
+
+        return $query
+            ->where('starts_at', '<=', now($tz)->endOfDay()->utc())
+            ->where('ends_at', '>=', now($tz)->startOfDay()->utc());
+    }
+
     /** Las que cuelgan de esta. */
     public function hijas(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

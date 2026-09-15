@@ -125,6 +125,21 @@ class ReservationsTable
                     ->query(fn (Builder $query) => $query->where('ends_at', '>=', now())),
 
                 /*
+                 * Lo que pasa hoy en el laboratorio, de todo el mundo.
+                 *
+                 * Es la pregunta de cada manana al abrir —«que hay hoy»— y no
+                 * tenia respuesta directa: habia que ordenar por fecha y leer
+                 * hasta donde cambiaba el dia.
+                 *
+                 * Por solapamiento y no por hora de inicio: una reserva que
+                 * empezo anoche y termina esta manana esta ocupando la maquina
+                 * hoy, y quien mira la lista tiene que verla.
+                 */
+                Filter::make('hoy')
+                    ->label('Las de hoy')
+                    ->query(fn (Builder $query) => $query->deHoy()),
+
+                /*
                  * Ya no viene puesto.
                  *
                  * Escondia los espacios y los acompanamientos, que son
