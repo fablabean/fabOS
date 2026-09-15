@@ -118,7 +118,10 @@ class CierreDeProyectoTest extends TestCase
         $this->assertSame('cierre', $p->stage);
         $this->assertSame('cerrado', $p->status);
 
-        $aviso = NotificationLog::where('key', 'proyecto.cerrado')->firstOrFail();
+        // El último, no el primero: montar este proyecto pasa por cargar el
+        // informe final, que ya lo cierra y ya avisa por su cuenta. El que
+        // interesa aquí es el que lleva el texto escrito a mano.
+        $aviso = NotificationLog::where('key', 'proyecto.cerrado')->latest('id')->firstOrFail();
         $this->assertSame('enviado', $aviso->status);
         $this->assertStringContainsString('Pasa cuando quieras', $aviso->body);
     }
@@ -127,6 +130,7 @@ class CierreDeProyectoTest extends TestCase
     public function test_se_puede_cerrar_sin_avisar(): void
     {
         $p = $this->porCerrar();
+        $antes = NotificationLog::where('key', 'proyecto.cerrado')->count();
 
         Livewire::test(ListProjects::class)
             ->removeTableFilters()
@@ -134,6 +138,8 @@ class CierreDeProyectoTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertSame('cerrado', $p->fresh()->status);
-        $this->assertFalse(NotificationLog::where('key', 'proyecto.cerrado')->exists());
+        // Ninguno nuevo. Los de antes se quedan: apagar el interruptor no
+        // deshace un correo que ya salió.
+        $this->assertSame($antes, NotificationLog::where('key', 'proyecto.cerrado')->count());
     }
 }

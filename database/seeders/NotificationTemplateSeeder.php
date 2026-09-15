@@ -139,6 +139,76 @@ class NotificationTemplateSeeder extends Seeder
                     — {quien}, {laboratorio}
                     TXT,
             ],
+            /*
+             * Los tres hitos que se notan desde fuera, aparte del cierre.
+             * Silenciables: que tu proyecto entro en maquina es bueno saberlo,
+             * pero no es como enterarse de que ya puedes pasar a recogerlo.
+             * Tambien se siembran desde una migracion, porque el despliegue
+             * migra pero no siembra.
+             */
+            [
+                'key'          => 'proyecto.en_ejecucion',
+                'name'         => 'Tu proyecto entró en producción',
+                'description'  => 'A quien pidió el proyecto y a quien lo lidera, cuando pasa a la etapa de ejecución.',
+                'is_essential' => false,
+                'subject'      => 'Empezamos a fabricar {proyecto} ({codigo})',
+                'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'mensaje', 'enlace', 'quien', 'laboratorio'],
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {mensaje}
+
+                    Puedes seguirlo aquí:
+
+                    {enlace}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.pausado',
+                'name'         => 'Tu proyecto quedó en pausa',
+                'description'  => 'A quien pidió el proyecto y a quien lo lidera, cuando se pausa, con el motivo.',
+                'is_essential' => false,
+                'subject'      => '{proyecto} ({codigo}) queda en pausa',
+                'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'mensaje', 'enlace', 'quien', 'laboratorio'],
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu proyecto «{proyecto}» queda en pausa por ahora. El motivo:
+
+                    {mensaje}
+
+                    No está cancelado: lo retomamos en cuanto se resuelva. Si tienes dudas o
+                    algo cambió de tu lado, respóndenos por aquí:
+
+                    {enlace}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
+            [
+                'key'          => 'proyecto.descartado',
+                'name'         => 'Tu proyecto no sigue adelante',
+                'description'  => 'A quien pidió el proyecto y a quien lo lidera, cuando se descarta o se da por perdido, con el motivo.',
+                'is_essential' => false,
+                'subject'      => '{proyecto} ({codigo}) no sigue adelante',
+                'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'mensaje', 'enlace', 'quien', 'laboratorio'],
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu proyecto «{proyecto}» no va a seguir adelante. El motivo:
+
+                    {mensaje}
+
+                    Si crees que podemos retomarlo de otra forma, escríbenos: a veces lo que
+                    no cabe de una manera sí cabe de otra.
+
+                    {enlace}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
             [
                 'key'          => 'proyecto.pago_solicitado',
                 'name'         => 'Pago de un proyecto',

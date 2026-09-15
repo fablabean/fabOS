@@ -906,15 +906,25 @@ class ProjectService
      *
      * @throws ProjectException con el motivo concreto de lo que falta
      */
-    public function avanzar(Project $proyecto): Project
-    {
+    public function avanzar(
+        Project $proyecto,
+        ?User $quien = null,
+        bool $avisar = true,
+        ?string $mensajeDeCierre = null,
+    ): Project {
         $siguiente = $this->siguienteEtapa($proyecto);
 
         if (! $siguiente) {
             throw new ProjectException('Este proyecto ya está en la última etapa.');
         }
 
-        return $this->moverA($proyecto, $siguiente);
+        return $this->moverA(
+            $proyecto,
+            $siguiente,
+            quien: $quien,
+            avisar: $avisar,
+            mensajeDeCierre: $mensajeDeCierre,
+        );
     }
 
     /**
@@ -923,8 +933,14 @@ class ProjectService
      *
      * @throws ProjectException
      */
-    public function moverA(Project $proyecto, string $etapa, bool $exigirCompuertas = true): Project
-    {
+    public function moverA(
+        Project $proyecto,
+        string $etapa,
+        bool $exigirCompuertas = true,
+        ?User $quien = null,
+        bool $avisar = true,
+        ?string $mensajeDeCierre = null,
+    ): Project {
         if (! isset(Project::ETAPAS[$etapa])) {
             throw new ProjectException('Esa etapa no existe.');
         }
@@ -959,8 +975,115 @@ class ProjectService
         }
 
         $proyecto->update($datos);
+        $proyecto->refresh();
 
-        return $proyecto->refresh();
+        /*
+         * El aviso vive aqui, donde de verdad cambia la etapa, y no en el boton
+         * que la mueve.
+         *
+         * Antes lo encadenaba la pantalla, asi que un proyecto se podia cerrar
+         * en silencio por cuatro caminos distintos: editando el estado en la
+         * ficha, editando la etapa, descartandolo, o subiendo el informe final
+         * —que lo cierra solo—. Lo fabricado se quedaba en un estante esperando
+         * a alguien que no sabia que tenia que venir.
+         */
+        if ($avisar) {
+            $this->avisarDelHito($proyecto, $etapa, $quien, $mensajeDeCierre);
+        }
+
+        return $proyecto;
+    }
+
+    /**
+     * El correo que sale cuando el proyecto llega a un hito que le importa a
+     * quien lo pidió.
+     *
+     * Solo los hitos que se notan desde fuera: que ya se está fabricando y que
+     * está listo. Las etapas internas —el brief, el acta— no le dicen nada a
+     * quien espera su pieza, y un correo por cada una enseña a ignorarlos
+     * todos.
+     *
+     * **Nunca interrumpe lo que estaba pasando.** Si no hay a quién escribirle,
+     * el cambio de etapa se hace igual y el intento queda anotado en la bitácora
+     * de envíos: que falte un correo no puede impedir cerrar un proyecto.
+     */
+    private function avisarDelHito(Project $proyecto, string $etapa, ?User $quien = null, ?string $mensaje = null): void
+    {
+        $clave = match ($etapa) {
+            'ejecucion' => 'proyecto.en_ejecucion',
+            'cierre'    => 'proyecto.cerrado',
+            default     => null,
+        };
+
+        if ($clave === null) {
+            return;
+        }
+
+        $texto = trim((string) $mensaje) ?: match ($etapa) {
+            'cierre' => $this->mensajeDeCierreSugerido($proyecto),
+            default  => $this->mensajeDeEjecucionSugerido($proyecto),
+        };
+
+        $this->avisarDelProyecto($proyecto, $clave, $texto, $quien);
+    }
+
+    /**
+     * Manda un aviso del proyecto a quien lo pidió y a quien lo lidera.
+     *
+     * A las dos partes, porque son las dos que responden por él: quien espera
+     * la pieza y quien la está haciendo. Al responsable le llega aunque el
+     * cambio lo haya hecho otro —que es justo cuando hace falta enterarse— y
+     * nunca dos veces si resulta ser la misma persona.
+     *
+     * No lanza: un aviso que no sale no puede tumbar la operación que lo
+     * provocó. Queda en la bitácora con su motivo.
+     */
+    private function avisarDelProyecto(Project $proyecto, string $clave, string $mensaje, ?User $quien = null): ?NotificationLog
+    {
+        $variables = [
+            'proyecto' => $proyecto->name,
+            'codigo'   => $proyecto->code,
+            'quien'    => $quien?->name ?: config('fabos.lab.name'),
+            'mensaje'  => $mensaje,
+            'enlace'   => URL::temporarySignedRoute(
+                'proyectos.propuesta',
+                now()->addDays(60),
+                ['project' => $proyecto->id],
+            ),
+        ];
+
+        $correo = $proyecto->correoDeLaPropuesta();
+        $aviso = null;
+
+        if (filled($correo)) {
+            $destinatario = $proyecto->destinatarioDeLaPropuesta();
+
+            $aviso = $destinatario
+                ? $this->avisos->enviar($clave, $destinatario, $variables, $proyecto)
+                : $this->avisos->enviarSinCuenta(
+                    $clave,
+                    $correo,
+                    $proyecto->contact_name ?: $proyecto->organization ?: 'Hola',
+                    $variables,
+                    $proyecto,
+                );
+        }
+
+        // Y al responsable interno, si lo hay y no es quien ya lo recibió.
+        $lider = $proyecto->lead;
+
+        if ($lider && filled($lider->email) && mb_strtolower($lider->email) !== mb_strtolower((string) $correo)) {
+            $this->avisos->enviar($clave, $lider, $variables, $proyecto);
+        }
+
+        return $aviso;
+    }
+
+    /** Lo que se le dice a quien pidió cuando su proyecto entra en máquina. */
+    public function mensajeDeEjecucionSugerido(Project $proyecto): string
+    {
+        return 'Empezamos a fabricar «' . $proyecto->name . '». Te escribimos otra vez cuando esté listo '
+            . 'para que pases a recogerlo. Si necesitas algo mientras tanto, respóndenos por aquí.';
     }
 
     /**
@@ -1035,15 +1158,28 @@ class ProjectService
     }
 
     /** Descarta o marca perdido, sin borrar: el histórico enseña. */
-    public function descartar(Project $proyecto, string $motivo, string $estado = 'descartado'): Project
-    {
+    public function descartar(
+        Project $proyecto,
+        string $motivo,
+        string $estado = 'descartado',
+        ?User $quien = null,
+        bool $avisar = true,
+    ): Project {
         $proyecto->update([
             'status'        => $estado,
             'closed_at'     => now(),
             'closing_notes' => $motivo,
         ]);
 
-        return $proyecto->refresh();
+        $proyecto->refresh();
+
+        // Quien pidió algo y no lo va a recibir merece enterarse, y con el
+        // motivo: enterarse por el silencio es peor que un «no».
+        if ($avisar) {
+            $this->avisarDelProyecto($proyecto, 'proyecto.descartado', $motivo, $quien);
+        }
+
+        return $proyecto;
     }
 
     /**
@@ -1058,14 +1194,22 @@ class ProjectService
      * de cierre porque es el mismo campo donde vive «que paso con esto», y
      * tener dos sitios para lo mismo acaba dejando uno vacio.
      */
-    public function pausar(Project $proyecto, string $motivo): Project
+    public function pausar(Project $proyecto, string $motivo, ?User $quien = null, bool $avisar = true): Project
     {
         $proyecto->update([
             'status'        => 'pausado',
             'closing_notes' => $motivo,
         ]);
 
-        return $proyecto->refresh();
+        $proyecto->refresh();
+
+        // Un proyecto parado sin explicación se lee como un proyecto olvidado,
+        // y quien espera acaba preguntando por WhatsApp.
+        if ($avisar) {
+            $this->avisarDelProyecto($proyecto, 'proyecto.pausado', $motivo, $quien);
+        }
+
+        return $proyecto;
     }
 
     /** Y volver: se limpia el motivo, que ya no describe donde esta. */

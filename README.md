@@ -140,6 +140,11 @@ Implementado y verificado:
   el catálogo se pide con sus palabras. El saldo del presupuesto se deriva
   igual que en el libro contable: comprometido por lo aprobado, ejecutado por lo
   recibido, nunca un campo editable a mano.
+- **Convocatorias de práctica.** Cada semestre, la tanda de quienes quieren hacer
+  su práctica en el laboratorio: se postulan desde el sitio sin necesidad de
+  cuenta, se evalúan con la tanda entera delante —nota, decisión y por qué, con
+  autor— y a quien se acepta se le crea la cuenta con rol de practicante. Interno
+  o externo se deriva del correo institucional.
 - **Perfiles profesionales.** La lista de quién puede trabajar con el laboratorio
   —talleristas, técnicos, diseñadores—, con los datos que pide una contratación
   en Colombia: persona natural o jurídica, RUT, seguridad social y sus papeles

@@ -209,6 +209,31 @@
                 razón de que un <b>perfil profesional</b> guarde papeles y no horas.
             </div>
 
+            <h3 style="margin-top:1.2rem">Convocatorias de práctica</h3>
+            <div class="porque">
+                <b>Se evalúa por tandas, no de uno en uno.</b> Una convocatoria es el semestre, y se
+                decide con la tanda entera delante: evaluar abriendo fichas sueltas hace que la
+                tercera se juzgue con otro criterio que la primera. De cada decisión queda
+                <b>quién</b> y <b>por qué</b>, porque una decisión sin autor se vuelve a discutir
+                dentro de un mes y una sin motivo no se puede defender ante quien pregunta por qué
+                no quedó.
+            </div>
+            <div class="porque">
+                <b>Quien se postula no tiene cuenta, y no la necesita.</b> Pedirle que se registre
+                antes de dejar su hoja de vida es la forma más segura de que no lo haga. La cuenta
+                llega si lo aceptan, con el rol de <em>practicante</em> —que atiende el laboratorio,
+                no lo administra— y con la categoría que le corresponda. <b>Interno o externo se
+                deriva del correo</b>, no de una casilla: un correo del dominio de la Universidad
+                prueba pertenencia; una casilla marcada solo prueba que alguien la marcó.
+            </div>
+            <div class="porque">
+                <b>Una práctica no lleva jornada aquí.</b> Se anotan las horas que le exige su
+                universidad —dato del convenio— pero el sistema no registra cumplimiento de horario,
+                por lo mismo que no lo hace con proveedores: la primacía de la realidad sobre las
+                formas. Y la hoja de vida vive en el disco privado, con la autorización de
+                tratamiento de datos pedida en el mismo formulario (Ley 1581 de 2012).
+            </div>
+
             <h3 style="margin-top:1.2rem">Perfiles profesionales</h3>
             <div class="porque">
                 <b>Un perfil no es una cuenta.</b> Es la ficha de alguien que puede trabajar con el
@@ -839,6 +864,23 @@
             <div class="porque">
                 <b>El avance no se pone a dedo:</b> es el promedio de las tareas. Y descartar no
                 borra — el histórico de lo que no salió enseña tanto como el de lo que sí.
+            </div>
+            <div class="porque">
+                <b>El aviso sale donde cambia la etapa, no donde se pulsa el botón.</b> Antes lo
+                encadenaba la pantalla, así que un proyecto se podía cerrar en silencio por cuatro
+                caminos: editando el estado en la ficha, editando la etapa, descartándolo, o
+                <em>subiendo el informe final</em>, que lo cierra solo. Lo fabricado se quedaba en un
+                estante esperando a alguien que no sabía que tenía que venir. Ahora el correo sale
+                venga por donde venga el cambio.
+            </div>
+            <div class="porque">
+                <b>Solo los hitos que se notan desde fuera:</b> propuesta lista, aceptada, entró en
+                producción, en pausa, descartado y cerrado. El brief y el acta no le dicen nada a
+                quien espera su pieza, y un correo por cada etapa interna enseña a ignorarlos todos.
+                Le llega a quien pidió —tenga cuenta o no, con el enlace firmado— y a quien lo
+                lidera, que así se entera aunque el cambio lo haya hecho otro. <b>Un aviso que no
+                sale no tumba la operación</b>: si no hay a quién escribirle, el proyecto se cierra
+                igual y el intento queda en la bitácora con su motivo.
             </div>
 
             <h3 style="margin-top:1.2rem">Qué cuesta un proyecto</h3>

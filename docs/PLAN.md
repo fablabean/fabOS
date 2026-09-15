@@ -566,6 +566,76 @@ Ver `docs/ASESORIAS.md`.
   ventas viven en FabCoins y el presupuesto en pesos: la conversión usa la tasa
   configurada, así que es una **equivalencia**, no un extracto bancario.
 
+### Avisar a quien pidió, en cada hito (§11)
+
+El correo de cierre existía, pero lo encadenaba la pantalla: solo salía desde
+dos botones del listado. Un proyecto se podía cerrar **en silencio** por cuatro
+caminos más —editando el estado en la ficha, editando la etapa, descartándolo, o
+subiendo el informe final, que lo cierra solo—, y entonces lo fabricado se
+quedaba en un estante esperando a alguien que no sabía que tenía que venir.
+
+- **El aviso se mudó al servicio**, al punto donde de verdad cambia la etapa. Da
+  igual por dónde venga el cambio: el correo sale. El interruptor y el texto
+  editable siguen en el botón —cerrar un proyecto viejo sin escribirle a nadie es
+  legítimo—, pero el silencio ya no es *accidental*.
+- **Solo los hitos que se notan desde fuera**: propuesta, aceptada, entró en
+  producción, en pausa, descartado y cerrado. El brief y el acta no le dicen nada
+  a quien espera su pieza, y un correo por cada etapa interna enseña a ignorarlos
+  todos. Retroceder de etapa no avisa: no ha pasado nada que contar.
+- **A quien pidió y a quien lidera.** Al primero, tenga cuenta o no, con el enlace
+  firmado de siempre; al segundo porque se entera de que su proyecto avanzó
+  aunque el cambio lo haya hecho otro. Si son la misma persona, un solo correo.
+- **Un aviso que no sale no tumba la operación que lo provocó.** Sin correo de
+  contacto el proyecto se cierra igual y el intento queda en la bitácora con su
+  motivo. Antes el aviso manual lanzaba error y dejaba a medias el cierre.
+- **Pausa y descarte avisan con el motivo.** Un proyecto parado sin explicación se
+  lee como un proyecto olvidado, y enterarse por el silencio es peor que un «no».
+- **Los tres avisos nuevos son silenciables**; el de cierre sigue siendo esencial,
+  porque enterarse de que ya puedes pasar a recoger lo tuyo no debería poder
+  apagarse. Se siembran **desde una migración**: el despliegue migra pero no
+  siembra, y una plantilla que solo viviera en el seeder no existiría en
+  producción.
+
+### Convocatorias de práctica (§5)
+
+Cada semestre llegan estudiantes que quieren hacer su práctica aquí: unos de la
+propia Universidad, otros de fuera. Llegaban por correo, por WhatsApp y por el
+pasillo, y se decidía con las hojas de vida repartidas entre tres bandejas de
+entrada. Cuando alguien preguntaba por qué no quedó tal persona, nadie tenía la
+respuesta escrita.
+
+- **Se evalúa por tandas.** Una convocatoria es el semestre —«Prácticas 2026-1»—
+  y se decide **con la tanda entera delante**, que es como se compara de verdad:
+  evaluar abriendo fichas sueltas hace que la tercera se juzgue con otro criterio
+  que la primera. Es la misma idea de los lotes de candidatos (§11) aplicada a
+  personas, con nota de 1 a 5, decisión, por qué, y qué podría hacer aquí.
+- **Un postulante no es una cuenta.** Vive aparte a propósito: darle usuario a
+  quien probablemente no quede llena el sistema de gente que nunca entró. Se
+  convierte **cuando se acepta**, y entonces recibe el rol de *practicante*
+  —atiende el laboratorio, no lo administra— reutilizando la misma pieza que crea
+  personas en todo el panel, que deduplica por correo.
+- **Interno o externo se deriva del correo**, no se marca. Un correo del dominio
+  de la Universidad prueba pertenencia; una casilla marcada a mano solo prueba
+  que alguien la marcó. De ahí sale la categoría con la que nace la cuenta
+  —estudiante o externo—, que es lo que decide su tarifa y su dotación. La
+  universidad de quien viene de fuera sí se anota: hace falta para el convenio.
+- **Se postulan desde el sitio, sin cuenta.** Pedirle a quien quiere dejar su
+  hoja de vida que primero se registre es la forma más segura de que no lo haga.
+  El formulario lleva trampa para robots y el mismo límite de envíos que el de
+  proyectos, por la misma razón: toda la universidad sale a internet con una sola
+  IP. Postularse dos veces **corrige** la postulación en vez de duplicarla —quien
+  reenvía casi siempre está arreglando algo— y lo ya evaluado no se toca.
+- **La convocatoria puede estar cerrada para el sitio y abierta para el equipo.**
+  Quien llega por el pasillo el último día se anota a mano; la puerta pública se
+  cierra sola con la fecha.
+- **La hoja de vida vive en el disco privado** y se borra con la postulación: no
+  puede quedar rodando por el servidor el escaneo de una cédula de alguien que no
+  quedó. Y quien se postula **autoriza el tratamiento de sus datos en el mismo
+  acto** (Ley 1581 de 2012), con la finalidad escrita en el formulario.
+- **No lleva jornada.** Se anotan las horas que le exige su universidad, que son
+  dato del convenio, pero el sistema no registra cumplimiento de horario: la
+  primacía de la realidad sobre las formas vale aquí igual que para proveedores.
+
 ### Perfiles profesionales (§5)
 
 La lista de quién puede trabajar con el laboratorio —un tallerista de textiles,

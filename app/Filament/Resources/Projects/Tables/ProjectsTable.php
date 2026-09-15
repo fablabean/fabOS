@@ -572,7 +572,14 @@ class ProjectsTable
                 : [])
             ->action(function (Project $record, array $data) {
                 try {
-                    $proyecto = app(ProjectService::class)->avanzar($record);
+                    // El aviso lo manda el servicio, en el mismo acto de mover
+                    // la etapa: aqui solo se le pasa si sale y con que texto.
+                    $proyecto = app(ProjectService::class)->avanzar(
+                        $record,
+                        quien: auth()->user(),
+                        avisar: (bool) ($data['avisar'] ?? true),
+                        mensajeDeCierre: $data['mensaje'] ?? null,
+                    );
                 } catch (ProjectException $e) {
                     Notification::make()
                         ->title('Todavía no se puede avanzar')
@@ -586,7 +593,7 @@ class ProjectsTable
 
                 Notification::make()
                     ->title('Ahora está en ' . mb_strtolower(Project::ETAPAS[$proyecto->stage]))
-                    ->body(self::avisarCierreSiToca($proyecto, $data))
+                    ->body(self::comoQuedoElAviso($proyecto, $data))
                     ->success()
                     ->send();
             });
@@ -611,22 +618,34 @@ class ProjectsTable
         ];
     }
 
-    /** Manda el aviso de cierre si el proyecto quedó cerrado y se pidió. Devuelve qué pasó, para la notificación. */
-    private static function avisarCierreSiToca(Project $proyecto, array $data): ?string
+    /**
+     * Cómo quedó el aviso que mandó el servicio, para decirlo en la notificación.
+     *
+     * Ya no lo manda esta pantalla: sale dentro del mismo acto que cambia la
+     * etapa, de modo que también salga cuando el proyecto se cierra por los
+     * otros caminos —el informe que lo cierra solo, la ficha editada a mano—.
+     * Aquí solo se lee la bitácora para contar qué pasó.
+     */
+    private static function comoQuedoElAviso(Project $proyecto, array $data): ?string
     {
-        if ($proyecto->stage !== 'cierre' || ! ($data['avisar'] ?? false)) {
+        if ($proyecto->stage !== 'cierre' || ! ($data['avisar'] ?? true)) {
             return null;
         }
 
-        try {
-            $aviso = app(ProjectService::class)->avisarCierre($proyecto, auth()->user(), $data['mensaje'] ?? null);
-        } catch (ProjectException $e) {
-            Notification::make()->warning()->title('Cerrado, pero el aviso no salió')->body($e->getMessage())->persistent()->send();
+        $aviso = \App\Models\NotificationLog::query()
+            ->where('key', 'proyecto.cerrado')
+            ->where('reference_type', Project::class)
+            ->where('reference_id', $proyecto->id)
+            ->latest('id')
+            ->first();
 
+        if (! $aviso) {
             return null;
         }
 
-        return 'Le avisamos a ' . $aviso->to . ' que puede pasar por lo suyo.';
+        return $aviso->status === 'enviado'
+            ? 'Le avisamos a ' . $aviso->to . ' que puede pasar por lo suyo.'
+            : 'Ojo: el aviso no salió' . ($aviso->reason ? ' (' . mb_strtolower($aviso->reason) . ')' : '') . '.';
     }
 
     private static function mover(): Action
@@ -653,14 +672,20 @@ class ProjectsTable
             ])
             ->action(function (Project $record, array $data) {
                 try {
-                    $proyecto = app(ProjectService::class)->moverA($record, $data['etapa']);
+                    $proyecto = app(ProjectService::class)->moverA(
+                        $record,
+                        $data['etapa'],
+                        quien: auth()->user(),
+                        avisar: (bool) ($data['avisar'] ?? true),
+                        mensajeDeCierre: $data['mensaje'] ?? null,
+                    );
                 } catch (ProjectException $e) {
                     Notification::make()->title('No se pudo mover')->body($e->getMessage())->danger()->persistent()->send();
 
                     return;
                 }
 
-                Notification::make()->title('Etapa actualizada')->body(self::avisarCierreSiToca($proyecto, $data))->success()->send();
+                Notification::make()->title('Etapa actualizada')->body(self::comoQuedoElAviso($proyecto, $data))->success()->send();
             });
     }
 
@@ -688,7 +713,7 @@ class ProjectsTable
                     ->helperText('Lo que hace falta para volver a arrancarlo. Sin esto, dentro de dos meses nadie sabe qué se estaba esperando.'),
             ])
             ->action(function (Project $record, array $data) {
-                app(ProjectService::class)->pausar($record, $data['motivo']);
+                app(ProjectService::class)->pausar($record, $data['motivo'], quien: auth()->user());
 
                 Notification::make()->title('En pausa')->success()->send();
             });
@@ -740,7 +765,7 @@ class ProjectsTable
                     ->helperText('No se borra: el histórico de lo que no salió enseña tanto como el de lo que sí.'),
             ])
             ->action(function (Project $record, array $data) {
-                app(ProjectService::class)->descartar($record, $data['motivo'], $data['estado']);
+                app(ProjectService::class)->descartar($record, $data['motivo'], $data['estado'], quien: auth()->user());
 
                 Notification::make()->title('Registrado')->success()->send();
             });
