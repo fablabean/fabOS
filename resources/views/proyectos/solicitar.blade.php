@@ -333,7 +333,7 @@
             })();
         </script>
 
-        <x-captcha/>
+        <x-captcha accion="proyectos.solicitar.store"/>
 
         <button type="submit">Enviar la solicitud</button>
 

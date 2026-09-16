@@ -134,7 +134,7 @@
             </label>
 
             <p style="margin-bottom:0">
-                <x-captcha/>
+                <x-captcha accion="practicas.postular.store"/>
 
                 <button type="submit" class="boton">Enviar mi postulación</button>
             </p>

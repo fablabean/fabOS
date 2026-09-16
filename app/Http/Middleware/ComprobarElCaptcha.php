@@ -31,9 +31,15 @@ class ComprobarElCaptcha
 
     public function handle(Request $request, Closure $next, string $campo = 'email'): Response
     {
+        /*
+         * La accion esperada sale del nombre de la ruta que se esta pidiendo,
+         * y la vista la pinta con el mismo nombre. Asi las dos puntas no
+         * pueden desincronizarse por un despiste al escribirla.
+         */
         if ($this->turnstile->verificar(
             $request->input('cf-turnstile-response'),
             $request->ip(),
+            Turnstile::accionDe($request->route()?->getName()),
         )) {
             return $next($request);
         }

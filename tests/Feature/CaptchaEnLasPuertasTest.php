@@ -205,6 +205,145 @@ class CaptchaEnLasPuertasTest extends TestCase
         }
     }
 
+    // ---------------------------------------------------------------
+    // Que el token no sirva en otra puerta
+    // ---------------------------------------------------------------
+
+    /**
+     * Un token de una pantalla no vale en otra.
+     *
+     * Sin esto, el captcha se resuelve UNA vez en el formulario de ingreso y
+     * ese token sirve para mandar mil postulaciones a prácticas: las siete
+     * puertas quedarían protegidas por un solo captcha. Cloudflare graba la
+     * acción dentro del token al emitirlo, así que no se puede cambiar después.
+     */
+    public function test_un_token_de_otra_pantalla_no_vale(): void
+    {
+        $this->conClaves();
+
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([
+            'success' => true,
+            'action' => 'login_send',
+        ])]);
+
+        $turnstile = app(Turnstile::class);
+
+        $this->assertTrue($turnstile->verificar('un-token', null, 'login_send'));
+        $this->assertFalse(
+            $turnstile->verificar('un-token', null, 'practicas_postular_store'),
+            'Un token emitido en el ingreso no puede valer para postular.',
+        );
+    }
+
+    /**
+     * Si falta la acción en una de las dos puntas, no se cierra la puerta.
+     *
+     * Un formulario al que se le olvide el `data-action` emite tokens con la
+     * acción vacía. Ahí conviene degradar —seguir funcionando sin esa
+     * comprobación— y no dejar a nadie fuera por un atributo que falta en una
+     * plantilla. Lo que impide que ese olvido pase desapercibido es la prueba
+     * de abajo, no un fallo en la cara de quien intenta entrar.
+     */
+    public function test_sin_accion_declarada_sigue_funcionando(): void
+    {
+        $this->conClaves();
+
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([
+            'success' => true, 'action' => '',
+        ])]);
+
+        $this->assertTrue(app(Turnstile::class)->verificar('un-token', null, 'login_send'));
+    }
+
+    /**
+     * El token tiene que venir de nuestro dominio.
+     *
+     * Cloudflare ya limita el widget a los dominios declarados; esto es la
+     * segunda vuelta, por si en la consola se añade uno más y nadie se entera.
+     */
+    public function test_un_token_de_otro_dominio_no_vale(): void
+    {
+        $this->conClaves();
+        config(['app.url' => 'https://fablabean.com']);
+
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([
+            'success' => true, 'hostname' => 'sitio-de-otro.com',
+        ])]);
+
+        $this->assertFalse(app(Turnstile::class)->verificar('un-token'));
+    }
+
+    public function test_un_token_de_nuestro_dominio_si_vale(): void
+    {
+        $this->conClaves();
+        config(['app.url' => 'https://fablabean.com']);
+
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([
+            'success' => true, 'hostname' => 'fablabean.com',
+        ])]);
+
+        $this->assertTrue(app(Turnstile::class)->verificar('un-token'));
+    }
+
+    /** Sin APP_URL no se comprueba: mejor no comprobar que cerrar la puerta. */
+    public function test_sin_app_url_no_se_comprueba_el_dominio(): void
+    {
+        $this->conClaves();
+        config(['app.url' => '']);
+
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([
+            'success' => true, 'hostname' => 'lo-que-sea.com',
+        ])]);
+
+        $this->assertTrue(app(Turnstile::class)->verificar('un-token'));
+    }
+
+    /**
+     * Cada puerta pinta SU acción, y coincide con la ruta a la que envía.
+     *
+     * Es la prueba que sostiene todo lo anterior: si una plantilla se queda sin
+     * `data-action`, o lo tiene mal escrito, el sitio sigue funcionando y esa
+     * puerta se queda sin la protección sin que nada lo diga.
+     */
+    public function test_cada_puerta_declara_su_propia_accion(): void
+    {
+        $this->conClaves();
+
+        $puertas = [
+            ['url' => route('login'), 'acciones' => ['login.send']],
+            ['url' => route('login.code', ['email' => 'quien@ejemplo.co']), 'acciones' => ['login.verify', 'login.code.enviar']],
+            ['url' => route('proyectos.solicitar'), 'acciones' => ['proyectos.solicitar.store']],
+        ];
+
+        foreach ($puertas as $puerta) {
+            $html = $this->get($puerta['url'])->assertOk()->getContent();
+
+            foreach ($puerta['acciones'] as $ruta) {
+                $esperada = Turnstile::accionDe($ruta);
+
+                $this->assertStringContainsString(
+                    'data-action="'.$esperada.'"',
+                    $html,
+                    "La puerta {$puerta['url']} no declara la acción de «{$ruta}».",
+                );
+            }
+        }
+    }
+
+    /** El nombre de la acción cabe en lo que Cloudflare admite. */
+    public function test_la_accion_se_limpia_para_cloudflare(): void
+    {
+        $this->assertSame('login_send', Turnstile::accionDe('login.send'));
+        $this->assertSame('proyectos_solicitar_store', Turnstile::accionDe('proyectos.solicitar.store'));
+        $this->assertNull(Turnstile::accionDe(null));
+
+        // Turnstile corta en 32 caracteres y solo admite letras, numeros,
+        // guion y guion bajo.
+        $larga = Turnstile::accionDe(str_repeat('ruta.larga.', 10));
+        $this->assertLessThanOrEqual(32, strlen($larga));
+        $this->assertMatchesRegularExpression('/^[a-zA-Z0-9_-]+$/', $larga);
+    }
+
     /**
      * El mensaje se ata al campo que ese formulario tiene de verdad.
      *

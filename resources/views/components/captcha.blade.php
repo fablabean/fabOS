@@ -11,11 +11,18 @@
     justo encima del botón y sin explicación: explicar algo que no pide nada
     preocupa más que tranquiliza.
 --}}
+@props(['accion' => null])
+
 @php($turnstile = app(\App\Services\Auth\Turnstile::class))
 
 @if ($turnstile->estaActivo())
     <div class="cf-turnstile"
          data-sitekey="{{ $turnstile->claveDelSitio() }}"
+         {{-- A que puerta pertenece este token. Cloudflare lo graba dentro al
+              emitirlo, asi que un token del formulario de ingreso no sirve
+              para mandar mil postulaciones a practicas. Es el nombre de la
+              ruta a la que envia este formulario. --}}
+         @if ($accion) data-action="{{ \App\Services\Auth\Turnstile::accionDe($accion) }}" @endif
          data-language="es"
          {{-- El tema sigue al del sistema, como el resto del sitio. --}}
          data-theme="auto"

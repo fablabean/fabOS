@@ -27,7 +27,7 @@
         {{-- Ojo: este boton NO puede llamarse "submit". Los controles de un
              formulario quedan accesibles como propiedades suyas, asi que un
              id="submit" tapa el metodo form.submit() y el envio falla. --}}
-        <x-captcha/>
+        <x-captcha accion="carnet.login"/>
 
         <button type="submit" id="enviar">Entrar</button>
     </form>

@@ -57,12 +57,31 @@ class Turnstile
     }
 
     /**
+     * El nombre de accion que Cloudflare acepta, sacado del de la ruta.
+     *
+     * Turnstile solo admite letras, numeros, guion y guion bajo, y hasta 32
+     * caracteres. Se deriva del nombre de la ruta —`login.send` pasa a
+     * `login_send`— para que las dos puntas no puedan desincronizarse: si
+     * hubiera que escribirlo a mano en la vista y en la ruta, tarde o temprano
+     * uno de los dos cambia y el otro no.
+     */
+    public static function accionDe(?string $nombreDeRuta): ?string
+    {
+        if (blank($nombreDeRuta)) {
+            return null;
+        }
+
+        return substr(preg_replace('/[^a-zA-Z0-9_-]/', '_', $nombreDeRuta), 0, 32);
+    }
+
+    /**
      * Si este envío viene de alguien y no de un programa.
      *
      * @param  string|null  $token  Lo que puso el widget en el formulario.
      * @param  string|null  $ip  De dónde llegó. Cloudflare la usa como pista.
+     * @param  string|null  $accion  En qué pantalla se generó el token.
      */
-    public function verificar(?string $token, ?string $ip = null): bool
+    public function verificar(?string $token, ?string $ip = null, ?string $accion = null): bool
     {
         if (! $this->estaActivo()) {
             return true;
@@ -103,17 +122,76 @@ class Turnstile
             return true;
         }
 
-        $ok = (bool) $respuesta->json('success', false);
-
-        if (! $ok) {
+        if (! $respuesta->json('success', false)) {
             // Los codigos de Cloudflare distinguen «token gastado» de «clave
             // mal puesta», y sin ellos las dos se ven igual desde fuera: como
             // un formulario que no deja enviar.
             Log::info('Captcha rechazado', [
                 'motivos' => $respuesta->json('error-codes', []),
             ]);
+
+            return false;
         }
 
-        return $ok;
+        return $this->vieneDeDondeDice($respuesta->json('action'), $accion)
+            && $this->vieneDeNuestroDominio($respuesta->json('hostname'));
+    }
+
+    /**
+     * Que el token se haya generado en la pantalla que dice.
+     *
+     * Sin esto, un token vale para cualquiera de las siete puertas: se abre el
+     * formulario de ingreso, se resuelve el captcha alli y se usa ese token
+     * para mandar mil postulaciones a practicas. Cloudflare graba la accion
+     * dentro del token al emitirlo, asi que no se puede cambiar despues.
+     *
+     * Se comprueba solo cuando las DOS partes la traen. Un formulario al que
+     * se le olvide el `data-action` emite tokens con la accion vacia, y ahi
+     * conviene degradar a lo de antes —seguir funcionando, sin esta
+     * comprobacion— y no dejar a nadie fuera por un atributo que falta en una
+     * plantilla. La prueba que recorre las siete puertas es la que impide que
+     * ese olvido pase desapercibido.
+     */
+    private function vieneDeDondeDice(?string $recibida, ?string $esperada): bool
+    {
+        if (blank($recibida) || blank($esperada)) {
+            return true;
+        }
+
+        if ($recibida === $esperada) {
+            return true;
+        }
+
+        Log::warning('Captcha de otra pantalla', [
+            'esperada' => $esperada,
+            'recibida' => $recibida,
+        ]);
+
+        return false;
+    }
+
+    /**
+     * Que el token se haya generado en nuestro dominio.
+     *
+     * Cloudflare ya limita el widget a los dominios declarados; esto es la
+     * segunda vuelta, por si en la consola se añade uno mas y nadie se entera.
+     *
+     * Si `APP_URL` no dice nada, no se comprueba: preferimos no comprobar a
+     * cerrar la puerta por una variable de entorno a medio poner.
+     */
+    private function vieneDeNuestroDominio(?string $recibido): bool
+    {
+        $nuestro = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if (blank($recibido) || blank($nuestro) || $recibido === $nuestro) {
+            return true;
+        }
+
+        Log::warning('Captcha de otro dominio', [
+            'nuestro' => $nuestro,
+            'recibido' => $recibido,
+        ]);
+
+        return false;
     }
 }
