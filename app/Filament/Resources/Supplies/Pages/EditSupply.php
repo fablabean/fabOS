@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Supplies\Pages;
 
+use App\Filament\Acciones\GenerarIlustracion;
 use App\Filament\Resources\Supplies\SupplyResource;
 use App\Services\Money\PricingService;
 use Filament\Actions\DeleteAction;
@@ -17,6 +18,7 @@ class EditSupply extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            GenerarIlustracion::make(),
             DeleteAction::make(),
         ];
     }

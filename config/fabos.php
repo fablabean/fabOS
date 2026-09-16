@@ -209,6 +209,23 @@ return [
         'timeout' => (int) env('IA_TIMEOUT', 45),
     ],
 
+    /*
+     * Ilustraciones del catalogo, generadas (§14).
+     *
+     * Proveedor distinto al de texto porque Claude no genera imagenes. Se saca
+     * en Google AI Studio. VACIA, el boton no aparece y no estorba: el
+     * catalogo sigue funcionando con sus fotos de siempre.
+     *
+     * La cuota diaria no es por dinero: es el freno que impide que un descuido
+     * —un boton pulsado en bucle— gaste la cuenta de un tiron.
+     */
+    'ilustraciones' => [
+        'clave' => env('GEMINI_API_KEY'),
+        'modelo' => env('GEMINI_IMAGEN_MODELO', 'gemini-2.5-flash-image'),
+        'max_por_dia' => (int) env('GEMINI_MAX_POR_DIA', 30),
+        'timeout' => (int) env('GEMINI_TIMEOUT', 60),
+    ],
+
     'asesorias' => [
         'minutos' => (int) env('ASESORIA_MINUTOS', 45),
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),

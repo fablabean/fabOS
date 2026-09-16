@@ -238,7 +238,11 @@ class PrecioDeVentaTest extends TestCase
 
         $this->assertNotFalse($donde, 'El insumo no aparece en la tienda.');
 
-        return substr($html, $donde, 900);
+        // Holgada a proposito: este trozo incluye el JSON de la ficha, que
+        // crece cada vez que se le añade un dato. Con la ventana justa, añadir
+        // una clave empujaba el precio fuera y la prueba fallaba por algo que
+        // no tenia nada que ver con el precio.
+        return substr($html, $donde, 1600);
     }
 
     /**

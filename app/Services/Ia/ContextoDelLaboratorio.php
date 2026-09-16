@@ -40,7 +40,7 @@ final class ContextoDelLaboratorio
     private function construir(): string
     {
         $partes = [
-            'LABORATORIO: ' . config('fabos.lab.name') . ' — ' . config('fabos.lab.institution'),
+            'LABORATORIO: '.config('fabos.lab.name').' — '.config('fabos.lab.institution'),
             '',
             $this->equipos(),
             '',
@@ -70,7 +70,7 @@ final class ContextoDelLaboratorio
                     $a->riskFamily?->name ?? 'sin familia',
                     $a->status,
                     $a->is_reservable ? ' · se reserva' : ' · no se reserva',
-                    $a->public_description ? ' · ' . str($a->public_description)->limit(160) : '',
+                    $a->public_description ? ' · '.str($a->public_description)->limit(160) : '',
                 );
             });
 
@@ -88,7 +88,7 @@ final class ContextoDelLaboratorio
                 // Sin precios ni existencias: para orientar sobre materiales no
                 // hace falta, y un dato de stock desactualizado en una respuesta
                 // publicada es peor que no darlo.
-                $lineas[] = '- ' . $s->name . ($s->unit ? ' · se mide en ' . $s->unit : '');
+                $lineas[] = '- '.$s->name.($s->unit ? ' · se mide en '.$s->unit : '');
             });
 
         return implode("\n", $lineas);

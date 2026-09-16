@@ -63,8 +63,8 @@ final class SugerenciaDeRespuesta
         Cache::put($this->claveDelDia(), $this->usadasHoy() + 1, now()->endOfDay());
 
         return $pregunta->answers()->create([
-            'body'      => $texto,
-            'origen'    => Answer::IA,
+            'body' => $texto,
+            'origen' => Answer::IA,
             'publicada' => false,
         ]);
     }
@@ -73,16 +73,16 @@ final class SugerenciaDeRespuesta
     {
         try {
             $r = Http::withHeaders([
-                'x-api-key'         => config('fabos.ia.clave'),
+                'x-api-key' => config('fabos.ia.clave'),
                 'anthropic-version' => '2023-06-01',
             ])
                 ->timeout((int) config('fabos.ia.timeout', 45))
                 ->post('https://api.anthropic.com/v1/messages', [
-                    'model'      => config('fabos.ia.modelo'),
+                    'model' => config('fabos.ia.modelo'),
                     'max_tokens' => (int) config('fabos.ia.max_tokens', 900),
-                    'system'     => $this->instrucciones(),
-                    'messages'   => [[
-                        'role'    => 'user',
+                    'system' => $this->instrucciones(),
+                    'messages' => [[
+                        'role' => 'user',
                         'content' => $this->mensaje($pregunta),
                     ]],
                 ]);
@@ -90,7 +90,7 @@ final class SugerenciaDeRespuesta
             if ($r->failed()) {
                 Log::warning('IA: la sugerencia no salió', [
                     'estado' => $r->status(),
-                    'error'  => str($r->body())->limit(300)->value(),
+                    'error' => str($r->body())->limit(300)->value(),
                 ]);
 
                 return null;
@@ -165,6 +165,6 @@ final class SugerenciaDeRespuesta
 
     private function claveDelDia(): string
     {
-        return 'ia:sugerencias:' . now()->toDateString();
+        return 'ia:sugerencias:'.now()->toDateString();
     }
 }

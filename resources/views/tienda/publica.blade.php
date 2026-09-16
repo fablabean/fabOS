@@ -207,7 +207,8 @@
                         'tipo'      => $fila['tipo'],
                         'id'        => $cosa->id,
                         'nombre'    => $cosa->name,
-                        'foto'      => $cosa->fotoUrl(),
+                        'foto'      => $cosa->imagen()['url'] ?? null,
+                        'ilustracion' => $cosa->imagen()['esIlustracion'] ?? false,
                         'unidad'    => $cosa->unit,
                         'area'      => $cosa->area?->name,
                         'detalle'   => $fila['tipo'] === 'insumo' ? $cosa->public_description : $cosa->description,
@@ -225,8 +226,17 @@
                     <button type="button" class="mirar"
                             data-ficha="{{ json_encode($ficha, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
                             aria-label="Ver {{ $cosa->name }} en grande">
-                        @if ($cosa->fotoUrl())
-                            <img src="{{ $cosa->fotoUrl() }}" alt="{{ $cosa->name }}" loading="lazy">
+                        @php $imagen = $cosa->imagen(); @endphp
+                        @if ($imagen)
+                            <img src="{{ $imagen['url'] }}" alt="{{ $cosa->name }}" loading="lazy">
+                            {{-- El sello no es opcional ni se puede quitar desde
+                                 el panel: una imagen inventada de algo que
+                                 alguien va a comprar no es una foto, y quien la
+                                 mira tiene derecho a saberlo antes de pedirlo.
+                                 Desaparece solo cuando hay foto de verdad. --}}
+                            @if ($imagen['esIlustracion'])
+                                <span class="sello-ilustracion">ilustración</span>
+                            @endif
                         @else
                             <div class="sin-foto">{{ $bloque['titulo'] === 'Servicios' ? '🛠' : '📦' }}</div>
                         @endif
@@ -441,7 +451,9 @@
                  background:var(--surface); display:flex; flex-direction:column; }
         /* Cuadrada. Con alturas fijas, una foto vertical y una horizontal se
            recortan distinto y la rejilla se lee como un mosaico roto. */
-        .ficha .mirar { all:unset; display:block; cursor:zoom-in; width:100%; }
+        /* `position:relative` para que el sello de ilustracion se ancle
+           a la imagen y no a la pagina entera. */
+        .ficha .mirar { all:unset; display:block; cursor:zoom-in; width:100%; position:relative; }
         .ficha img, .ficha .sin-foto { width:100%; aspect-ratio:1/1; height:auto;
                                        object-fit:cover; display:block; }
         .ficha .sin-foto { display:flex; align-items:center; justify-content:center;
@@ -630,4 +642,12 @@
     .idea .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem}
     .idea .opcional{color:var(--muted);font-weight:400;font-size:.85em}
     .idea input[type=file]{padding:.5rem 0}
+    /* El sello de ilustracion, encima de la imagen y siempre legible:
+       si se pudiera confundir con parte del producto no serviria de nada. */
+    .sello-ilustracion{
+        position:absolute;left:.5rem;bottom:.5rem;
+        background:rgba(0,0,0,.72);color:#fff;
+        font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
+        padding:.15rem .45rem;border-radius:3px;pointer-events:none;
+    }
 @endsection

@@ -21,6 +21,7 @@ class ServiceOffering extends Model
     protected $fillable = [
         'name', 'slug', 'area_id', 'description', 'unit',
         'price_minor', 'lead_time_days', 'photo_path', 'is_active', 'is_public',
+        'ilustracion_path', 'ilustracion_prompt', 'ilustracion_generada_el',
     ];
 
     protected function casts(): array
@@ -53,6 +54,34 @@ class ServiceOffering extends Model
     public function fotoUrl(): ?string
     {
         return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
+    }
+
+    /**
+     * La imagen que se enseña, y si es una ilustracion.
+     *
+     * La foto real manda siempre. La ilustracion generada solo aparece cuando
+     * no hay foto, y sale marcada: una imagen inventada de algo que alguien va
+     * a comprar no es una foto, y presentarla como tal promete un acabado que
+     * nadie ha fabricado.
+     *
+     * @return array{url: string, esIlustracion: bool}|null
+     */
+    public function imagen(): ?array
+    {
+        if ($this->photo_path) {
+            return ['url' => asset('storage/'.$this->photo_path), 'esIlustracion' => false];
+        }
+
+        if ($this->ilustracion_path) {
+            return ['url' => asset('storage/'.$this->ilustracion_path), 'esIlustracion' => true];
+        }
+
+        return null;
+    }
+
+    public function tieneIlustracion(): bool
+    {
+        return filled($this->ilustracion_path) && blank($this->photo_path);
     }
 
     public function cuandoEstaListo(): ?string
