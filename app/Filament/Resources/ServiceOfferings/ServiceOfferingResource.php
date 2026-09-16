@@ -19,6 +19,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ViewField;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -242,6 +243,19 @@ class ServiceOfferingResource extends Resource
                         )
                         ->helperText('Una foto de algo hecho con ese servicio vende más que la descripción.'),
 
+                    /*
+                     * La ilustracion generada, a la vista.
+                     *
+                     * Sin esto, quien abre la ficha ve «Foto» vacio y concluye
+                     * que no hay imagen mientras la tienda enseña una.
+                     */
+                    ViewField::make('ilustracion')
+                        ->hiddenLabel()
+                        ->columnSpanFull()
+                        ->view('filament.catalogo.ilustracion')
+                        ->visible(fn (?ServiceOffering $record) => filled($record?->ilustracion_path))
+                        ->dehydrated(false),
+
                     Toggle::make('is_active')->label('Se ofrece')->default(true),
 
                     Toggle::make('is_public')
@@ -262,12 +276,19 @@ class ServiceOfferingResource extends Resource
         return $table
             ->defaultSort('name')
             ->columns([
-                ImageColumn::make('photo_path')
+                // Foto real o, si no hay, la ilustracion: la misma regla que
+                // usa la tienda. Aqui sirve ademas para ver de un vistazo que
+                // fichas siguen sin foto de verdad.
+                ImageColumn::make('imagen')
                     ->label('')
-                    ->disk('public')
                     ->square()
                     ->height(40)
-                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover']),
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
+                    ->state(fn (ServiceOffering $r) => $r->imagen()['url'] ?? null)
+                    ->tooltip(fn (ServiceOffering $r) => $r->tieneIlustracion()
+                        ? 'Imagen de referencia generada; todavía sin foto real'
+                        : null)
+                    ->placeholder('—'),
 
                 TextColumn::make('name')
                     ->label('Servicio')

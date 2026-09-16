@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -24,6 +25,34 @@ class SuppliesTable
         return $table
             ->defaultSort('name')
             ->columns([
+                /*
+                 * La miniatura, cuadrada y recortada.
+                 *
+                 * Una lista de sesenta filas de texto se lee palabra por
+                 * palabra; con la imagen delante, el insumo se reconoce de un
+                 * vistazo —que es como se busca de verdad en un mostrador—.
+                 *
+                 * Cuadrada con `object-fit:cover` y no encajada entera: las
+                 * fotos vienen en cualquier proporcion, y ajustarlas «a lo
+                 * ancho» deja franjas blancas de distinto grosor en cada fila
+                 * y la columna parece rota. Recortar pierde los bordes y a
+                 * cambio todas las filas miden lo mismo.
+                 *
+                 * Enseña la foto real o, si no hay, la ilustracion: es la
+                 * misma regla que usa la tienda, y aqui sirve ademas para ver
+                 * de un vistazo que fichas siguen sin foto de verdad.
+                 */
+                ImageColumn::make('imagen')
+                    ->label('')
+                    ->square()
+                    ->height(44)
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
+                    ->state(fn (Supply $r) => $r->imagen()['url'] ?? null)
+                    ->tooltip(fn (Supply $r) => $r->tieneIlustracion()
+                        ? 'Imagen de referencia generada; todavía sin foto real'
+                        : null)
+                    ->placeholder('—'),
+
                 TextColumn::make('name')
                     ->label('Insumo')
                     ->searchable()

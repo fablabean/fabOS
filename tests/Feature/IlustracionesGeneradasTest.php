@@ -3,11 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\Supply;
+use App\Models\User;
+use App\Services\Auth\TwoFactorService;
 use App\Services\Ia\GeneradorDeIlustraciones;
+use App\Support\FactoresDeSesion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use PragmaRX\Google2FA\Google2FA;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -244,6 +249,39 @@ class IlustracionesGeneradasTest extends TestCase
         $this->assertNotFalse($regla, 'Falta la regla del sello.');
         $this->assertGreaterThan($abre, $regla);
         $this->assertLessThan($cierra, $regla, 'El CSS quedó fuera de <style> y se lee como texto.');
+    }
+
+    /**
+     * La ficha enseña la ilustración que hay.
+     *
+     * Estuvo invisible: quien abría la ficha veía «Foto» vacío y concluía que
+     * no había imagen, mientras la tienda enseñaba una. Dos pantallas diciendo
+     * cosas distintas sobre lo mismo es como se pierde la confianza en las dos.
+     */
+    public function test_la_ficha_del_panel_ensena_la_ilustracion(): void
+    {
+        $quien = User::create([
+            'name' => 'Jefa', 'email' => uniqid().'@lab.co', 'status' => 'activo',
+        ]);
+        $quien->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+
+        $cosa = Supply::create([
+            'name' => 'Figura de Meli', 'unit' => 'unidad', 'stock' => 1,
+            'kind' => 'producto', 'is_active' => true,
+            'ilustracion_path' => 'ilustraciones/inventada.webp',
+            'ilustracion_generada_el' => now(),
+        ]);
+
+        $factores = app(TwoFactorService::class);
+        $secreto = $factores->generarSecreto($quien);
+        $factores->confirmar($quien, app(Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($quien->fresh())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->get('/admin/supplies/'.$cosa->id.'/edit')
+            ->assertOk()
+            ->assertSee('Imagen de referencia generada')
+            ->assertSee('Sube una foto arriba y la reemplaza.');
     }
 
     /** Con foto de verdad, ningún sello. */

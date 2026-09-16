@@ -57,17 +57,20 @@
         ],
         "test": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi @no_additional_args",
             "@php artisan test --parallel --processes=16"
         ],
         "test:serie": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
         "test:bases": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi @no_additional_args",
             "@php artisan test --parallel --processes=16 --recreate-databases"
         ],
         "post-autoload-dump": [

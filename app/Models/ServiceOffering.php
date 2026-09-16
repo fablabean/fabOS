@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -27,6 +28,10 @@ class ServiceOffering extends Model
     protected function casts(): array
     {
         return [
+            // Sin este cast llega como TEXTO y la ficha revienta al
+            // pintarla: el error no sale hasta que hay una ilustracion
+            // que enseñar, que es mucho despues de escribir el campo.
+            'ilustracion_generada_el' => UtcDateTime::class,
             'is_active' => 'boolean',
             'is_public' => 'boolean',
         ];

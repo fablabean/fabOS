@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -122,6 +123,21 @@ class SupplyForm
                                 fn ($file) => app(OptimizadorDeImagen::class)
                                     ->guardar($file, 'tienda')
                             ),
+
+                        /*
+                         * La ilustracion generada, a la vista.
+                         *
+                         * Sin esto, quien abre la ficha ve «Foto» vacio y
+                         * concluye que no hay imagen, mientras la tienda
+                         * enseña una. Dos pantallas diciendo cosas distintas
+                         * sobre lo mismo es como se pierde la confianza en las
+                         * dos.
+                         */
+                        ViewField::make('ilustracion')
+                            ->hiddenLabel()
+                            ->view('filament.catalogo.ilustracion')
+                            ->visible(fn (?Supply $record) => filled($record?->ilustracion_path))
+                            ->dehydrated(false),
 
                         /*
                          * Descuentos por cantidad.
