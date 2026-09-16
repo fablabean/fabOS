@@ -84,10 +84,10 @@ class CatalogoDeEquiposTest extends TestCase
         $this->get('/reservas')
             ->assertOk()
             ->assertSee('Asesoría')
-            ->assertSee('Prototipado asistido')
+            ->assertSee('Fabricación y acompañamiento técnico')
             ->assertSee('Hago mi pieza')
             ->assertSee('Espacio')
-            // El prototipado asistido no es una máquina que se reserve: es un encargo.
+            // Fabricación asistida no es una máquina que se reserve: es un encargo.
             ->assertSee(route('proyectos.solicitar'), false)
             // Y cada camino lleva su ilustración.
             ->assertSee('class="ilus"', false);

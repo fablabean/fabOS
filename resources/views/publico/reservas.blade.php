@@ -143,15 +143,16 @@
 
             <a class="camino" href="{{ route('proyectos.solicitar') }}">
                 <span class="ilus" aria-hidden="true">
-                    {{-- Una impresora sacando una pieza: lo hacemos nosotros. --}}
+                    {{-- Una impresora sacando una pieza: lo ejecutamos con ella. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="8" y="6" width="32" height="10" rx="2"/><path d="M14 16v6M34 16v6"/>
                         <path d="M18 22h12l4 8v10H14V30z"/><path d="M14 30h20"/><path d="M24 14v4"/>
                     </svg>
                 </span>
-                <b>Prototipado asistido</b>
-                <span>No operas tú: nos cuentas qué necesitas y lo fabricamos nosotros.
-                      Te respondemos con una propuesta, con precio y plazo.</span>
+                <b>Fabricación y acompañamiento técnico</b>
+                <span>No operas tú solo: nos cuentas qué necesitas (fabricar una pieza,
+                      configurar un equipo o personalizar un software) y nuestro equipo
+                      te asiste y ejecuta el proceso.</span>
                 <span class="pie">Propones un proyecto</span>
             </a>
 
