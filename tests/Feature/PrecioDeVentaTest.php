@@ -44,8 +44,8 @@ class PrecioDeVentaTest extends TestCase
 
         Mail::fake();
         config([
-            'fabos.currency.peso_rate'     => 1000,
-            'fabos.currency.minor_units'   => 100,
+            'fabos.currency.peso_rate' => 1000,
+            'fabos.currency.minor_units' => 100,
             'fabos.currency.retail_margin' => 0.30,
         ]);
 
@@ -66,7 +66,7 @@ class PrecioDeVentaTest extends TestCase
     private function admin(): User
     {
         $u = User::create([
-            'name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'name' => 'Jefa', 'email' => uniqid().'@test.co', 'status' => 'activo',
         ]);
         $u->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
 
@@ -270,7 +270,7 @@ class PrecioDeVentaTest extends TestCase
         app(PricingService::class)->fijarPrecioEnPesos($insumo, 25_000);
 
         $quien = User::create([
-            'name' => 'Estudiante', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'name' => 'Estudiante', 'email' => uniqid().'@test.co', 'status' => 'activo',
         ]);
 
         $trozo = $this->trozoDeLaFicha(
@@ -281,6 +281,63 @@ class PrecioDeVentaTest extends TestCase
             '/25 FBC.*?\$25\.000/s',
             $trozo,
             'Los FabCoins van primero para quien tiene cuenta.',
+        );
+    }
+
+    /**
+     * La tarjeta trae lo que hace falta para recalcular sin recargar.
+     *
+     * Escribir «10» donde el escalón dice «desde 10: $13.500» dejaba el precio
+     * grande en $15.000: la tienda anunciaba un descuento y acto seguido
+     * enseñaba el precio sin él. Quien lo mira tiene que sumar de cabeza para
+     * saber si le conviene, y la mitad de la gente no lo hace: se va.
+     *
+     * Se comprueba el dato y los puntos donde se pinta, no el JavaScript: lo
+     * que se rompe en silencio es que el escalón deje de viajar a la página o
+     * que alguien renombre las clases al retocar la hoja de estilos.
+     */
+    public function test_la_tarjeta_lleva_los_escalones_para_recalcular(): void
+    {
+        $insumo = $this->insumo();
+        $precios = app(PricingService::class);
+        $precios->fijarPrecioEnPesos($insumo, 15_000);
+        $insumo->priceBreaks()->create([
+            'min_quantity' => 10,
+            'price_minor' => $precios->aMenor(13_500),
+        ]);
+
+        $html = $this->get('/tienda')->assertOk()->getContent();
+
+        // El escalón viaja en la ficha de la tarjeta.
+        $this->assertStringContainsString('&quot;escalones&quot;', $html);
+        $this->assertStringContainsString('&quot;desde&quot;', $html);
+
+        // Y existen los sitios donde el precio se repinta.
+        $this->assertStringContainsString('class="precio-principal"', $html);
+        $this->assertStringContainsString('class="precio-secundario"', $html);
+    }
+
+    /**
+     * Ver la ficha no puede depender de adivinar que la foto se pulsa.
+     *
+     * La foto ya abría el detalle, pero eso no lo dice nada en pantalla — y con
+     * el teclado no había forma de llegar.
+     */
+    public function test_cada_tarjeta_tiene_su_boton_de_ver(): void
+    {
+        $insumo = $this->insumo();
+        app(PricingService::class)->fijarPrecioEnPesos($insumo, 15_000);
+
+        $html = $this->get('/tienda')->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="ver"', $html);
+        $this->assertStringContainsString('aria-label="Ver '.$insumo->name.'"', $html);
+
+        // `type=button`: dentro del formulario de añadir, un boton sin tipo
+        // envia el formulario y mete el producto al carrito sin querer.
+        $this->assertMatchesRegularExpression(
+            '/<button type="button" class="ver"/',
+            $html,
         );
     }
 }

@@ -266,9 +266,9 @@
                         @endif
 
                         <div class="precio">
-                            {{ $principal($fila['precio']) }}
+                            <span class="precio-principal">{{ $principal($fila['precio']) }}</span>
                             <span class="quien">
-                                {{ $secundario($fila['precio']) }}
+                                <span class="precio-secundario">{{ $secundario($fila['precio']) }}</span>
                                 @if ($fila['derivado'] ?? false)
                                     · estimado del costo
                                 @endif
@@ -291,6 +291,21 @@
                             <input type="hidden" name="id" value="{{ $cosa->id }}">
                             <input type="number" name="cantidad" value="1" min="0.001" step="0.001"
                                    aria-label="Cantidad">
+                            {{-- Ver la ficha sin comprarla.
+                                 La foto ya abria el detalle, pero eso hay que
+                                 adivinarlo: no hay nada en pantalla que diga
+                                 que se puede pulsar. Un boton con su nombre lo
+                                 dice, y ademas es lo que se puede alcanzar con
+                                 el teclado. Es `type=button` para que no envie
+                                 el formulario en el que vive. --}}
+                            <button type="button" class="ver" title="Ver {{ $cosa->name }}"
+                                    aria-label="Ver {{ $cosa->name }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
                             <button type="submit">Añadir</button>
                         </form>
                     </div>
@@ -499,7 +514,23 @@
         .ficha .rebaja { font-size:.75rem; color:var(--ok,#0a7); margin-top:.2rem; }
         .ficha .anadir { display:flex; gap:.4rem; margin-top:.5rem; }
         .ficha .anadir input { width:5rem; }
-        .ficha .anadir button { margin:0; flex:1; }
+        .ficha .anadir button[type=submit] { margin:0; flex:1; }
+
+        /* El ojo: cuadrado y discreto, que quien manda en esa fila es
+           «Añadir». Mismo alto que los otros dos para que la fila no baile. */
+        .ficha .anadir .ver {
+            margin:0; flex:0 0 auto; width:2.5rem; padding:0;
+            display:flex; align-items:center; justify-content:center;
+            background:transparent; color:var(--muted);
+            border:1px solid var(--rule); border-radius:4px; cursor:pointer;
+        }
+        .ficha .anadir .ver:hover { color:var(--accent); border-color:var(--accent); }
+        .ficha .anadir .ver svg { width:1.15rem; height:1.15rem; display:block; }
+
+        /* Cuando el descuento YA esta puesto. Ver bajar el numero sin saber
+           por que hace dudar de si es un error de la tienda. */
+        .ficha .rebaja.aplicando { font-weight:700; }
+        .ficha .rebaja.aplicando::after { content:' · aplicado'; font-weight:400; }
 
         .carrito .cantidad { display:flex; gap:.3rem; }
         .carrito .cantidad input { width:5rem; }
@@ -647,6 +678,62 @@
             });
 
             document.getElementById('ficha-cantidad').addEventListener('input', pintarCuenta);
+
+            /*
+             * El ojo abre la misma ficha que la foto.
+             *
+             * Busca el `data-ficha` de SU tarjeta en vez de llevar una copia
+             * del JSON: duplicarlo en dos elementos por producto engordaria la
+             * pagina para no decir nada nuevo.
+             */
+            document.querySelectorAll('.anadir .ver').forEach(function (boton) {
+                boton.addEventListener('click', function () {
+                    var tarjeta = boton.closest('.ficha');
+                    var dato = tarjeta && tarjeta.querySelector('[data-ficha]');
+
+                    if (dato) abrir(JSON.parse(dato.dataset.ficha));
+                });
+            });
+
+            /*
+             * El precio de la tarjeta sigue a la cantidad.
+             *
+             * Sin esto, escribir «10» donde el escalon dice «desde 10: $13.500»
+             * dejaba el precio grande en $15.000: la tienda anunciaba un
+             * descuento y acto seguido enseñaba el precio sin el. Quien lo
+             * mira tiene que sumar de cabeza para saber si le conviene, y la
+             * mitad de la gente no lo hace: se va.
+             *
+             * Se reutiliza `precioPara()`, la misma funcion que usa la ficha
+             * grande. Dos calculos del mismo descuento acabarian dando cifras
+             * distintas en dos sitios de la misma pantalla.
+             */
+            document.querySelectorAll('.anadir input[name="cantidad"]').forEach(function (campo) {
+                var tarjeta = campo.closest('.ficha');
+                var dato = tarjeta && tarjeta.querySelector('[data-ficha]');
+
+                if (!dato) return;
+
+                var ficha = JSON.parse(dato.dataset.ficha);
+
+                if (!(ficha.escalones || []).length) return;
+
+                var grande = tarjeta.querySelector('.precio-principal');
+                var chico = tarjeta.querySelector('.precio-secundario');
+                var rebaja = tarjeta.querySelector('.rebaja');
+
+                campo.addEventListener('input', function () {
+                    var cantidad = parseFloat(campo.value) || 0;
+                    var unidad = precioPara(ficha, cantidad > 0 ? cantidad : 1);
+
+                    if (grande) grande.textContent = principal(unidad);
+                    if (chico) chico.textContent = secundario(unidad);
+
+                    // Se marca cuando el descuento ya esta puesto: ver bajar el
+                    // numero sin saber por que hace dudar de si es un error.
+                    if (rebaja) rebaja.classList.toggle('aplicando', unidad !== ficha.precio);
+                });
+            });
 
             // Fuera de la ficha se cierra: es lo que todo el mundo intenta.
             dlg.addEventListener('click', function (e) {
