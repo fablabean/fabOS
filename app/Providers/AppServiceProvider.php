@@ -8,6 +8,7 @@ use App\Models\Budget;
 use App\Models\Certifab;
 use App\Models\Course;
 use App\Models\CourseEdition;
+use App\Models\Credencial;
 use App\Models\Enrollment;
 use App\Models\LedgerAccount;
 use App\Models\LedgerTransaction;
@@ -15,7 +16,11 @@ use App\Models\Location;
 use App\Models\NotificationLog;
 use App\Models\NotificationTemplate;
 use App\Models\Project;
+use App\Models\ProjectComment;
+use App\Models\ProjectCost;
+use App\Models\ProjectDocument;
 use App\Models\ProjectTask;
+use App\Models\ProjectTimeLog;
 use App\Models\PurchaseRequest;
 use App\Models\RateCard;
 use App\Models\Reservation;
@@ -31,8 +36,15 @@ use App\Models\UserCategory;
 use App\Models\WorkSchedule;
 use App\Policies\BackofficePolicy;
 use App\Policies\CertifabPolicy;
+use App\Policies\CredencialPolicy;
+use App\Policies\ProjectItemPolicy;
+use App\Policies\ProjectPolicy;
+use App\Services\Inventory\ConteoPorUbicacion;
 use App\Support\LabSettings;
+use App\Support\Secciones;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -62,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
          * Uno por peticion: calcula el arbol de ubicaciones entero de una vez
          * y lo guarda. Sin esto, cada fila de la lista lo recalcularia.
          */
-        $this->app->singleton(\App\Services\Inventory\ConteoPorUbicacion::class);
+        $this->app->singleton(ConteoPorUbicacion::class);
 
         /*
          * Si el sitio se sirve por https, sus enlaces tambien.
@@ -106,8 +118,8 @@ class AppServiceProvider extends ServiceProvider
          * entregable, la fecha retrocedia un dia. Se deja en la zona de la
          * aplicacion, que es la que Filament trae para las fechas solas.
          */
-        \Filament\Forms\Components\DatePicker::configureUsing(
-            fn (\Filament\Forms\Components\DatePicker $campo) => $campo->timezone(config('app.timezone')),
+        DatePicker::configureUsing(
+            fn (DatePicker $campo) => $campo->timezone(config('app.timezone')),
         );
 
         /*
@@ -120,8 +132,8 @@ class AppServiceProvider extends ServiceProvider
          * un numero que no esta en la lista no da error, se cae a la primera
          * opcion. El numero tiene que ser uno de los que se pueden elegir.
          */
-        \Filament\Tables\Table::configureUsing(
-            fn (\Filament\Tables\Table $tabla) => $tabla->defaultPaginationPageOption(25),
+        Table::configureUsing(
+            fn (Table $tabla) => $tabla->defaultPaginationPageOption(25),
         );
 
         // La identidad del laboratorio se administra desde el backoffice y pisa
@@ -137,14 +149,14 @@ class AppServiceProvider extends ServiceProvider
          * silencio —el boton de editar desaparecia sin que nadie supiera por
          * que—.
          */
-        foreach (array_merge(self::MODELOS, \App\Support\Secciones::modelos()) as $modelo) {
+        foreach (array_merge(self::MODELOS, Secciones::modelos()) as $modelo) {
             Gate::policy($modelo, BackofficePolicy::class);
         }
 
         // Un proyecto lo ve su equipo y lo maneja su responsable, aunque el
         // rol no abra la seccion. Va despues del bucle: pisa a la de por
         // defecto para este modelo.
-        Gate::policy(\App\Models\Project::class, \App\Policies\ProjectPolicy::class);
+        Gate::policy(Project::class, ProjectPolicy::class);
 
         /*
          * Y lo que cuelga del proyecto, con la misma idea llevada a las piezas:
@@ -157,14 +169,24 @@ class AppServiceProvider extends ServiceProvider
          * del proyecto.
          */
         foreach ([
-            \App\Models\ProjectComment::class,
-            \App\Models\ProjectCost::class,
-            \App\Models\ProjectDocument::class,
-            \App\Models\ProjectTask::class,
-            \App\Models\ProjectTimeLog::class,
+            ProjectComment::class,
+            ProjectCost::class,
+            ProjectDocument::class,
+            ProjectTask::class,
+            ProjectTimeLog::class,
         ] as $pieza) {
-            Gate::policy($pieza, \App\Policies\ProjectItemPolicy::class);
+            Gate::policy($pieza, ProjectItemPolicy::class);
         }
+
+        /*
+         * Una credencial la ve su dueño, y el superadmin todas.
+         *
+         * Va despues del bucle porque pisa a la politica de por defecto para
+         * este modelo: alli, quien tiene el permiso de la seccion lo tiene
+         * sobre todas las filas, y eso convertiria esto en un tablon de
+         * contraseñas compartido.
+         */
+        Gate::policy(Credencial::class, CredencialPolicy::class);
 
         // Certificar tiene reglas propias: no basta con ser administrador.
         Gate::policy(Certifab::class, CertifabPolicy::class);
