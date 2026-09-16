@@ -134,6 +134,8 @@
             </label>
 
             <p style="margin-bottom:0">
+                <x-captcha/>
+
                 <button type="submit" class="boton">Enviar mi postulación</button>
             </p>
         </form>

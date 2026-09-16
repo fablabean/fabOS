@@ -10,26 +10,26 @@ return [
     | especifico de la EAN va incrustado en el codigo: vive aqui.
     */
     'lab' => [
-        'name'       => env('LAB_NAME', 'Fablab Ean'),
+        'name' => env('LAB_NAME', 'Fablab Ean'),
         'short_name' => env('LAB_SHORT_NAME', 'Fablab Ean'),
 
         // A quien pertenece y donde queda. Aparecen en la portada, en el pie y
         // en los documentos que salen del sistema. Otro laboratorio de la red
         // cambia estas tres lineas y el sitio deja de hablar de la EAN.
         'institution' => env('LAB_INSTITUTION', 'Universidad EAN'),
-        'city'        => env('LAB_CITY', 'Bogotá, Colombia'),
-        'tagline'     => env('LAB_TAGLINE', 'Laboratorio de fabricación digital'),
+        'city' => env('LAB_CITY', 'Bogotá, Colombia'),
+        'tagline' => env('LAB_TAGLINE', 'Laboratorio de fabricación digital'),
 
         // Red a la que pertenece. Vacio si no pertenece a ninguna.
-        'network'     => env('LAB_NETWORK', 'Fab Foundation'),
+        'network' => env('LAB_NETWORK', 'Fab Foundation'),
 
         // Zona horaria de operacion. La app guarda todo en UTC y muestra en esta.
-        'timezone'   => env('LAB_TIMEZONE', 'America/Bogota'),
+        'timezone' => env('LAB_TIMEZONE', 'America/Bogota'),
 
         // Marca. Por defecto se usa el SVG de fabOS, que hereda el color del
         // tema. Para poner el logo del laboratorio basta reemplazar el archivo
         // o apuntar LAB_LOGO a otra ruta dentro de public/.
-        'logo'       => env('LAB_LOGO', 'img/fablabean.png'),
+        'logo' => env('LAB_LOGO', 'img/fablabean.png'),
     ],
 
     /*
@@ -66,37 +66,37 @@ return [
             // laboratorio, que se lee de fabos.lab al dibujar la pagina.
             'rotulo' => null,
             'titulo' => 'Aquí se fabrica lo que <em>todavía no existe</em>',
-            'texto'  => 'Impresión 3D, corte láser, fresado CNC, electrónica, taller, robótica y realidad virtual. Abierto a estudiantes, docentes y empresas.',
+            'texto' => 'Impresión 3D, corte láser, fresado CNC, electrónica, taller, robótica y realidad virtual. Abierto a estudiantes, docentes y empresas.',
             'imagen' => 'img/hero/fabricacion.svg',
         ],
         [
             'rotulo' => 'Reservas',
             'titulo' => 'Cada máquina, <em>con su agenda</em>',
-            'texto'  => 'Mira qué está libre ahora mismo, reserva desde el teléfono y registra tu llegada escaneando el QR de la máquina.',
+            'texto' => 'Mira qué está libre ahora mismo, reserva desde el teléfono y registra tu llegada escaneando el QR de la máquina.',
             'imagen' => 'img/hero/reservas.svg',
         ],
         [
             'rotulo' => 'Formación',
             'titulo' => 'De <em>bit</em> a <em>tera</em>, hasta Fab Academy',
-            'texto'  => 'Los cursos habilitan las máquinas que enseñan y dejan un certificado que cualquiera puede verificar. Somos el único laboratorio acreditado en Colombia.',
+            'texto' => 'Los cursos habilitan las máquinas que enseñan y dejan un certificado que cualquiera puede verificar. Somos el único laboratorio acreditado en Colombia.',
             'imagen' => 'img/hero/formacion.svg',
         ],
         [
             'rotulo' => 'Habilitaciones',
             'titulo' => 'Nadie usa una máquina <em>sin saber usarla</em>',
-            'texto'  => 'Los certifabs dicen quién puede operar qué y en qué condiciones. Si aún no puedes, el sistema te dice exactamente qué te falta.',
+            'texto' => 'Los certifabs dicen quién puede operar qué y en qué condiciones. Si aún no puedes, el sistema te dice exactamente qué te falta.',
             'imagen' => 'img/hero/comunidad.svg',
         ],
         [
             'rotulo' => 'Tienda y encargos',
             'titulo' => 'Insumos, y trabajos <em>hechos por el equipo</em>',
-            'texto'  => 'Compra material al detal o encarga un trabajo: lo cotizamos antes de producir y te avisamos cuando esté listo.',
+            'texto' => 'Compra material al detal o encarga un trabajo: lo cotizamos antes de producir y te avisamos cuando esté listo.',
             'imagen' => 'img/hero/tienda.svg',
         ],
         [
             'rotulo' => 'Proyectos',
             'titulo' => 'De la idea <em>al acta de cierre</em>',
-            'texto'  => 'Acompañamos proyectos de la Universidad y de empresas, con cronograma, equipo a cargo y todo lo acordado por escrito.',
+            'texto' => 'Acompañamos proyectos de la Universidad y de empresas, con cronograma, equipo a cargo y todo lo acordado por escrito.',
             'imagen' => 'img/hero/proyectos.svg',
         ],
     ],
@@ -129,8 +129,8 @@ return [
     | totales que no cuadran con la orden de compra real.
     */
     'money' => [
-        'code'    => env('LAB_MONEY_CODE', 'COP'),
-        'symbol'  => env('LAB_MONEY_SYMBOL', '$'),
+        'code' => env('LAB_MONEY_CODE', 'COP'),
+        'symbol' => env('LAB_MONEY_SYMBOL', '$'),
         // Impuesto sobre las compras, para estimar el total con el que compras
         // trabaja. Es un supuesto administrable, no una verdad del sistema.
         'tax_rate' => (float) env('LAB_TAX_RATE', 0.19),
@@ -201,12 +201,12 @@ return [
     | o una racha de spam se conviertan en una factura.
     */
     'ia' => [
-        'activa'      => (bool) env('IA_ACTIVA', true),
-        'clave'       => env('ANTHROPIC_API_KEY'),
-        'modelo'      => env('IA_MODELO', 'claude-sonnet-5'),
-        'max_tokens'  => (int) env('IA_MAX_TOKENS', 900),
+        'activa' => (bool) env('IA_ACTIVA', true),
+        'clave' => env('ANTHROPIC_API_KEY'),
+        'modelo' => env('IA_MODELO', 'claude-sonnet-5'),
+        'max_tokens' => (int) env('IA_MAX_TOKENS', 900),
         'max_por_dia' => (int) env('IA_MAX_POR_DIA', 50),
-        'timeout'     => (int) env('IA_TIMEOUT', 45),
+        'timeout' => (int) env('IA_TIMEOUT', 45),
     ],
 
     'asesorias' => [
@@ -241,9 +241,9 @@ return [
          * si lo mueve, el traslado tiene sus propios tiempos.
          */
         'dias_minimos' => [
-            'externo'    => (int) env('PROYECTO_DIAS_MINIMOS_EXTERNO', 15),
+            'externo' => (int) env('PROYECTO_DIAS_MINIMOS_EXTERNO', 15),
             'estudiante' => (int) env('PROYECTO_DIAS_MINIMOS_ESTUDIANTE', 3),
-            'interno'    => (int) env('PROYECTO_DIAS_MINIMOS_INTERNO', 0),
+            'interno' => (int) env('PROYECTO_DIAS_MINIMOS_INTERNO', 0),
         ],
 
         // Lo que tarda el traslado presupuestal de la Universidad, para
@@ -268,10 +268,10 @@ return [
         'terminos_version' => env('CONTENIDO_TERMINOS_VERSION', '2026-08'),
 
         'terminos' => env('CONTENIDO_TERMINOS', 'Declaro que este material es de mi autoría o que cuento con los '
-            . 'permisos necesarios, que está libre de derechos de terceros, y que las personas que aparecen en él '
-            . 'conocen y aceptan su uso. Autorizo al laboratorio y a la Universidad a usarlo, publicarlo y '
-            . 'adaptarlo con fines de divulgación, comunicación institucional y memoria del laboratorio, sin '
-            . 'límite de tiempo y sin contraprestación económica.'),
+            .'permisos necesarios, que está libre de derechos de terceros, y que las personas que aparecen en él '
+            .'conocen y aceptan su uso. Autorizo al laboratorio y a la Universidad a usarlo, publicarlo y '
+            .'adaptarlo con fines de divulgación, comunicación institucional y memoria del laboratorio, sin '
+            .'límite de tiempo y sin contraprestación económica.'),
 
         /*
          * El tope por archivo.
@@ -308,20 +308,35 @@ return [
         ),
     ],
 
+    /*
+     * El captcha de Cloudflare delante de lo que manda correo (§5).
+     *
+     * Las claves van aqui y no en la pantalla de ajustes: es la regla de la
+     * casa —identidad y presentacion se administran, las claves viven en
+     * `.env`—. Sin ellas el captcha no se pinta y deja pasar todo, para que un
+     * despliegue no pueda dejar al laboratorio sin poder entrar.
+     *
+     * Se sacan de Cloudflare → Turnstile. La del sitio es publica y va en el
+     * HTML; la secreta no sale del servidor.
+     */
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'otp' => [
         // Redis, no el almacen por defecto: en produccion la cache va a la
         // base de datos, y un codigo en claro acabaria dentro del respaldo
         // diario. En pruebas se sustituye por 'array'.
         'captura_almacen' => env('OTP_CAPTURA_ALMACEN', 'redis'),
 
-        'length'           => (int) env('OTP_LENGTH', 6),
-        'ttl_minutes'      => (int) env('OTP_TTL_MINUTES', 10),
-        'max_attempts'     => (int) env('OTP_MAX_ATTEMPTS', 5),
+        'length' => (int) env('OTP_LENGTH', 6),
+        'ttl_minutes' => (int) env('OTP_TTL_MINUTES', 10),
+        'max_attempts' => (int) env('OTP_MAX_ATTEMPTS', 5),
         'throttle_per_email' => (int) env('OTP_THROTTLE_PER_EMAIL', 3),
-        'throttle_window'  => (int) env('OTP_THROTTLE_WINDOW_MINUTES', 15),
-        'remember_days'    => (int) env('OTP_REMEMBER_DAYS', 30),
+        'throttle_window' => (int) env('OTP_THROTTLE_WINDOW_MINUTES', 15),
+        'remember_days' => (int) env('OTP_REMEMBER_DAYS', 30),
     ],
-
 
     /*
     |--------------------------------------------------------------------------
@@ -348,7 +363,6 @@ return [
         ['estado' => 'listo',   'nombre' => 'Proyectos', 'icono' => 'tablero',                 'detalle' => 'Del primer correo con una idea hasta el acta de cierre, con tablero, cronograma y el costo real de lo que consumió.'],
     ],
 
-
     /*
     |--------------------------------------------------------------------------
     | Horas extras
@@ -362,7 +376,7 @@ return [
     */
     'overtime' => [
         'max_semana_minutos' => (int) env('EXTRAS_MAX_SEMANA', 12 * 60),
-        'max_mes_minutos'    => (int) env('EXTRAS_MAX_MES', 48 * 60),
+        'max_mes_minutos' => (int) env('EXTRAS_MAX_MES', 48 * 60),
     ],
 
     /*
@@ -388,9 +402,9 @@ return [
     | Endpoint no documentado -> desactivable por configuracion.
     */
     'carnet' => [
-        'enabled'  => (bool) env('CARNET_EAN_ENABLED', false),
+        'enabled' => (bool) env('CARNET_EAN_ENABLED', false),
         'base_url' => env('CARNET_EAN_BASE_URL'),
-        'timeout'  => (int) env('CARNET_EAN_TIMEOUT', 5),
+        'timeout' => (int) env('CARNET_EAN_TIMEOUT', 5),
     ],
 
 ];

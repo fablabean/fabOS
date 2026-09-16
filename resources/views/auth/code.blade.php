@@ -22,6 +22,8 @@
                autocomplete="one-time-code" pattern="[0-9]*"
                maxlength="{{ config('fabos.otp.length') }}" required autofocus>
 
+        <x-captcha/>
+
         <button type="submit">Entrar</button>
     </form>
 
@@ -35,6 +37,8 @@
     <form method="POST" action="{{ route('login.code.enviar') }}">
         @csrf
         <input type="hidden" name="email" value="{{ $email }}">
+        <x-captcha/>
+
         <button type="submit" class="secundario">Enviarme un código al correo</button>
     </form>
 

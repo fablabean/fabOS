@@ -333,6 +333,8 @@
             })();
         </script>
 
+        <x-captcha/>
+
         <button type="submit">Enviar la solicitud</button>
 
         <p class="foot" style="margin-top:.8rem">

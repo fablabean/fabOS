@@ -32,6 +32,8 @@
                 Si eres de la Universidad, con el nick basta: le ponemos {{ '@' . $dominio }}.
             </p>
         @endif
+        <x-captcha/>
+
         <button type="submit">Enviarme el código</button>
     </form>
 

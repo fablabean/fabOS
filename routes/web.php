@@ -1,31 +1,39 @@
 <?php
 
-use App\Http\Controllers\AsesoriaController;
-use App\Http\Controllers\EspacioController;
-use App\Http\Controllers\Auth\CarnetLoginController;
-use App\Http\Controllers\BadgeController;
-use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\InventoryController;
-use App\Http\Controllers\LabelController;
-use App\Http\Controllers\PaginaPublicaController;
-use App\Http\Controllers\PreguntaController;
-use App\Http\Controllers\PublicSiteController;
-use App\Http\Controllers\ProjectBoardController;
-use App\Http\Controllers\PurchaseRequestController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\VerificationController;
-use App\Http\Controllers\ScanController;
-use App\Http\Controllers\TrainingController;
-use App\Http\Controllers\TraspasoController;
+use App\Http\Controllers\AcuerdoController;
+use App\Http\Controllers\ArchivoPrivadoController;
+use App\Http\Controllers\AsesoriaController;
+use App\Http\Controllers\Auth\CarnetLoginController;
+use App\Http\Controllers\Auth\LoginCodeController;
+use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\EnlaceCortoController;
+use App\Http\Controllers\EspacioController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\LabelController;
+use App\Http\Controllers\LoteCompartidoController;
+use App\Http\Controllers\PaginaPublicaController;
+use App\Http\Controllers\PerfilesController;
+use App\Http\Controllers\PracticasController;
+use App\Http\Controllers\PreguntaController;
+use App\Http\Controllers\ProjectBoardController;
+use App\Http\Controllers\PublicSiteController;
+use App\Http\Controllers\PurchaseRequestController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\ScanController;
 use App\Http\Controllers\SolicitudDeProyectoController;
 use App\Http\Controllers\TiendaPublicaController;
-use App\Http\Controllers\Auth\LoginCodeController;
-use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\TrainingController;
+use App\Http\Controllers\TraspasoController;
+use App\Http\Controllers\VerificationController;
+use App\Support\Settings;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Cara publica: no exige sesion (§3, portal publico).
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
@@ -55,7 +63,7 @@ Route::get('/reservas', [PublicSiteController::class, 'equipos'])->name('publico
 
 // La direccion vieja sigue viva: esta pegada en chats y en marcadores, y una
 // pagina que deja de existir sin avisar es una promesa rota.
-Route::get('/equipos', fn (\Illuminate\Http\Request $r) => redirect()->route('publico.reservas', $r->query()));
+Route::get('/equipos', fn (Request $r) => redirect()->route('publico.reservas', $r->query()));
 Route::get('/equipos/{asset}', [PublicSiteController::class, 'equipo'])->name('publico.equipo');
 
 /*
@@ -95,7 +103,8 @@ Route::post('/tienda/carrito/vaciar', [TiendaPublicaController::class, 'vaciar']
 // proyectos. Pagar si, porque el saldo es de alguien.
 Route::post('/tienda/cotizar', [TiendaPublicaController::class, 'cotizar'])
     // Por IP, y el campus entero comparte una: ver el formulario de proyectos.
-    ->middleware('throttle:40,60')
+    // Con captcha porque tambien crea cuenta al vuelo y manda correo.
+    ->middleware(['throttle:40,60', 'captcha:correo'])
     ->name('tienda.cotizar');
 Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
     ->middleware('auth')
@@ -112,19 +121,19 @@ Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
 // trampa para robots del formulario; esto solo tiene que frenar a un script.
 Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'create'])->name('proyectos.solicitar');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
-    ->middleware('throttle:40,60')
+    ->middleware(['throttle:40,60', 'captcha:correo'])
     ->name('proyectos.solicitar.store');
 
 // Postularse a una practica. Sin cuenta a proposito: pedirle a quien quiere
 // dejar su hoja de vida que primero se registre es la forma mas segura de que
 // no lo haga. El limite es el mismo que el de solicitar un proyecto, y por la
 // misma razon: toda la universidad sale a internet con una sola IP.
-Route::get('/practicas', [\App\Http\Controllers\PracticasController::class, 'index'])->name('practicas.index');
-Route::get('/practicas/{call:slug}', [\App\Http\Controllers\PracticasController::class, 'create'])->name('practicas.postular');
-Route::post('/practicas/{call:slug}', [\App\Http\Controllers\PracticasController::class, 'store'])
-    ->middleware('throttle:40,60')
+Route::get('/practicas', [PracticasController::class, 'index'])->name('practicas.index');
+Route::get('/practicas/{call:slug}', [PracticasController::class, 'create'])->name('practicas.postular');
+Route::post('/practicas/{call:slug}', [PracticasController::class, 'store'])
+    ->middleware(['throttle:40,60', 'captcha:correo'])
     ->name('practicas.postular.store');
-Route::get('/practicas/{call:slug}/gracias', [\App\Http\Controllers\PracticasController::class, 'gracias'])
+Route::get('/practicas/{call:slug}/gracias', [PracticasController::class, 'gracias'])
     ->name('practicas.gracias');
 
 // La propuesta con que se responde. Se entra por el enlace firmado del correo o
@@ -145,9 +154,9 @@ Route::get('/proyectos/{project}/documentos/{document}', [SolicitudDeProyectoCon
 // La evaluacion de un lote de candidatos, para quien no entra al panel: con
 // el enlace firmado del laboratorio o con la sesion del backoffice. Fuera del
 // grupo con sesion: el enlace llega a gente sin cuenta.
-Route::get('/lotes/{batch}/evaluacion', [\App\Http\Controllers\LoteCompartidoController::class, 'ver'])
+Route::get('/lotes/{batch}/evaluacion', [LoteCompartidoController::class, 'ver'])
     ->name('lotes.compartido');
-Route::get('/lotes/{batch}/evaluacion.csv', [\App\Http\Controllers\LoteCompartidoController::class, 'csv'])
+Route::get('/lotes/{batch}/evaluacion.csv', [LoteCompartidoController::class, 'csv'])
     ->name('lotes.compartido.csv');
 
 // La evidencia vive en el disco privado y comprueba ella misma quien pide: la
@@ -169,31 +178,49 @@ Route::post('/proyectos/{project}/pagos/{payment}', [SolicitudDeProyectoControll
 // El QR del banco: es para pagar, asi que se ve sin sesion. Se sirve desde el
 // disco privado para que el mismo archivo vaya adjunto en los correos.
 Route::get('/pagos/qr', function () {
-    $ruta = \App\Support\Settings::qrDePagos();
+    $ruta = Settings::qrDePagos();
     abort_unless($ruta, 404);
 
-    return \Illuminate\Support\Facades\Storage::disk('local')->response($ruta, 'qr-de-pago', ['Cache-Control' => 'public, max-age=3600']);
+    return Storage::disk('local')->response($ruta, 'qr-de-pago', ['Cache-Control' => 'public, max-age=3600']);
 })->name('pagos.qr');
 
 // Verificacion publica de una habilitacion o un certificado. Sin sesion, a proposito.
 Route::get('/verificar/{codigo}', [VerificationController::class, 'show'])->name('publico.verificar');
 
-
-
 // Ingreso por codigo de un solo uso (§5). Sin contrasenas.
 Route::middleware('guest')->group(function () {
     Route::get('/ingresar', [LoginCodeController::class, 'showEmailForm'])->name('login');
-    Route::post('/ingresar', [LoginCodeController::class, 'sendCode'])->name('login.send');
+    /*
+     * El captcha va en las tres puertas que MANDAN correo, y en la que
+     * comprueba el codigo (§5).
+     *
+     * El limite por correo y por IP que ya habia frena a una persona
+     * insistiendo; no frena a mil direcciones pidiendo cada una su primer
+     * codigo, y el dano de eso no es que alguien entre —el codigo va al buzon
+     * de su dueño— sino que el laboratorio manda miles de correos que nadie
+     * pidio y quema su reputacion de envio.
+     */
+    Route::post('/ingresar', [LoginCodeController::class, 'sendCode'])
+        ->middleware('captcha')
+        ->name('login.send');
     Route::get('/ingresar/codigo', [LoginCodeController::class, 'showCodeForm'])->name('login.code');
-    Route::post('/ingresar/codigo', [LoginCodeController::class, 'verifyCode'])->name('login.verify');
+    // Y aqui porque es donde se prueban codigos: seis digitos son un millon
+    // de combinaciones, que para un script no es ningun numero.
+    Route::post('/ingresar/codigo', [LoginCodeController::class, 'verifyCode'])
+        ->middleware('captcha')
+        ->name('login.verify');
 
     // Forzar el envio al correo aunque la cuenta use app: es la salida cuando
     // alguien pierde el telefono, y sin ella la app seria una trampa.
-    Route::post('/ingresar/codigo/enviar', [LoginCodeController::class, 'reenviarPorCorreo'])->name('login.code.enviar');
+    Route::post('/ingresar/codigo/enviar', [LoginCodeController::class, 'reenviarPorCorreo'])
+        ->middleware('captcha')
+        ->name('login.code.enviar');
 
     // Ingreso por QR del carne digital. Se apaga desde el backoffice (§5).
     Route::get('/ingresar/carnet', [CarnetLoginController::class, 'show'])->name('carnet');
-    Route::post('/ingresar/carnet', [CarnetLoginController::class, 'login'])->name('carnet.login');
+    Route::post('/ingresar/carnet', [CarnetLoginController::class, 'login'])
+        ->middleware('captcha:carnet')
+        ->name('carnet.login');
 });
 
 /*
@@ -217,21 +244,21 @@ Route::middleware('auth')->group(function () {
     // La ruta va como parametro de consulta y no en la direccion a proposito:
     // nginx sirve por su cuenta todo lo que termine en .webp, .jpg o .png, y
     // una direccion que acabara en el nombre del archivo nunca llegaria aqui.
-    Route::get('/panel/archivo', [\App\Http\Controllers\ArchivoPrivadoController::class, 'ver'])
+    Route::get('/panel/archivo', [ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
     // La vista previa del acuerdo de servicio, con lo escrito en el formulario.
-    Route::get('/panel/acuerdo/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'vista'])
+    Route::get('/panel/acuerdo/{project}/{token}', [AcuerdoController::class, 'vista'])
         ->name('panel.acuerdo');
 
     // La hoja de un perfil profesional, para mandarla a compras de la
     // Universidad. Con sesion y no con enlace firmado: aqui hay cedulas y
     // certificaciones bancarias, y un enlace se reenvia solo.
-    Route::get('/panel/perfiles/{profile}/hoja', [\App\Http\Controllers\PerfilesController::class, 'hoja'])
+    Route::get('/panel/perfiles/{profile}/hoja', [PerfilesController::class, 'hoja'])
         ->name('perfiles.hoja');
 
     // La vista previa de un cobro: el correo con el QR, y la seccion de pago.
-    Route::get('/panel/cobro/{project}/{token}', [\App\Http\Controllers\AcuerdoController::class, 'pago'])
+    Route::get('/panel/cobro/{project}/{token}', [AcuerdoController::class, 'pago'])
         ->name('panel.cobro');
 
     Route::post('/salir', [LoginCodeController::class, 'logout'])->name('logout');
@@ -359,7 +386,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/formacion/{edition}/inscribirme', [TrainingController::class, 'inscribir'])->name('formacion.inscribir');
     Route::post('/formacion/inscripcion/{enrollment}/retirar', [TrainingController::class, 'retirar'])->name('formacion.retirar');
-
 
     // Encargos: pedir un trabajo hecho por el equipo y aceptar su cotizacion (§14).
 

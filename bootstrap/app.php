@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ComprobarElCaptcha;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sin esto genera enlaces http:// dentro de una página https:// y el
         // navegador bloquea las peticiones de Livewire por contenido mixto.
         $middleware->trustProxies(at: '*');
+
+        /*
+         * El captcha, para colgarlo de las rutas publicas que mandan correo.
+         * Se le pasa el campo del formulario donde pintar el error:
+         * `captcha:correo` en los que no llaman «email» a su casilla.
+         */
+        $middleware->alias([
+            'captcha' => ComprobarElCaptcha::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

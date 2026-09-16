@@ -180,6 +180,8 @@
                         </div>
                     @endguest
 
+                    <x-captcha/>
+
                     <button type="submit" class="secundario">Pedir cotización</button>
                 </form>
             </details>
