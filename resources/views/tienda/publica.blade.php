@@ -235,7 +235,7 @@
                                  mira tiene derecho a saberlo antes de pedirlo.
                                  Desaparece solo cuando hay foto de verdad. --}}
                             @if ($imagen['esIlustracion'])
-                                <span class="sello-ilustracion">ilustración</span>
+                                <span class="sello-ilustracion">imagen de referencia</span>
                             @endif
                         @else
                             <div class="sin-foto">{{ $bloque['titulo'] === 'Servicios' ? '🛠' : '📦' }}</div>
@@ -516,6 +516,22 @@
         .carrito .cotizar .foot { display:block; font-weight:400; margin-top:.25rem; }
         .carrito .cotizar .dos { display:grid;
                                  grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); gap:0 1rem; }
+    .idea{border-left:4px solid var(--accent)}
+    .idea .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem}
+    .idea .opcional{color:var(--muted);font-weight:400;font-size:.85em}
+    .idea input[type=file]{padding:.5rem 0}
+    /* El sello de ilustracion, encima de la imagen y siempre legible:
+       si se pudiera confundir con parte del producto no serviria de nada. */
+    .sello-ilustracion{
+        position:absolute;left:.45rem;bottom:.45rem;
+        background:rgba(0,0,0,.66);color:#fff;
+        font-size:.66rem;line-height:1.5;letter-spacing:.04em;
+        padding:.12rem .45rem;border-radius:3px;pointer-events:none;
+        /* Encima de la imagen pase lo que pase: el `z-index` es lo unico que
+           separa «aviso visible» de «aviso tapado por la foto». */
+        z-index:2;
+        backdrop-filter:blur(2px);
+    }
     </style>
 
     <script>
@@ -638,16 +654,4 @@
             });
         })();
     </script>
-    .idea{border-left:4px solid var(--accent)}
-    .idea .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem}
-    .idea .opcional{color:var(--muted);font-weight:400;font-size:.85em}
-    .idea input[type=file]{padding:.5rem 0}
-    /* El sello de ilustracion, encima de la imagen y siempre legible:
-       si se pudiera confundir con parte del producto no serviria de nada. */
-    .sello-ilustracion{
-        position:absolute;left:.5rem;bottom:.5rem;
-        background:rgba(0,0,0,.72);color:#fff;
-        font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
-        padding:.15rem .45rem;border-radius:3px;pointer-events:none;
-    }
 @endsection

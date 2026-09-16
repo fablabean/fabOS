@@ -222,7 +222,28 @@ class IlustracionesGeneradasTest extends TestCase
             // La ETIQUETA, no el nombre de la clase: el CSS del sello esta
             // siempre en la pagina y buscarlo daria positivo aunque no se
             // pintara ningun sello.
-            ->assertSee('<span class="sello-ilustracion">', false);
+            ->assertSee('<span class="sello-ilustracion">imagen de referencia</span>', false);
+    }
+
+    /**
+     * El aviso va DENTRO del bloque de estilos.
+     *
+     * Estuvo fuera y nadie lo vio venir: el navegador lo pintaba como texto al
+     * pie de la tienda, y el sello se quedaba sin colocar —salia debajo de la
+     * foto, diminuto— porque sus reglas nunca se aplicaron.
+     */
+    public function test_el_estilo_del_sello_va_dentro_del_bloque_de_estilos(): void
+    {
+        $vista = resource_path('views/tienda/publica.blade.php');
+        $html = file_get_contents($vista);
+
+        $abre = strpos($html, '<style>');
+        $cierra = strpos($html, '</style>');
+        $regla = strpos($html, '.sello-ilustracion{');
+
+        $this->assertNotFalse($regla, 'Falta la regla del sello.');
+        $this->assertGreaterThan($abre, $regla);
+        $this->assertLessThan($cierra, $regla, 'El CSS quedó fuera de <style> y se lee como texto.');
     }
 
     /** Con foto de verdad, ningún sello. */

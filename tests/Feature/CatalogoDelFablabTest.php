@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\Area;
 use App\Models\ReferenciaDePrecio;
 use App\Models\ServiceOffering;
+use App\Models\Supply;
+use App\Services\Money\PricingService;
 use Database\Seeders\CatalogoDelFablabSeeder;
+use Database\Seeders\EscalonesDelCatalogoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -132,6 +135,83 @@ class CatalogoDelFablabTest extends TestCase
         $laser->refresh();
         $this->assertSame(999, $laser->price_minor, 'Se pisó un precio ajustado a mano.');
         $this->assertTrue($laser->is_public, 'Se despublicó algo que ya estaba publicado.');
+    }
+
+    // ---------------------------------------------------------------
+    // Escalones sobre lo que ya estaba
+    // ---------------------------------------------------------------
+
+    /**
+     * Los escalones salen del precio que YA tiene el producto.
+     *
+     * Ese precio es decisión del laboratorio y no se toca: lo único que se
+     * añade es cuánto baja al llevar más.
+     */
+    public function test_los_escalones_se_derivan_del_precio_que_ya_tenia(): void
+    {
+        $producto = Supply::create([
+            'name' => 'Cubo Infinito', 'kind' => 'producto', 'unit' => 'unidad',
+            'stock' => 5, 'is_active' => true, 'last_cost' => 10_000,
+        ]);
+
+        $precios = app(PricingService::class);
+        $precios->fijarPrecioEnPesos($producto, 10_000);
+
+        $this->seed(EscalonesDelCatalogoSeeder::class);
+
+        $producto->refresh();
+
+        // Menos de $25.000: escalera de barato, que arranca en diez.
+        $this->assertSame(
+            [10, 25, 50],
+            $producto->priceBreaks()->orderBy('min_quantity')->pluck('min_quantity')
+                ->map(fn ($q) => (int) $q)->all(),
+        );
+
+        // El precio base no se toca.
+        $this->assertSame(10_000, $precios->aPesos($precios->precioDe($producto->fresh(), 1)));
+    }
+
+    /**
+     * Los umbrales cambian con el precio.
+     *
+     * Una escalera única sirve para un llavero y es absurda para una figura de
+     * $280.000: de esas no se piden cincuenta ni una vez al año, así que el
+     * descuento nunca se aplicaría y sería decoración en la ficha.
+     */
+    public function test_de_lo_caro_no_se_esperan_cincuenta(): void
+    {
+        $caro = Supply::create([
+            'name' => 'T-rex decorativo', 'kind' => 'producto', 'unit' => 'unidad',
+            'stock' => 1, 'is_active' => true,
+        ]);
+
+        app(PricingService::class)->fijarPrecioEnPesos($caro, 280_000);
+
+        $this->seed(EscalonesDelCatalogoSeeder::class);
+
+        $this->assertSame(
+            [3, 10, 25],
+            $caro->priceBreaks()->orderBy('min_quantity')->pluck('min_quantity')
+                ->map(fn ($q) => (int) $q)->all(),
+        );
+    }
+
+    /** Y nunca pisa los escalones que alguien ya decidió. */
+    public function test_no_pisa_los_escalones_que_ya_existen(): void
+    {
+        $producto = Supply::create([
+            'name' => 'Con los suyos', 'kind' => 'producto', 'unit' => 'unidad',
+            'stock' => 5, 'is_active' => true,
+        ]);
+
+        app(PricingService::class)->fijarPrecioEnPesos($producto, 40_000);
+        $producto->priceBreaks()->create(['min_quantity' => 7, 'price_minor' => 3000]);
+
+        $this->seed(EscalonesDelCatalogoSeeder::class);
+
+        $this->assertSame(1, $producto->priceBreaks()->count());
+        $this->assertSame(7, (int) $producto->priceBreaks()->first()->min_quantity);
     }
 
     // ---------------------------------------------------------------
