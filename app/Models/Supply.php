@@ -25,11 +25,11 @@ class Supply extends Model
     protected function casts(): array
     {
         return [
-            'stock'         => 'decimal:3',
+            'stock' => 'decimal:3',
             'reorder_point' => 'decimal:3',
-            'max_stock'     => 'decimal:3',
-            'is_active'     => 'boolean',
-            'is_public'     => 'boolean',
+            'max_stock' => 'decimal:3',
+            'is_active' => 'boolean',
+            'is_public' => 'boolean',
         ];
     }
 
@@ -42,7 +42,7 @@ class Supply extends Model
      * agrupan en la tienda.
      */
     public const TIPOS = [
-        'insumo'   => 'Insumo',
+        'insumo' => 'Insumo',
         'producto' => 'Producto terminado',
     ];
 
@@ -59,7 +59,7 @@ class Supply extends Model
 
     public function fotoUrl(): ?string
     {
-        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+        return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
     }
 
     public function category(): BelongsTo
@@ -121,5 +121,17 @@ class Supply extends Model
     public function priceBreaks(): MorphMany
     {
         return $this->morphMany(PriceBreak::class, 'priceable')->orderBy('min_quantity');
+    }
+
+    /**
+     * Lo que cobra el mercado por esto mismo.
+     *
+     * Nuestro precio sale del costo; esto guarda con que se comparo y
+     * cuando, para poder responder «¿esta caro?» con una fuente.
+     */
+    public function referenciasDePrecio(): MorphMany
+    {
+        return $this->morphMany(ReferenciaDePrecio::class, 'priceable')
+            ->orderByDesc('consultado_el');
     }
 }

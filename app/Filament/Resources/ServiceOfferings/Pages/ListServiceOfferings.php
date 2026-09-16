@@ -14,7 +14,7 @@ class ListServiceOfferings extends ListRecords
     public function getSubheading(): string|Htmlable|null
     {
         return 'Trabajos con precio cerrado, para quien no sabe operar la máquina ni tiene por qué. '
-            . 'Salen en la tienda pública.';
+            .'Salen en la tienda pública.';
     }
 
     protected function getHeaderActions(): array

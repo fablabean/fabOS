@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Str;
 
 /**
  * Un servicio con precio cerrado (§14).
@@ -34,7 +34,7 @@ class ServiceOffering extends Model
     protected static function booted(): void
     {
         static::saving(function (self $servicio) {
-            $servicio->slug ??= Str::slug($servicio->name) . '-' . Str::lower(Str::random(4));
+            $servicio->slug ??= Str::slug($servicio->name).'-'.Str::lower(Str::random(4));
             $servicio->price_minor ??= 0;
         });
     }
@@ -52,7 +52,7 @@ class ServiceOffering extends Model
     /** Por la ruta con permiso: la foto la sube el laboratorio, pero el disco es el privado. */
     public function fotoUrl(): ?string
     {
-        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+        return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
     }
 
     public function cuandoEstaListo(): ?string
@@ -63,7 +63,7 @@ class ServiceOffering extends Model
 
         return $this->lead_time_days === 1
             ? 'listo al día siguiente'
-            : 'listo en ' . $this->lead_time_days . ' días';
+            : 'listo en '.$this->lead_time_days.' días';
     }
 
     /**
@@ -75,5 +75,17 @@ class ServiceOffering extends Model
     public function priceBreaks(): MorphMany
     {
         return $this->morphMany(PriceBreak::class, 'priceable')->orderBy('min_quantity');
+    }
+
+    /**
+     * Lo que cobra el mercado por esto mismo.
+     *
+     * Nuestro precio sale del costo; esto guarda con que se comparo y
+     * cuando, para poder responder «¿esta caro?» con una fuente.
+     */
+    public function referenciasDePrecio(): MorphMany
+    {
+        return $this->morphMany(ReferenciaDePrecio::class, 'priceable')
+            ->orderByDesc('consultado_el');
     }
 }

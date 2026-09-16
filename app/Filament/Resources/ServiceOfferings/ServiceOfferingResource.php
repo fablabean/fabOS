@@ -7,13 +7,16 @@ use App\Filament\Resources\ServiceOfferings\Pages\CreateServiceOffering;
 use App\Filament\Resources\ServiceOfferings\Pages\EditServiceOffering;
 use App\Filament\Resources\ServiceOfferings\Pages\ListServiceOfferings;
 use App\Models\ServiceOffering;
-use App\Models\User;
 use App\Services\Media\OptimizadorDeImagen;
+use App\Services\Money\PricingService;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -51,7 +54,6 @@ class ServiceOfferingResource extends Resource
     {
         return 'Tienda';
     }
-
 
     public static function form(Schema $schema): Schema
     {
@@ -97,11 +99,10 @@ class ServiceOfferingResource extends Resource
                         ->prefix(config('fabos.money.symbol'))
                         ->formatStateUsing(fn (?int $state) => $state === null
                             ? null
-                            : app(\App\Services\Money\PricingService::class)->aPesos((int) $state))
-                        ->dehydrateStateUsing(fn ($state) => app(\App\Services\Money\PricingService::class)
+                            : app(PricingService::class)->aPesos((int) $state))
+                        ->dehydrateStateUsing(fn ($state) => app(PricingService::class)
                             ->aMenor((int) $state))
                         ->helperText('Lo que paga quien lo compra. Se guarda en FabCoins a la tasa del laboratorio.'),
-
 
                     /*
                      * Descuentos por cantidad.
@@ -125,7 +126,7 @@ class ServiceOfferingResource extends Resource
                         ->columnSpanFull()
                         ->defaultItems(0)
                         ->itemLabel(fn (array $state) => filled($state['min_quantity'] ?? null)
-                            ? 'Desde ' . rtrim(rtrim(number_format((float) $state['min_quantity'], 3, ',', '.'), '0'), ',')
+                            ? 'Desde '.rtrim(rtrim(number_format((float) $state['min_quantity'], 3, ',', '.'), '0'), ',')
                             : null)
                         ->helperText('«De 10 en adelante, a $20.000 cada uno.» Se aplica solo al llegar a la cantidad.')
                         ->schema([
@@ -146,9 +147,73 @@ class ServiceOfferingResource extends Resource
                                 ->prefix(config('fabos.money.symbol'))
                                 ->formatStateUsing(fn (?int $state) => $state === null
                                     ? null
-                                    : app(\App\Services\Money\PricingService::class)->aPesos((int) $state))
-                                ->dehydrateStateUsing(fn ($state) => app(\App\Services\Money\PricingService::class)
+                                    : app(PricingService::class)->aPesos((int) $state))
+                                ->dehydrateStateUsing(fn ($state) => app(PricingService::class)
                                     ->aMenor((int) $state)),
+                        ]),
+
+                    /*
+                     * Con que se comparo el precio (§14).
+                     *
+                     * Nuestro precio sale del costo; esto guarda lo que cobra
+                     * el mercado. Son preguntas distintas y por eso van
+                     * separadas: la primera la contesta la hoja de costos, y
+                     * la segunda —«¿esta caro?»— solo la contesta mirar afuera.
+                     *
+                     * En PESOS, que es como cotiza el mercado. Guardarlo en
+                     * FabCoins esconderia el dato original detras de una tasa
+                     * que cambia.
+                     */
+                    Repeater::make('referenciasDePrecio')
+                        ->label('Con qué se comparó')
+                        ->relationship()
+                        ->addActionLabel('Añadir una referencia')
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->defaultItems(0)
+                        ->itemLabel(fn (array $state) => $state['fuente'] ?? null)
+                        ->helperText('Lo que cobra otro por lo mismo. Una sola fuente es una anécdota; tres son un rango, y el rango es lo que defiende la tarifa.')
+                        ->schema([
+                            TextInput::make('fuente')
+                                ->label('Quién lo cobra')
+                                ->required()
+                                ->maxLength(160)
+                                ->placeholder('Acerlam AyR (Bogotá)'),
+
+                            TextInput::make('precio_pesos')
+                                ->label('Cuánto cobra')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0)
+                                ->prefix(config('fabos.money.symbol')),
+
+                            TextInput::make('unidad')
+                                ->label('Por qué unidad')
+                                ->required()
+                                ->maxLength(40)
+                                // La suya, no la nuestra: uno cobra por gramo y
+                                // otro por pieza, y compararlos sin decir la
+                                // unidad es como no haber consultado nada.
+                                ->helperText('La unidad de ESA fuente, aunque no sea la nuestra.')
+                                ->placeholder('minuto'),
+
+                            DatePicker::make('consultado_el')
+                                ->label('Cuándo se miró')
+                                ->required()
+                                ->default(now())
+                                ->helperText('Una referencia de hace tres años no respalda nada.'),
+
+                            TextInput::make('url')
+                                ->label('Dónde')
+                                ->url()
+                                ->maxLength(2000)
+                                ->columnSpanFull(),
+
+                            Textarea::make('notas')
+                                ->label('Notas')
+                                ->rows(2)
+                                ->maxLength(500)
+                                ->columnSpanFull(),
                         ]),
 
                     TextInput::make('lead_time_days')
@@ -189,7 +254,7 @@ class ServiceOfferingResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $pesos = fn (int $menor) => config('fabos.money.symbol') . number_format(
+        $pesos = fn (int $menor) => config('fabos.money.symbol').number_format(
             round($menor / (int) config('fabos.currency.minor_units') * (int) config('fabos.currency.peso_rate')),
             0, ',', '.',
         );
@@ -223,8 +288,8 @@ class ServiceOfferingResource extends Resource
                 IconColumn::make('is_active')->label('Se ofrece')->boolean(),
             ])
             ->recordActions([
-                \Filament\Actions\EditAction::make()->iconButton()->tooltip('Editar'),
-                \Filament\Actions\DeleteAction::make()->iconButton()->tooltip('Borrar'),
+                EditAction::make()->iconButton()->tooltip('Editar'),
+                DeleteAction::make()->iconButton()->tooltip('Borrar'),
             ])
             ->toolbarActions([]);
     }
@@ -232,9 +297,9 @@ class ServiceOfferingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListServiceOfferings::route('/'),
+            'index' => ListServiceOfferings::route('/'),
             'create' => CreateServiceOffering::route('/create'),
-            'edit'   => EditServiceOffering::route('/{record}/edit'),
+            'edit' => EditServiceOffering::route('/{record}/edit'),
         ];
     }
 }
