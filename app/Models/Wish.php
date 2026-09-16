@@ -25,28 +25,32 @@ class Wish extends Model
         'unit', 'quantity', 'unit_price', 'priority', 'reference_url',
         'requested_by', 'purchase_request_item_id',
         'discarded_at', 'discarded_reason', 'notes',
+        'fulfilled_at', 'fulfilled_by', 'fulfilled_note',
     ];
 
     /** Lo que se enseña cuando un deseo todavía no tiene rubro. */
     public const SIN_RUBRO = 'Sin rubro';
 
     public const PRIORIDADES = [
-        'alta'  => 'Alta',
+        'alta' => 'Alta',
         'media' => 'Media',
-        'baja'  => 'Baja',
+        'baja' => 'Baja',
     ];
 
     /**
-     * Los cuatro estados en los que puede estar un deseo.
+     * Los cinco estados en los que puede estar un deseo.
      *
-     * Ninguno se guarda: tres salen del enlace con la línea de compra y el
-     * cuarto de la fecha en que alguien decidió que no. Ver `estado()`.
+     * Tres se derivan del enlace con la línea de compra y no se pueden
+     * escribir a mano —ahí está su valor: cuadran con compras—. Los otros dos
+     * son decisiones de una persona, con su fecha: «no lo vamos a pedir» y
+     * «ya lo tenemos». Ver `estado()`.
      */
     public const ESTADOS = [
-        'abierto'      => 'En la lista',
+        'abierto' => 'En la lista',
         'en_solicitud' => 'En solicitud',
-        'comprado'     => 'Comprado',
-        'descartado'   => 'Descartado',
+        'comprado' => 'Comprado',
+        'conseguido' => 'Ya lo tenemos',
+        'descartado' => 'Descartado',
     ];
 
     /** Solicitudes que ya no van a traer nada: el deseo vuelve a la lista. */
@@ -55,8 +59,9 @@ class Wish extends Model
     protected function casts(): array
     {
         return [
-            'quantity'     => 'decimal:3',
+            'quantity' => 'decimal:3',
             'discarded_at' => UtcDateTime::class,
+            'fulfilled_at' => UtcDateTime::class,
         ];
     }
 
@@ -79,6 +84,12 @@ class Wish extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(PurchaseRequestItem::class, 'purchase_request_item_id');
+    }
+
+    /** Quién dijo que esto ya lo tenemos. A esa persona se le pregunta. */
+    public function conseguidoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'fulfilled_by');
     }
 
     /** En qué solicitud terminó. Lo que se enseña en pantalla es su código. */
@@ -126,6 +137,17 @@ class Wish extends Model
             return 'descartado';
         }
 
+        /*
+         * «Ya lo tenemos» gana sobre lo que se deduzca de la linea de compra.
+         *
+         * Es una decision escrita por una persona, como descartar. Si la
+         * derivacion pudiera pisarla, la marca no serviria para nada: quien la
+         * puso vería el deseo volver solo a la lista y no entenderia por que.
+         */
+        if ($this->fulfilled_at) {
+            return 'conseguido';
+        }
+
         if (! $this->item) {
             return 'abierto';
         }
@@ -153,10 +175,17 @@ class Wish extends Model
         return $query->where('target_year', $ano);
     }
 
-    /** Los que nadie ha descartado. */
+    /**
+     * Los que siguen esperando: ni descartados ni ya conseguidos.
+     *
+     * Este scope es el que gobierna qué se presupuesta y qué puede entrar a un
+     * carrito, así que las dos salidas «a mano» se descuentan aquí, en un solo
+     * sitio. Cuando solo miraba `discarded_at`, marcar un deseo como conseguido
+     * lo habría dejado sumando para el año que viene.
+     */
     public function scopeVivos(Builder $query): Builder
     {
-        return $query->whereNull('discarded_at');
+        return $query->whereNull('discarded_at')->whereNull('fulfilled_at');
     }
 
     /**
@@ -174,6 +203,9 @@ class Wish extends Model
 
         return match ($estado) {
             'descartado' => $query->whereNotNull('discarded_at'),
+
+            // Mismo orden que `estado()`: descartar pisa a conseguir.
+            'conseguido' => $query->whereNull('discarded_at')->whereNotNull('fulfilled_at'),
 
             'comprado' => $query->vivos()->whereHas('item', $recibidoEntero),
 
@@ -231,8 +263,9 @@ class Wish extends Model
     /**
      * Lo que todavía hay que comprar: abierto y en solicitud juntos.
      *
-     * Es lo que se presupuesta. Lo ya comprado no se vuelve a pedir y lo
-     * descartado se decidió que no.
+     * Es lo que se presupuesta. Lo ya comprado no se vuelve a pedir, lo
+     * descartado se decidió que no, y lo que ya tenemos —llegó donado, estaba
+     * en otra área— tampoco hay que pedirlo: eso último lo descuenta `vivos()`.
      */
     public function scopePorComprar(Builder $query): Builder
     {
@@ -271,14 +304,14 @@ class Wish extends Model
                 $estimado = (int) $grupo->sum(fn (self $d) => $d->estimado() ?? 0);
 
                 return [
-                    'rubro'       => $nombre === '' ? null : $nombre,
-                    'cuantos'     => $grupo->count(),
-                    'estimado'    => $estimado,
+                    'rubro' => $nombre === '' ? null : $nombre,
+                    'cuantos' => $grupo->count(),
+                    'estimado' => $estimado,
                     // Con impuesto por rubro, que es el monto con el que nace
                     // cada presupuesto: repartir el total despues daria centavos
                     // de diferencia y una cifra que no cuadra con su origen.
                     'conImpuesto' => (int) round($estimado * (1 + $tasa)),
-                    'sinEstimar'  => $grupo->filter(fn (self $d) => $d->estimado() === null)->count(),
+                    'sinEstimar' => $grupo->filter(fn (self $d) => $d->estimado() === null)->count(),
                 ];
             })
             // Lo que no tiene rubro, al final: es lo que falta por decidir.
@@ -289,9 +322,9 @@ class Wish extends Model
         $areas = $deseos
             ->groupBy(fn (self $d) => $d->area?->name ?? '')
             ->map(fn ($grupo, $nombre) => [
-                'area'       => $nombre === '' ? null : $nombre,
-                'cuantos'    => $grupo->count(),
-                'estimado'   => (int) $grupo->sum(fn (self $d) => $d->estimado() ?? 0),
+                'area' => $nombre === '' ? null : $nombre,
+                'cuantos' => $grupo->count(),
+                'estimado' => (int) $grupo->sum(fn (self $d) => $d->estimado() ?? 0),
                 'sinEstimar' => $grupo->filter(fn (self $d) => $d->estimado() === null)->count(),
             ])
             // Lo de «todo el laboratorio» al final: primero las áreas, que es
@@ -303,14 +336,14 @@ class Wish extends Model
         $estimado = (int) $deseos->sum(fn (self $d) => $d->estimado() ?? 0);
 
         return [
-            'anio'        => $ano,
-            'tasa'        => $tasa,
-            'rubros'      => $rubros,
-            'areas'       => $areas,
-            'cuantos'     => $deseos->count(),
-            'estimado'    => $estimado,
+            'anio' => $ano,
+            'tasa' => $tasa,
+            'rubros' => $rubros,
+            'areas' => $areas,
+            'cuantos' => $deseos->count(),
+            'estimado' => $estimado,
             'conImpuesto' => (int) round($estimado * (1 + $tasa)),
-            'sinEstimar'  => $deseos->filter(fn (self $d) => $d->estimado() === null)->count(),
+            'sinEstimar' => $deseos->filter(fn (self $d) => $d->estimado() === null)->count(),
         ];
     }
 

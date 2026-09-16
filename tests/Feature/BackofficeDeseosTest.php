@@ -29,7 +29,7 @@ class BackofficeDeseosTest extends TestCase
         }
 
         $u = User::create([
-            'name' => 'Persona ' . uniqid(), 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'name' => 'Persona '.uniqid(), 'email' => uniqid().'@test.co', 'status' => 'activo',
         ]);
         $u->assignRole($rol);
 
@@ -60,8 +60,8 @@ class BackofficeDeseosTest extends TestCase
         return Wish::create(array_merge([
             'target_year' => (int) now()->year + 1,
             'description' => 'Fresadora CNC',
-            'quantity'    => 1,
-            'unit_price'  => 12_000_000,
+            'quantity' => 1,
+            'unit_price' => 12_000_000,
         ], $datos));
     }
 
@@ -70,7 +70,7 @@ class BackofficeDeseosTest extends TestCase
     public function test_la_lista_se_ve_y_agrupa_por_area(): void
     {
         $this->admin();
-        $area = Area::create(['slug' => 'fab-' . uniqid(), 'name' => 'Fabricación']);
+        $area = Area::create(['slug' => 'fab-'.uniqid(), 'name' => 'Fabricación']);
         $this->deseo(['area_id' => $area->id, 'description' => 'Fresadora CNC de 3 ejes']);
 
         $this->get('/admin/wishes')
@@ -233,8 +233,8 @@ class BackofficeDeseosTest extends TestCase
 
         Livewire::test(ListWishes::class)
             ->callAction('presupuestar', [
-                'ano'     => $ano,
-                'rubros'  => ['Materiales laboratorio', 'Licencias y software'],
+                'ano' => $ano,
+                'rubros' => ['Materiales laboratorio', 'Licencias y software'],
                 'area_id' => null,
             ])
             ->assertHasNoActionErrors();
@@ -321,5 +321,150 @@ class BackofficeDeseosTest extends TestCase
             ->assertOk()
             ->assertSee('La lista de deseos')
             ->assertSee('La lista es el filtro');
+    }
+
+    // ---------------------------------------------------------------
+    // «Ya lo tenemos»: el deseo que se cumple fuera del carrito (§13)
+    // ---------------------------------------------------------------
+
+    /**
+     * El caso que lo hizo existir: lo donaron, y el deseo no se borra.
+     *
+     * Antes solo cabia descartarlo —que en los informes significa «se decidio
+     * que no», justo lo contrario de lo que paso— o borrarlo, y con el la
+     * unica prueba de que alguna vez hizo falta.
+     */
+    public function test_marcar_que_ya_lo_tenemos_lo_saca_de_la_lista_sin_borrarlo(): void
+    {
+        $deseo = $this->deseo();
+        $this->admin();
+
+        Livewire::test(ListWishes::class)
+            ->callAction(
+                TestAction::make('yaLoTenemos')->table($deseo),
+                ['nota' => 'Lo donó la facultad de Ingeniería'],
+            );
+
+        $deseo->refresh();
+
+        $this->assertNotNull($deseo->fulfilled_at);
+        $this->assertSame('Lo donó la facultad de Ingeniería', $deseo->fulfilled_note);
+        $this->assertSame('conseguido', $deseo->estado());
+        $this->assertSame('Ya lo tenemos', $deseo->estadoLegible());
+
+        // Sigue ahi: el deseo es la prueba de que esto hizo falta.
+        $this->assertDatabaseHas('wishes', ['id' => $deseo->id]);
+    }
+
+    /**
+     * Y deja de sumar al presupuesto del año que viene.
+     *
+     * Es la mitad del punto: un deseo cumplido que siguiera contando pediria
+     * plata para algo que ya esta en la sala.
+     */
+    public function test_lo_que_ya_tenemos_no_cuenta_para_el_presupuesto(): void
+    {
+        $ano = (int) now()->year + 1;
+        $sigue = $this->deseo(['description' => 'Sigue haciendo falta', 'unit_price' => 1_000_000]);
+        $tenemos = $this->deseo(['description' => 'Ya llegó', 'unit_price' => 9_000_000]);
+
+        $antes = Wish::resumenDelAno($ano);
+        $tenemos->update(['fulfilled_at' => now()]);
+        $despues = Wish::resumenDelAno($ano);
+
+        $sumar = fn (array $r) => collect($r['rubros'])->sum('estimado');
+
+        $this->assertSame(10_000_000, $sumar($antes));
+        $this->assertSame(1_000_000, $sumar($despues), 'Lo conseguido tiene que salir de la cifra.');
+        $this->assertSame(1, Wish::porComprar()->delAno($ano)->count());
+        $this->assertTrue(Wish::porComprar()->delAno($ano)->get()->contains('id', $sigue->id));
+    }
+
+    /**
+     * Las dos lecturas del estado tienen que coincidir, registro a registro.
+     *
+     * `estado()` lo calcula en PHP y `enEstado()` en SQL. Si se separan, el
+     * filtro de la pantalla dice una cosa y el badge de la fila otra.
+     */
+    public function test_el_filtro_y_el_badge_dicen_lo_mismo_del_nuevo_estado(): void
+    {
+        $abierto = $this->deseo(['description' => 'Sin tocar']);
+        $conseguido = $this->deseo(['description' => 'Conseguido', 'fulfilled_at' => now()]);
+        $descartado = $this->deseo(['description' => 'Descartado', 'discarded_at' => now()]);
+
+        // Descartar pisa a conseguir: quien lo descarto lo decidio despues.
+        $ambos = $this->deseo([
+            'description' => 'Descartado y conseguido',
+            'fulfilled_at' => now(),
+            'discarded_at' => now(),
+        ]);
+
+        foreach (array_keys(Wish::ESTADOS) as $estado) {
+            $porSql = Wish::enEstado($estado)->pluck('id')->sort()->values()->all();
+
+            $porPhp = Wish::all()
+                ->filter(fn (Wish $w) => $w->estado() === $estado)
+                ->pluck('id')->sort()->values()->all();
+
+            $this->assertSame($porSql, $porPhp, "No coinciden en «{$estado}».");
+        }
+
+        $this->assertSame('abierto', $abierto->estado());
+        $this->assertSame('conseguido', $conseguido->fresh()->estado());
+        $this->assertSame('descartado', $descartado->fresh()->estado());
+        $this->assertSame('descartado', $ambos->fresh()->estado());
+    }
+
+    /** Me equivoque: devolverlo a la lista limpia tambien esta marca. */
+    public function test_devolver_a_la_lista_deshace_el_ya_lo_tenemos(): void
+    {
+        $deseo = $this->deseo(['fulfilled_at' => now(), 'fulfilled_note' => 'Donado']);
+        $this->admin();
+
+        Livewire::test(ListWishes::class)
+            // La lista se abre en «En la lista»: lo conseguido hay que ir a
+            // buscarlo, igual que haria una persona.
+            ->filterTable('estado', 'conseguido')
+            ->selectTableRecords([$deseo->getKey()])
+            ->callAction(TestAction::make('revivir')->table()->bulk())
+            ->assertHasNoActionErrors();
+
+        $deseo->refresh();
+
+        $this->assertNull($deseo->fulfilled_at);
+        $this->assertNull($deseo->fulfilled_note);
+        $this->assertSame('abierto', $deseo->estado());
+    }
+
+    /**
+     * Lo ya recibido por una solicitud no se puede tapar a mano.
+     *
+     * «Comprado» se deriva de la linea recibida y por eso cuadra con compras.
+     * Ofrecer «ya lo tenemos» encima seria dejar escribir a dedo sobre el
+     * unico dato que no es una opinion.
+     */
+    public function test_no_se_ofrece_sobre_algo_que_ya_se_compro(): void
+    {
+        $deseo = $this->deseo();
+        $this->admin();
+
+        Livewire::test(ListWishes::class)
+            ->assertTableActionVisible('yaLoTenemos', record: $deseo);
+
+        // Recibido entero por su solicitud: pasa a «Comprado».
+        $solicitud = PurchaseRequest::create([
+            'code' => 'SOL-'.uniqid(), 'status' => 'borrador', 'requested_by' => auth()->id(),
+        ]);
+        $linea = $solicitud->items()->create([
+            'description' => 'Fresadora CNC', 'quantity' => 1, 'received_quantity' => 1,
+            'unit' => 'unidad', 'unit_price' => 12_000_000,
+        ]);
+        $deseo->update(['purchase_request_item_id' => $linea->id]);
+
+        $this->assertSame('comprado', $deseo->fresh()->estado());
+
+        Livewire::test(ListWishes::class)
+            ->filterTable('estado', 'comprado')
+            ->assertTableActionHidden('yaLoTenemos', record: $deseo->fresh());
     }
 }

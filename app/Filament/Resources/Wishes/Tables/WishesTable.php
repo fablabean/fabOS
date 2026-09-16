@@ -71,7 +71,7 @@ class WishesTable
                     ->badge()
                     ->formatStateUsing(fn (string $state) => Wish::PRIORIDADES[$state] ?? $state)
                     ->color(fn (string $state) => match ($state) {
-                        'alta'  => 'danger',
+                        'alta' => 'danger',
                         'media' => 'warning',
                         default => 'gray',
                     }),
@@ -79,7 +79,7 @@ class WishesTable
                 TextColumn::make('quantity')
                     ->label('Cuánto')
                     ->alignEnd()
-                    ->state(fn (Wish $r) => rtrim(rtrim(number_format((float) $r->quantity, 3, ',', '.'), '0'), ',') . ' ' . $r->unit),
+                    ->state(fn (Wish $r) => rtrim(rtrim(number_format((float) $r->quantity, 3, ',', '.'), '0'), ',').' '.$r->unit),
 
                 TextColumn::make('unit_price')
                     ->label('Estimado unit.')
@@ -101,10 +101,14 @@ class WishesTable
                     ->badge()
                     ->state(fn (Wish $r) => $r->estadoLegible())
                     ->color(fn (Wish $r) => match ($r->estado()) {
-                        'comprado'     => 'success',
+                        'comprado' => 'success',
+                        // Conseguido tambien es un final feliz, pero no es lo
+                        // mismo que comprado: se distingue del verde para que
+                        // no se lea «esto paso por compras» de un vistazo.
+                        'conseguido' => 'primary',
                         'en_solicitud' => 'info',
-                        'descartado'   => 'gray',
-                        default        => 'warning',
+                        'descartado' => 'gray',
+                        default => 'warning',
                     })
                     // En qué carrito terminó, o por qué volvió: sin esto, un
                     // deseo que reaparece en la lista parece un error.
@@ -146,13 +150,15 @@ class WishesTable
                 Action::make('solicitud')
                     ->label('Ver la solicitud')
                     ->iconButton()
-                    ->tooltip(fn (Wish $r) => 'Ver ' . $r->solicitud()?->code)
+                    ->tooltip(fn (Wish $r) => 'Ver '.$r->solicitud()?->code)
                     ->icon('heroicon-o-shopping-cart')
                     ->color('gray')
                     ->visible(fn (Wish $r) => (bool) $r->item)
                     ->url(fn (Wish $r) => PurchaseRequestResource::getUrl('edit', [
                         'record' => $r->item->purchase_request_id,
                     ])),
+
+                self::yaLoTenemos(),
 
                 EditAction::make()->iconButton()->tooltip('Editar'),
             ])
@@ -191,7 +197,7 @@ class WishesTable
                         $lineas = $carrito->items()->count();
 
                         Notification::make()
-                            ->title("Carrito {$carrito->code} con {$lineas} " . ($lineas === 1 ? 'línea' : 'líneas'))
+                            ->title("Carrito {$carrito->code} con {$lineas} ".($lineas === 1 ? 'línea' : 'líneas'))
                             ->body('Revísalo, elige contra qué presupuesto va y envíalo.')
                             ->success()
                             ->send();
@@ -230,7 +236,7 @@ class WishesTable
                             $records->each->update(['budget_line' => $data['budget_line']]);
 
                             Notification::make()
-                                ->title('Van a «' . $data['budget_line'] . '»')
+                                ->title('Van a «'.$data['budget_line'].'»')
                                 ->success()
                                 ->send();
                         })
@@ -258,7 +264,7 @@ class WishesTable
                             $records->each->update(['target_year' => (int) $data['ano']]);
 
                             Notification::make()
-                                ->title('Pasados a ' . $data['ano'])
+                                ->title('Pasados a '.$data['ano'])
                                 ->success()
                                 ->send();
                         })
@@ -281,7 +287,7 @@ class WishesTable
                         ])
                         ->action(function (Collection $records, array $data) {
                             $records->each->update([
-                                'discarded_at'     => now(),
+                                'discarded_at' => now(),
                                 'discarded_reason' => $data['motivo'],
                             ]);
 
@@ -289,12 +295,52 @@ class WishesTable
                         })
                         ->deselectRecordsAfterCompletion(),
 
+                    // Ya lo tenemos, en lote: cuando llega una donacion se
+                    // tachan cinco deseos de una vez, no uno a uno.
+                    BulkAction::make('yaLoTenemos')
+                        ->label('Marcar que ya los tenemos')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->modalHeading('Ya tenemos los deseos seleccionados')
+                        ->modalDescription('Salen de la lista y dejan de contar para el presupuesto. No se borran: queda para poder decir que esto hizo falta y cómo se resolvió.')
+                        ->schema([
+                            TextInput::make('nota')
+                                ->label('Cómo llegaron')
+                                ->placeholder('Donación de la facultad de Ingeniería')
+                                ->maxLength(255)
+                                ->helperText('Opcional. Se escribe igual en todos los seleccionados.'),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each->update([
+                                'fulfilled_at' => now(),
+                                'fulfilled_by' => auth()->id(),
+                                'fulfilled_note' => $data['nota'] ?: null,
+                            ]);
+
+                            Notification::make()->title('Anotado: ya los tenemos')->success()->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    /*
+                     * Deshace las DOS marcas a mano, no solo el descarte.
+                     *
+                     * Es el boton de «me equivoque», y quien lo pulsa quiere
+                     * que el deseo vuelva a la lista: si limpiara solo el
+                     * descarte, un deseo marcado como conseguido por error se
+                     * quedaria fuera sin manera evidente de recuperarlo.
+                     */
                     BulkAction::make('revivir')
                         ->label('Devolver a la lista')
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->color('gray')
                         ->action(function (Collection $records) {
-                            $records->each->update(['discarded_at' => null, 'discarded_reason' => null]);
+                            $records->each->update([
+                                'discarded_at' => null,
+                                'discarded_reason' => null,
+                                'fulfilled_at' => null,
+                                'fulfilled_by' => null,
+                                'fulfilled_note' => null,
+                            ]);
 
                             Notification::make()->title('De vuelta en la lista')->success()->send();
                         })
@@ -308,9 +354,66 @@ class WishesTable
             ->description('Un deseo no compromete plata: es lo que se quisiera tener. Se marcan los que caben ahora y se pasan a una solicitud; el resto sigue esperando o se pasa al año siguiente.');
     }
 
+    /**
+     * «Ya lo tenemos»: el deseo se cumplió, pero no por el carrito (§13).
+     *
+     * Es el final más común y era el único que no tenía sitio: lo donaron, lo
+     * tenía otra área, se compró directo. Sin esto, el deseo se quedaba
+     * pidiendo algo que ya está en la sala —y sumando al presupuesto del año
+     * que viene— o se borraba, y con él la única prueba de que hizo falta.
+     *
+     * Solo aparece en lo que sigue esperando: marcar «ya lo tenemos» sobre algo
+     * que ya se recibió por una solicitud seria tapar el dato bueno —el que
+     * cuadra con compras— con uno escrito a mano.
+     */
+    private static function yaLoTenemos(): Action
+    {
+        return Action::make('yaLoTenemos')
+            ->label('Ya lo tenemos')
+            ->iconButton()
+            ->tooltip('Marcar que ya lo conseguimos')
+            ->icon('heroicon-o-check-circle')
+            ->color('success')
+            ->visible(fn (Wish $r) => in_array($r->estado(), ['abierto', 'en_solicitud'], true))
+            ->modalHeading(fn (Wish $r) => 'Ya tenemos: '.$r->description)
+            ->modalDescription('Sale de la lista y deja de contar para el presupuesto. No se borra: queda para poder decir que esto hizo falta y cómo se resolvió.')
+            ->modalSubmitActionLabel('Sí, ya lo tenemos')
+            ->schema([
+                TextInput::make('nota')
+                    ->label('Cómo llegó')
+                    ->placeholder('Lo donó la facultad de Ingeniería')
+                    ->maxLength(255)
+                    // Opcional, a diferencia del motivo al descartar: descartar
+                    // es una decision que alguien va a discutir, y conseguir
+                    // algo no. Pero es la pregunta que se hace quien mire esto
+                    // dentro de un año, asi que se ofrece.
+                    ->helperText('Opcional, pero ayuda: dentro de un año nadie se acuerda de dónde salió.'),
+            ])
+            ->action(function (Wish $record, array $data) {
+                $record->update([
+                    'fulfilled_at' => now(),
+                    'fulfilled_by' => auth()->id(),
+                    'fulfilled_note' => $data['nota'] ?: null,
+                ]);
+
+                Notification::make()->success()
+                    ->title('Anotado: ya lo tenemos')
+                    ->body('Sale de la lista y del presupuesto. Sigue aquí, filtrando por «Ya lo tenemos».')
+                    ->send();
+            });
+    }
+
     /** De qué solicitud viene este deseo, dicho para quien mira la fila. */
     private static function deDondeViene(Wish $deseo): ?string
     {
+        // Lo que ya tenemos cuenta CÓMO llegó, que es la pregunta que se hace
+        // quien abre esta lista y ve un deseo tachado sin haber pasado por
+        // ningun carrito.
+        if ($deseo->estado() === 'conseguido') {
+            return $deseo->fulfilled_note
+                ?: 'lo conseguimos por fuera de compras';
+        }
+
         $solicitud = $deseo->solicitud();
 
         if (! $solicitud) {
@@ -318,12 +421,12 @@ class WishesTable
         }
 
         return $deseo->estado() === 'abierto'
-            ? 'volvió de ' . $solicitud->code
+            ? 'volvió de '.$solicitud->code
             : $solicitud->code;
     }
 
     private static function pesos(int $pesos): string
     {
-        return config('fabos.money.symbol') . number_format($pesos, 0, ',', '.');
+        return config('fabos.money.symbol').number_format($pesos, 0, ',', '.');
     }
 }
