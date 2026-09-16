@@ -40,11 +40,11 @@ class Carrito
         }
 
         $lineas = $this->crudo();
-        $clave = $tipo . ':' . $id;
+        $clave = $tipo.':'.$id;
 
         $lineas[$clave] = [
-            'tipo'     => $tipo,
-            'id'       => $id,
+            'tipo' => $tipo,
+            'id' => $id,
             // Se suma a lo que hubiera: volver a pulsar «añadir» sobre algo que
             // ya está dentro significa querer más, no querer lo mismo.
             'cantidad' => round(($lineas[$clave]['cantidad'] ?? 0) + $cantidad, 3),
@@ -56,7 +56,7 @@ class Carrito
     public function fijar(string $tipo, int $id, float $cantidad): void
     {
         $lineas = $this->crudo();
-        $clave = $tipo . ':' . $id;
+        $clave = $tipo.':'.$id;
 
         if ($cantidad <= 0) {
             unset($lineas[$clave]);
@@ -70,7 +70,7 @@ class Carrito
     public function quitar(string $tipo, int $id): void
     {
         $lineas = $this->crudo();
-        unset($lineas[$tipo . ':' . $id]);
+        unset($lineas[$tipo.':'.$id]);
 
         session([self::CLAVE => $lineas]);
     }
@@ -135,14 +135,14 @@ class Carrito
                 }
 
                 return [
-                    'tipo'     => $linea['tipo'],
-                    'id'       => $linea['id'],
-                    'cosa'     => $cosa,
-                    'nombre'   => $cosa->name,
-                    'unidad'   => $cosa->unit,
+                    'tipo' => $linea['tipo'],
+                    'id' => $linea['id'],
+                    'cosa' => $cosa,
+                    'nombre' => $cosa->name,
+                    'unidad' => $cosa->unit,
                     'cantidad' => $cantidad,
-                    'precio'   => $precio,
-                    'total'    => (int) round($precio * $linea['cantidad']),
+                    'precio' => $precio,
+                    'total' => (int) round($precio * $linea['cantidad']),
                 ];
             })
             ->filter()
@@ -158,7 +158,11 @@ class Carrito
     public function sinExistencia(): Collection
     {
         return $this->lineas()
+            // Lo que se fabrica por encargo no «falta»: todavia no existe, y
+            // ese es el trato. Frenarlo aqui haria imposible pedir justo lo
+            // que el laboratorio esta para hacer.
             ->filter(fn (array $l) => $l['tipo'] === 'insumo'
+                && ! $l['cosa']->seFabricaPorEncargo()
                 && (float) $l['cosa']->stock < $l['cantidad'])
             ->values();
     }

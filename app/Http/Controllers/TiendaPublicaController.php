@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Area;
+use App\Models\Project;
 use App\Models\ServiceOffering;
 use App\Models\Supply;
 use App\Services\Ledger\LedgerService;
@@ -11,6 +12,7 @@ use App\Services\Projects\ProjectService;
 use App\Services\Shop\Carrito;
 use App\Services\Shop\ShopException;
 use App\Services\Shop\ShopService;
+use App\Support\Telefono;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -44,13 +46,18 @@ class TiendaPublicaController extends Controller
             // Lo agotado no se enseña: la tienda promete lo que se puede
             // llevar hoy, y un catalogo lleno de cosas que no hay erosiona esa
             // promesa. Para lo que no hay esta pedir cotizacion.
-            ->where('stock', '>', 0)
+            //
+            // Con una excepcion: lo que el laboratorio FABRICA por encargo. Un
+            // fablab no tiene cien llaveros en un cajon, y con la regla a secas
+            // todo lo que sabe hacer quedaba invisible hasta producir un lote
+            // por si acaso. Se ofrece con su plazo por delante.
+            ->ofrecible()
             ->with(['area', 'priceBreaks'])
             ->orderBy('name')
             ->get()
             ->map(fn (Supply $s) => [
-                'cosa'   => $s,
-                'tipo'   => 'insumo',
+                'cosa' => $s,
+                'tipo' => 'insumo',
                 'precio' => $this->precios->precioDe($s),
                 // Un precio derivado del costo de compra no lo decidio nadie:
                 // decirlo evita que se lea como una tarifa acordada.
@@ -67,30 +74,30 @@ class TiendaPublicaController extends Controller
             ->orderBy('name')
             ->get()
             ->map(fn (ServiceOffering $s) => [
-                'cosa'      => $s,
-                'tipo'      => 'servicio',
-                'precio'    => (int) $s->price_minor,
-                'derivado'  => false,
+                'cosa' => $s,
+                'tipo' => 'servicio',
+                'precio' => (int) $s->price_minor,
+                'derivado' => false,
                 'escalones' => $this->precios->escalonesDe($s),
             ])
             ->filter(fn (array $f) => $f['precio'] > 0);
 
         return view('tienda.publica', [
             'productos' => $insumos->filter(fn (array $f) => $f['cosa']->esProducto())->values(),
-            'insumos'   => $insumos->filter(fn (array $f) => ! $f['cosa']->esProducto())->values(),
+            'insumos' => $insumos->filter(fn (array $f) => ! $f['cosa']->esProducto())->values(),
             'servicios' => $servicios->values(),
-            'areas'     => Area::orderBy('name')->get(),
-            'carrito'   => $this->carrito->lineas(),
-            'total'     => $this->carrito->totalMenor(),
-            'saldo'     => $request->user() ? $this->libro->saldoDe($request->user()) : null,
+            'areas' => Area::orderBy('name')->get(),
+            'carrito' => $this->carrito->lineas(),
+            'total' => $this->carrito->totalMenor(),
+            'saldo' => $request->user() ? $this->libro->saldoDe($request->user()) : null,
         ]);
     }
 
     public function agregar(Request $request)
     {
         $datos = $request->validate([
-            'tipo'     => ['required', Rule::in(['insumo', 'servicio'])],
-            'id'       => ['required', 'integer'],
+            'tipo' => ['required', Rule::in(['insumo', 'servicio'])],
+            'id' => ['required', 'integer'],
             'cantidad' => ['nullable', 'numeric', 'min:0.001', 'max:9999'],
         ]);
 
@@ -102,8 +109,8 @@ class TiendaPublicaController extends Controller
     public function actualizar(Request $request)
     {
         $datos = $request->validate([
-            'tipo'     => ['required', Rule::in(['insumo', 'servicio'])],
-            'id'       => ['required', 'integer'],
+            'tipo' => ['required', Rule::in(['insumo', 'servicio'])],
+            'id' => ['required', 'integer'],
             'cantidad' => ['required', 'numeric', 'min:0', 'max:9999'],
         ]);
 
@@ -138,8 +145,8 @@ class TiendaPublicaController extends Controller
         if ($faltantes->isNotEmpty()) {
             return back()->withErrors([
                 'carrito' => 'No hay suficiente de: '
-                    . $faltantes->pluck('nombre')->implode(', ')
-                    . '. Ajusta la cantidad o pídelo como cotización.',
+                    .$faltantes->pluck('nombre')->implode(', ')
+                    .'. Ajusta la cantidad o pídelo como cotización.',
             ]);
         }
 
@@ -171,7 +178,7 @@ class TiendaPublicaController extends Controller
 
         return redirect()
             ->route('tienda.publica')
-            ->with('status', 'Listo. Tu compra es la ' . $venta->code . '. Recógela en el laboratorio.');
+            ->with('status', 'Listo. Tu compra es la '.$venta->code.'. Recógela en el laboratorio.');
     }
 
     /**
@@ -191,18 +198,18 @@ class TiendaPublicaController extends Controller
         $identificado = $request->user();
 
         $datos = $request->validate([
-            'titulo'       => ['nullable', 'string', 'max:180'],
-            'detalle'      => ['nullable', 'string', 'max:2000'],
-            'nombre'       => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
-            'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
-            'telefono'     => ['nullable', 'string', 'max:40'],
+            'titulo' => ['nullable', 'string', 'max:180'],
+            'detalle' => ['nullable', 'string', 'max:2000'],
+            'nombre' => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
+            'correo' => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
+            'telefono' => ['nullable', 'string', 'max:40'],
             'telefono_indicativo' => ['nullable', 'string', 'max:6'],
             'organizacion' => ['nullable', 'string', 'max:160'],
-            'cliente'      => [Rule::requiredIf(! $identificado?->category), Rule::in(array_keys(\App\Models\Project::CLIENTES))],
+            'cliente' => [Rule::requiredIf(! $identificado?->category), Rule::in(array_keys(Project::CLIENTES))],
         ]);
 
         // El telefono llega en dos partes y se guarda como una: «+57 3001234567».
-        $datos['telefono'] = \App\Support\Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);
+        $datos['telefono'] = Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);
 
         $lineas = $this->carrito->lineas();
 
@@ -218,16 +225,16 @@ class TiendaPublicaController extends Controller
             ->implode("\n");
 
         $proyecto = $this->proyectos->solicitarDesdeLaWeb([
-            'titulo'       => ($datos['titulo'] ?? null) ?: 'Pedido de la tienda (' . $lineas->count() . ' cosas)',
-            'resumen'      => trim(($datos['detalle'] ?? '') . "\n\n"
-                . 'Pedido armado desde la tienda:' . "\n" . $entregables),
-            'entregables'  => $entregables,
-            'nombre'       => $identificado?->name ?? $datos['nombre'],
-            'correo'       => $identificado?->email ?? $datos['correo'],
-            'telefono'     => $datos['telefono'] ?? $identificado?->phone,
+            'titulo' => ($datos['titulo'] ?? null) ?: 'Pedido de la tienda ('.$lineas->count().' cosas)',
+            'resumen' => trim(($datos['detalle'] ?? '')."\n\n"
+                .'Pedido armado desde la tienda:'."\n".$entregables),
+            'entregables' => $entregables,
+            'nombre' => $identificado?->name ?? $datos['nombre'],
+            'correo' => $identificado?->email ?? $datos['correo'],
+            'telefono' => $datos['telefono'] ?? $identificado?->phone,
             'organizacion' => $datos['organizacion'] ?? null,
-            'para_cuando'  => null,
-            'cliente'      => $identificado?->category?->tramiteDeCliente()
+            'para_cuando' => null,
+            'cliente' => $identificado?->category?->tramiteDeCliente()
                 ?? ($datos['cliente'] ?? 'externo'),
         ]);
 

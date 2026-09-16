@@ -20,6 +20,7 @@ class Supply extends Model
         'area_id', 'category_id', 'location_id', 'name', 'kind', 'sku', 'unit', 'description',
         'photo_path', 'public_description',
         'stock', 'reorder_point', 'max_stock', 'last_cost', 'is_active', 'is_public',
+        'por_encargo', 'dias_por_encargo',
     ];
 
     protected function casts(): array
@@ -51,10 +52,57 @@ class Supply extends Model
         return $this->kind === 'producto';
     }
 
+    /**
+     * Si se puede pedir aunque no haya existencia.
+     *
+     * Un fablab no tiene cien llaveros en un cajon: los hace cuando se los
+     * piden. Sin esto, todo lo que el laboratorio SABE fabricar queda
+     * invisible hasta que alguien produce un lote por si acaso.
+     */
+    public function seFabricaPorEncargo(): bool
+    {
+        return (bool) $this->por_encargo;
+    }
+
+    /** Si hoy se puede ofrecer: o hay, o se hace. */
+    public function sePuedePedir(): bool
+    {
+        return (float) $this->stock > 0 || $this->seFabricaPorEncargo();
+    }
+
+    /** El plazo, dicho para quien compra. Nulo si nadie lo ha medido. */
+    public function cuandoEstaListo(): ?string
+    {
+        if ((float) $this->stock > 0) {
+            return null;
+        }
+
+        if (! $this->dias_por_encargo) {
+            return 'por encargo';
+        }
+
+        return $this->dias_por_encargo === 1
+            ? 'por encargo · listo mañana'
+            : 'por encargo · listo en '.$this->dias_por_encargo.' días';
+    }
+
     /** Lo que se puede mirar y comprar sin ser del laboratorio. */
     public function scopeEnLaTienda($query)
     {
         return $query->where('is_active', true)->where('is_public', true);
+    }
+
+    /**
+     * Lo que hoy se puede ofrecer: hay existencia, o se fabrica por encargo.
+     *
+     * La regla de «solo lo que hay» sigue valiendo para los insumos —o hay
+     * lamina de MDF o no la hay—; lo que se fabrica se ofrece con su plazo por
+     * delante, que es la diferencia entre «se agoto» y «te lo tenemos el
+     * jueves».
+     */
+    public function scopeOfrecible($query)
+    {
+        return $query->where(fn ($q) => $q->where('stock', '>', 0)->orWhere('por_encargo', true));
     }
 
     public function fotoUrl(): ?string
