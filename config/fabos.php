@@ -221,7 +221,7 @@ return [
      */
     'ilustraciones' => [
         'clave' => env('GEMINI_API_KEY'),
-        'modelo' => env('GEMINI_IMAGEN_MODELO', 'gemini-2.5-flash-image'),
+        'modelo' => env('GEMINI_IMAGEN_MODELO', 'gemini-3.1-flash-image'),
         'max_por_dia' => (int) env('GEMINI_MAX_POR_DIA', 30),
         'timeout' => (int) env('GEMINI_TIMEOUT', 60),
     ],

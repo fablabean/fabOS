@@ -133,6 +133,30 @@ class IlustracionesGeneradasTest extends TestCase
         });
     }
 
+    /**
+     * El tipo se lee de la respuesta, no se supone.
+     *
+     * Un modelo devuelve PNG y otro JPEG. Dárselo mal al optimizador solo se
+     * nota el día que la optimización falla y se guarda el original con la
+     * extensión equivocada — es decir, cuando nadie está mirando.
+     */
+    public function test_respeta_el_tipo_de_imagen_que_devuelve_el_modelo(): void
+    {
+        Storage::fake('public');
+        $this->conClave();
+
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['content' => ['parts' => [
+                ['inlineData' => ['mimeType' => 'image/jpeg', 'data' => $this->pngFalso()]],
+            ]]]],
+        ])]);
+
+        $ruta = app(GeneradorDeIlustraciones::class)->generar('Un llavero');
+
+        $this->assertNotNull($ruta);
+        Storage::disk('public')->assertExists($ruta);
+    }
+
     /** La cuota diaria frena un botón pulsado en bucle. */
     public function test_la_cuota_del_dia_frena(): void
     {

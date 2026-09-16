@@ -144,13 +144,19 @@ class GeneradorDeIlustraciones
     }
 
     /**
-     * Saca la imagen de la respuesta.
+     * Saca la imagen de la respuesta, con su tipo.
      *
      * Gemini devuelve las partes mezcladas —puede venir texto antes— así que
      * se recorren buscando la primera que traiga datos de imagen en vez de
      * asumir que está en la posición cero.
+     *
+     * Y el tipo se lee, no se supone: un modelo devuelve PNG y otro JPEG, y
+     * dárselo mal al optimizador solo se nota el día que la optimización falla
+     * y se guarda el original con la extensión equivocada.
+     *
+     * @return array{datos: string, tipo: string}|null
      */
-    private function imagenDe(?array $json): ?string
+    private function imagenDe(?array $json): ?array
     {
         foreach ($json['candidates'][0]['content']['parts'] ?? [] as $parte) {
             $datos = $parte['inlineData']['data'] ?? $parte['inline_data']['data'] ?? null;
@@ -165,7 +171,12 @@ class GeneradorDeIlustraciones
             // basura, y guardar basura daria un fichero que el navegador
             // enseña roto sin que nada haya dado error.
             if ($binario !== false && $binario !== '') {
-                return $binario;
+                return [
+                    'datos' => $binario,
+                    'tipo' => $parte['inlineData']['mimeType']
+                        ?? $parte['inline_data']['mime_type']
+                        ?? 'image/png',
+                ];
             }
         }
 
@@ -181,7 +192,7 @@ class GeneradorDeIlustraciones
      * convertir, que es la que ya se corrigió una vez cuando las fotos de
      * teléfono tumbaban las subidas.
      */
-    private function guardar(string $binario): ?string
+    private function guardar(array $imagen): ?string
     {
         $temporal = tempnam(sys_get_temp_dir(), 'ilu');
 
@@ -189,12 +200,18 @@ class GeneradorDeIlustraciones
             return null;
         }
 
-        file_put_contents($temporal, $binario);
+        file_put_contents($temporal, $imagen['datos']);
+
+        // La extension, del tipo que dijo el modelo: uno devuelve PNG y otro
+        // JPEG. Solo importa si la optimizacion falla y se guarda el original,
+        // que es justo cuando nadie estaria mirando.
+        $extension = str_contains($imagen['tipo'], 'jpeg') ? 'jpg'
+            : (str_contains($imagen['tipo'], 'webp') ? 'webp' : 'png');
 
         try {
             // El ultimo argumento marca el fichero como «de prueba»: sin el,
             // `UploadedFile` exige que venga de una subida HTTP de verdad.
-            $archivo = new UploadedFile($temporal, 'ilustracion.png', 'image/png', null, true);
+            $archivo = new UploadedFile($temporal, 'ilustracion.'.$extension, $imagen['tipo'], null, true);
 
             return $this->optimizador->guardar($archivo, self::CARPETA);
         } catch (\Throwable $e) {
