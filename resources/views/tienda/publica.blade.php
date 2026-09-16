@@ -289,6 +289,92 @@
         </div>
     @endforeach
 
+
+    {{-- ------------------------------------------------- tengo una idea --}}
+    {{--
+        Va DESPUÉS del catálogo y siempre visible.
+
+        El camino existía escondido: la cotización a medida vivía dentro del
+        carrito, así que para pedir algo que no está en la tienda había que
+        meter antes algo que sí está. Y esta es la petición más valiosa que le
+        puede llegar a un fablab: no «véndeme un llavero», sino «necesito esto
+        y no sé cómo se hace».
+
+        Después del catálogo y no antes, a propósito: quien busca algo concreto
+        lo encuentra primero, y quien no lo encontró llega aquí con la idea de
+        que no estaba — que es cuando esto tiene sentido.
+    --}}
+    <section class="panel idea" id="idea">
+        <h2 style="margin-top:0">¿Tienes una idea y no la ves aquí?</h2>
+        <p class="help">
+            Descríbela y móntanos una referencia —una foto, un boceto, un plano, lo que
+            tengas—. Te respondemos con una propuesta, con precio y plazo. No hace falta
+            que sepas cómo se fabrica: eso lo ponemos nosotros.
+        </p>
+
+        <form method="POST" action="{{ route('tienda.idea') }}" enctype="multipart/form-data">
+            @csrf
+
+            <label>
+                ¿Qué quieres que hagamos?
+                <input type="text" name="titulo" required maxlength="180"
+                       placeholder="Un soporte para el microscopio del laboratorio"
+                       value="{{ old('titulo') }}">
+            </label>
+
+            <label>
+                Cuéntanos más
+                <textarea name="detalle" rows="4" required maxlength="2000"
+                          placeholder="Para qué es, de qué tamaño, de qué material te lo imaginas, cuántos necesitas, para cuándo.">{{ old('detalle') }}</textarea>
+            </label>
+
+            <label>
+                Referencias <span class="opcional">(opcional)</span>
+                <input type="file" name="referencias[]" multiple
+                       accept="image/*,.pdf,.dxf,.svg,.stl,.doc,.docx,.xls,.xlsx">
+            </label>
+            <p class="help" style="margin-top:-.4rem">
+                Hasta 5 archivos. Una foto de algo parecido ahorra tres correos de ida y vuelta.
+            </p>
+
+            @guest
+                <div class="dos">
+                    <label>
+                        Tu nombre
+                        <input type="text" name="nombre" required maxlength="120" value="{{ old('nombre') }}">
+                    </label>
+                    <label>
+                        Tu correo
+                        <input type="email" name="correo" required maxlength="180" value="{{ old('correo') }}">
+                    </label>
+                    <label>
+                        Organización <span class="opcional">(opcional)</span>
+                        <input type="text" name="organizacion" maxlength="160" value="{{ old('organizacion') }}">
+                    </label>
+                </div>
+            @endguest
+
+            {{-- «¿Quién lo pide?» NO va dentro del @guest.
+                 Quien entró pero todavía no tiene categoría confirmada también
+                 tiene que decirlo, y escondiéndolo ahí se quedaba atascado en
+                 un error de validación sin ningún campo que corregir. --}}
+            @unless (auth()->user()?->category)
+                <label>
+                    ¿Quién lo pide?
+                    <select name="cliente" required>
+                        @foreach (\App\Models\Project::CLIENTES as $clave => $nombre)
+                            <option value="{{ $clave }}" @selected(old('cliente') === $clave)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endunless
+
+            <x-captcha accion="tienda.idea"/>
+
+            <button type="submit">Pedir que lo fabriquemos</button>
+        </form>
+    </section>
+
     @if ($productos->isEmpty() && $insumos->isEmpty() && $servicios->isEmpty())
         <div class="panel">
             <p style="margin:0">Todavía no hay nada publicado en la tienda.</p>
@@ -540,4 +626,8 @@
             });
         })();
     </script>
+    .idea{border-left:4px solid var(--accent)}
+    .idea .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem}
+    .idea .opcional{color:var(--muted);font-weight:400;font-size:.85em}
+    .idea input[type=file]{padding:.5rem 0}
 @endsection

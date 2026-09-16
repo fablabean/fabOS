@@ -9,6 +9,7 @@ use App\Models\Supply;
 use App\Services\Ledger\LedgerService;
 use App\Services\Money\PricingService;
 use App\Services\Projects\ProjectService;
+use App\Services\Projects\SoportesDeSolicitud;
 use App\Services\Shop\Carrito;
 use App\Services\Shop\ShopException;
 use App\Services\Shop\ShopService;
@@ -38,6 +39,7 @@ class TiendaPublicaController extends Controller
         private ShopService $tienda,
         private LedgerService $libro,
         private ProjectService $proyectos,
+        private SoportesDeSolicitud $soportes,
     ) {}
 
     public function index(Request $request)
@@ -245,6 +247,78 @@ class TiendaPublicaController extends Controller
         ]);
 
         $this->carrito->vaciar();
+
+        return redirect()
+            ->route('tienda.publica')
+            ->with('cotizacion', $proyecto->code);
+    }
+
+    /**
+     * «Tengo una idea»: fabricar algo que no está en el catálogo (§11, §14).
+     *
+     * El camino ya existía, escondido donde nadie con una idea iba a
+     * encontrarlo: la cotización a medida vivía DENTRO del carrito, y
+     * `cotizar()` rechaza el carrito vacío. Es decir, para pedir algo que no
+     * está en la tienda había que meter antes en el carrito algo que sí está.
+     *
+     * Y esa es justo la petición más valiosa que puede llegarle a un fablab:
+     * no «véndeme un llavero», sino «necesito esto y no sé cómo se hace».
+     *
+     * No se inventa un circuito nuevo. Entra por la misma puerta que las demás
+     * solicitudes —`solicitarDesdeLaWeb`, con su cuenta, su código y su aviso—
+     * y los archivos por el mismo servicio de soportes. Lo único propio es de
+     * dónde vino, que queda escrito en el resumen: una idea suelta se atiende
+     * distinto que un pedido de catálogo.
+     */
+    public function idea(Request $request)
+    {
+        $identificado = $request->user();
+
+        $datos = $request->validate([
+            'titulo' => ['required', 'string', 'max:180'],
+            'detalle' => ['required', 'string', 'min:10', 'max:2000'],
+            'referencias' => ['nullable', 'array', 'max:'.SoportesDeSolicitud::MAXIMO],
+            'referencias.*' => [
+                'file',
+                'mimes:'.implode(',', SoportesDeSolicitud::TIPOS),
+                'max:'.SoportesDeSolicitud::TAMANO_MAXIMO,
+            ],
+            'nombre' => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
+            'correo' => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
+            'telefono' => ['nullable', 'string', 'max:40'],
+            'telefono_indicativo' => ['nullable', 'string', 'max:6'],
+            'organizacion' => ['nullable', 'string', 'max:160'],
+            'cliente' => [Rule::requiredIf(! $identificado?->category), Rule::in(array_keys(Project::CLIENTES))],
+        ], [
+            'detalle.required' => 'Cuéntanos qué necesitas: es lo único que no podemos adivinar.',
+            'detalle.min' => 'Con un poco más de detalle podemos responderte sin otro correo de por medio.',
+            'referencias.*.mimes' => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos o documentos.',
+            'referencias.*.max' => 'Cada archivo puede pesar hasta '.intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024).' MB.',
+        ]);
+
+        $datos['telefono'] = Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);
+
+        $proyecto = $this->proyectos->solicitarDesdeLaWeb([
+            'titulo' => $datos['titulo'],
+            // De donde vino, escrito: una idea suelta se atiende distinto que
+            // un pedido de catalogo, y quien la reciba tiene que saberlo sin
+            // preguntar.
+            'resumen' => trim($datos['detalle'].'
+
+'.'Llegó como una idea desde la tienda.'),
+            'entregables' => null,
+            'nombre' => $identificado?->name ?? $datos['nombre'],
+            'correo' => $identificado?->email ?? $datos['correo'],
+            'telefono' => $datos['telefono'] ?? $identificado?->phone,
+            'organizacion' => $datos['organizacion'] ?? null,
+            'para_cuando' => null,
+            'cliente' => $identificado?->category?->tramiteDeCliente()
+                ?? ($datos['cliente'] ?? 'externo'),
+        ]);
+
+        // Despues de crear el proyecto: si algo falla al guardar un archivo, la
+        // solicitud ya existe y no se pierde lo que la persona escribio.
+        $this->soportes->guardar($proyecto, $request->file('referencias', []));
 
         return redirect()
             ->route('tienda.publica')

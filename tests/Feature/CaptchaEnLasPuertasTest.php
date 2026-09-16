@@ -191,6 +191,7 @@ class CaptchaEnLasPuertasTest extends TestCase
             'proyectos.solicitar.store', // crea cuenta al vuelo y avisa
             'practicas.postular.store',  // manda correo
             'tienda.cotizar',            // crea cuenta al vuelo y avisa
+            'tienda.idea',               // idem: una idea crea proyecto y cuenta
         ];
 
         foreach ($esperadas as $nombre) {

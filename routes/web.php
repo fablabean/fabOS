@@ -106,6 +106,20 @@ Route::post('/tienda/cotizar', [TiendaPublicaController::class, 'cotizar'])
     // Con captcha porque tambien crea cuenta al vuelo y manda correo.
     ->middleware(['throttle:40,60', 'captcha:correo'])
     ->name('tienda.cotizar');
+/*
+ * «Tengo una idea»: fabricar algo que no esta en el catalogo (§11, §14).
+ *
+ * El camino existia escondido —la cotizacion a medida vivia dentro del carrito,
+ * y cotizar rechaza el carrito vacio—, asi que para pedir algo que no esta en la
+ * tienda habia que meter antes algo que si esta. Esta es la puerta que faltaba,
+ * y es la peticion mas valiosa que le puede llegar a un fablab.
+ *
+ * Crea cuenta al vuelo y manda correo, asi que lleva captcha como las demas.
+ */
+Route::post('/tienda/idea', [TiendaPublicaController::class, 'idea'])
+    ->middleware(['throttle:40,60', 'captcha:correo'])
+    ->name('tienda.idea');
+
 Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
     ->middleware('auth')
     ->name('tienda.pagar');
