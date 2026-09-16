@@ -101,6 +101,9 @@ class ProductosPorEncargoTest extends TestCase
 
         $this->get('/tienda')
             ->assertOk()
-            ->assertSee('Gorra bordada');
+            ->assertSee('Gorra bordada')
+            // Y lo dice: un producto que se fabrica y no lo avisa parece que
+            // esta en la vitrina, y quien lo pide se entera del plazo al final.
+            ->assertSee('por encargo · listo en 5 días');
     }
 }

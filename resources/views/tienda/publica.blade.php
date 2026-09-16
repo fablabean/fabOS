@@ -238,7 +238,13 @@
                         <div class="quien">
                             @if ($cosa->area) {{ $cosa->area->name }} · @endif
                             por {{ $cosa->unit }}
-                            @if ($fila['tipo'] === 'servicio' && $cosa->cuandoEstaListo())
+                            {{-- El plazo, de las dos clases de cosa.
+                                 Un producto que se fabrica por encargo y no lo
+                                 dice parece que está en la vitrina, y quien lo
+                                 pide se entera del plazo al final. Decirlo aquí
+                                 es la diferencia entre «se agotó» y «te lo
+                                 tenemos el jueves». --}}
+                            @if ($cosa->cuandoEstaListo())
                                 · {{ $cosa->cuandoEstaListo() }}
                             @endif
                         </div>
