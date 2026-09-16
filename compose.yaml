@@ -19,6 +19,10 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - '.:/var/www/html'
+            # OPcache para la consola: las pruebas arrancan Laravel y
+            # Filament enteros una vez por prueba, y sin esto PHP
+            # recompila miles de ficheros cada vez. Solo desarrollo.
+            - './docker/desarrollo/opcache-cli.ini:/etc/php/8.5/cli/conf.d/99-opcache.ini:ro'
         networks:
             - sail
         depends_on:

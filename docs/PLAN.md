@@ -922,6 +922,200 @@ de una página con lo que ya está registrado.
   segunda: dos páginas del mismo proyecto es cómo circula la dirección
   equivocada.
 
+### «Ya lo tenemos»: el deseo que se cumple fuera del carrito (§13)
+
+Un deseo tenía dos finales: pasar por una solicitud y recibirse —«Comprado»— o
+decidir que no —«Descartado»—. Faltaba el tercero, y es el más común en un
+laboratorio: **llegó de otra manera**. Lo donaron, lo tenía otra área, se
+compró directo. Sin sitio donde decirlo, el deseo se quedaba pidiendo algo que
+ya está en la sala —y sumando al presupuesto del año siguiente— o se borraba, y
+con él la única prueba de que alguna vez hizo falta.
+
+- **Marca propia, no reutilizar las que hay.** «Comprado» se deriva de la línea
+  recibida y no se puede escribir a mano: ahí está su valor, cuadra con
+  compras. Un botón que lo escribiera a dedo lo convertiría en una opinión. Y
+  «Descartado» significa que se decidió que **no**: meter ahí lo que sí se
+  consiguió dejaría el histórico diciendo lo contrario de lo que pasó, y ese
+  histórico es con lo que se argumenta el presupuesto siguiente.
+- **Con nota de cómo llegó**, opcional. «De dónde salió esto» es la pregunta
+  que se hace quien lo mire dentro de un año.
+- **Gana sobre lo que se derive de la línea de compra**, igual que descartar:
+  es una decisión escrita por una persona, y si la derivación pudiera pisarla,
+  quien la puso vería el deseo volver solo a la lista sin entender por qué.
+  Descartar sí gana sobre conseguir: se decidió después.
+- **Sale del presupuesto por `vivos()`**, en un solo sitio. Ese scope gobierna
+  qué se presupuesta y qué entra a un carrito; cuando solo miraba
+  `discarded_at`, marcar un deseo como conseguido lo habría dejado sumando para
+  el año que viene.
+- **Solo se ofrece sobre lo que sigue esperando.** Marcarlo encima de algo ya
+  recibido taparía el dato bueno con uno escrito a mano.
+- «Devolver a la lista» deshace **las dos** marcas: es el botón de «me
+  equivoqué», y limpiar solo el descarte dejaría lo conseguido por error fuera
+  sin manera evidente de recuperarlo.
+
+### Ver un aporte sin salir de la lista (§21)
+
+Abrir un aporte lanzaba una pestaña nueva con el archivo desnudo. Para repasar
+quince fotos había que abrir quince pestañas y volver cada vez — y el sitio
+donde se decide si un aporte se reconoce es justo la lista, con el resto
+delante.
+
+- **Se ve en un modal**, foto o video, y se cierra. La miniatura también lo
+  abre: pulsar la foto es lo primero que hace cualquiera, y antes no pasaba
+  nada.
+- **El archivo se sigue pidiendo por `contenido.archivo`**, que comprueba quién
+  lo pide. No hay URL adivinable, ni dentro del panel ni fuera: es material de
+  personas.
+- **El modal lleva lo que hace falta para decidir**: quién lo grabó, cuándo, de
+  qué proyecto. Y el enlace para abrirlo aparte se queda, porque el modal lo
+  encoge a la pantalla y a veces hay que mirar un detalle o descargarlo.
+- Un aporte **retirado** se puede mirar —el archivo no se borra, es de quien lo
+  grabó— pero el visor lo dice con su motivo: es material que alguien pidió no
+  usar.
+
+### Captcha delante de lo que manda correo (§5)
+
+El sitio tiene puertas que **mandan correo a quien las toque**: el código de
+ingreso, la solicitud de proyecto, la postulación a prácticas, la cotización de
+la tienda. Están abiertas a internet porque tienen que estarlo — a quien no
+tiene cuenta hay que dejarle pedir una.
+
+El límite por correo y por IP que ya existía frena a **una persona**
+insistiendo. No frena a un bot con mil direcciones: cada una pide «su» primer
+código y ninguna pasa del tope. El daño no es que alguien entre —el código sigue
+yendo al buzón de su dueño— sino que el laboratorio manda miles de correos que
+nadie pidió, los paga y **quema su reputación de envío**, que aquí ya cuesta
+mantener.
+
+- **Turnstile y no reCAPTCHA.** El sitio ya sale por un túnel de Cloudflare, así
+  que no se mete a un tercero nuevo a mirar a quien visita; y casi siempre
+  resuelve sin pedirle nada a la persona — no hay semáforos que señalar.
+- **Va en el middleware, no dentro de cada controlador.** Así la lista de
+  puertas protegidas **se lee entera en `routes/web.php`**. Con la comprobación
+  repartida por ocho controladores, «¿qué formulario público quedó sin captcha?»
+  no tiene dónde contestarse, y esa es justo la pregunta al añadir una puerta.
+  Hay una prueba que enumera las siete y falla si alguna se queda sin él.
+- **El fallo es un error de validación, no un 403.** El envío vuelve al
+  formulario con el mensaje al lado, que es lo que espera quien simplemente
+  tardó y se le caducó el token. El campo se pasa por parámetro
+  (`captcha:correo`) porque cada formulario llama distinto a su casilla, y un
+  error atado a un campo que no existe no se pinta en ninguna parte.
+- **Sin claves, no estorba.** Sin `TURNSTILE_SECRET_KEY` deja pasar todo y no
+  pinta nada: un despliegue no puede dejar al laboratorio sin poder entrar
+  porque falte una variable, ni obligar a tener cuenta de Cloudflare para
+  levantar una instalación nueva.
+- **Si Cloudflare no contesta, se deja pasar** —y queda en el registro—. Va
+  contra el instinto y es deliberado: un captcha que falla cerrado convierte
+  cualquier corte de red en «nadie puede entrar al laboratorio», y esta red
+  bloquea cosas de forma habitual. Debajo sigue el límite por correo y por IP,
+  que es el que protege una puerta concreta; el captcha quita el ruido masivo.
+  Un token inválido o ausente **sí** se rechaza: eso no es un corte, es una
+  respuesta.
+- **El token caduca a los cinco minutos** y el widget se renueva solo antes de
+  que pase: quien deja el formulario abierto y vuelve no se encuentra un «no se
+  pudo comprobar» sin haber hecho nada raro.
+- La página del código lleva **dos** formularios —entrar y reenviar— y por tanto
+  dos widgets, con el script cargado una sola vez.
+
+Las claves van en `.env` y no en la pantalla de ajustes, siguiendo la regla de
+la casa: identidad y presentación se administran, las claves viven en `.env`.
+
+### Software y credenciales (§19)
+
+Un fablab no solo tiene máquinas: tiene Fusion, Rhino, la suscripción de Adobe,
+el panel del proveedor de correo. Eso vivía en la cabeza de quien lo montó y en
+un chat, con dos consecuencias conocidas: **una licencia caduca en mitad de un
+semestre** porque nadie tenía la fecha, y **cuando esa persona se va el
+laboratorio se queda fuera de su propio servicio**.
+
+**Software.** La fecha de renovación es lo que justifica la sección: avisa en el
+menú 45 días antes y la lista se ordena por lo que vence antes, no por nombre —
+aquí no se entra a leer el inventario, se entra porque algo hay que renovar. La
+fecha se empuja con un botón «Renovar» que cuenta **desde la fecha anterior, no
+desde hoy**: renovar tarde no corre el aniversario. Cuelga de los activos que ya
+existen (en qué equipo está instalado, con su versión) y lleva los puestos con
+quién los usa. Un puesto se **libera y no se borra**: «¿nos alcanzan?» y «¿a
+quién hay que quitarle el acceso?» son preguntas distintas, y borrar la fila
+deja la segunda sin historia. Pasarse de puestos **se avisa pero no se impide**:
+el sistema no puede saber si se compraron tres más ayer, y bloquear una
+asignación real por una cifra vieja haría que se dejara de usar la pantalla. Un
+pago único no cuenta como gasto anual — sumarlo inflaría el presupuesto para
+siempre. Un equipo retirado sale de la lista (los activos usan borrado suave, y
+sin filtrar dejaba una fila con el equipo en blanco) pero la fila se conserva:
+retirar es reversible y, si el equipo vuelve, vuelve con lo que tenía instalado.
+
+**Credenciales.** El secreto se guarda cifrado con la clave de la aplicación, y
+conviene decir con precisión qué protege: el respaldo que acaba en un disco, la
+consulta mal dirigida, alguien mirando la tabla. **No** protege de quien tenga a
+la vez la base y el `APP_KEY`, y **no sustituye a un gestor de contraseñas
+dedicado**.
+
+- **Quién ve qué: el superadmin todas, quien administra las suyas.** No es
+  jerarquía por gusto: una sección donde todo el que administra ve todas las
+  claves es un tablón de contraseñas con una puerta, y basta con que una de esas
+  cuentas se pierda para perderlo todo a la vez. El superadmin las ve todas
+  porque alguien tiene que poder recuperar el acceso cuando quien la guardó ya
+  no está — que es justo la situación que hace existir la sección.
+- **El filtro vive en `getEloquentQuery()`**, no en la tabla. Una lista que
+  filtra bien pero deja abrir por URL es peor que no filtrar: da por seguro algo
+  que no lo es. Así ninguna pantalla, buscador o relación puede saltárselo, y la
+  relación dentro de la ficha de software está filtrada igual.
+- **Cada lectura queda registrada** — quién y cuándo. Una bóveda sin registro de
+  lecturas es un tablón con una puerta. Y antes de revelar se enseña quién la
+  miró antes: ver ahí un nombre inesperado es la única forma de enterarse de que
+  una clave circula más de lo que se creía, y ese es el único momento en que
+  alguien lo va a leer.
+- **El secreto nunca está en la lista ni en el formulario de edición.** Al
+  editar, el campo llega vacío y en blanco conserva el que había: cargarlo
+  relleno lo pondría en el HTML de cualquiera que abra la ficha a cambiar una
+  nota, sin pulsar «ver la clave» y sin quedar registrado.
+- Una credencial puede no ser de un software: el router, el NAS y la cuenta del
+  banco también hay que guardarlos.
+
+### Que la suite no tarde media hora
+
+La suite tardaba **24,6 minutos** en el equipo local, y eso tiene un coste que
+no es el reloj: una suite que tarda media hora se deja de correr, y una suite
+que no se corre no protege de nada.
+
+No había un culpable gordo — la mediana era 0,71 s por prueba sobre 1710
+pruebas: muerte por mil cortes. Dos causas, las dos de configuración:
+
+- **20 CPUs y se usaba una.** `brianium/paratest` no estaba instalado, así que
+  todo iba en serie. Con `--parallel`, Laravel le da a cada proceso su propia
+  base (`testing_test_1`…), que es distinto de lanzar dos `artisan test` a la
+  vez contra la misma — eso sí da fallos fantasma.
+- **OPcache apagado para la consola.** La extensión estaba cargada pero
+  inactiva, que es el valor por defecto de PHP y tiene sentido para un script
+  corto. Aquí cada prueba arranca Laravel y Filament enteros, y el código vive
+  en un bind mount de Windows donde cada lectura cuesta de más.
+
+Resultado: **24,6 min → ~7 min**, unas 3,5 veces. Medido en esta máquina, de
+20 núcleos: 8 procesos dan 8:33, 10 dan 7:58 y 16 dan 7:09 —y ese último
+incluía recrear las bases—. A partir de ahí el rendimiento decrece, así que
+`composer test` usa **16**, que deja cuatro núcleos libres para seguir
+trabajando mientras corre.
+
+- `composer test` — en paralelo. Es el de siempre.
+- `composer test:serie` — de uno en uno, cuando hace falta leer la salida
+  prueba a prueba para depurar.
+- `composer test:bases` — recrea las bases de los procesos, después de una
+  migración nueva.
+
+`opcache.validate_timestamps` se queda **encendido** a propósito: este
+contenedor es donde se programa, y un caché que no revalida significa editar un
+fichero y seguir viendo el código de antes, que son media hora buscando un
+fallo ya arreglado.
+
+**Una consecuencia que conviene recordar:** con la suite en paralelo, una prueba
+que dé por supuesto que es la única tocando la base fallará de forma rara y
+difícil de reproducir. Hoy pasan las 1735; si mañana una empieza a fallar solo
+en paralelo, el problema es de la prueba, no del paralelismo.
+
+Y un aviso que costó una corrida entera: **no editar ficheros mientras la suite
+corre.** Dio 452 fallos fantasma que no eran nada — las clases pasaban solas en
+limpio.
+
 ## Trampas que costaron caro, y ya están fijadas con pruebas
 
 | Qué pasó | Por qué no se veía |

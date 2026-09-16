@@ -24,6 +24,15 @@ services:
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
+        # Solo el codigo. `!override` reemplaza en vez de sumar: sin esto,
+        # produccion heredaria tambien el ajuste de OPcache para la consola que
+        # `compose.yaml` monta para desarrollo, y la configuracion de PHP de
+        # produccion tiene que venir de la imagen, que es lo que se construye y
+        # se revisa. Un ajuste de rendimiento que se cuela desde el fichero de
+        # desarrollo es de los que nadie recuerda que estan puestos.
+        volumes: !override
+            - '.:/var/www/html'
+
         # `!override` reemplaza en vez de sumar: sin eso, Compose fusiona las
         # listas y volverían el puerto de Vite y la dependencia de Mailpit.
         ports: !override
