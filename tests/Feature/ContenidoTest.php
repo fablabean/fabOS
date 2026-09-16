@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Contenidos\ContenidoResource;
+use App\Filament\Resources\Contenidos\Pages\ListContenidos;
 use App\Models\Contenido;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Contenido\BancoDeContenido;
 use App\Services\Projects\ProjectService;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -27,7 +32,7 @@ class ContenidoTest extends TestCase
     private function persona(string $nombre = 'Quien graba'): User
     {
         return User::create([
-            'name' => $nombre, 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'name' => $nombre, 'email' => uniqid().'@test.co', 'status' => 'activo',
         ]);
     }
 
@@ -44,7 +49,7 @@ class ContenidoTest extends TestCase
     {
         return array_merge([
             'archivos' => [UploadedFile::fake()->image('pieza.jpg', 1200, 900)],
-            'title'    => 'Primera prueba de la carcasa',
+            'title' => 'Primera prueba de la carcasa',
             'derechos' => '1',
         ], $cambios);
     }
@@ -139,7 +144,7 @@ class ContenidoTest extends TestCase
     private function proyectoDe(User $quien): Project
     {
         return app(ProjectService::class)->registrarIdea([
-            'name'         => 'Carcasa del sensor',
+            'name' => 'Carcasa del sensor',
             'requested_by' => $quien->id,
         ]);
     }
@@ -238,7 +243,7 @@ class ContenidoTest extends TestCase
         // La puerta del panel le lleva a lo suyo: al no tener el tablero en su
         // menu, Filament redirige a la primera entrada visible.
         $this->assertSame(
-            \App\Filament\Resources\Contenidos\ContenidoResource::getUrl(panel: 'admin'),
+            ContenidoResource::getUrl(panel: 'admin'),
             filament()->getPanel('admin')->getRedirectUrl(),
         );
     }
@@ -270,7 +275,7 @@ class ContenidoTest extends TestCase
     {
         $pieza = $this->pieza($this->persona());
 
-        app(\App\Services\Contenido\BancoDeContenido::class)
+        app(BancoDeContenido::class)
             ->retirar($pieza, 'Sale alguien que no quiere aparecer.');
 
         $pieza->refresh();
@@ -288,11 +293,90 @@ class ContenidoTest extends TestCase
     public function test_devolverlo_lo_vuelve_a_dejar_disponible(): void
     {
         $pieza = $this->pieza($this->persona());
-        $banco = app(\App\Services\Contenido\BancoDeContenido::class);
+        $banco = app(BancoDeContenido::class);
 
         $banco->retirar($pieza, 'Por error.');
         $banco->devolver($pieza->fresh());
 
         $this->assertTrue($pieza->fresh()->estaDisponible());
+    }
+
+    // ------------------------------------------------------- verlo sin salir
+
+    /**
+     * El aporte se mira en un modal, no abriendo una pestaña por archivo.
+     *
+     * Para repasar quince fotos habia que abrir quince pestañas y volver cada
+     * vez, y el sitio donde se decide si un aporte se reconoce es justo la
+     * lista, con el resto delante.
+     *
+     * Se comprueba la accion y no el aspecto: que exista, que se pueda abrir,
+     * y que el modal enseñe lo que hace falta para decidir.
+     */
+    public function test_el_aporte_se_puede_ver_en_un_modal(): void
+    {
+        Storage::fake('local');
+
+        $quien = $this->persona('Sofía');
+        $this->actingAs($quien)->post(route('contenido.store'), $this->subida([
+            'title' => 'Iglesia en impresión de resina',
+        ]));
+
+        $aporte = Contenido::firstOrFail();
+
+        $this->actingAs($this->conRol(User::ROL_COMUNICACIONES));
+
+        Livewire::test(ListContenidos::class)
+            ->assertTableActionVisible('ver', record: $aporte)
+            ->callAction(
+                TestAction::make('ver')->table($aporte),
+            )
+            ->assertHasNoActionErrors();
+    }
+
+    /**
+     * El modal enseña quien lo grabo y cuando: es lo que hace falta para
+     * decidir si se reconoce, que es a lo que se abre.
+     */
+    public function test_el_visor_dice_de_quien_es_y_como_llegar_al_archivo(): void
+    {
+        Storage::fake('local');
+
+        $quien = $this->persona('Sofía Barriga');
+        $this->actingAs($quien)->post(route('contenido.store'), $this->subida([
+            'title' => 'Iglesia en impresión de resina',
+        ]));
+
+        $aporte = Contenido::firstOrFail();
+
+        $this->actingAs($this->conRol(User::ROL_COMUNICACIONES));
+
+        $html = view('filament.contenido.visor', ['contenido' => $aporte])->render();
+
+        $this->assertStringContainsString('Sofía Barriga', $html);
+        // Por la ruta que comprueba quien pide, nunca por /storage: es
+        // material de personas.
+        $this->assertStringContainsString($aporte->enlace(), $html);
+        $this->assertStringNotContainsString('/storage/', $html);
+    }
+
+    /** Un aporte retirado se puede mirar, pero el visor lo dice bien claro. */
+    public function test_el_visor_avisa_cuando_el_aporte_esta_retirado(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->persona())->post(route('contenido.store'), $this->subida());
+
+        $aporte = Contenido::firstOrFail();
+        $aporte->update([
+            'withdrawn_at' => now(),
+            'withdrawn_reason' => 'Sale alguien que no quiere aparecer',
+        ]);
+
+        $html = view('filament.contenido.visor', ['contenido' => $aporte->fresh()])->render();
+
+        $this->assertStringContainsString('Retirado', $html);
+        $this->assertStringContainsString('Sale alguien que no quiere aparecer', $html);
+        $this->assertStringContainsString('No se puede usar para divulgación', $html);
     }
 }

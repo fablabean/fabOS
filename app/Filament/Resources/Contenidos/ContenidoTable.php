@@ -32,8 +32,12 @@ class ContenidoTable
                     ->label('')
                     ->square()
                     ->height(56)
-                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover'])
-                    ->getStateUsing(fn (Contenido $r) => $r->esVideo() ? null : $r->enlace()),
+                    ->extraImgAttributes(['style' => 'border-radius:.35rem;object-fit:cover;cursor:pointer'])
+                    ->getStateUsing(fn (Contenido $r) => $r->esVideo() ? null : $r->enlace())
+                    // Pulsar la foto es lo primero que hace cualquiera. Antes
+                    // no pasaba nada y habia que buscar el boton del final de
+                    // la fila.
+                    ->action(self::visor('verMiniatura')),
 
                 TextColumn::make('titulo')
                     ->label('Qué es')
@@ -52,8 +56,8 @@ class ContenidoTable
                 TextColumn::make('user.name')
                     ->label('Quién lo grabó')
                     ->description(fn (Contenido $r) => 'autorizó el '
-                        . $r->rights_accepted_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y')
-                        . ' · ' . $r->rights_version),
+                        .$r->rights_accepted_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y')
+                        .' · '.$r->rights_version),
 
                 TextColumn::make('project.code')
                     ->label('Proyecto')
@@ -75,9 +79,9 @@ class ContenidoTable
                     ->placeholder('—')
                     ->formatStateUsing(fn (?int $state) => $state === null ? null : number_format(
                         $state / config('fabos.currency.minor_units'), 2, ',', '.',
-                    ) . ' ' . config('fabos.currency.code'))
+                    ).' '.config('fabos.currency.code'))
                     ->description(fn (Contenido $r) => $r->estaReconocido()
-                        ? 'por ' . ($r->reconocidoPor?->name ?? 'alguien que ya no está')
+                        ? 'por '.($r->reconocidoPor?->name ?? 'alguien que ya no está')
                         : null),
 
                 TextColumn::make('peso')
@@ -93,7 +97,7 @@ class ContenidoTable
                     ->label('Proyecto')
                     ->options(fn () => Project::orderByDesc('id')
                         ->get()
-                        ->mapWithKeys(fn (Project $p) => [$p->id => $p->code . ' · ' . $p->name])),
+                        ->mapWithKeys(fn (Project $p) => [$p->id => $p->code.' · '.$p->name])),
 
                 SelectFilter::make('area_id')->label('Área')->relationship('area', 'name'),
 
@@ -103,14 +107,22 @@ class ContenidoTable
                     ->default(),
             ])
             ->recordActions([
-                Action::make('abrir')
-                    ->label('Abrir')
+                /*
+                 * Ver el aporte aqui mismo, sin cambiar de pestaña (§21).
+                 *
+                 * Esto abria el archivo desnudo en otra pestaña. Para repasar
+                 * quince fotos había que abrir quince pestañas y volver cada
+                 * vez —y el sitio donde se decide si un aporte se reconoce es
+                 * justo esta lista, con el resto delante—.
+                 *
+                 * El enlace para abrirlo aparte sigue estando, dentro del
+                 * modal: el modal lo encoge a la pantalla, y a veces hay que
+                 * mirar un detalle o descargarlo.
+                 */
+                self::visor('ver')
                     ->iconButton()
-                    ->tooltip('Abrir el archivo')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->color('gray')
-                    ->url(fn (Contenido $r) => $r->enlace())
-                    ->openUrlInNewTab(),
+                    ->icon('heroicon-o-eye')
+                    ->color('gray'),
 
                 /*
                  * Reconocer el aporte con FabCoins (§12, §21).
@@ -132,11 +144,11 @@ class ContenidoTable
                         && (auth()->user()?->puedeEnLaSeccion('ver', 'dotacion') ?? false))
                     ->modalHeading('Reconocer este aporte')
                     ->modalDescription(fn (Contenido $r) => 'Se le abonan FabCoins a '
-                        . ($r->user?->name ?? 'quien lo subió')
-                        . ', y queda anotado que lo decidiste tú. No se puede reconocer dos veces.')
+                        .($r->user?->name ?? 'quien lo subió')
+                        .', y queda anotado que lo decidiste tú. No se puede reconocer dos veces.')
                     ->schema([
                         TextInput::make('importe')
-                            ->label('Cuántos ' . config('fabos.currency.name'))
+                            ->label('Cuántos '.config('fabos.currency.name'))
                             ->numeric()
                             ->required()
                             ->minValue(0.01)
@@ -158,7 +170,7 @@ class ContenidoTable
                         Notification::make()
                             ->success()
                             ->title('Aporte reconocido')
-                            ->body('Se le avisó a ' . ($record->user?->name ?? 'quien lo subió') . '.')
+                            ->body('Se le avisó a '.($record->user?->name ?? 'quien lo subió').'.')
                             ->send();
                     }),
 
@@ -189,7 +201,9 @@ class ContenidoTable
                     ->label('Devolver')
                     ->iconButton()
                     ->tooltip('Devolver al banco')
-                    ->icon('heroicon-o-eye')
+                    // Era un ojo, y ahora el ojo es «ver el archivo»: dos ojos
+                    // en la misma fila con dos significados distintos.
+                    ->icon('heroicon-o-arrow-uturn-left')
                     ->color('success')
                     ->visible(fn (Contenido $r) => ! $r->estaDisponible()
                         && (auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false))
@@ -201,5 +215,29 @@ class ContenidoTable
                     }),
             ])
             ->toolbarActions([]);
+    }
+
+    /**
+     * El visor del archivo, en un modal (§21).
+     *
+     * Vive aquí y se usa dos veces —al pulsar la miniatura y en el botón del
+     * final de la fila— porque es el mismo gesto: ver esto. Dos definiciones
+     * separadas acabarían enseñando cosas distintas según por dónde se entre.
+     *
+     * Lleva nombre por parámetro porque Filament identifica cada acción por el
+     * suyo, y una columna y una acción de fila no pueden compartirlo.
+     */
+    private static function visor(string $nombre): Action
+    {
+        return Action::make($nombre)
+            ->label('Ver')
+            ->tooltip(fn (Contenido $r) => $r->esVideo() ? 'Ver el video' : 'Ver la foto')
+            ->modalHeading(fn (Contenido $r) => $r->comoSeLlama())
+            ->modalContent(fn (Contenido $r) => view('filament.contenido.visor', ['contenido' => $r]))
+            ->modalWidth('4xl')
+            // Un visor no tiene nada que confirmar: sin esto el modal sale con
+            // un «Enviar» que no envía nada.
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
     }
 }
