@@ -44,7 +44,7 @@ class FiltrosDeTablaTest extends TestCase
     private function admin(): User
     {
         $u = User::create([
-            'name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo',
+            'name' => 'Jefa', 'email' => uniqid().'@test.co', 'status' => 'activo',
         ]);
         $u->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
 
@@ -78,6 +78,75 @@ class FiltrosDeTablaTest extends TestCase
     }
 
     /**
+     * Las pestañas de insumos separan dos cosas que no se parecen.
+     *
+     * En la misma lista conviven el alcohol isopropílico —que se consume
+     * fabricando y solo le importa al laboratorio— y la Alcancía Dona, que es
+     * un producto que se le vende a alguien. Mezclados y ordenados por nombre,
+     * reponer insumos y revisar el catálogo eran la misma pantalla revuelta.
+     */
+    public function test_las_pestanas_de_insumos_separan_lo_que_se_gasta_de_lo_que_se_vende(): void
+    {
+        $this->admin();
+
+        $alcohol = Supply::create([
+            'name' => 'Alcohol isopropílico', 'kind' => 'insumo', 'unit' => 'ml',
+            'stock' => 2000, 'is_active' => true, 'is_public' => false,
+        ]);
+        $alcancia = Supply::create([
+            'name' => 'Alcancía Dona', 'kind' => 'producto', 'unit' => 'unidad',
+            'stock' => 1, 'is_active' => true, 'is_public' => true,
+        ]);
+        $gorra = Supply::create([
+            'name' => 'Gorra bordada', 'kind' => 'producto', 'unit' => 'unidad',
+            'stock' => 0, 'is_active' => true, 'is_public' => true,
+            'por_encargo' => true, 'dias_por_encargo' => 5,
+        ]);
+
+        Livewire::test(ListSupplies::class)
+            ->set('activeTab', 'insumos')
+            ->assertCanSeeTableRecords([$alcohol])
+            ->assertCanNotSeeTableRecords([$alcancia, $gorra]);
+
+        Livewire::test(ListSupplies::class)
+            ->set('activeTab', 'productos')
+            ->assertCanSeeTableRecords([$alcancia, $gorra])
+            ->assertCanNotSeeTableRecords([$alcohol]);
+
+        // Publicado no es lo mismo que ser un producto: el alcohol es insumo y
+        // no se publica, y esa diferencia no se veia en ninguna pantalla.
+        Livewire::test(ListSupplies::class)
+            ->set('activeTab', 'tienda')
+            ->assertCanSeeTableRecords([$alcancia, $gorra])
+            ->assertCanNotSeeTableRecords([$alcohol]);
+
+        Livewire::test(ListSupplies::class)
+            ->set('activeTab', 'encargo')
+            ->assertCanSeeTableRecords([$gorra])
+            ->assertCanNotSeeTableRecords([$alcancia, $alcohol]);
+    }
+
+    /** La pestaña de bajo mínimos es el filtro que antes estaba escondido. */
+    public function test_la_pestana_de_bajo_minimos_trae_lo_que_hay_que_reponer(): void
+    {
+        $this->admin();
+
+        $falta = Supply::create([
+            'name' => 'MDF 3mm', 'unit' => 'hoja', 'stock' => 1,
+            'reorder_point' => 5, 'is_active' => true,
+        ]);
+        $sobra = Supply::create([
+            'name' => 'Filamento', 'unit' => 'g', 'stock' => 900,
+            'reorder_point' => 100, 'is_active' => true,
+        ]);
+
+        Livewire::test(ListSupplies::class)
+            ->set('activeTab', 'minimos')
+            ->assertCanSeeTableRecords([$falta])
+            ->assertCanNotSeeTableRecords([$sobra]);
+    }
+
+    /**
      * Y el guardia: ningún filtro puede pedir su consulta sin decir de qué tipo.
      *
      * Un fallo así no se ve leyendo la pantalla ni cargándola; solo aparece
@@ -106,8 +175,8 @@ class FiltrosDeTablaTest extends TestCase
                     $argumentos,
                     sprintf(
                         '%s tiene un ->query(fn (%s)). Filament resuelve estos argumentos por '
-                        . 'nombre o por tipo: sin ninguno de los dos llega nulo y la tabla '
-                        . 'revienta al aplicar el filtro. Llamalo $query o dile de que tipo es.',
+                        .'nombre o por tipo: sin ninguno de los dos llega nulo y la tabla '
+                        .'revienta al aplicar el filtro. Llamalo $query o dile de que tipo es.',
                         basename($fichero),
                         trim($argumentos),
                     ),

@@ -2,13 +2,18 @@
 
 namespace App\Filament\Resources\Supplies\Schemas;
 
+use App\Models\Supply;
+use App\Models\SupplyCategory;
+use App\Services\Media\OptimizadorDeImagen;
+use App\Services\Money\PricingService;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class SupplyForm
@@ -24,7 +29,7 @@ class SupplyForm
 
                         Select::make('kind')
                             ->label('Qué es')
-                            ->options(\App\Models\Supply::TIPOS)
+                            ->options(Supply::TIPOS)
                             ->default('insumo')
                             ->required()
                             ->helperText('Comparten inventario: los dos se cuentan y se reponen. Cambia dónde salen en la tienda.'),
@@ -44,7 +49,7 @@ class SupplyForm
 
                         Select::make('category_id')
                             ->label('Categoría')
-                            ->options(fn () => \App\Models\SupplyCategory::paraElegir())
+                            ->options(fn () => SupplyCategory::paraElegir())
                             ->searchable()
                             ->preload()
                             ->placeholder('Sin clasificar')
@@ -55,11 +60,11 @@ class SupplyForm
                                 TextInput::make('name')->label('Nombre')->required(),
                                 Select::make('parent_id')
                                     ->label('Dentro de')
-                                    ->options(fn () => \App\Models\SupplyCategory::paraElegir())
+                                    ->options(fn () => SupplyCategory::paraElegir())
                                     ->searchable()
                                     ->placeholder('Es una categoría de primer nivel'),
                             ])
-                            ->createOptionUsing(fn (array $data) => \App\Models\SupplyCategory::create($data)->id)
+                            ->createOptionUsing(fn (array $data) => SupplyCategory::create($data)->id)
                             ->helperText('«Madera › MDF». Se anidan a cualquier profundidad.'),
 
                         Select::make('location_id')
@@ -114,10 +119,9 @@ class SupplyForm
                             ->imageResizeTargetHeight(1400)
                             ->imageResizeUpscale(false)
                             ->saveUploadedFileUsing(
-                                fn ($file) => app(\App\Services\Media\OptimizadorDeImagen::class)
+                                fn ($file) => app(OptimizadorDeImagen::class)
                                     ->guardar($file, 'tienda')
                             ),
-
 
                         /*
                          * Descuentos por cantidad.
@@ -141,7 +145,7 @@ class SupplyForm
                             ->columnSpanFull()
                             ->defaultItems(0)
                             ->itemLabel(fn (array $state) => filled($state['min_quantity'] ?? null)
-                                ? 'Desde ' . rtrim(rtrim(number_format((float) $state['min_quantity'], 3, ',', '.'), '0'), ',')
+                                ? 'Desde '.rtrim(rtrim(number_format((float) $state['min_quantity'], 3, ',', '.'), '0'), ',')
                                 : null)
                             ->helperText('«De 10 en adelante, a $20.000 cada uno.» Se aplica solo al llegar a la cantidad.')
                             ->schema([
@@ -162,8 +166,8 @@ class SupplyForm
                                     ->prefix(config('fabos.money.symbol'))
                                     ->formatStateUsing(fn (?int $state) => $state === null
                                         ? null
-                                        : app(\App\Services\Money\PricingService::class)->aPesos((int) $state))
-                                    ->dehydrateStateUsing(fn ($state) => app(\App\Services\Money\PricingService::class)
+                                        : app(PricingService::class)->aPesos((int) $state))
+                                    ->dehydrateStateUsing(fn ($state) => app(PricingService::class)
                                         ->aMenor((int) $state)),
                             ]),
 
@@ -219,7 +223,7 @@ class SupplyForm
                             ->numeric()
                             ->minValue(0)
                             ->helperText('Dice CUÁNTO comprar: se pide la diferencia hasta aquí. Sin esto, quien repone sabe que hace falta pero no cuánto.')
-                            ->rule(fn (\Filament\Schemas\Components\Utilities\Get $get) => function (string $atributo, $valor, $falla) use ($get) {
+                            ->rule(fn (Get $get) => function (string $atributo, $valor, $falla) use ($get) {
                                 if (filled($valor) && filled($get('reorder_point')) && (float) $valor < (float) $get('reorder_point')) {
                                     $falla('El máximo no puede ser menor que el mínimo.');
                                 }

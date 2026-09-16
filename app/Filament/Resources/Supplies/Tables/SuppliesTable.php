@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Supplies\Tables;
 
 use App\Models\Supply;
-use Illuminate\Database\Eloquent\Builder;
 use App\Services\Inventory\StockException;
 use App\Services\Inventory\StockService;
 use App\Services\Money\PricingService;
@@ -16,6 +15,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SuppliesTable
 {
@@ -30,6 +30,27 @@ class SuppliesTable
                     ->weight('medium')
                     ->description(fn (Supply $r) => collect([$r->area?->name, $r->location?->name])
                         ->filter()->implode(' · ') ?: null),
+
+                /*
+                 * Que es y si se ve en la tienda, en la misma celda.
+                 *
+                 * En la pestaña «Todos» conviven el alcohol isopropilico y la
+                 * Alcancia Dona, y sin esto no habia manera de distinguirlos
+                 * sin abrir la ficha. «Producto» y «publicado» son dos cosas
+                 * distintas —un producto sin publicar no lo ve nadie— y por eso
+                 * se dicen por separado.
+                 */
+                TextColumn::make('kind')
+                    ->label('Qué es')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => Supply::TIPOS[$state] ?? $state)
+                    ->color(fn (Supply $r) => $r->esProducto() ? 'success' : 'gray')
+                    ->description(fn (Supply $r) => match (true) {
+                        ! $r->is_public => 'no se publica',
+                        $r->seFabricaPorEncargo() => 'en la tienda · por encargo',
+                        default => 'en la tienda',
+                    })
+                    ->toggleable(),
 
                 TextColumn::make('stock')
                     ->label('Existencia')
@@ -53,7 +74,7 @@ class SuppliesTable
                     ->alignEnd()
                     ->placeholder('—')
                     ->formatStateUsing(fn (?int $state) => $state
-                        ? config('fabos.money.symbol') . number_format($state, 0, ',', '.')
+                        ? config('fabos.money.symbol').number_format($state, 0, ',', '.')
                         : '—'),
 
                 /*
@@ -77,7 +98,7 @@ class SuppliesTable
                             ?: ($precios->aPesos($precios->precioDe($r)) ?: null);
                     })
                     ->formatStateUsing(fn (?int $state) => $state
-                        ? config('fabos.money.symbol') . number_format($state, 0, ',', '.')
+                        ? config('fabos.money.symbol').number_format($state, 0, ',', '.')
                         : '—')
                     ->description(fn (Supply $r) => app(PricingService::class)->esDerivado($r)
                         ? 'estimado del costo'
@@ -122,8 +143,8 @@ class SuppliesTable
                     ->label('Qué pasó')
                     ->options([
                         'entrada' => 'Entró (compra fuera del sistema, devolución)',
-                        'salida'  => 'Salió (consumo, préstamo, pérdida)',
-                        'ajuste'  => 'Conteo físico: corregir a la cantidad real',
+                        'salida' => 'Salió (consumo, préstamo, pérdida)',
+                        'ajuste' => 'Conteo físico: corregir a la cantidad real',
                     ])
                     ->default('salida')
                     ->required()
@@ -148,8 +169,8 @@ class SuppliesTable
                 try {
                     match ($data['tipo']) {
                         'entrada' => $stock->entrada($record, (float) $data['cantidad'], $data['motivo'] ?? null, null, $quien),
-                        'salida'  => $stock->salida($record, (float) $data['cantidad'], $data['motivo'] ?? null, null, $quien),
-                        'ajuste'  => $stock->ajustar($record, (float) $data['cantidad'], $data['motivo'], $quien),
+                        'salida' => $stock->salida($record, (float) $data['cantidad'], $data['motivo'] ?? null, null, $quien),
+                        'ajuste' => $stock->ajustar($record, (float) $data['cantidad'], $data['motivo'], $quien),
                     };
                 } catch (StockException $e) {
                     Notification::make()->title('No se pudo mover')->body($e->getMessage())->danger()->send();
@@ -159,7 +180,7 @@ class SuppliesTable
 
                 Notification::make()
                     ->title('Existencia actualizada')
-                    ->body($record->fresh()->name . ': ' . rtrim(rtrim(number_format((float) $record->fresh()->stock, 3, ',', '.'), '0'), ',') . ' ' . $record->unit)
+                    ->body($record->fresh()->name.': '.rtrim(rtrim(number_format((float) $record->fresh()->stock, 3, ',', '.'), '0'), ',').' '.$record->unit)
                     ->success()
                     ->send();
             });
