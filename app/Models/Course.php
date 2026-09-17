@@ -19,7 +19,7 @@ class Course extends Model
     protected $fillable = [
         'slug', 'name', 'area_id', 'level', 'summary', 'description',
         'requirements', 'hours', 'passing_score', 'requires_practical',
-        'photo_path', 'price_minor', 'is_active', 'is_public',
+        'photo_path', 'price_minor', 'is_active', 'is_public', 'by_preenrollment',
     ];
 
     protected function casts(): array
@@ -28,6 +28,7 @@ class Course extends Model
             'is_active' => 'boolean',
             'is_public' => 'boolean',
             'requires_practical' => 'boolean',
+            'by_preenrollment' => 'boolean',
             'passing_score' => 'integer',
         ];
     }
@@ -83,6 +84,26 @@ class Course extends Model
     public function edicionesAbiertas(): HasMany
     {
         return $this->editions()->where('status', 'abierta')->orderBy('starts_on');
+    }
+
+    /**
+     * La cohorte a la que hoy se puede preinscribir alguien, si la hay.
+     *
+     * La planeada más próxima. Solo tiene sentido en un curso al que se entra
+     * por preinscripción: en los demás, una edición planeada es un borrador
+     * del equipo y no se le enseña a nadie.
+     */
+    public function cohortePorAbrir(): ?CourseEdition
+    {
+        if (! $this->by_preenrollment) {
+            return null;
+        }
+
+        return $this->editions()
+            ->where('status', 'planeada')
+            ->orderByRaw('starts_on is null, starts_on')
+            ->orderBy('id')
+            ->first();
     }
 
     /** Toda la gente que pasó por el curso, en cualquiera de sus ediciones. */

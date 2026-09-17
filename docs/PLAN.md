@@ -189,6 +189,11 @@ decisión tuya
       controlado y liberación del propio cupo
 - [x] Verificación pública unificada: un solo `/verificar` para certifabs y
       certificados de curso
+- [x] Preinscripción a Fab Academy: a tera no se entra eligiendo una fecha. La
+      cohorte planeada recibe interesados sin cuenta desde `/fab-academy`, que
+      enseña cuántos somos y cuántos faltan para abrir; preinscribirse no ocupa
+      cupo. Abrir la cohorte avisa a cada preinscrito una sola vez, y la cuenta
+      y el cupo llegan al inscribirlo
 - [ ] Contenidos y evaluación dentro del sistema (hoy la evaluación es la nota
       y el criterio del instructor)
 - [x] Servicios especiales con cola de producción: se pide desde la tienda, se

@@ -733,6 +733,46 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'curso', 'codigo', 'enlace', 'habilita'],
             ],
             [
+                'key'          => 'curso.preinscripcion',
+                'name'         => 'Preinscripción a una cohorte',
+                'description'  => 'A quien se preinscribe desde el sitio a un programa que solo abre si se junta gente, como Fab Academy.',
+                'is_essential' => true,
+                'subject'      => 'Quedaste preinscrito en {curso}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Recibimos tu preinscripción a {curso}, cohorte {cohorte}. Inicio previsto: {inicio}.
+
+                    No pagas nada todavía ni quedas comprometido: con esto sabemos que te interesa, y con cuántos somos decidimos si la cohorte se abre. Te escribimos a este correo con la respuesta, sea cual sea.
+
+                    {faltan}
+
+                    La página del programa, por si quieres compartirla: {enlace}
+
+                    Si necesitas corregir algo, vuelve a enviar el formulario con este mismo correo: reemplaza lo anterior.
+                    TXT,
+                'variables'    => ['nombre_pila', 'curso', 'cohorte', 'inicio', 'costo', 'faltan', 'enlace'],
+            ],
+            [
+                'key'          => 'curso.cohorte_abierta',
+                'name'         => 'La cohorte se abrió',
+                'description'  => 'A cada preinscrito, una sola vez, cuando el equipo abre la cohorte que estaba esperando.',
+                'is_essential' => true,
+                'subject'      => 'Se abre {curso}: asegura tu cupo',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Buenas noticias: se juntó la gente y la cohorte {cohorte} de {curso} se abre. Empieza el {inicio}.
+
+                    {costo}
+
+                    Estabas en la lista de preinscritos, así que eres de los primeros en saberlo. Los cupos son limitados: respóndenos este correo para confirmar el tuyo y te contamos los pasos de inscripción y de pago.
+
+                    {enlace}
+                    TXT,
+                'variables'    => ['nombre_pila', 'curso', 'cohorte', 'inicio', 'costo', 'enlace'],
+            ],
+            [
                 'key'          => 'practica.agendada',
                 'name'         => 'Práctica agendada',
                 'description'  => 'A quien pidió hora para la prueba práctica de un curso.',

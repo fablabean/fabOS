@@ -127,6 +127,11 @@ class CourseForm
                             ->label('Visible en el sitio')
                             ->default(true)
                             ->helperText('Un curso puede existir sin salir en la vitrina.'),
+
+                        Toggle::make('by_preenrollment')
+                            ->label('Se entra por preinscripción')
+                            ->helperText('Para programas que solo abren si se junta gente, como Fab Academy. La edición «planeada» recibe preinscritos desde su propia página, y se abre cuando se decida.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('La teoría')

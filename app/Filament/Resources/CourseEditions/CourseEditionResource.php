@@ -34,6 +34,26 @@ class CourseEditionResource extends Resource
         return 'Formación';
     }
 
+    /**
+     * Los preinscritos con los que nadie ha hablado todavía, en las cohortes
+     * que siguen planeadas. Alguien que dejó su correo para Fab Academy y no
+     * recibe una llamada en dos semanas ya se fue a otra parte.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $porAtender = \App\Models\Preenrollment::query()
+            ->where('status', 'preinscrito')
+            ->whereHas('edition', fn ($q) => $q->where('status', 'planeada'))
+            ->count();
+
+        return $porAtender > 0 ? (string) $porAtender : null;
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Preinscritos que todavía no han confirmado';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return CourseEditionForm::configure($schema);
@@ -47,6 +67,7 @@ class CourseEditionResource extends Resource
     public static function getRelations(): array
     {
         return [
+            RelationManagers\PreenrollmentsRelationManager::class,
             RelationManagers\EnrollmentsRelationManager::class,
         ];
     }

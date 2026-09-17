@@ -19,6 +19,7 @@ use App\Http\Controllers\PaginaPublicaController;
 use App\Http\Controllers\PerfilesController;
 use App\Http\Controllers\PracticasController;
 use App\Http\Controllers\PreguntaController;
+use App\Http\Controllers\PreinscripcionController;
 use App\Http\Controllers\ProjectBoardController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\PurchaseRequestController;
@@ -80,6 +81,23 @@ Route::get('/qr/{codigo}', EnlaceCortoController::class)
 
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
+
+/*
+ * Preinscribirse a una cohorte que todavia no se sabe si abre (§9).
+ *
+ * Sin sesion, como postularse a una practica: decir «me interesa» no deberia
+ * costar un registro. Con captcha porque guarda datos y manda correo.
+ *
+ * `/fab-academy` es la direccion que se dice en voz alta y cabe en un afiche;
+ * la otra es la que sirve para cualquier curso que entre por preinscripcion.
+ */
+Route::get('/fab-academy', [PreinscripcionController::class, 'fabAcademy'])->name('fab-academy');
+Route::get('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'show'])->name('preinscripcion');
+Route::post('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'store'])
+    ->middleware(['throttle:40,60', 'captcha:correo'])
+    ->name('preinscripcion.store');
+Route::get('/preinscripcion/{course:slug}/gracias', [PreinscripcionController::class, 'gracias'])
+    ->name('preinscripcion.gracias');
 
 // Open Badges: las credenciales en formato estandar, legibles por cualquier
 // lector del estandar y no solo por este sitio (§19). Publicas por definicion:

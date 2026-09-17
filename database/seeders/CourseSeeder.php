@@ -116,6 +116,9 @@ class CourseSeeder extends Seeder
                 'hours' => 500,
                 'summary' => 'El programa completo de la Fab Foundation. Seis meses, un proyecto final y acceso autónomo a todo el laboratorio.',
                 'requirements' => 'Admisión al programa. El Ean Fablab es el único laboratorio acreditado en Colombia.',
+                // No se elige de la lista: uno se preinscribe para saber si la
+                // cohorte se abre.
+                'by_preenrollment' => true,
                 'familias' => ['fdm', 'resina', 'co2', 'cnc-escritorio', 'electronica', 'impresion-uv'],
             ],
         ];

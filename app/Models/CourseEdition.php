@@ -17,6 +17,7 @@ class CourseEdition extends Model
     protected $fillable = [
         'course_id', 'code', 'instructor_id', 'space_id',
         'starts_on', 'ends_on', 'schedule_note', 'capacity', 'status', 'notes',
+        'minimum_to_open', 'preenroll_until', 'price_note',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class CourseEdition extends Model
             // el inicio de un curso al día anterior.
             'starts_on' => 'date',
             'ends_on'   => 'date',
+            'preenroll_until' => 'date',
         ];
     }
 
@@ -74,5 +76,69 @@ class CourseEdition extends Model
     public function admiteInscripciones(): bool
     {
         return $this->status === 'abierta' && $this->cuposLibres() > 0;
+    }
+
+    // ------------------------------------------------------ preinscripción
+
+    public function preenrollments(): HasMany
+    {
+        return $this->hasMany(Preenrollment::class);
+    }
+
+    /** Los que cuentan: quien desistió ya no suma para abrir. */
+    public function preinscritos(): int
+    {
+        return $this->preenrollments()->vivos()->count();
+    }
+
+    /** Los que ya dijeron que sí van. Es el número con el que se decide. */
+    public function confirmados(): int
+    {
+        return $this->preenrollments()->whereIn('status', ['confirmado', 'inscrito'])->count();
+    }
+
+    /**
+     * Cuántos faltan para abrir. Nulo si nadie dijo cuántos hacen falta: la
+     * página pública no promete un umbral que no existe.
+     */
+    public function faltanParaAbrir(): ?int
+    {
+        return $this->minimum_to_open === null
+            ? null
+            : max(0, $this->minimum_to_open - $this->preinscritos());
+    }
+
+    /**
+     * Si alguien puede preinscribirse ahora mismo desde el sitio.
+     *
+     * Solo una cohorte **planeada** de un curso que entra por preinscripción:
+     * cuando ya abrió, lo que toca es inscribirse de verdad, y ofrecer las dos
+     * puertas a la vez deja gente creyendo que tiene cupo sin tenerlo.
+     */
+    public function admitePreinscripciones(): bool
+    {
+        return $this->porQueNoAdmitePreinscripciones() === null;
+    }
+
+    /** Por qué no se puede, dicho a quien lo intenta. Null si se puede. */
+    public function porQueNoAdmitePreinscripciones(): ?string
+    {
+        if (! $this->course?->by_preenrollment) {
+            return 'A este curso no se entra por preinscripción.';
+        }
+
+        if ($this->status !== 'planeada') {
+            return $this->status === 'abierta'
+                ? 'Esta cohorte ya abrió inscripciones: la preinscripción terminó.'
+                : 'Esta cohorte ya no recibe preinscripciones.';
+        }
+
+        $hoy = now(config('fabos.lab.timezone'))->startOfDay();
+
+        if ($this->preenroll_until && $hoy->gt($this->preenroll_until)) {
+            return 'Las preinscripciones se recibieron hasta el ' . $this->preenroll_until->format('d/m/Y') . '.';
+        }
+
+        return null;
     }
 }

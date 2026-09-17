@@ -116,9 +116,41 @@
                         @endauth
                     </div>
                 @empty
-                    <p class="habilita">
-                        Sin fechas abiertas por ahora. Escríbenos y te avisamos cuando se programe.
-                    </p>
+                    @if ($curso->by_preenrollment)
+                        {{-- A este curso no se entra eligiendo una fecha: primero
+                             hay que saber si hay cohorte. La puerta es su página,
+                             que es donde se cuenta cuántos somos. --}}
+                        @php($cohorte = $curso->cohortePorAbrir())
+                        <div class="edicion">
+                            <div>
+                                <div class="cuando">
+                                    @if ($cohorte?->starts_on)
+                                        Cohorte {{ $cohorte->code }}, prevista para
+                                        {{ $cohorte->starts_on->locale('es')->isoFormat('MMMM [de] YYYY') }}
+                                    @else
+                                        Se abre cuando se junta gente suficiente
+                                    @endif
+                                </div>
+                                <div class="cupo">
+                                    @if ($cohorte)
+                                        {{ $cohorte->preinscritos() }}
+                                        {{ $cohorte->preinscritos() === 1 ? 'persona preinscrita' : 'personas preinscritas' }}
+                                        @if ($cohorte->minimum_to_open) de {{ $cohorte->minimum_to_open }} necesarias para abrir @endif
+                                    @else
+                                        Todavía no hay cohorte anunciada
+                                    @endif
+                                </div>
+                            </div>
+
+                            <a href="{{ route('preinscripcion', $curso) }}">
+                                <button type="button">{{ $cohorte ? 'Preinscribirme' : 'Conocer el programa' }}</button>
+                            </a>
+                        </div>
+                    @else
+                        <p class="habilita">
+                            Sin fechas abiertas por ahora. Escríbenos y te avisamos cuando se programe.
+                        </p>
+                    @endif
                 @endforelse
             </article>
         @empty

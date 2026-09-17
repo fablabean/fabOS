@@ -63,6 +63,32 @@ class CourseEditionForm
 
                         Textarea::make('notes')->label('Notas')->columnSpanFull(),
                     ]),
+
+                // Solo dice algo en un curso al que se entra por preinscripción;
+                // en los demás una edición planeada es un borrador del equipo.
+                Section::make('Preinscripción')
+                    ->description('Mientras la cohorte esté «planeada», la gente se preinscribe desde la página del programa. No ocupa cupo: sirve para decidir si se abre.')
+                    ->columns(2)
+                    ->collapsible()
+                    ->collapsed(fn (?CourseEdition $record) => ! $record?->course?->by_preenrollment)
+                    ->schema([
+                        TextInput::make('minimum_to_open')
+                            ->label('Cuántos hacen falta para abrir')
+                            ->numeric()
+                            ->minValue(1)
+                            ->helperText('Se enseña en la página pública con una barra de avance. Vacío, no se promete ningún umbral.'),
+
+                        DatePicker::make('preenroll_until')
+                            ->label('Preinscripciones hasta')
+                            ->helperText('Vacío: hasta que la cohorte se abra o se cancele.'),
+
+                        TextInput::make('price_note')
+                            ->label('Inversión, como se le dice a la gente')
+                            ->maxLength(200)
+                            ->placeholder('3800 USD, en cuotas')
+                            ->helperText('Texto libre: Fab Academy se paga en dólares y un número en la moneda del laboratorio no lo cuenta.')
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 }

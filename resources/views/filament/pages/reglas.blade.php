@@ -762,6 +762,18 @@
                 y aprobar dos veces, que emitiría un segundo certificado por el mismo curso.
                 Retirarse libera el cupo y no deja certificado.
             </div>
+            <div class="porque">
+                <b>A Fab Academy no se entra eligiendo una fecha: uno se preinscribe.</b> Es un
+                programa que solo abre si se junta gente, así que la pregunta no es «¿hay cupo?»
+                sino «¿hay cohorte?». Un curso marcado como <i>se entra por preinscripción</i>
+                recibe interesados en su edición <b>planeada</b>, desde su propia página
+                —<code>/fab-academy</code>—, que enseña cuántos somos y cuántos faltan.
+                <b>Preinscribirse no ocupa cupo ni crea cuenta</b>: la cuenta y el cupo llegan
+                cuando la cohorte abre y se inscribe a la persona. Abrir la cohorte desde la
+                pestaña de preinscritos le avisa a cada uno, una sola vez; cambiar el estado a
+                mano la abre en silencio. Quien ya no va <b>desiste</b>, no se borra: cuántos se
+                cayeron y por qué es lo que dice qué cambiar para la próxima.
+            </div>
 
             <h3 style="margin-top:1.2rem">La escalera</h3>
             <table>

@@ -234,6 +234,15 @@ return [
     'formacion' => [
         // Cuanto dura la prueba practica de un curso, delante de la maquina.
         'practica_minutos' => (int) env('PRACTICA_MINUTOS', 60),
+
+        // Fab Academy: lo que este laboratorio puede decir de si mismo y donde
+        // se comprueba. La lista de nodos es la de la propia Fab Academy: decir
+        // «somos el unico» sin enlazar a quien lo certifica es solo decirlo.
+        // Otro laboratorio de la red cambia estas dos lineas; vacio, no se dice.
+        'fab_academy' => [
+            'distintivo' => env('FAB_ACADEMY_DISTINTIVO', 'El único nodo de Fab Academy en Colombia'),
+            'nodos_url'  => env('FAB_ACADEMY_NODOS_URL', 'https://fabacademy.org/nodes/list.html#america'),
+        ],
     ],
 
     /**
