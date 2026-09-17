@@ -21,6 +21,10 @@
     .edicion .cuando{font-size:.92rem}
     .edicion .cupo{font-size:.82rem;color:var(--muted)}
     .lleno{color:var(--muted);font-size:.85rem}
+    /* El botón secundario: mismo peso que el principal, sin competirle. */
+    .btn.suave{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+    .btn.suave:hover{background:color-mix(in srgb,var(--accent) 10%,transparent);filter:none}
+    .mas{margin:1rem 0 0}
     .aviso{
         background:color-mix(in srgb,#0D6E63 12%,transparent);border-radius:6px;
         padding:.8rem 1rem;margin-bottom:1.4rem;font-size:.92rem;
@@ -83,12 +87,27 @@
                     </p>
                 @endif
 
+                {{-- El curso que tiene página propia la enseña siempre, haya o no
+                     fechas: la tarjeta resume, y un programa de seis meses no se
+                     decide con un resumen. --}}
+                @if ($curso->by_preenrollment)
+                    <p class="mas">
+                        <a class="btn suave" href="{{ route('preinscripcion', $curso) }}">Ver más información</a>
+                    </p>
+                @endif
+
                 @forelse ($curso->edicionesAbiertas as $edicion)
                     <div class="edicion">
                         <div>
                             <div class="cuando">
-                                Empieza el {{ $edicion->starts_on?->format('d/m/Y') }}
-                                @if ($edicion->schedule_note) · {{ $edicion->schedule_note }} @endif
+                                {{-- Una edición a tu ritmo no tiene fecha, y «Empieza
+                                     el ·» a secas se leía como un dato que faltó. --}}
+                                @if ($edicion->starts_on)
+                                    Empieza el {{ $edicion->starts_on->format('d/m/Y') }}
+                                    @if ($edicion->schedule_note) · {{ $edicion->schedule_note }} @endif
+                                @else
+                                    {{ $edicion->schedule_note ?: 'Empiezas cuando quieras' }}
+                                @endif
                             </div>
                             <div class="cupo">
                                 {{ $edicion->cuposLibres() }} de {{ $edicion->capacity }} cupos libres
@@ -106,13 +125,16 @@
                             @elseif ($edicion->cuposLibres() > 0)
                                 <form method="POST" action="{{ route('formacion.inscribir', $edicion) }}">
                                     @csrf
-                                    <button type="submit">Inscribirme</button>
+                                    <button type="submit" class="btn">Inscribirme</button>
                                 </form>
                             @else
                                 <span class="lleno">Sin cupos</span>
                             @endif
                         @else
-                            <a href="{{ route('login') }}"><button type="button">Entrar para inscribirme</button></a>
+                            {{-- Un enlace con cara de botón, y no un <button> dentro de
+                                 un <a>: eso no es HTML válido y además salía sin
+                                 estilo, porque el sitio solo viste la clase .btn. --}}
+                            <a class="btn" href="{{ route('login') }}">Entrar para inscribirme</a>
                         @endauth
                     </div>
                 @empty
@@ -142,9 +164,12 @@
                                 </div>
                             </div>
 
-                            <a href="{{ route('preinscripcion', $curso) }}">
-                                <button type="button">{{ $cohorte ? 'Preinscribirme' : 'Conocer el programa' }}</button>
-                            </a>
+                            {{-- Sin cohorte no hay a qué preinscribirse, y «ver más
+                                 información» ya está arriba: dos botones al mismo
+                                 sitio solo hacen dudar cuál es cuál. --}}
+                            @if ($cohorte)
+                                <a class="btn" href="{{ route('preinscripcion', $curso) }}#preinscripcion">Preinscribirme</a>
+                            @endif
                         </div>
                     @else
                         <p class="habilita">

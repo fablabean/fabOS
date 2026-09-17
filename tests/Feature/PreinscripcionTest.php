@@ -484,6 +484,35 @@ class PreinscripcionTest extends TestCase
         $this->assertSame(0, Preenrollment::count());
     }
 
+    public function test_el_catalogo_lleva_a_la_pagina_del_programa_haya_o_no_fechas(): void
+    {
+        $curso = $this->curso();
+        $normal = $this->curso(['slug' => 'byte-' . uniqid(), 'name' => 'byte · Láser', 'level' => 'byte', 'by_preenrollment' => false]);
+
+        // Sin cohorte, con cohorte planeada y con cohorte ya abierta: la
+        // página del programa se enseña siempre.
+        $this->get(route('formacion'))->assertSee('Ver más información');
+
+        $this->cohorte($curso, ['status' => 'abierta']);
+
+        $this->get(route('formacion'))
+            ->assertOk()
+            ->assertSee(route('preinscripcion', $curso), false)
+            // Un curso normal no tiene página propia a la que llevar.
+            ->assertDontSee(route('preinscripcion', $normal), false);
+    }
+
+    public function test_los_botones_del_catalogo_van_vestidos(): void
+    {
+        $this->cohorte($this->curso(), ['status' => 'abierta']);
+
+        // El sitio solo viste la clase .btn: un <button> pelado, o metido
+        // dentro de un <a>, salía con la cara por defecto del navegador.
+        $this->get(route('formacion'))
+            ->assertSee('<a class="btn" href="' . route('login') . '">Entrar para inscribirme</a>', false)
+            ->assertDontSee('<button type="button">', false);
+    }
+
     public function test_el_catalogo_ofrece_preinscribirse_en_vez_de_escribenos(): void
     {
         $curso = $this->curso();
