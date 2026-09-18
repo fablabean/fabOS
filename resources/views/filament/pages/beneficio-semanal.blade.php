@@ -25,18 +25,28 @@
             <x-filament::section>
                 <x-slot name="heading">La regla</x-slot>
                 <x-slot name="description">
-                    Cada lunes a primera hora, a quien tenga correo de una institución aliada se le
-                    completa el saldo hasta el tope. No se acumula: quien ya tiene el tope o más no
-                    recibe nada, y lo que no gastó sigue ahí. Los {{ config('fabos.currency.name') }}s
-                    no se cambian por dinero.
+                    Cada lunes a primera hora, a quien tenga correo de una institución aliada —o una
+                    categoría que lo reciba— se le completa el saldo hasta el tope. No se acumula: quien
+                    ya tiene el tope o más no recibe nada, y lo que no gastó sigue ahí. Con el mismo
+                    interruptor va la bienvenida: la cuenta que nace, o cambia de categoría, recibe en
+                    el acto lo que su categoría diga. Los {{ config('fabos.currency.name') }}s no se
+                    cambian por dinero.
                 </x-slot>
 
                 <label class="flex items-start gap-3 cursor-pointer" style="margin-bottom:1rem">
-                    <input type="checkbox" wire:model="activo" class="mt-1 h-4 w-4 rounded">
-                    <span>
-                        <span class="font-medium">Beneficio semanal activo</span>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">
-                            Apagado, no se abona nada, ni el lunes ni con el botón de abajo.
+                    {{-- En vivo: el texto de abajo dice el estado, y tiene que cambiar al
+                         marcar, no al guardar. Antes era una explicación fija de «apagado»
+                         y con la casilla marcada se leía como si siguiera apagado. --}}
+                    <input type="checkbox" wire:model.live="activo" class="mt-1 h-4 w-4 rounded">
+                    <span style="display:block">
+                        <span class="font-medium" style="display:block">Beneficio semanal activo</span>
+                        <span class="text-sm" style="display:block;color:{{ $activo ? 'rgb(5 150 105)' : 'rgb(107 114 128)' }}">
+                            @if ($activo)
+                                Encendido: cada lunes se completa el saldo hasta el tope, y quien entra nuevo
+                                recibe su bienvenida en el acto. Recuerda guardar.
+                            @else
+                                Apagado: no se abona nada, ni el lunes, ni al entrar, ni con el botón de abajo.
+                            @endif
                         </span>
                     </span>
                 </label>
