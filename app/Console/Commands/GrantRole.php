@@ -30,8 +30,8 @@ class GrantRole extends Command
         $email = Str::lower(trim($this->argument('email')));
         $role  = Str::lower(trim($this->argument('role')));
 
-        if (! in_array($role, User::ROLES_BACKOFFICE, true)) {
-            $this->error("Rol no válido. Opciones: " . implode(', ', User::ROLES_BACKOFFICE));
+        if (! \App\Support\Roles::existe($role)) {
+            $this->error("Rol no válido. Opciones: " . implode(', ', array_keys(\App\Support\Roles::todos())));
 
             return self::FAILURE;
         }

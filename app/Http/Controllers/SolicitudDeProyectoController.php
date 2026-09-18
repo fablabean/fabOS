@@ -342,7 +342,7 @@ class SolicitudDeProyectoController extends Controller
         // preguntas durante la ejecucion —«mandanos el vectorial»— y esta es
         // la unica puerta por la que el cliente responde con archivos. Lo
         // que cambie el acuerdo va al contrato; una respuesta no lo cambia.
-        if ($project->estaCerrado() && ! $request->user()?->hasAnyRole(User::ROLES_BACKOFFICE)) {
+        if ($project->estaCerrado() && ! $request->user()?->hasAnyRole(User::rolesDelEquipo())) {
             return back()->withErrors([
                 'aceptar' => 'Este proyecto ya está cerrado. Si necesitas algo más, pídelo como un proyecto nuevo.',
             ]);
@@ -461,6 +461,6 @@ class SolicitudDeProyectoController extends Controller
         // pidió» y se quedaba fuera de su propia propuesta.
         return $project->loPuedeAceptar($quien)
             || $quien->id === $project->requested_by
-            || $quien->hasAnyRole(User::ROLES_BACKOFFICE);
+            || $quien->hasAnyRole(User::rolesDelEquipo());
     }
 }

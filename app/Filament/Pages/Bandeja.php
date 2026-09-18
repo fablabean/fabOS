@@ -221,7 +221,7 @@ class Bandeja extends Page
 
         // Para un espacio no hay certifab que pedir: la atiende cualquiera del
         // equipo, y la lista lo dice con sus extras del mes al lado.
-        $personal = User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->get();
+        $personal = User::role(User::rolesDelEquipo())->where('status', 'activo')->orderBy('name')->get();
 
         return [
             'solicitudes' => $solicitudes->map(function (Reservation $s) use ($equipos, $espacios, $personal, $cobertura, $extras, $reservas) {

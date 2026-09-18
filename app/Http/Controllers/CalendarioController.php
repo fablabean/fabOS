@@ -36,7 +36,7 @@ class CalendarioController extends Controller
         abort_unless(
             $reservation->user_id === $quien->id
                 || $reservation->laAtiende($quien)
-                || $quien->hasAnyRole(User::ROLES_BACKOFFICE),
+                || $quien->hasAnyRole(User::rolesDelEquipo()),
             403,
         );
 

@@ -28,7 +28,7 @@ class AcuerdoController extends Controller
     {
         $quien = $request->user();
 
-        abort_unless($quien instanceof User && $quien->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless($quien instanceof User && $quien->hasAnyRole(User::rolesDelEquipo()), 403);
 
         $datos = Cache::get('cobro:' . $token);
 
@@ -52,7 +52,7 @@ class AcuerdoController extends Controller
         $quien = $request->user();
 
         abort_unless(
-            $quien instanceof User && $quien->hasAnyRole(User::ROLES_BACKOFFICE),
+            $quien instanceof User && $quien->hasAnyRole(User::rolesDelEquipo()),
             403,
         );
 

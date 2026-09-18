@@ -187,7 +187,7 @@ class AsistenciaDeAsesoria
     {
         $atiende = $asesoria->reservable_type === User::class && (int) $asesoria->reservable_id === $quien->id;
 
-        if (! $atiende && ! $quien->hasAnyRole(User::ROLES_BACKOFFICE)) {
+        if (! $atiende && ! $quien->hasAnyRole(User::rolesDelEquipo())) {
             throw new BookingException('Esta asesoría la valida quien la atiende.');
         }
     }

@@ -9,6 +9,8 @@
         .rya thead th { font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;
                         color:rgb(107 114 128); border-bottom:1px solid rgb(229 231 235); }
         .rya th.rol { text-align:center; }
+        .rya th.rol .quitar { margin-left:.35rem; color:rgb(156 163 175); font-weight:400; cursor:pointer; }
+        .rya th.rol .quitar:hover { color:rgb(220 38 38); }
         .rya td.celda { text-align:center; white-space:nowrap; }
         .rya tbody tr { border-bottom:1px solid rgb(243 244 246); }
         .rya tbody tr:hover { background:rgb(249 250 251); }
@@ -60,7 +62,18 @@
                         <tr>
                             <th>Sección</th>
                             @foreach ($this->roles() as $clave => $nombre)
-                                <th class="rol">{{ $nombre }}</th>
+                                <th class="rol">
+                                    {{ $nombre }}
+                                    {{-- Solo los roles propios se borran; los fijos vienen
+                                         con el sistema. Se dice cuántos lo tienen ANTES,
+                                         no después: quedan sin rol y sin panel. --}}
+                                    @unless ($this->esFijo($clave))
+                                        @php $cuantos = $this->cuantosTienen($clave); @endphp
+                                        <button type="button" class="quitar" title="Borrar el rol {{ $nombre }}"
+                                                wire:click="borrarRol('{{ $clave }}')"
+                                                wire:confirm="¿Borrar el rol «{{ $nombre }}»? {{ $cuantos === 0 ? 'Nadie lo tiene.' : ($cuantos === 1 ? 'Una persona lo tiene y se queda sin rol, y sin panel.' : $cuantos . ' personas lo tienen y se quedan sin rol, y sin panel.') }}">×</button>
+                                    @endunless
+                                </th>
                             @endforeach
                         </tr>
                     </thead>
@@ -117,7 +130,8 @@
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                         El superadmin no está en la tabla: lo ve todo siempre. Una casilla que
                         pudiera quitarle el acceso a esta misma pantalla es la forma de cerrar
-                        la puerta por dentro.
+                        la puerta por dentro. Los roles con × son del laboratorio y se pueden
+                        borrar; los demás vienen con el sistema.
                     </span>
                 </div>
             </x-slot>

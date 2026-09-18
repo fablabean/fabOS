@@ -387,7 +387,7 @@ class CreateReservation extends CreateRecord
         // del espacio ya los anotó su servicio.
         if ($data['tipo'] !== 'espacio' && ! empty($data['acompanantes'])) {
             $reserva->companions()->sync(
-                User::role(User::ROLES_BACKOFFICE)->whereIn('id', array_map('intval', $data['acompanantes']))->pluck('id')->all(),
+                User::role(User::rolesDelEquipo())->whereIn('id', array_map('intval', $data['acompanantes']))->pluck('id')->all(),
             );
         }
 

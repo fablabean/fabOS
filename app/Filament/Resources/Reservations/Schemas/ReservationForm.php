@@ -70,7 +70,7 @@ class ReservationForm
                         // gente en la primera.
                         Select::make('companions')
                             ->label('Acompañan del equipo')
-                            ->relationship('companions', 'name', fn ($query) => $query->role(User::ROLES_BACKOFFICE)->orderBy('name'))
+                            ->relationship('companions', 'name', fn ($query) => $query->role(User::rolesDelEquipo())->orderBy('name'))
                             ->multiple()
                             ->preload()
                             ->searchable()

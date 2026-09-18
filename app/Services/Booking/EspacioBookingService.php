@@ -54,7 +54,7 @@ class EspacioBookingService
         $hasta = $desde->copy()->addMinutes(self::MINUTOS_RECIBIR);
 
         $enJornada = $this->cobertura->enJornada($desde, $hasta)
-            ->filter(fn (User $u) => $u->status === 'activo' && $u->hasAnyRole(User::ROLES_BACKOFFICE))
+            ->filter(fn (User $u) => $u->status === 'activo' && $u->hasAnyRole(User::rolesDelEquipo()))
             ->values();
 
         if ($enJornada->isEmpty()) {
@@ -532,7 +532,7 @@ class EspacioBookingService
                 // se puede manipular, y una casilla no puede meter a cualquiera
                 // como acompañante del laboratorio.
                 if ($acompanantesIds !== []) {
-                    $acompanan = User::role(User::ROLES_BACKOFFICE)->whereIn('id', $acompanantesIds)->get();
+                    $acompanan = User::role(User::rolesDelEquipo())->whereIn('id', $acompanantesIds)->get();
 
                     // Y libres a esa hora. Quien tiene una asesoria, tiempo
                     // apartado para un proyecto o una clase en su calendario

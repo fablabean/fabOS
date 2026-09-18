@@ -88,7 +88,7 @@
                 </div>
                 <a href="{{ route('home') }}">Mi cuenta</a>
                 <a href="{{ route('cuenta.perfil') }}">Editar perfil</a>
-                @if (auth()->user()->hasAnyRole(\App\Models\User::ROLES_BACKOFFICE))
+                @if (auth()->user()->hasAnyRole(\App\Models\User::rolesDelEquipo()))
                     <a href="/admin">Backoffice</a>
                 @endif
                 <form method="POST" action="{{ route('logout') }}" class="salir">

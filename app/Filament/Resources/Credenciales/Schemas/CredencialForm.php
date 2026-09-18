@@ -114,7 +114,7 @@ class CredencialForm
                         Select::make('owner_id')
                             ->label('Responsable')
                             ->relationship('owner', 'name', fn ($query) => $query
-                                ->whereHas('roles', fn ($r) => $r->whereIn('name', User::ROLES_BACKOFFICE)))
+                                ->whereHas('roles', fn ($r) => $r->whereIn('name', User::rolesDelEquipo())))
                             ->searchable()
                             ->preload()
                             ->default(fn () => auth()->id())

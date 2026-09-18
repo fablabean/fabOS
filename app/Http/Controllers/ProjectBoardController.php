@@ -67,7 +67,7 @@ class ProjectBoardController extends Controller
 
     public function cronogramaGeneral(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless($request->user()->hasAnyRole(User::rolesDelEquipo()), 403);
 
         $todos = $request->boolean('todos');
 
@@ -147,7 +147,7 @@ class ProjectBoardController extends Controller
             return false;
         }
 
-        if ($quien->hasAnyRole(User::ROLES_BACKOFFICE)) {
+        if ($quien->hasAnyRole(User::rolesDelEquipo())) {
             return true;
         }
 

@@ -375,7 +375,7 @@ class Project extends Model
         }
 
         return $quien->id === $this->requested_by
-            && ! $quien->hasAnyRole(User::ROLES_BACKOFFICE);
+            && ! $quien->hasAnyRole(User::rolesDelEquipo());
     }
 
     /**

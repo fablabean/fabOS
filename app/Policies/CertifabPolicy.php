@@ -19,7 +19,7 @@ class CertifabPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(User::ROLES_BACKOFFICE);
+        return $user->hasAnyRole(User::rolesDelEquipo());
     }
 
     public function view(User $user, Certifab $certifab): bool

@@ -32,7 +32,7 @@ class BackofficePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(User::ROLES_BACKOFFICE);
+        return $user->hasAnyRole(User::rolesDelEquipo());
     }
 
     public function create(User $user): bool

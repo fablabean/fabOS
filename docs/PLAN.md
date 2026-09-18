@@ -59,6 +59,10 @@ decisión tuya
 - [x] Ingreso por código de un solo uso al correo
 - [x] Ingreso por carné digital EAN, con vinculación automática
 - [x] Interruptor de accesos administrable, con salvaguardas
+- [x] Roles propios: los cinco fijos vienen con el código y no se borran; los
+      demás (voluntario, auditor…) se crean y borran desde Roles y accesos,
+      nacen viendo solo el tablero y «del equipo» decide si cuentan como
+      personal del laboratorio
 - [x] Control de acceso al backoffice (sin rol → 403)
 - [x] Permisos por rol dentro del backoffice: consultor ve, administrador crea
       y edita, superadmin además borra y toca personas y accesos

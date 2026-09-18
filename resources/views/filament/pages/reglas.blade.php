@@ -82,6 +82,16 @@
                 podría darse permisos a sí mismo. Y certificar no es un trámite administrativo: quien
                 firma que alguien puede operar una sierra de banco responde por esa decisión.
             </div>
+            <div class="porque">
+                <b>Los demás roles los decide el laboratorio.</b> Estos tres, más practicante y
+                comunicaciones, vienen con el sistema y no se borran: el código pregunta por ellos.
+                Cualquier otro —un voluntario, un auditor— se crea desde <i>Roles y accesos</i>, nace
+                viendo solo el tablero, y lo que ve después se marca en la matriz como para
+                cualquiera. «Del equipo» decide si cuenta como personal del laboratorio: acompañar
+                reservas, recibir traspasos, ver el inventario. Borrarlo deja a su gente sin rol y
+                sin panel, y se dice cuántos son antes de pulsar. Hoy existen
+                {{ count(\App\Support\Roles::todos()) }} roles.
+            </div>
         </x-filament::section>
 
         {{-- ------------------------------------------------ habilitación --}}

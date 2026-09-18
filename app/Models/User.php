@@ -57,7 +57,12 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
         self::ROL_SUPERADMIN,
     ];
 
-    /** Todos los roles que existen, para pintar la matriz de accesos. */
+    /**
+     * Los roles FIJOS: vienen con el codigo y no se borran. Los demas los crea
+     * el laboratorio desde Roles y accesos, y la lista completa —fijos y
+     * creados— la da `Roles::todos()`. Todo lo que antes leia esta constante
+     * lee aquella.
+     */
     public const ROLES = [
         self::ROL_PRACTICANTE    => 'Practicante',
         self::ROL_CONSULTOR      => 'Consultor',
@@ -67,14 +72,30 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
     ];
 
     /**
+     * Quien es «del equipo»: acompana reservas, recibe traspasos, ve el
+     * inventario. Los fijos de ROLES_BACKOFFICE mas los que el laboratorio
+     * haya creado marcados como del equipo. Es un metodo y no la constante
+     * porque la lista vive en la base de datos.
+     *
+     * @return list<string>
+     */
+    public static function rolesDelEquipo(): array
+    {
+        return \App\Support\Roles::delEquipo();
+    }
+
+    /**
      * Quien entra al backoffice. Sin esto, Filament en entorno local deja pasar
      * a CUALQUIER usuario autenticado: un estudiante que pide su codigo por
      * correo llegaria al panel de administracion.
+     *
+     * Entra quien tenga cualquier rol que exista: lo que ve dentro lo dice la
+     * matriz, y un rol sin nada marcado ve solo el tablero.
      */
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->status === 'activo'
-            && $this->hasAnyRole([...self::ROLES_BACKOFFICE, self::ROL_COMUNICACIONES]);
+            && $this->hasAnyRole(array_keys(\App\Support\Roles::todos()));
     }
 
     /** Quien puede mirar el banco de contenido: lo dice la matriz, como todo. */
@@ -234,7 +255,7 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
     {
         $roles = $this->roles
             ->pluck('name')
-            ->map(fn (string $r) => self::ROLES[$r] ?? ucfirst($r))
+            ->map(fn (string $r) => \App\Support\Roles::etiqueta($r))
             ->implode(', ');
 
         return $roles ?: $this->category?->name;

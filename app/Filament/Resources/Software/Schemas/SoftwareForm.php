@@ -110,7 +110,7 @@ class SoftwareForm
                         Select::make('responsable_id')
                             ->label('Responsable')
                             ->relationship('responsable', 'name', fn ($query) => $query
-                                ->whereHas('roles', fn ($r) => $r->whereIn('name', User::ROLES_BACKOFFICE)))
+                                ->whereHas('roles', fn ($r) => $r->whereIn('name', User::rolesDelEquipo())))
                             ->searchable()
                             ->preload()
                             // Sin responsable la renovacion es de todos, que es

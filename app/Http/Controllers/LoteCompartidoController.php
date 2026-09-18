@@ -53,6 +53,6 @@ class LoteCompartidoController extends Controller
     private function puedeVerlo(Request $request): bool
     {
         return $request->hasValidSignature()
-            || ($request->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false);
+            || ($request->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false);
     }
 }

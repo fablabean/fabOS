@@ -22,7 +22,7 @@ class LabelController extends Controller
 
     public function index(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless($request->user()->hasAnyRole(User::rolesDelEquipo()), 403);
 
         $equipos = Asset::query()
             ->with('area')

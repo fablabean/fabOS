@@ -23,7 +23,7 @@ class ArchivoPrivadoController extends Controller
 
         abort_unless(
             $quien && $quien->status === 'activo'
-                && $quien->hasAnyRole([...User::ROLES_BACKOFFICE, User::ROL_COMUNICACIONES]),
+                && $quien->hasAnyRole([...User::rolesDelEquipo(), User::ROL_COMUNICACIONES]),
             403,
         );
 

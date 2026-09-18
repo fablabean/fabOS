@@ -19,7 +19,7 @@ class ReportController extends Controller
 
     public function cierre(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(User::ROLES_BACKOFFICE), 403);
+        abort_unless($request->user()->hasAnyRole(User::rolesDelEquipo()), 403);
 
         $tz = config('fabos.lab.timezone');
 

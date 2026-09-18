@@ -184,7 +184,7 @@ class ContenidoTable
                     ->icon('heroicon-o-eye-slash')
                     ->color('danger')
                     ->visible(fn (Contenido $r) => $r->estaDisponible()
-                        && (auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false))
+                        && (auth()->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false))
                     ->schema([
                         TextInput::make('motivo')
                             ->label('Por qué')
@@ -206,7 +206,7 @@ class ContenidoTable
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('success')
                     ->visible(fn (Contenido $r) => ! $r->estaDisponible()
-                        && (auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false))
+                        && (auth()->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false))
                     ->requiresConfirmation()
                     ->action(function (Contenido $record) {
                         app(BancoDeContenido::class)->devolver($record);

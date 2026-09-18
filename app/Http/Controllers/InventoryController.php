@@ -71,6 +71,6 @@ class InventoryController extends Controller
     /** Inventariar es tarea del equipo, no de cualquiera con el enlace. */
     private function puedeInventariar(?User $user): bool
     {
-        return $user?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
+        return $user?->hasAnyRole(User::rolesDelEquipo()) ?? false;
     }
 }

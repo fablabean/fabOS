@@ -225,7 +225,7 @@ class EnrollmentsRelationManager extends RelationManager
                         // Primero quienes asesoran el area del curso; despues
                         // el resto del equipo, por si toca cubrir.
                         $delArea = $area ? app(AsesoriaService::class)->asesoresDe($area)->pluck('name', 'id') : collect();
-                        $resto = User::role(User::ROLES_BACKOFFICE)->where('status', 'activo')->orderBy('name')->pluck('name', 'id');
+                        $resto = User::role(User::rolesDelEquipo())->where('status', 'activo')->orderBy('name')->pluck('name', 'id');
 
                         return $delArea->map(fn ($n) => $n . ' · asesora el área')
                             ->union($resto->except($delArea->keys()->all()))

@@ -59,7 +59,7 @@ class TraspasoDeAtencion
     {
         $sugeridos = $this->declaradosPara($reserva);
 
-        return User::role(User::ROLES_BACKOFFICE)
+        return User::role(User::rolesDelEquipo())
             ->where('status', 'activo')
             ->where('id', '!=', $de->id)
             ->where('id', '!=', $reserva->user_id)
@@ -313,7 +313,7 @@ class TraspasoDeAtencion
             throw new BookingException('Nadie se atiende a sí mismo: elige a otra persona.');
         }
 
-        if ($a->status !== 'activo' || ! $a->hasAnyRole(User::ROLES_BACKOFFICE)) {
+        if ($a->status !== 'activo' || ! $a->hasAnyRole(User::rolesDelEquipo())) {
             throw new BookingException($a->name . ' no es del equipo del laboratorio.');
         }
 

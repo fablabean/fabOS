@@ -38,7 +38,7 @@ class NuevaPersona
 
             Select::make('roles')
                 ->label('Rol en el panel')
-                ->options(User::ROLES)
+                ->options(fn () => \App\Support\Roles::todos())
                 ->multiple()
                 ->placeholder('Ninguno: no es del equipo')
                 ->helperText('Solo si es del equipo del laboratorio.'),
@@ -72,7 +72,7 @@ class NuevaPersona
         ])->save();
 
         foreach (array_filter((array) ($data['roles'] ?? [])) as $rol) {
-            if (array_key_exists($rol, User::ROLES)) {
+            if (\App\Support\Roles::existe($rol)) {
                 $persona->assignRole(Role::findOrCreate($rol, 'web'));
             }
         }

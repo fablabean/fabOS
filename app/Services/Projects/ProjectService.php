@@ -564,7 +564,7 @@ class ProjectService
         ?User $quien = null,
         ?string $nombreSuelto = null,
     ): ProjectComment {
-        $delLaboratorio = $quien?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false;
+        $delLaboratorio = $quien?->hasAnyRole(User::rolesDelEquipo()) ?? false;
 
         $comentario = $proyecto->comments()->create([
             'user_id'     => $quien?->id,

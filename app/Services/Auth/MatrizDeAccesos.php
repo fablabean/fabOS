@@ -4,8 +4,10 @@ namespace App\Services\Auth;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Roles;
 use App\Support\Secciones;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -57,9 +59,16 @@ class MatrizDeAccesos
             }
         }
 
-        foreach (array_keys(User::ROLES) as $nombre) {
-            Role::findOrCreate($nombre, 'web');
+        // Los fijos, con su etiqueta. Los creados desde el panel ya existen.
+        foreach (User::ROLES as $nombre => $etiqueta) {
+            $rol = Role::findOrCreate($nombre, 'web');
+
+            if (Schema::hasColumn('roles', 'label') && $rol->label !== $etiqueta) {
+                $rol->forceFill(['label' => $etiqueta, 'del_equipo' => in_array($nombre, User::ROLES_BACKOFFICE, true)])->save();
+            }
         }
+
+        Roles::olvidar();
 
         $this->olvidarLaCache();
 
@@ -342,10 +351,82 @@ class MatrizDeAccesos
         }
     }
 
-    /** Todos menos el superadmin, que no se toca. */
+    /** Todos menos el superadmin, que no se toca. Fijos primero, creados detrás. */
     public function rolesEditables(): array
     {
-        return array_values(array_diff(array_keys(User::ROLES), [User::ROL_SUPERADMIN]));
+        return array_values(array_diff(array_keys(Roles::todos()), [User::ROL_SUPERADMIN]));
+    }
+
+    // -------------------------------------------------------- roles propios
+
+    /**
+     * Un rol nuevo, del laboratorio (§5).
+     *
+     * Nace con solo el tablero: entra al panel y ve la portada, y lo demás se
+     * le marca en la matriz. Abrirle algo por defecto sería decidir por el
+     * laboratorio qué ve un rol que el laboratorio acaba de inventar.
+     *
+     * @throws \InvalidArgumentException si el nombre ya existe o no sirve
+     */
+    public function crearRol(string $etiqueta, bool $delEquipo = true): Role
+    {
+        $etiqueta = trim($etiqueta);
+        $nombre = \Illuminate\Support\Str::slug($etiqueta, '_');
+
+        if ($etiqueta === '' || $nombre === '') {
+            throw new \InvalidArgumentException('El rol necesita un nombre.');
+        }
+
+        if (Roles::existe($nombre) || Role::where('name', $nombre)->where('guard_name', 'web')->exists()) {
+            throw new \InvalidArgumentException('Ya hay un rol que se llama «' . $etiqueta . '».');
+        }
+
+        // En dos pasos: el `create` de Spatie deja pasar solo nombre y guard,
+        // y las columnas propias se quedaban en el camino sin ningún error.
+        $rol = Role::create(['name' => $nombre, 'guard_name' => 'web']);
+        $rol->forceFill(['label' => $etiqueta, 'del_equipo' => $delEquipo])->save();
+
+        $this->asegurarQueExisten(['ver.tablero']);
+        $rol->syncPermissions(['ver.tablero']);
+
+        Roles::olvidar();
+        $this->olvidarLaCache();
+
+        return $rol;
+    }
+
+    /**
+     * Borrar un rol propio. Los fijos no se borran: el código pregunta por
+     * ellos. Quien lo tenía se queda sin rol —y sin panel—, y se dice cuántos
+     * son antes de pulsar, no después.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function borrarRol(string $nombre): void
+    {
+        if (Roles::esFijo($nombre)) {
+            throw new \InvalidArgumentException('«' . Roles::etiqueta($nombre) . '» viene con el sistema y no se borra.');
+        }
+
+        $rol = Role::where('name', $nombre)->where('guard_name', 'web')->first();
+
+        if (! $rol) {
+            throw new \InvalidArgumentException('Ese rol no existe.');
+        }
+
+        // Spatie deja a la gente sin el rol al borrarlo (la tabla intermedia
+        // cae en cascada); se hace explicito para que no dependa de la base.
+        $rol->users()->detach();
+        $rol->delete();
+
+        Roles::olvidar();
+        $this->olvidarLaCache();
+    }
+
+    /** Cuántas personas tienen un rol: lo que se dice antes de borrarlo. */
+    public function cuantosTienen(string $nombre): int
+    {
+        return User::role($nombre)->count();
     }
 
     /**

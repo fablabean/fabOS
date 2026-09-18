@@ -94,7 +94,7 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-qr-code')
                     ->group('Operación')
                     ->sort(9)
-                    ->visible(fn () => auth()->user()?->hasAnyRole(User::ROLES_BACKOFFICE) ?? false),
+                    ->visible(fn () => auth()->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
