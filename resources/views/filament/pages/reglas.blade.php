@@ -380,6 +380,14 @@
                 <li><b>Mínimo</b> como piso del servicio; no arrastra el material.</li>
                 <li><b>Material</b> a costo, por unidad (g, ml, hoja, m).</li>
                 <li>El <b>factor de la categoría</b> se aplica al servicio, nunca al material.</li>
+                <li><b>Horas incluidas a la semana</b> para quien tiene certifab vigente sobre el
+                    equipo o su familia. Salen del reloj antes de redondear; si cubren el trabajo
+                    entero no hay montaje ni mínimo: gratis es gratis. Es un cupo por semana
+                    —lunes a domingo, la semana en que empieza la reserva—, no un descuento por
+                    reserva: encadenar reservas no lo reinicia. Lo gastan las reservas confirmadas,
+                    en curso y completadas (estas por su reloj real); una solicitud todavía no, y
+                    producir una pieza para alguien tampoco. Es un número de la tarifa, hoy 8 h en
+                    FDM, y se edita en <i>Finanzas → Tarifas</i>.</li>
             </ul>
 
             <div class="porque">

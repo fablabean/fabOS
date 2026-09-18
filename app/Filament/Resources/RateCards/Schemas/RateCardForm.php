@@ -97,6 +97,14 @@ class RateCardForm
                             ->numeric()
                             ->default(15)
                             ->helperText('El tiempo se redondea hacia arriba a este bloque.'),
+
+                        TextInput::make('included_weekly_minutes')
+                            ->label('Minutos incluidos a la semana con certifab')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(0)
+                            ->visible(fn (callable $get) => $get('basis') === 'tiempo')
+                            ->helperText('Cupo semanal gratis para quien tiene certifab vigente sobre el equipo. 480 son 8 horas. Cero: no hay cupo. Lo que pase del cupo se cobra con esta misma tarifa.'),
                     ]),
 
                 Section::make('Vigencia')

@@ -11,7 +11,7 @@ class RateCard extends Model
     protected $fillable = [
         'slug', 'name', 'rateable_type', 'rateable_id', 'basis', 'unit',
         'price_minor', 'setup_minor', 'supervision_hour_minor', 'minimum_minor',
-        'deposit_minor', 'rounding_minutes', 'is_active', 'is_assumed',
+        'deposit_minor', 'rounding_minutes', 'included_weekly_minutes', 'is_active', 'is_assumed',
         'effective_from', 'notes',
     ];
 

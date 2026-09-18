@@ -150,6 +150,9 @@ decisión tuya
       depósito y bloque de facturación; heredadas equipo → familia → área → base
 - [x] Ciclo de cobro de una reserva: se retiene al reservar, se liquida al
       cerrar y la diferencia vuelve
+- [x] Horas incluidas a la semana con certifab: un número más de la tarifa
+      (8 h en FDM), cupo por semana y no por reserva, gratis del todo si cubre
+      el trabajo; lo que pasa se cobra con la tarifa de siempre
 - [x] Dotación institucional (`fabos:dotar`, mensual e idempotente),
       bonificación por colaboración y recargas, todas desde Finanzas
 - [x] Cobro de material real: se declara al cerrar desde el QR del equipo, sale

@@ -374,7 +374,9 @@ class AttendanceService
         $equipo = Asset::find($reserva->reservable_id);
 
         $consumo = $equipo
-            ? $this->cotizador->cotizar($reserva->user, $equipo, $minutos, $reserva->supervisor_id !== null)->totalMenor
+            // La propia reserva se excluye del cupo semanal: al liquidarla
+            // no puede contarse contra sí misma.
+            ? $this->cotizador->cotizar($reserva->user, $equipo, $minutos, $reserva->supervisor_id !== null, reserva: $reserva)->totalMenor
             : 0;
 
         $consumo += (int) ReservationSupply::where('reservation_id', $reserva->id)

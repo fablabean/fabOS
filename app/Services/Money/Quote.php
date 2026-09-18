@@ -17,7 +17,17 @@ class Quote
         public readonly int $totalMenor,
         public readonly int $depositoMenor = 0,
         public readonly bool $esSupuesta = false,
+        /** Minutos de este trabajo que salieron gratis por el cupo semanal del certifab. */
+        public readonly int $minutosIncluidos = 0,
+        /** Lo que le queda del cupo esta semana, ya descontado este trabajo. Nulo si no hay cupo. */
+        public readonly ?int $minutosIncluidosRestantes = null,
     ) {}
+
+    /** Si hay algo que explicar aunque el total sea cero: las horas incluidas. */
+    public function tieneDesglose(): bool
+    {
+        return $this->totalMenor > 0 || $this->minutosIncluidos > 0;
+    }
 
     public function total(): float
     {

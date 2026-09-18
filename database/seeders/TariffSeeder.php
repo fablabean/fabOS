@@ -74,6 +74,10 @@ class TariffSeeder extends Seeder
             [$hora, $montaje, $supervision, $minimo, $deposito, $nota] = $familias[$familia->slug];
 
             $this->tarifa('familia-' . $familia->slug, $familia->name, $familia, [
+                // Con certifab, la FDM incluye 8 horas a la semana: el trabajo
+                // largo es lo normal en una impresora, y habilitarse tiene que
+                // servir para usarla, no para pagar un peaje.
+                'included_weekly_minutes' => $familia->slug === 'fdm' ? 480 : 0,
                 'price_minor'            => $this->fbc($hora),
                 'setup_minor'            => $this->fbc($montaje),
                 'supervision_hour_minor' => $this->fbc($supervision),

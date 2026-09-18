@@ -4,7 +4,9 @@ namespace App\Services\Money;
 
 use App\Models\Asset;
 use App\Models\RateCard;
+use App\Models\Reservation;
 use App\Models\User;
+use Carbon\CarbonInterface;
 
 /**
  * Cuánto cuesta un trabajo (§12).
@@ -16,11 +18,19 @@ use App\Models\User;
  *    pero el material va a costo para todos: el filamento cuesta lo que cuesta.
  *  - **El reloj se redondea hacia arriba al bloque de facturación.** Cobrar al
  *    minuto exacto invita a discutir por dos minutos; el bloque es explicable.
+ *  - **Las horas incluidas del certifab se descuentan antes que nada.** Una
+ *    tarifa puede incluir horas a la semana para quien está habilitado; esas
+ *    salen del reloj antes de redondear, y si cubren el trabajo entero no hay
+ *    montaje ni mínimo que cobrar: gratis es gratis.
  */
 class QuoteService
 {
+    public function __construct(private HorasIncluidas $incluidas) {}
+
     /**
      * @param  array<int,array{tarifa:RateCard,cantidad:float,nombre?:string}>  $materiales
+     * @param  Reservation|null  $reserva  la reserva que se recotiza, si ya existe: no se cuenta contra sí misma
+     * @param  CarbonInterface|null  $cuando  cuándo ocurre el trabajo, para saber contra qué semana va
      */
     public function cotizar(
         User $usuario,
@@ -28,6 +38,8 @@ class QuoteService
         int $minutos,
         bool $conAcompanante = false,
         array $materiales = [],
+        ?Reservation $reserva = null,
+        ?CarbonInterface $cuando = null,
     ): Quote {
         $tarifa = RateCard::para($activo);
 
@@ -36,12 +48,33 @@ class QuoteService
         }
 
         $factor = (float) ($usuario->category?->rate_factor ?? 1);
-        $minutosCobrables = $this->redondear($minutos, $tarifa->rounding_minutes);
+
+        // El cupo semanal, primero: sale del reloj antes de redondear, porque
+        // ocho horas justas de cupo no deberían dejar un bloque de quince
+        // minutos cobrado por un redondeo.
+        $disponibles = $this->incluidas->disponibles($usuario, $activo, $tarifa, $cuando ?? $reserva?->starts_at, $reserva);
+        $gratis = min($minutos, $disponibles);
+        $restantes = $tarifa->included_weekly_minutes > 0 ? $disponibles - $gratis : null;
+
+        $minutosCobrables = $this->redondear($minutos - $gratis, $tarifa->rounding_minutes);
 
         $lineas = [];
         $servicio = 0;
 
-        if ($tarifa->price_minor > 0) {
+        if ($gratis > 0) {
+            $lineas[] = [
+                'concepto' => 'Horas incluidas con tu certifab',
+                'detalle'  => $this->enHoras($gratis) . ' de las ' . $this->enHoras($tarifa->included_weekly_minutes)
+                    . ' semanales · te quedan ' . $this->enHoras($restantes),
+                'importe'  => 0,
+            ];
+        }
+
+        // Cubierto entero por el cupo: no hay tiempo, montaje ni mínimo que
+        // cobrar. El acompañamiento sí, porque es el tiempo de otra persona.
+        $cubierto = $minutos > 0 && $minutosCobrables === 0;
+
+        if ($tarifa->price_minor > 0 && ! $cubierto) {
             $importe = $this->aplicar($tarifa->price_minor * $minutosCobrables / 60, $factor);
             $servicio += $importe;
             $lineas[] = [
@@ -51,14 +84,17 @@ class QuoteService
             ];
         }
 
-        if ($tarifa->setup_minor > 0) {
+        if ($tarifa->setup_minor > 0 && ! $cubierto) {
             $importe = $this->aplicar($tarifa->setup_minor, $factor);
             $servicio += $importe;
             $lineas[] = ['concepto' => 'Montaje y alistamiento', 'detalle' => null, 'importe' => $importe];
         }
 
         if ($conAcompanante && $tarifa->supervision_hour_minor > 0) {
-            $importe = $this->aplicar($tarifa->supervision_hour_minor * $minutosCobrables / 60, $factor);
+            // Sobre el tiempo entero, no sobre el que queda tras el cupo: el
+            // acompañante está ahí todo el rato, lo tenga incluido o no.
+            $acompanados = $this->redondear($minutos, $tarifa->rounding_minutes);
+            $importe = $this->aplicar($tarifa->supervision_hour_minor * $acompanados / 60, $factor);
             $servicio += $importe;
             $lineas[] = [
                 'concepto' => 'Acompañamiento',
@@ -93,7 +129,7 @@ class QuoteService
             ];
         }
 
-        return new Quote($lineas, $total, $tarifa->deposit_minor, $supuesta);
+        return new Quote($lineas, $total, $tarifa->deposit_minor, $supuesta, $gratis, $restantes);
     }
 
     /** Redondea hacia arriba al bloque de facturación. */

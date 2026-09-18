@@ -175,7 +175,7 @@ class ApprovalService
             // Un espacio no se cobra: solo las máquinas tienen tarifa.
             if ($equipo) {
                 $minutos = (int) $solicitud->starts_at->diffInMinutes($solicitud->ends_at);
-                $cotizacion = $this->cotizador->cotizar($solicitud->user, $equipo, $minutos, $acompanante !== null);
+                $cotizacion = $this->cotizador->cotizar($solicitud->user, $equipo, $minutos, $acompanante !== null, reserva: $solicitud);
 
                 $solicitud->update(['estimated_cost_minor' => $cotizacion->totalMenor]);
                 $this->cobros->comprometer($solicitud->refresh(), $cotizacion);

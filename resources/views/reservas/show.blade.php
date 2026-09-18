@@ -168,7 +168,9 @@
     @endif
 
     {{-- ------------------------------------------------- cuánto cuesta (§12) --}}
-    @if ($cotizacion->totalMenor > 0)
+    {{-- También cuando sale gratis por las horas incluidas: a quien no le
+         cuesta le interesa saber por qué, y cuánto cupo le queda. --}}
+    @if ($cotizacion->tieneDesglose())
         @php
             $moneda = config('fabos.currency.code');
             $unidades = config('fabos.currency.minor_units');

@@ -141,7 +141,9 @@ class BookingService
         // llenaron la bandeja. Se dice que ya la tiene.
         app(EspacioBookingService::class)->exigirQueNoLoTengaYa($user, Asset::class, $asset->id, $asset->name, $desde, $hasta);
 
-        $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null);
+        // Con la fecha del trabajo: el cupo semanal del certifab se cuenta
+        // contra la semana en que ocurre, no contra la de hoy.
+        $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null, cuando: $desde);
 
         try {
             return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo, $complementos) {
