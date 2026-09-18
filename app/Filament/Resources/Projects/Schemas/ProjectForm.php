@@ -24,6 +24,12 @@ class ProjectForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            // Dos columnas solo en pantalla grande. Filament las parte desde
+            // la tablet, y ahí cada bloque quedaba con un tercio de la pantalla:
+            // los textos de ayuda en columnas de cuatro palabras y los selectores
+            // cortados. En tablet los bloques van uno debajo del otro, como en
+            // el teléfono.
+            ->columns(['default' => 1, 'xl' => 2])
             ->components([
                 Section::make('La idea')
                     ->description('Lo primero es que quede anotada. El resto se completa después.')
