@@ -66,16 +66,20 @@ class PublicSiteController extends Controller
         /*
          * Una decision por pantalla, en este orden:
          *
-         *   1. COMO: asesoria, produccion o autonomia.
+         *   1. COMO: asesoria, produccion, autonomia, o espacio y herramientas.
          *   2. QUE AREA.
          *   3. Y en asesoria, si es general del area o de una maquina.
          *
          * Enseñarlo todo de golpe obliga a elegir sin saber todavia que se
          * esta eligiendo: el area no significa lo mismo si vas a que te
          * acompañen que si vas a reservar tu.
+         *
+         * «espacio» es la bifurcacion —¿la sala con lo que hay dentro, o solo
+         * unas herramientas?— y «herramientas» es la lista entera de estas, sin
+         * paso por el area: son pocas y se buscan por nombre, no por familia.
          */
         $modo = $request->string('modo')->toString();
-        $modo = in_array($modo, ['asesoria', 'autonomia'], true) ? $modo : '';
+        $modo = in_array($modo, ['asesoria', 'autonomia', 'espacio', 'herramientas'], true) ? $modo : '';
 
         // Sin camino elegido no se pregunta el area: seria el segundo paso
         // antes del primero.
@@ -87,7 +91,7 @@ class PublicSiteController extends Controller
 
         $todos = Asset::query()
             ->withCount('advisors')
-            ->with('area', 'riskFamily', 'dependencies')
+            ->with('area', 'riskFamily', 'dependencies', 'space')
             ->where('is_public', true)
             ->orderBy('name')
             ->get();
@@ -107,6 +111,14 @@ class PublicSiteController extends Controller
          * coordinacion lo marco como no reservable, es que no se pide.
          */
         $visibles = $todos->filter(fn (Asset $a) => $a->is_reservable);
+
+        // Las herramientas, todas: la portatil que se lleva a cualquier
+        // parte y la que se usa en su sitio. Sin filtrar por certifab, porque
+        // aqui la pregunta es «que hay», y la de «que puedo» la contesta la
+        // pagina de cada una al ir a reservarla.
+        if ($modo === 'herramientas') {
+            $visibles = $visibles->filter(fn (Asset $a) => $a->esHerramienta());
+        }
 
         if ($modo === 'autonomia') {
             if ($quien === null) {

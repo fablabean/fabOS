@@ -100,7 +100,14 @@
     @endphp
 
     @php
-        $nombreDelModo = ['asesoria' => 'Asesoría', 'autonomia' => 'Hago mi pieza'][$modo] ?? null;
+        $nombreDelModo = [
+            'asesoria'     => 'Asesoría',
+            'autonomia'    => 'Hago mi pieza',
+            'espacio'      => 'Espacio y herramientas',
+            'herramientas' => 'Herramientas',
+        ][$modo] ?? null;
+        // En la lista de herramientas no se pasa por el área: se va derecho.
+        $enLaLista = $area !== '' || $modo === 'herramientas';
         $nombreDelArea = $areas->firstWhere('slug', $area)['nombre'] ?? null;
     @endphp
 
@@ -170,19 +177,22 @@
                 <span class="pie">Reservas la máquina</span>
             </a>
 
-            <a class="camino" href="{{ route('espacios.index') }}">
+            {{-- Público, a diferencia de /espacios: la bifurcación se puede
+                 mirar sin cuenta, y la cuenta se pide al reservar. --}}
+            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'espacio']) }}">
                 <span class="ilus" aria-hidden="true">
-                    {{-- Una sala con su puerta y su mesa: para el grupo. --}}
+                    {{-- Una sala con su puerta y su mesa, y una llave: el grupo y las herramientas. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 42V12l18-6v36"/><path d="M24 12h18v30"/><path d="M6 42h36"/>
-                        <path d="M30 22h8M30 28h8"/><circle cx="19" cy="26" r="1.5" fill="currentColor"/>
+                        <path d="M30 22h8"/><circle cx="19" cy="26" r="1.5" fill="currentColor"/>
+                        <circle cx="33" cy="33" r="3"/><path d="M35.5 30.5l5-5M38 28l2 2"/>
                     </svg>
                 </span>
-                <b>Espacio</b>
-                <span>Una sala, un taller o el laboratorio entero, para trabajar en grupo,
-                      dar una clase o hacer un recorrido. Dentro tomas las herramientas
-                      que necesites.</span>
-                <span class="pie">Reservas un espacio</span>
+                <b>Espacio y herramientas</b>
+                <span>Una sala o un taller con las herramientas que hay dentro, para trabajar
+                      en grupo o dar una clase. O solo unas herramientas, para usarlas
+                      donde estés.</span>
+                <span class="pie">Reservas un espacio o herramientas</span>
             </a>
         </div>
 
@@ -236,7 +246,11 @@
         </nav>
 
         <h1 style="margin-bottom:.3rem">
-            @if ($area === '')
+            @if ($modo === 'espacio')
+                ¿La sala entera, o solo herramientas?
+            @elseif ($modo === 'herramientas')
+                Herramientas
+            @elseif ($area === '')
                 {{ $modo === 'asesoria' ? '¿Sobre qué área?' : '¿Qué vas a reservar?' }}
             @elseif ($modo === 'asesoria' && ! $eligiendoMaquina)
                 ¿Una máquina concreta, o el área entera?
@@ -287,13 +301,52 @@
         </div>
     @endif
 
+    {{-- ------------------------------------------------ espacio y herramientas --}}
+    {{-- Dos cosas distintas que antes eran una: la sala con lo que hay dentro,
+         y las herramientas solas. Quien viene por un taladro no quiere reservar
+         un taller, y quien reserva el taller marca el taladro ahí dentro. --}}
+    @if ($modo === 'espacio')
+        <div class="caminos">
+            <a class="camino" href="{{ route('espacios.index') }}">
+                <b>Un espacio</b>
+                <span>Una sala, un taller o el laboratorio entero, para trabajar en grupo,
+                      dar una clase o hacer un recorrido. Al reservarlo marcas las
+                      herramientas que vas a necesitar dentro.</span>
+                <span class="pie">Reservas la sala</span>
+            </a>
+
+            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'herramientas']) }}">
+                <b>Solo herramientas</b>
+                <span>Un taladro, unas gafas de realidad virtual, un cautín. Las portátiles
+                      te las llevas a donde vayas a trabajar; las demás se usan en su
+                      sitio.</span>
+                <span class="pie">Ves toda la lista</span>
+            </a>
+        </div>
+    @endif
+
+    @if ($modo === 'herramientas')
+        <div class="aviso">
+            <p>
+                <strong>Todas las herramientas que se prestan</strong>, sin pasar por áreas:
+                son pocas y se buscan por nombre. Las marcadas como <em>portátil</em> se
+                llevan a cualquier parte; las demás se usan en el espacio donde están. Si vas
+                a trabajar en una sala, mejor
+                <a href="{{ route('espacios.index') }}">reserva el espacio</a> y márcalas dentro.
+            </p>
+            @guest
+                <p>Para reservar una necesitas una cuenta. <a href="{{ route('login') }}">Ingresar</a>.</p>
+            @endguest
+        </div>
+    @endif
+
     {{-- --------------------------------------------------- elegir área, o la lista --}}
     {{-- Las áreas solo cuando ya se eligió el camino: preguntar «qué área»
          antes de saber si vas a que te acompañen o a reservar tú es el segundo
          paso antes del primero. El área no significa lo mismo en cada caso. --}}
-    @if ($modo === '')
-        {{-- Nada más. Los tres caminos de arriba son toda la pregunta. --}}
-    @elseif ($area === '')
+    @if ($modo === '' || $modo === 'espacio')
+        {{-- Nada más. Los caminos de arriba son toda la pregunta. --}}
+    @elseif (! $enLaLista)
         @if ($areas->isNotEmpty())
             <section style="padding-top:.4rem">
                 <p class="rotulo">Elige un área · {{ $total }} equipos</p>
@@ -321,9 +374,11 @@
             </p>
         @endif
     @else
-        <a class="volver" href="{{ route('publico.reservas', array_filter(['modo' => $modo ?: null])) }}">
-            ← Todas las áreas
-        </a>
+        @if ($area !== '')
+            <a class="volver" href="{{ route('publico.reservas', array_filter(['modo' => $modo ?: null])) }}">
+                ← Todas las áreas
+            </a>
+        @endif
 
         {{-- Elegida el área, la siguiente pregunta: ¿general o de una máquina?
              Son dos consultas distintas, y quien viene sin saber qué máquina
@@ -377,7 +432,7 @@
                         <a class="equipo"
                            href="{{ match (true) {
                                 $modo === 'asesoria' && $e->advisors_count > 0 => route('asesoria.show', $e),
-                                $modo === 'autonomia' => route('reservas.show', $e),
+                                $modo === 'autonomia', $modo === 'herramientas' => route('reservas.show', $e),
                                 default => route('publico.equipo', $e),
                            } }}">
                             @if ($e->photoUrl())
@@ -391,7 +446,18 @@
                                     <span class="estado {{ $est['estado'] }}">{{ $est['etiqueta'] }}</span>
                                 @endif
                                 <b>{{ $e->name }}</b>
-                                <span>{{ $e->riskFamily?->name }}</span>
+                                <span>
+                                    {{ $e->riskFamily?->name }}
+                                    {{-- En la lista de herramientas, lo que decide a dónde
+                                         te la puedes llevar. --}}
+                                    @if ($modo === 'herramientas')
+                                        @if ($e->puede_salir)
+                                            · portátil
+                                        @elseif ($e->space)
+                                            · en {{ $e->space->name }}
+                                        @endif
+                                    @endif
+                                </span>
                             </div>
                         </a>
                     @endforeach
@@ -406,6 +472,8 @@
                     reservar más tarde.
                 @elseif ($modo === 'autonomia')
                     Aquí no hay nada que puedas reservar por tu cuenta todavía.
+                @elseif ($modo === 'herramientas')
+                    Todavía no hay herramientas publicadas para prestar.
                 @else
                     No hay equipos publicados en esta área.
                 @endif

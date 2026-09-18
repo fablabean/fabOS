@@ -510,10 +510,66 @@ class CatalogoDeEquiposTest extends TestCase
     {
         $this->equipo('Cortadora láser', 'corte', 'Corte láser');
 
+        // El cuarto camino bifurca: la sala con lo de dentro, o solo herramientas.
         $this->get('/reservas')
             ->assertOk()
-            ->assertSee('Reservas un espacio')
-            ->assertSee(route('espacios.index'), false);
+            ->assertSee('Espacio y herramientas')
+            ->assertSee(route('publico.reservas', ['modo' => 'espacio']), false);
+
+        $this->get('/reservas?modo=espacio')
+            ->assertOk()
+            ->assertSee('Un espacio')
+            ->assertSee(route('espacios.index'), false)
+            ->assertSee('Solo herramientas')
+            ->assertSee(route('publico.reservas', ['modo' => 'herramientas']), false);
+    }
+
+    // ------------------------------------------------------- las herramientas
+
+    private function herramienta(string $nombre, bool $portatil = false, ?\App\Models\Space $espacio = null): Asset
+    {
+        $area = Area::firstOrCreate(['slug' => 'taller'], ['name' => 'Taller']);
+
+        return Asset::create([
+            'area_id' => $area->id, 'name' => $nombre, 'kind' => 'herramienta',
+            'status' => 'operativo', 'is_reservable' => true, 'is_public' => true,
+            'puede_salir' => $portatil, 'space_id' => $espacio?->id,
+        ]);
+    }
+
+    /**
+     * La lista de herramientas es toda la lista, de una vez.
+     *
+     * Son pocas y se buscan por nombre —un taladro, unas gafas—, no por
+     * familia de riesgo. Pasar por el área sería un clic que no decide nada.
+     */
+    public function test_las_herramientas_se_ven_todas_sin_pasar_por_el_area(): void
+    {
+        $this->equipo('Cortadora láser', 'corte', 'Corte láser');
+        $taller = \App\Models\Space::create(['slug' => 'taller', 'name' => 'Taller de madera', 'capacity' => 10]);
+        $this->herramienta('Taladro inalámbrico', portatil: true);
+        $this->herramienta('Sierra caladora', espacio: $taller);
+        $this->herramienta('Herramientas de mano')->update(['is_reservable' => false]);
+
+        $this->get('/reservas?modo=herramientas')
+            ->assertOk()
+            ->assertDontSee('Elige un área')
+            ->assertSee('Taladro inalámbrico')
+            ->assertSee('portátil')
+            ->assertSee('Sierra caladora')
+            ->assertSee('en Taller de madera')
+            // Ni las máquinas fijas, ni lo que no se presta.
+            ->assertDontSee('Cortadora láser')
+            ->assertDontSee('Herramientas de mano');
+    }
+
+    public function test_cada_herramienta_lleva_a_reservarla(): void
+    {
+        $taladro = $this->herramienta('Taladro inalámbrico', portatil: true);
+
+        $this->get('/reservas?modo=herramientas')
+            ->assertOk()
+            ->assertSee(route('reservas.show', $taladro), false);
     }
 
     /** Y quien tiene sesión ve lo que ya tiene pedido, antes de pedir más. */
