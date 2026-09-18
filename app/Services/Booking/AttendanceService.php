@@ -265,11 +265,44 @@ class AttendanceService
             ->update(['status' => 'completada']);
     }
 
+    /**
+     * La asesoria que nadie valido en el plazo se cierra y devuelve (§12).
+     *
+     * Quien atiende tiene tres dias para decir si la persona vino o no. Si no
+     * lo dice, la asesoria se quedaba «confirmada» para siempre, con el
+     * precio retenido en garantias: la persona pagaba por algo que nadie
+     * confirmo que ocurrio. Pasado el plazo se cancela con el motivo escrito
+     * y lo retenido vuelve; si de verdad ocurrio, se corrige desde el panel.
+     */
+    public function cerrarAsesoriasSinValidar(?Carbon $ahora = null): int
+    {
+        $limite = ($ahora ?? now())->copy()->subDays(AsistenciaDeAsesoria::DIAS_PARA_VALIDAR)->utc();
+
+        $sinValidar = Reservation::query()
+            ->where('mode', 'asesoria')
+            ->where('status', 'confirmada')
+            ->whereNull('checked_in_at')
+            ->where('ends_at', '<', $limite)
+            ->get();
+
+        foreach ($sinValidar as $asesoria) {
+            $asesoria->update([
+                'status'        => 'cancelada',
+                'status_reason' => 'Nadie validó la llegada en ' . AsistenciaDeAsesoria::DIAS_PARA_VALIDAR . ' días: se cierra y se devuelve lo retenido',
+            ]);
+
+            app(AsesoriaService::class)->devolver($asesoria, 'Sin validar en el plazo');
+        }
+
+        return $sinValidar->count();
+    }
+
     public function liberarAusencias(?Carbon $hasta = null): int
     {
         // De paso, lo que ya termino se cierra: es el mismo barrido de cada
         // cuarto de hora, y la asesoria no tiene otro momento en que cerrarse.
         $this->cerrarAsesoriasTerminadas($hasta);
+        $this->cerrarAsesoriasSinValidar($hasta);
 
         $limite = ($hasta ?? now())->copy()->subMinutes(config('fabos.checkin.tolerancia'));
 

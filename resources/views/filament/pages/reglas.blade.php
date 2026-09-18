@@ -383,7 +383,9 @@
                     {{ $moneda['code'] }}, editable en <i>Finanzas → Cobros</i>—, porque lo que se paga es el
                     tiempo de alguien del equipo, no el de una máquina. Se retiene al pedirla y se causa
                     cuando quien atiende valida que la persona vino; si no vino o no la atendieron,
-                    vuelve. Sin saldo no hay asesoría, y se dice con el importe antes de elegir hora.</li>
+                    vuelve. Si nadie la valida en {{ \App\Services\Booking\AsistenciaDeAsesoria::DIAS_PARA_VALIDAR }}
+                    días, el barrido la cierra y devuelve lo retenido: nadie paga por algo que nadie
+                    confirmó. Sin saldo no hay asesoría, y se dice con el importe antes de elegir hora.</li>
             </ul>
 
             <h3 style="margin-top:1.2rem">Con cuánto nace una cuenta</h3>

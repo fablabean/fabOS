@@ -142,6 +142,25 @@ class CobroDeAsesoriaTest extends TestCase
         $this->assertSame(0, \App\Models\Reservation::count(), 'no quedó ninguna asesoría a medias');
     }
 
+    public function test_si_nadie_la_valida_en_el_plazo_se_cierra_y_devuelve(): void
+    {
+        $u = $this->conSaldo(1000);
+        $asesoria = app(AsesoriaService::class)->agendar($u, $this->equipo, $this->hora('10:00'), $this->hora('10:45'));
+        $this->assertSame(800, $this->saldo($u));
+
+        // Al dia siguiente todavia no: quien atiende tiene tres dias.
+        $this->assertSame(0, app(\App\Services\Booking\AttendanceService::class)->cerrarAsesoriasSinValidar($this->hora('10:45')->addDay()));
+        $this->assertSame('confirmada', $asesoria->fresh()->status);
+
+        // Al cuarto dia, el barrido de siempre la cierra y devuelve.
+        app(\App\Services\Booking\AttendanceService::class)->liberarAusencias($this->hora('10:45')->addDays(4));
+
+        $asesoria->refresh();
+        $this->assertSame('cancelada', $asesoria->status);
+        $this->assertStringContainsString('Nadie validó', $asesoria->status_reason);
+        $this->assertSame(1000, $this->saldo($u), 'lo retenido volvió');
+    }
+
     public function test_con_los_cobros_apagados_no_mueve_saldo(): void
     {
         Setting::put(Settings::COBROS_ACTIVOS, false, 'finanzas');
