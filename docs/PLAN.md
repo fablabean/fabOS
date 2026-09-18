@@ -153,6 +153,14 @@ decisión tuya
       depósito y bloque de facturación; heredadas equipo → familia → área → base
 - [x] Ciclo de cobro de una reserva: se retiene al reservar, se liquida al
       cerrar y la diferencia vuelve
+- [x] La asesoría tiene precio plano (2 FBC, editable): se retiene al pedirla
+      y se causa al validar la llegada; si no vino o no la atendieron, vuelve
+- [x] Bienvenida: cada categoría dice con cuánto nace quien la recibe y se
+      abona en el acto (al crearse la cuenta o al cambiar de categoría), una
+      vez por categoría. Subcategorías de estudiante para Educación Continua
+      (bootcamp 10, curso 20, diplomado 30) y el semanal también por categoría
+- [x] Matrículas: Educación Continua anota quién está en qué programa; al
+      matricular nace la cuenta, recibe la subcategoría y su bienvenida
 - [x] Horas incluidas a la semana con certifab: un número más de la tarifa
       (8 h en FDM), cupo por semana y no por reserva, gratis del todo si cubre
       el trabajo; lo que pasa se cobra con la tarifa de siempre

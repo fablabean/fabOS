@@ -75,6 +75,31 @@
             </label>
         </x-filament::section>
 
+        {{-- La asesoría tiene precio plano: lo que se paga es el tiempo de
+             alguien del equipo, no el de una máquina. Se retiene al pedirla y
+             se causa cuando quien atiende valida que la persona vino. --}}
+        <x-filament::section>
+            <x-slot name="heading">La asesoría</x-slot>
+            <x-slot name="description">
+                Un precio por asesoría, dure lo que dure. Se retiene al pedirla y se cobra cuando
+                quien atiende valida la llegada; si la persona no viene o no la atienden, vuelve.
+                Solo mueve saldo con el cobro general activo.
+            </x-slot>
+
+            <div class="max-w-xs">
+                <label for="precioAsesoria" class="block text-sm font-medium mb-1">
+                    Precio en {{ config('fabos.currency.name') }}s
+                </label>
+                <x-filament::input.wrapper>
+                    <x-filament::input id="precioAsesoria" type="number" min="0" step="0.5" wire:model="precioAsesoria" />
+                </x-filament::input.wrapper>
+                @error('precioAsesoria')
+                    <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                @enderror
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Cero: la asesoría es gratis.</p>
+            </div>
+        </x-filament::section>
+
             <div>
                 <x-filament::button type="submit">Guardar</x-filament::button>
             </div>

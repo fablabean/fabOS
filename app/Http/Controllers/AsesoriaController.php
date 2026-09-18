@@ -116,6 +116,10 @@ class AsesoriaController extends Controller
                 (int) config('fabos.asesorias.dias_vista', 7),
             )->groupBy(fn (array $f) => $f['inicio']->toDateString()),
             'minutos' => (int) config('fabos.asesorias.minutos', 45),
+            // Lo que cuesta y lo que tiene: se dice antes de elegir la hora,
+            // no al enviar. La practica de un curso no pasa por aqui.
+            'precioMenor' => \App\Support\Settings::precioDeAsesoriaMenor(),
+            'saldoMenor'  => app(\App\Services\Ledger\LedgerService::class)->saldoDe($request->user()),
         ]);
     }
 
@@ -152,9 +156,14 @@ class AsesoriaController extends Controller
 
         $fin = $inicio->copy()->addMinutes((int) config('fabos.asesorias.minutos', 45));
 
-        $reserva = $this->asesorias->agendar(
-            $request->user(), $ambito, $inicio, $fin, $datos['motivo'] ?? null,
-        );
+        try {
+            $reserva = $this->asesorias->agendar(
+                $request->user(), $ambito, $inicio, $fin, $datos['motivo'] ?? null,
+            );
+        } catch (BookingException $e) {
+            // Sin saldo para la asesoría: se dice con el importe, al lado de la hora.
+            return back()->withErrors(['inicio' => $e->getMessage()]);
+        }
 
         // Entre ver la hora libre y pedirla puede haberla tomado otra persona.
         // No es un error del sistema, y el mensaje no debe sonar a eso.

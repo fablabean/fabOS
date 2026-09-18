@@ -56,6 +56,24 @@ class UserCategoryForm
                             ->numeric()
                             ->placeholder('sin tope'),
                     ]),
+
+                Section::make('Con cuánto nace')
+                    ->description('El saldo de bienvenida se abona en el acto, al crearse la cuenta o al recibir esta categoría, y completa hasta la cifra: no se suma a lo que ya tenga. Solo con el beneficio encendido.')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('welcome_minor')
+                            ->label('Bienvenida')
+                            ->numeric()
+                            ->default(0)
+                            ->suffix(config('fabos.currency.code'))
+                            ->formatStateUsing(fn (?int $state) => $state === null ? null : $state / config('fabos.currency.minor_units'))
+                            ->dehydrateStateUsing(fn ($state) => (int) round(((float) $state) * config('fabos.currency.minor_units')))
+                            ->helperText('En ' . config('fabos.currency.name') . 's. Cero: sin bienvenida.'),
+
+                        Toggle::make('weekly_benefit')
+                            ->label('Recibe el beneficio semanal')
+                            ->helperText('Cada lunes se le completa el saldo hasta el tope, tenga el correo que tenga. Quien tiene correo de una institución aliada lo recibe de todos modos.'),
+                    ]),
             ]);
     }
 }

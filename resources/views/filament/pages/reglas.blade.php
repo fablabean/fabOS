@@ -368,7 +368,26 @@
                     para que no queden dos asientos sueltos que alguien pueda dejar a medias.</li>
                 <li><b>Si la reserva se cancela o nadie llega</b>, se devuelve íntegro lo retenido.</li>
                 <li>Una reserva <em>solicitada</em> no retiene nada: todavía puede rechazarse.</li>
+                <li><b>La asesoría tiene precio plano</b> —hoy
+                    {{ number_format(\App\Support\Settings::precioDeAsesoriaMenor() / $moneda['minor_units'], 2, ',', '.') }}
+                    {{ $moneda['code'] }}, editable en <i>Finanzas → Cobros</i>—, porque lo que se paga es el
+                    tiempo de alguien del equipo, no el de una máquina. Se retiene al pedirla y se causa
+                    cuando quien atiende valida que la persona vino; si no vino o no la atendieron,
+                    vuelve. Sin saldo no hay asesoría, y se dice con el importe antes de elegir hora.</li>
             </ul>
+
+            <h3 style="margin-top:1.2rem">Con cuánto nace una cuenta</h3>
+            <div class="porque">
+                <b>La bienvenida es el semanal, pero en el acto.</b> Quien entra un martes con su correo
+                de la Universidad se encontraba con cero hasta el lunes siguiente, que es justo el día
+                en que ya no vuelve. Cada categoría dice con cuánto nace quien la recibe —el estudiante
+                general con lo mismo que el semanal; bootcamp, curso y diplomado con más, porque traen
+                más trabajo— y se abona al crearse la cuenta o al cambiar de categoría. Completa hasta la
+                cifra, una vez por categoría, y solo con el beneficio encendido. El semanal, además,
+                llega por categoría y no solo por correo: un estudiante de bootcamp con Gmail lo recibe.
+                Las matrículas de Educación Continua son las que ponen la subcategoría, y quedan con
+                quién las anotó.
+            </div>
 
             <h3 style="margin-top:1.2rem">Cómo se compone una tarifa</h3>
             <ul>

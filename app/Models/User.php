@@ -357,5 +357,18 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
                 $user->nick = self::nickDe($user->email);
             }
         });
+
+        /*
+         * La bienvenida (§12), aqui y no en cada sitio donde nace una cuenta:
+         * nacen por el codigo al correo, por el panel, por una matricula, por
+         * una preinscripcion... y la que se olvidara dejaria a alguien en cero
+         * hasta el lunes. Tambien cuando cambia la categoria: pasar a diplomado
+         * completa hasta lo del diplomado. El servicio decide si toca algo.
+         */
+        static::saved(function (self $user) {
+            if ($user->wasRecentlyCreated || $user->wasChanged('user_category_id') || $user->wasChanged('status')) {
+                app(\App\Services\Money\Bienvenida::class)->dar($user, auth()->user());
+            }
+        });
     }
 }

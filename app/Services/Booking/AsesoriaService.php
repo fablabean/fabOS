@@ -208,7 +208,9 @@ class AsesoriaService
                 return null;
             }
 
-            return Reservation::create([
+            $precio = \App\Support\Settings::precioDeAsesoriaMenor();
+
+            $reserva = Reservation::create([
                 'reservable_type'   => User::class,
                 'reservable_id'     => $asesor->id,
                 'user_id'           => $solicitante->id,
@@ -219,8 +221,47 @@ class AsesoriaService
                 'starts_at'         => $desde,
                 'ends_at'           => $hasta,
                 'purpose'           => $motivo,
+                'estimated_cost_minor' => $precio,
             ]);
+
+            /*
+             * Se retiene el precio al agendar, como el deposito de una maquina
+             * (§12): lo que se paga es el tiempo de alguien del equipo, y ese
+             * tiempo queda apartado desde ya. Se causa cuando quien atiende
+             * valida que la persona vino; si no vino, o no la atendieron,
+             * vuelve. Sin saldo no hay asesoria, y se dice con el importe.
+             */
+            try {
+                app(\App\Services\Money\ChargeService::class)->comprometer(
+                    $reserva,
+                    new \App\Services\Money\Quote(
+                        [['concepto' => 'Asesoría', 'detalle' => null, 'importe' => $precio]],
+                        $precio,
+                    ),
+                );
+            } catch (\App\Services\Ledger\LedgerException $e) {
+                throw new BookingException($e->getMessage());
+            }
+
+            return $reserva;
         });
+    }
+
+    /**
+     * Se causa el precio: la asesoria ocurrio. Lo retenido pasa a ingreso.
+     * Idempotente por la clave de la liquidacion, como el cierre de una maquina.
+     */
+    public function cobrar(Reservation $asesoria): void
+    {
+        $asesoria->update(['actual_cost_minor' => (int) $asesoria->estimated_cost_minor]);
+
+        app(\App\Services\Money\ChargeService::class)->liquidar($asesoria, (int) $asesoria->estimated_cost_minor);
+    }
+
+    /** No ocurrio: lo retenido vuelve integro. */
+    public function devolver(Reservation $asesoria, string $motivo): void
+    {
+        app(\App\Services\Money\ChargeService::class)->devolver($asesoria, $motivo);
     }
 
     /**

@@ -132,6 +132,20 @@ final class Settings
     }
 
     /**
+     * Lo que cuesta una asesoria, en unidades menores (§12).
+     *
+     * Un precio plano —2 FabCoins de fabrica— y no una tarifa por hora: la
+     * asesoria dura lo que dura, y lo que se paga es el tiempo de alguien del
+     * equipo, no el de una maquina. Cero: gratis. Se edita en Finanzas → Cobros.
+     */
+    public const ASESORIA_PRECIO = 'asesorias.precio_minor';
+
+    public static function precioDeAsesoriaMenor(): int
+    {
+        return max(0, (int) Setting::get(self::ASESORIA_PRECIO, 2 * config('fabos.currency.minor_units', 100)));
+    }
+
+    /**
      * Cuantas herramientas sueltas se pueden pedir en una sola reserva (§7).
      *
      * Un tope, porque sin el alguien se lleva el taller entero en una tarde

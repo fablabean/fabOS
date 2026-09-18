@@ -37,6 +37,9 @@ class Cobros extends Page
     /** La tienda por su cuenta: un precio puesto se cobra aunque las tarifas sigan en duda. */
     public bool $cobrosTienda = false;
 
+    /** Lo que cuesta una asesoría, en FabCoins. Plano: se paga el tiempo de una persona. */
+    public string $precioAsesoria = '2';
+
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -57,12 +60,16 @@ class Cobros extends Page
     {
         $this->cobrosActivos = Settings::cobrosActivos();
         $this->cobrosTienda = (bool) Setting::get(Settings::COBROS_TIENDA, false);
+        $this->precioAsesoria = rtrim(rtrim(number_format(Settings::precioDeAsesoriaMenor() / config('fabos.currency.minor_units'), 2, '.', ''), '0'), '.');
     }
 
     public function save(): void
     {
+        $this->validate(['precioAsesoria' => ['required', 'numeric', 'min:0', 'max:1000']]);
+
         Setting::put(Settings::COBROS_ACTIVOS, $this->cobrosActivos, 'finanzas');
         Setting::put(Settings::COBROS_TIENDA, $this->cobrosTienda, 'finanzas');
+        Setting::put(Settings::ASESORIA_PRECIO, (int) round(((float) $this->precioAsesoria) * config('fabos.currency.minor_units')), 'finanzas');
 
         $tienda = $this->cobrosActivos || $this->cobrosTienda;
 

@@ -35,9 +35,19 @@ class BeneficioSemanalTest extends TestCase
         $this->libro = app(LedgerService::class);
     }
 
+    /**
+     * Alguien que ya existía antes de esta semana.
+     *
+     * Se crea con el beneficio apagado a propósito: desde que existe la
+     * bienvenida (§12), una cuenta nueva de dominio aliado nace ya con el tope,
+     * y estas pruebas son sobre lo que pasa el lunes con quien ya estaba.
+     */
     private function persona(string $correo, int $saldoMenor = 0): User
     {
+        $activo = Settings::beneficioActivo();
+        Setting::put(Settings::BENEFICIO_ACTIVO, false, 'finanzas');
         $u = User::factory()->create(['email' => $correo, 'status' => 'activo']);
+        Setting::put(Settings::BENEFICIO_ACTIVO, $activo, 'finanzas');
 
         if ($saldoMenor > 0) {
             $this->libro->transferir(

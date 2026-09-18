@@ -10,7 +10,8 @@ class UserCategory extends Model
     protected $fillable = [
         'slug', 'name', 'position', 'rate_factor', 'allowance_minor',
         'max_hours_per_week', 'max_days_ahead', 'can_reserve', 'is_institutional',
-     'client_kind',];
+        'client_kind', 'welcome_minor', 'weekly_benefit',
+    ];
 
     protected function casts(): array
     {
@@ -18,12 +19,24 @@ class UserCategory extends Model
             'rate_factor'      => 'decimal:3',
             'can_reserve'      => 'boolean',
             'is_institutional' => 'boolean',
+            'weekly_benefit'   => 'boolean',
         ];
     }
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /** Las categorias de estudiante: la general y las de Educacion Continua. */
+    public function scopeDeEstudiante($query)
+    {
+        return $query->where('slug', 'like', 'estudiante%');
+    }
+
+    public function esDeEstudiante(): bool
+    {
+        return str_starts_with((string) $this->slug, 'estudiante');
     }
 
     /**

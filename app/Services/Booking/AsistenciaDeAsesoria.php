@@ -85,6 +85,11 @@ class AsistenciaDeAsesoria
             'status_reason' => 'Llegada validada por ' . $quienAtiende->name,
         ]);
 
+        // Vino: la asesoria ocurrio y se causa lo retenido (§12). Aqui y no al
+        // cerrarse sola, porque lo que la hace cobrable es que alguien del
+        // equipo diga que la persona estuvo.
+        app(AsesoriaService::class)->cobrar($asesoria);
+
         return $asesoria->refresh();
     }
 
@@ -119,6 +124,9 @@ class AsistenciaDeAsesoria
             'status'        => 'no_show',
             'status_reason' => 'No se presentó, según ' . $quienAtiende->name . ', que la atendía',
         ]);
+
+        // No se penaliza la ausencia, igual que con las maquinas (§12): vuelve.
+        app(AsesoriaService::class)->devolver($asesoria, 'No se presentó');
 
         return $asesoria->refresh();
     }
@@ -156,6 +164,8 @@ class AsistenciaDeAsesoria
                 . $desde->timezone(config('fabos.lab.timezone'))->format('H:i') . '.'
             );
         }
+
+        app(AsesoriaService::class)->devolver($asesoria, 'No lo atendieron');
 
         $asesoria->update([
             'status'        => 'cancelada',

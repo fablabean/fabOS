@@ -38,9 +38,19 @@ class BeneficioSemanal
         return $cuando->copy()->setTimezone(config('fabos.lab.timezone'))->isoFormat('GGGG-[W]WW');
     }
 
-    /** Si el correo de esta persona es de una institucion aliada. */
+    /**
+     * Si le toca: por su categoria, o por el correo de una institucion aliada.
+     *
+     * La categoria va primero porque es lo que alguien decidio a mano —una
+     * matricula de Educacion Continua—, y un estudiante de bootcamp con Gmail
+     * no deberia quedarse fuera por el correo que tenga.
+     */
     public static function tieneDerecho(User $persona): bool
     {
+        if ($persona->category?->weekly_benefit) {
+            return true;
+        }
+
         $correo = strtolower((string) $persona->email);
 
         foreach (Settings::dominiosDelBeneficio() as $dominio) {
@@ -56,6 +66,7 @@ class BeneficioSemanal
     public function elegibles(): Collection
     {
         return User::query()
+            ->with('category')
             ->where('status', 'activo')
             ->whereNotNull('email')
             ->orderBy('name')

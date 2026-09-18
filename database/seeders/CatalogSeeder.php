@@ -22,20 +22,30 @@ class CatalogSeeder extends Seeder
     private function categories(): void
     {
         $rows = [
-            // slug, nombre, factor, dotacion (FBC), institucional, reserva, tramite
-            ['estudiante',   'Estudiante',   0.5, 500, true,  true,  'estudiante'],
-            ['profesor',     'Profesor',     0.5, 800, true,  true,  'interno'],
-            ['colaborador',  'Colaborador',  0.0, 0,   true,  true,  'interno'],
-            ['externo',      'Externo',      2.0, 0,   false, true,  'externo'],
-            ['invitado',     'Invitado',     1.0, 0,   false, false, 'externo'],
+            // slug, nombre, factor, dotacion (FBC), institucional, reserva, tramite, bienvenida (FBC), semanal
+            //
+            // La bienvenida es con cuanto nace quien recibe la categoria; el
+            // semanal, si se le completa el saldo cada lunes. Los programas de
+            // Educacion Continua arrancan con mas porque traen mas trabajo al
+            // laboratorio, y despues van como cualquier estudiante.
+            ['estudiante',           'Estudiante',             0.5, 500, true,  true,  'estudiante', 8,  true],
+            ['estudiante-bootcamp',  'Estudiante · bootcamp',  0.5, 500, true,  true,  'estudiante', 10, true],
+            ['estudiante-curso',     'Estudiante · curso',     0.5, 500, true,  true,  'estudiante', 20, true],
+            ['estudiante-diplomado', 'Estudiante · diplomado', 0.5, 500, true,  true,  'estudiante', 30, true],
+            ['profesor',             'Profesor',               0.5, 800, true,  true,  'interno',    0,  false],
+            ['colaborador',          'Colaborador',            0.0, 0,   true,  true,  'interno',    0,  false],
+            ['externo',              'Externo',                2.0, 0,   false, true,  'externo',    0,  false],
+            ['invitado',             'Invitado',               1.0, 0,   false, false, 'externo',    0,  false],
         ];
 
-        foreach ($rows as $i => [$slug, $name, $factor, $allowance, $institutional, $canReserve, $tramite]) {
+        foreach ($rows as $i => [$slug, $name, $factor, $allowance, $institutional, $canReserve, $tramite, $bienvenida, $semanal]) {
             UserCategory::updateOrCreate(['slug' => $slug], [
                 'name'             => $name,
                 'position'         => $i,
                 'rate_factor'      => $factor,
                 'allowance_minor'  => $allowance * config('fabos.currency.minor_units'),
+                'welcome_minor'    => $bienvenida * config('fabos.currency.minor_units'),
+                'weekly_benefit'   => $semanal,
                 'is_institutional' => $institutional,
                 'can_reserve'      => $canReserve,
                 'max_days_ahead'   => $institutional ? 30 : 14,

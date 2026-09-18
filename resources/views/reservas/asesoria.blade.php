@@ -17,6 +17,20 @@
 
     <p class="help">{{ $explicacion }} Dura {{ $minutos }} minutos.</p>
 
+    @if (($precioMenor ?? 0) > 0)
+        @php $u = config('fabos.currency.minor_units'); $m = config('fabos.currency.code'); @endphp
+        <p class="help">
+            Cuesta <strong>{{ number_format($precioMenor / $u, 2, ',', '.') }} {{ $m }}</strong>,
+            que se retienen al pedirla y se cobran cuando quien te atiende valida que viniste.
+            Si no vienes o no te atienden, vuelven a tu saldo.
+            @if (\App\Support\Settings::cobrosActivos())
+                Tu saldo: <strong>{{ number_format(($saldoMenor ?? 0) / $u, 2, ',', '.') }} {{ $m }}</strong>.
+            @else
+                Los cobros están apagados: por ahora no se descuenta.
+            @endif
+        </p>
+    @endif
+
     @error('inicio') <p class="msg error">{{ $message }}</p> @enderror
 
     @if ($franjas->isEmpty())
