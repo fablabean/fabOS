@@ -131,6 +131,20 @@ final class Settings
             ?: 'Escanea el código QR con la app de tu banco, paga el valor indicado y respóndenos aquí con el comprobante.';
     }
 
+    /**
+     * Cuantas herramientas sueltas se pueden pedir en una sola reserva (§7).
+     *
+     * Un tope, porque sin el alguien se lleva el taller entero en una tarde
+     * «por si acaso». Es un numero que decide la coordinacion, no el codigo:
+     * se edita en Operacion → Prestamo de herramientas.
+     */
+    public const HERRAMIENTAS_POR_RESERVA = 'reservas.max_herramientas';
+
+    public static function maxHerramientasPorReserva(): int
+    {
+        return max(1, (int) Setting::get(self::HERRAMIENTAS_POR_RESERVA, 5));
+    }
+
     /** La base del acuerdo de servicio que redacta el sistema (§11). */
     public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
     public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';

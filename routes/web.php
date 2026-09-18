@@ -20,6 +20,7 @@ use App\Http\Controllers\PerfilesController;
 use App\Http\Controllers\PracticasController;
 use App\Http\Controllers\PreguntaController;
 use App\Http\Controllers\PreinscripcionController;
+use App\Http\Controllers\PrestamoDeHerramientasController;
 use App\Http\Controllers\ProjectBoardController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\PurchaseRequestController;
@@ -335,6 +336,10 @@ Route::middleware('auth')->group(function () {
 
     // Reservas (§10)
     Route::get('/reservar', [ReservationController::class, 'index'])->name('reservas.index');
+    // Varias herramientas de una vez. Antes que /reservar/{asset}, o
+    // «herramientas» se leeria como el id de un equipo.
+    Route::get('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'create'])->name('reservas.herramientas');
+    Route::post('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'store'])->name('reservas.herramientas.store');
     Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->name('reservas.show');
     Route::post('/reservar/{asset}', [ReservationController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('reservas.cancel');

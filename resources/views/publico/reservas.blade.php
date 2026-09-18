@@ -88,6 +88,24 @@
          background:var(--surface)}
     .mia b{font-size:.95rem}
     .mia span{font-size:.84rem;color:var(--muted);font-variant-numeric:tabular-nums}
+    /* Elegir varias herramientas: la casilla encima de la tarjeta, y una
+       barra fija abajo mientras haya algo marcado. */
+    .con-casilla{position:relative}
+    .con-casilla.elegida .equipo{outline:2px solid var(--accent)}
+    .casilla{
+        position:absolute;top:.6rem;right:.6rem;z-index:2;display:flex;align-items:center;gap:.35rem;
+        background:var(--surface);border:1px solid var(--rule);border-radius:999px;
+        padding:.25rem .6rem .25rem .45rem;font-size:.78rem;font-weight:600;cursor:pointer;
+    }
+    .casilla input{margin:0;accent-color:var(--accent)}
+    .casilla:has(input:disabled){opacity:.45;cursor:not-allowed}
+    .barra-varias{
+        position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;
+        justify-content:space-between;margin:1rem 0 0;padding:.8rem 1.1rem;
+        background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(8px);
+        border:1px solid var(--rule);border-radius:8px;box-shadow:0 -6px 24px rgba(0,0,0,.08);
+    }
+    .barra-varias .cuenta{font-weight:600}
 @endsection
 
 @section('content')
@@ -418,11 +436,27 @@
             </a>
         </p>
 
+        {{-- En herramientas, la lista es también un formulario: se marcan
+             varias y se reservan juntas. Las casillas van FUERA del enlace de
+             la tarjeta, que sigue llevando a la ficha de cada una. --}}
+        @if ($modo === 'herramientas')
+            <form method="GET" action="{{ route('reservas.herramientas') }}" id="varias"
+                  data-tope="{{ $maxHerramientas }}">
+        @endif
+
         @foreach ($eligiendoMaquina ? $porArea : [] as $nombreArea => $equipos)
             <section id="{{ $equipos->first()->area?->slug }}">
                 <p class="rotulo">{{ $nombreArea }} · {{ $equipos->count() }}</p>
                 <div class="equipos">
                     @foreach ($equipos as $e)
+                        @if ($modo === 'herramientas')
+                        <div class="con-casilla">
+                            <label class="casilla" title="Añadir a la reserva">
+                                <input type="checkbox" name="h[]" value="{{ $e->id }}"
+                                       @checked(in_array($e->id, $marcadas, true))>
+                                <span>Elegir</span>
+                            </label>
+                        @endif
                         {{-- En asesoría se va derecho a pedir el acompañamiento, si el
                              equipo tiene asesores declarados. En lo demás, a la ficha. --}}
                         {{-- A donde lleva cada máquina depende del camino:
@@ -460,10 +494,51 @@
                                 </span>
                             </div>
                         </a>
+                        @if ($modo === 'herramientas')
+                        </div>
+                        @endif
                     @endforeach
                 </div>
             </section>
         @endforeach
+
+        @if ($modo === 'herramientas')
+                {{-- La barra aparece al marcar la primera. Cuenta, avisa del
+                     tope y lleva a elegir la hora para todas. --}}
+                <div class="barra-varias" hidden>
+                    <span class="cuenta"></span>
+                    <button type="submit" class="btn">Reservar juntas</button>
+                </div>
+            </form>
+
+            <script>
+                (function () {
+                    var form = document.getElementById('varias');
+                    var tope = parseInt(form.dataset.tope, 10) || 5;
+                    var barra = form.querySelector('.barra-varias');
+                    var cuenta = barra.querySelector('.cuenta');
+                    var casillas = form.querySelectorAll('input[name="h[]"]');
+
+                    function pinta() {
+                        var marcadas = form.querySelectorAll('input[name="h[]"]:checked').length;
+                        barra.hidden = marcadas === 0;
+                        cuenta.textContent = marcadas === 1
+                            ? '1 herramienta elegida'
+                            : marcadas + ' herramientas elegidas' + (marcadas >= tope ? ' · es el máximo' : ' · hasta ' + tope);
+
+                        // Llegado al tope, las demás no se pueden marcar: es
+                        // mejor que dejarlas marcar y fallar al enviar.
+                        casillas.forEach(function (c) {
+                            c.disabled = ! c.checked && marcadas >= tope;
+                            c.closest('.con-casilla').classList.toggle('elegida', c.checked);
+                        });
+                    }
+
+                    casillas.forEach(function (c) { c.addEventListener('change', pinta); });
+                    pinta();
+                })();
+            </script>
+        @endif
 
         @if ($eligiendoMaquina && $porArea->isEmpty())
             <p class="vacio">

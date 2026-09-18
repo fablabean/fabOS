@@ -228,6 +228,11 @@ class PublicSiteController extends Controller
                 ->filter(fn (Asset $a) => ($estados[$a->id]['estado'] ?? null) === 'libre')
                 ->count(),
             'identificada' => $quien !== null,
+            // Para la lista de herramientas: cuantas caben en una reserva, y
+            // cuales venian ya marcadas (quien vuelve a anadir otra no pierde
+            // las que tenia).
+            'maxHerramientas' => \App\Support\Settings::maxHerramientasPorReserva(),
+            'marcadas' => array_map('intval', (array) $request->input('h', [])),
         ]);
     }
 

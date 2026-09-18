@@ -234,6 +234,83 @@ class BookingService
     }
 
     /**
+     * Varias herramientas sueltas, a la misma hora, en una sola reserva (§7).
+     *
+     * Quien va a lijar y taladrar no quiere reservar dos veces. Se reservan
+     * una por una —cada una con su certifab, su cupo y su cotización— pero
+     * dentro de una transacción: si la tercera no se puede, no queda ninguna.
+     * La primera es la madre y las demás cuelgan de ella, así que se cancelan
+     * y se cierran juntas, como las herramientas de un espacio.
+     *
+     * Con un tope, que decide la coordinación (`Settings`): sin él alguien se
+     * lleva el taller entero en una tarde «por si acaso».
+     *
+     * @param  iterable<Asset>  $herramientas
+     *
+     * @throws BookingException
+     */
+    public function reservarHerramientas(
+        User $user,
+        iterable $herramientas,
+        CarbonInterface $desde,
+        CarbonInterface $hasta,
+        ?string $proposito = null,
+    ): Reservation {
+        $herramientas = collect($herramientas)->unique('id')->values();
+        $tope = \App\Support\Settings::maxHerramientasPorReserva();
+
+        if ($herramientas->isEmpty()) {
+            throw new BookingException('Elige al menos una herramienta.');
+        }
+
+        if ($herramientas->count() > $tope) {
+            throw new BookingException(
+                'Se pueden pedir hasta ' . $tope . ' herramientas en una reserva, y elegiste '
+                . $herramientas->count() . '. Deja las que de verdad vas a usar.'
+            );
+        }
+
+        if ($noEs = $herramientas->first(fn (Asset $a) => ! $a->esHerramienta())) {
+            throw new BookingException($noEs->name . ' no es una herramienta: se reserva por su cuenta.');
+        }
+
+        return DB::transaction(function () use ($user, $herramientas, $desde, $hasta, $proposito) {
+            $nombres = $herramientas->pluck('name');
+            $primera = $herramientas->first();
+
+            // La madre dice qué va con ella: es la única fila que la persona ve
+            // en su lista, y sin eso parecería que reservó una sola.
+            $madre = $this->reservar(
+                $user, $primera, $desde, $hasta,
+                $herramientas->count() > 1
+                    ? trim(($proposito ? $proposito . ' · ' : '') . 'Con ' . $nombres->slice(1)->implode(', '))
+                    : $proposito,
+            );
+
+            $hijas = $herramientas->slice(1)->map(function (Asset $h) use ($user, $desde, $hasta, $primera, $madre) {
+                $hija = $this->reservar($user, $h, $desde, $hasta, 'Con ' . $primera->name);
+                $hija->update(['parent_reservation_id' => $madre->id]);
+
+                return $hija;
+            });
+
+            // Si una necesita visto bueno, el conjunto entero lo espera: no
+            // tiene sentido confirmar la lijadora y dejar la sierra en duda.
+            $todas = $hijas->prepend($madre);
+
+            if ($todas->contains(fn (Reservation $r) => $r->status === 'solicitada')) {
+                foreach ($todas as $r) {
+                    if ($r->status !== 'solicitada') {
+                        $r->update(['status' => 'solicitada', 'mode' => 'con_aprobacion', 'status_reason' => 'Va con una herramienta que requiere visto bueno.']);
+                    }
+                }
+            }
+
+            return $madre->refresh();
+        });
+    }
+
+    /**
      * Colaboradores que podrían acompañar: en jornada, certificados y libres.
      *
      * @return Collection<int,User>
