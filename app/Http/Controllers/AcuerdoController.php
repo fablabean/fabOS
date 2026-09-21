@@ -70,4 +70,26 @@ class AcuerdoController extends Controller
 
         return response($acuerdo->render($project, $datos));
     }
+
+    /** La vista previa del acuerdo de alianza, con lo escrito en el formulario. */
+    public function alianza(Request $request, Project $project, string $token)
+    {
+        $quien = $request->user();
+
+        abort_unless($quien instanceof User && $quien->hasAnyRole(User::rolesDelEquipo()), 403);
+
+        $datos = Cache::get('alianza:' . $token);
+
+        abort_unless(is_array($datos) && (int) ($datos['project_id'] ?? 0) === $project->id, 404);
+
+        $acuerdo = app(\App\Services\Projects\AcuerdoDeAlianza::class);
+
+        if ($request->boolean('pdf')) {
+            return Pdf::loadHTML($acuerdo->render($project, $datos, paraPdf: true))
+                ->setPaper('letter')
+                ->stream('alianza-' . strtolower($project->code) . '.pdf');
+        }
+
+        return response($acuerdo->render($project, $datos));
+    }
 }

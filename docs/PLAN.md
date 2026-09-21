@@ -225,6 +225,10 @@ decisión tuya
 - [x] Equipo del proyecto con proveedores y cliente, tengan cuenta o no
 - [x] Gantt y Kanban sobre una sola tabla de tareas, con tablero propio para
       mirar en reunión y mover tarjetas de un clic
+- [x] Alianzas: un proyecto con modalidad «alianza» tiene partes que aportan
+      —el laboratorio entre ellas— con aporte valorado y participación;
+      acuerdo de alianza con cláusulas propias; alianzas abiertas en
+      `/alianzas`, donde cualquiera pide entrar y queda propuesto
 - [ ] Actas de hito firmadas (hoy se cargan como documento de tipo «acta»)
 - [x] Costeo real contra lo acordado: tiempo de máquina, material a costo,
       compras recibidas y horas del equipo, todo en pesos y con desglose

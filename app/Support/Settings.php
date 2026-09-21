@@ -163,6 +163,9 @@ final class Settings
     public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
     public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';
 
+    /** La base del acuerdo de alianza: varias partes que aportan (§11). */
+    public const ALIANZA_CLAUSULAS = 'proyectos.alianza_clausulas';
+
     /** La tienda cobra si los cobros generales estan encendidos, o si se encendio ella sola. */
     public static function cobrosEnTienda(): bool
     {

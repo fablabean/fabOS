@@ -22,6 +22,7 @@
     <a href="{{ route('publico.reservas') }}">Reservas</a>
     <a href="{{ route('formacion') }}">Formación</a>
     <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
+    <a href="{{ route('alianzas.index') }}">Alianzas</a>
     <a href="{{ route('tienda.publica') }}">Tienda</a>
     <a href="{{ route('preguntas.index') }}">Preguntas</a>
 

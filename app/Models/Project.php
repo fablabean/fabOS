@@ -21,12 +21,14 @@ class Project extends Model
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
+        'modality', 'alliance_open', 'alliance_pitch',
     ];
 
     protected function casts(): array
     {
         return [
             'is_internal' => 'boolean',
+            'alliance_open' => 'boolean',
             'contract_sent_at' => UtcDateTime::class,
             'starts_on' => 'date',
             'due_on'    => 'date',
@@ -213,6 +215,54 @@ class Project extends Model
         'estudiante' => 'Estudiante',
         'externo'    => 'Empresa u organización de fuera',
     ];
+
+    /**
+     * Cómo se relaciona el laboratorio con el proyecto (§11).
+     *
+     * Servicio: un cliente encarga y paga. Alianza: varias partes ponen algo
+     * cada una —el laboratorio entre ellas— y lo que se construye es de todos
+     * según lo que pusieron. Cambia quién es parte y cómo se habla del dinero;
+     * el embudo, las tareas y los costos son los mismos.
+     */
+    public const MODALIDADES = [
+        'servicio' => 'Servicio: un cliente encarga',
+        'alianza'  => 'Alianza: varias partes aportan',
+    ];
+
+    public function esAlianza(): bool
+    {
+        return $this->modality === 'alianza';
+    }
+
+    public function partners(): HasMany
+    {
+        return $this->hasMany(ProjectPartner::class)->orderByRaw("array_position(ARRAY['laboratorio','iniciador','aliado','inversor'], role)")->orderBy('id');
+    }
+
+    /** Lo que ponen entre todos los confirmados, en pesos. */
+    public function totalAportado(): int
+    {
+        return (int) $this->partners()->confirmados()->sum('contribution_value');
+    }
+
+    /** Cuánta participación está repartida entre los confirmados. */
+    public function participacionRepartida(): float
+    {
+        return (float) $this->partners()->confirmados()->sum('share_percent');
+    }
+
+    /** Si está en el sitio recibiendo aliados. */
+    public function admiteAliados(): bool
+    {
+        return $this->esAlianza() && $this->alliance_open && ! $this->estaCerrado()
+            && ! in_array($this->status, ['pausado', 'perdido', 'descartado'], true);
+    }
+
+    public function scopeAlianzasAbiertas(Builder $query): Builder
+    {
+        return $query->where('modality', 'alianza')->where('alliance_open', true)
+            ->where('status', 'activo')->whereNot('stage', 'cierre');
+    }
 
     /** Solo el área institucional pasa por el traslado presupuestal. */
     public function esClienteInterno(): bool

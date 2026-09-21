@@ -354,6 +354,57 @@ class NotificationTemplateSeeder extends Seeder
                     TXT,
             ],
             [
+                'key'          => 'alianza.union_propuesta',
+                'name'         => 'Alguien quiere unirse a una alianza',
+                'description'  => 'A quien lleva el proyecto, cuando alguien pide entrar a la alianza desde el sitio.',
+                'is_essential' => true,
+                'subject'      => '{quien} quiere unirse a {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {quien} pidió unirse a la alianza «{proyecto}» ({codigo}) desde el sitio. Dice que aportaría: {aporte}.
+
+                    Queda como propuesto hasta que lo confirmes en la pestaña de aliados del proyecto:
+
+                    {enlace}
+                    TXT,
+                'variables'    => ['nombre_pila', 'quien', 'proyecto', 'codigo', 'aporte', 'enlace'],
+            ],
+            [
+                'key'          => 'alianza.confirmado',
+                'name'         => 'Ya eres parte de la alianza',
+                'description'  => 'A quien queda confirmado como parte de una alianza.',
+                'is_essential' => true,
+                'subject'      => 'Ya eres parte de {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    {quien} te confirmó como parte de la alianza «{proyecto}» ({codigo}). Lo que pones: {aporte}.
+
+                    El siguiente paso es el acuerdo de alianza, que te llega por este mismo correo cuando esté listo para firmar. Mientras tanto, cualquier duda, respóndenos aquí.
+                    TXT,
+                'variables'    => ['nombre_pila', 'quien', 'proyecto', 'codigo', 'aporte'],
+            ],
+            [
+                'key'          => 'alianza.acuerdo',
+                'name'         => 'Acuerdo de alianza para firmar',
+                'description'  => 'A cada parte de una alianza, con el enlace al acuerdo generado.',
+                'is_essential' => true,
+                'subject'      => 'Acuerdo de alianza de {proyecto} ({codigo})',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Este es el acuerdo de alianza del proyecto «{proyecto}» ({codigo}), con las partes, lo que pone cada una y su participación:
+
+                    {enlace}
+
+                    {mensaje}
+
+                    Si algo no cuadra, dínoslo antes de firmar: se corrige y se vuelve a generar.
+                    TXT,
+                'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'enlace', 'mensaje'],
+            ],
+            [
                 'key'          => 'asesoria.confirmada',
                 'name'         => 'Asesoría confirmada',
                 'description'  => 'A quien pide una asesoría, cuando queda agendada.',

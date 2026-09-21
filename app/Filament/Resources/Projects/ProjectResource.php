@@ -131,6 +131,7 @@ class ProjectResource extends Resource
         return [
             RelationManagers\CommentsRelationManager::class,
             RelationManagers\ContenidoRelationManager::class,
+            RelationManagers\PartnersRelationManager::class,
             RelationManagers\MembersRelationManager::class,
             RelationManagers\AssetsRelationManager::class,
             RelationManagers\ProduccionesRelationManager::class,

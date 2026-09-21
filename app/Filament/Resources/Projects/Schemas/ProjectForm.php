@@ -85,6 +85,28 @@ class ProjectForm
                             ->required()
                             ->helperText('Cambia el trámite, no el trabajo: a un área de la Universidad hay que explicarle el traslado presupuestal, y a nadie más.'),
 
+                        // La modalidad se cambia con la acción «Convertir en
+                        // alianza», que también siembra las partes; aquí solo
+                        // se ve, y lo que sí se decide es si sale en el sitio.
+                        Placeholder::make('modalidad')
+                            ->label('Modalidad')
+                            ->content(fn (?Project $record) => Project::MODALIDADES[$record?->modality ?? 'servicio'] ?? 'Servicio')
+                            ->visible(fn (?Project $record) => $record?->esAlianza()),
+
+                        Toggle::make('alliance_open')
+                            ->label('Abierta a nuevos aliados en el sitio')
+                            ->helperText('Sale en /alianzas con sus partes y lo que busca, y quien quiera unirse pide entrar. Queda propuesto hasta que lo confirmes.')
+                            ->visible(fn (?Project $record) => $record?->esAlianza())
+                            ->live(),
+
+                        Textarea::make('alliance_pitch')
+                            ->label('Qué busca la alianza')
+                            ->rows(3)
+                            ->placeholder('Un aliado en electrónica de potencia y capital para el primer lote de diez unidades.')
+                            ->helperText('Es lo que se lee en el sitio. Sin dinero ni datos de nadie.')
+                            ->visible(fn (?Project $record, Get $get) => $record?->esAlianza() && $get('alliance_open'))
+                            ->columnSpanFull(),
+
                         TextInput::make('code')
                             ->label('Código')
                             ->disabled()

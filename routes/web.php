@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AcuerdoController;
+use App\Http\Controllers\AlianzaController;
 use App\Http\Controllers\ArchivoPrivadoController;
 use App\Http\Controllers\AsesoriaController;
 use App\Http\Controllers\Auth\CarnetLoginController;
@@ -169,6 +170,19 @@ Route::post('/practicas/{call:slug}', [PracticasController::class, 'store'])
 Route::get('/practicas/{call:slug}/gracias', [PracticasController::class, 'gracias'])
     ->name('practicas.gracias');
 
+/*
+ * Las alianzas abiertas (§11): lo que el laboratorio esta construyendo con
+ * otros, y a lo que cualquiera puede pedir unirse. Sin sesion, con captcha
+ * en la puerta que guarda datos y manda correo, como las demas. Por codigo
+ * de proyecto en la direccion: PRY-2026-0058 se dice en voz alta.
+ */
+Route::get('/alianzas', [AlianzaController::class, 'index'])->name('alianzas.index');
+Route::get('/alianzas/{project:code}', [AlianzaController::class, 'show'])->name('alianzas.show');
+Route::post('/alianzas/{project:code}', [AlianzaController::class, 'store'])
+    ->middleware(['throttle:40,60', 'captcha:correo'])
+    ->name('alianzas.unirme');
+Route::get('/alianzas/{project:code}/gracias', [AlianzaController::class, 'gracias'])->name('alianzas.gracias');
+
 // La propuesta con que se responde. Se entra por el enlace firmado del correo o
 // con la sesion de quien la pidio: la comprobacion vive en el controlador
 // porque las dos puertas tienen que valer.
@@ -283,6 +297,9 @@ Route::middleware('auth')->group(function () {
     // La vista previa del acuerdo de servicio, con lo escrito en el formulario.
     Route::get('/panel/acuerdo/{project}/{token}', [AcuerdoController::class, 'vista'])
         ->name('panel.acuerdo');
+    // Y la del acuerdo de alianza, por el mismo camino.
+    Route::get('/panel/alianza/{project}/{token}', [AcuerdoController::class, 'alianza'])
+        ->name('panel.alianza');
 
     // La hoja de un perfil profesional, para mandarla a compras de la
     // Universidad. Con sesion y no con enlace firmado: aqui hay cedulas y

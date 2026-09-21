@@ -496,6 +496,7 @@ class ProjectsTable
                     ->visible(fn (Project $r) => self::puedeManejar($r) && filled($r->correoDeLaPropuesta())),
 
                 self::tablero(),
+                self::alianza(),
 
                 // Contarlo en el sitio publico: crea el borrador de una pagina
                 // con lo que ya esta registrado (§3). Lo que se socializa sale
@@ -529,6 +530,41 @@ class ProjectsTable
     private static function puedeManejar(Project $proyecto): bool
     {
         return ProjectResource::canEdit($proyecto);
+    }
+
+    /**
+     * Convertir un servicio en alianza (§11).
+     *
+     * Alguien pide ayuda para un dron y, en vez de cobrarle, el laboratorio
+     * se alía. No se borra nada: quien trajo la idea pasa a ser el primer
+     * aliado, el laboratorio el segundo, y el embudo sigue donde estaba.
+     */
+    private static function alianza(): Action
+    {
+        return Action::make('alianza')
+            ->label('Convertir en alianza')
+            ->iconButton()
+            ->tooltip('Convertir en alianza: varias partes aportan')
+            ->icon('heroicon-o-users')
+            ->color('info')
+            ->visible(fn (Project $r) => ! $r->esAlianza() && ! $r->estaCerrado() && self::puedeManejar($r))
+            ->requiresConfirmation()
+            ->modalHeading(fn (Project $r) => 'Convertir ' . $r->code . ' en alianza')
+            ->modalDescription(fn (Project $r) => 'Deja de ser un encargo con un cliente y pasa a ser un proyecto con partes que aportan. '
+                . $r->quienPide() . ' queda como quien trajo la idea, y ' . config('fabos.lab.name') . ' como parte. '
+                . 'Los aportes y la participación se anotan en la pestaña «Aliados». No se puede deshacer desde aquí.')
+            ->modalSubmitActionLabel('Convertir')
+            ->action(function (Project $record) {
+                try {
+                    app(\App\Services\Projects\Alianzas::class)->convertir($record, auth()->user());
+                } catch (ProjectException $e) {
+                    Notification::make()->title('No se pudo')->body($e->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title('Ahora es una alianza')->body('Suma las partes en la pestaña «Aliados» de la ficha.')->success()->send();
+            });
     }
 
     private static function tablero(): Action
