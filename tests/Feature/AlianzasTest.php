@@ -340,4 +340,17 @@ class AlianzasTest extends TestCase
 
         $this->assertTrue($parte->fresh()->estaConfirmado());
     }
+    public function test_desde_la_ficha_se_convierte_con_un_boton_con_texto(): void
+    {
+        $this->admin();
+        $p = $this->proyecto();
+
+        Livewire::test(EditProject::class, ['record' => $p->id])
+            ->assertActionVisible('alianza')
+            ->callAction('alianza')
+            ->assertHasNoActionErrors();
+
+        $this->assertTrue($p->fresh()->esAlianza());
+        Livewire::test(EditProject::class, ['record' => $p->id])->assertActionHidden('alianza');
+    }
 }
