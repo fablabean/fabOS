@@ -301,7 +301,9 @@ class CreateReservation extends CreateRecord
                         ->columnSpanFull()
                         // Con varias salas se pregunta por sala, mas abajo.
                         ->visible(fn ($get) => $get('tipo') !== 'espacio' || count(array_filter((array) $get('space_ids'))) <= 1)
-                        ->helperText('Opcional. Quedan anotados en la reserva y salen en la lista.'),
+                        ->helperText(fn ($get) => $get('tipo') === 'espacio'
+                            ? 'Opcional. Quedan anotados en la reserva y salen en la lista.'
+                            : 'Opcional. Con UNA persona del equipo elegida, la reserva va acompañada: quien la usa no necesita el certifab —responde quien acompaña, que sí tiene que estar habilitado y libre— y su tiempo queda apartado. Con varias, quedan anotadas.'),
 
                     /*
                      * Con varias salas, quien va a cual. Una actividad
@@ -415,12 +417,21 @@ class CreateReservation extends CreateRecord
         $quien = User::findOrFail($data['user_id']);
         $paraQue = $data['proposito'] ?? null;
 
+        /*
+         * Quien acompaña, si se eligio a UNA persona del equipo: entonces la
+         * reserva va acompañada de verdad —la persona no necesita certifab,
+         * responde quien acompaña— y no solo anotada. Con varios elegidos
+         * siguen siendo acompañantes anotados, como antes.
+         */
+        $acompanantes = User::role(User::rolesDelEquipo())->whereIn('id', array_map('intval', (array) ($data['acompanantes'] ?? [])))->get();
+        $acompanante = $acompanantes->count() === 1 && $data['tipo'] !== 'espacio' ? $acompanantes->first() : null;
+
         $crear = fn (Carbon $desde, Carbon $hasta): Reservation => match ($data['tipo']) {
             'autonomia' => app(BookingService::class)->reservar(
-                $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue,
+                $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue, [], $acompanante,
             ),
             'herramientas' => app(BookingService::class)->reservarHerramientas(
-                $quien, Asset::whereIn('id', array_map('intval', (array) ($data['herramienta_ids'] ?? [])))->get(), $desde, $hasta, $paraQue,
+                $quien, Asset::whereIn('id', array_map('intval', (array) ($data['herramienta_ids'] ?? [])))->get(), $desde, $hasta, $paraQue, $acompanante,
             ),
             'espacio' => app(EspacioBookingService::class)->reservarVarios(
                 $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),

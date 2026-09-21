@@ -35,6 +35,14 @@ use Illuminate\Support\Facades\DB;
  */
 class BookingService
 {
+    /**
+     * Con varias herramientas acompañadas, el tiempo de quien acompaña se
+     * aparta una sola vez, en la madre; las hijas van acompañadas por la
+     * misma persona sin volver a apartarlo ni a comprobar que esté libre
+     * —ya no lo está: lo ocupa la madre—.
+     */
+    private bool $sinApartarAlAcompanante = false;
+
     public function __construct(
         private EligibilityService $eligibility,
         private CoverageService $coverage,
@@ -55,6 +63,7 @@ class BookingService
         CarbonInterface $hasta,
         ?string $proposito = null,
         array $complementos = [],
+        ?User $acompanante = null,
     ): Reservation {
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -76,7 +85,20 @@ class BookingService
 
         $veredicto = $this->eligibility->evaluar($user, $asset, $minutos);
 
-        if (! $veredicto->puedeReservar()) {
+        /*
+         * Con alguien del equipo elegido a mano, la persona no necesita el
+         * certifab: quien responde es quien acompaña (§10). Es lo que pasa en
+         * el mostrador —«te presto el robot, pero voy contigo»— y no tenia
+         * como escribirse. Lo demas se exige igual: cuenta activa, categoria
+         * que reserve, y que quien acompaña este habilitado y libre.
+         */
+        if ($acompanante !== null) {
+            $this->exigirQuePuedaAcompanar($acompanante, $user, $asset, $desde, $hasta);
+
+            if (! $veredicto->puedeReservar() && ! $this->soloLeFaltaElCertifab($veredicto)) {
+                throw new BookingException($veredicto->motivo, $veredicto->faltantes);
+            }
+        } elseif (! $veredicto->puedeReservar()) {
             throw new BookingException($veredicto->motivo, $veredicto->faltantes);
         }
 
@@ -85,7 +107,12 @@ class BookingService
         $modo = 'directa';
         $motivo = null;
 
-        if ($veredicto->requiereAcompanante()) {
+        if ($acompanante !== null) {
+            // Acompañada por quien se eligio: se confirma, y el tiempo de esa
+            // persona queda apartado como en cualquier acompañamiento.
+            $supervisor = $acompanante;
+            $modo = 'con_aprobacion';
+        } elseif ($veredicto->requiereAcompanante()) {
             if ($veredicto->requierePresencia()) {
                 // Hace falta alguien de carne y hueso, en jornada y certificado.
                 $supervisor = $this->buscarAcompanante($asset, $desde, $hasta);
@@ -204,7 +231,7 @@ class BookingService
                     ], $reserva);
                 }
 
-                if ($supervisor) {
+                if ($supervisor && ! $this->sinApartarAlAcompanante) {
                     // El tiempo del colaborador es un recurso reservable más,
                     // enlazado a la reserva que acompaña para poder soltarlo.
                     Reservation::create([
@@ -255,6 +282,7 @@ class BookingService
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?string $proposito = null,
+        ?User $acompanante = null,
     ): Reservation {
         $herramientas = collect($herramientas)->unique('id')->values();
         $tope = \App\Support\Settings::maxHerramientasPorReserva();
@@ -274,7 +302,7 @@ class BookingService
             throw new BookingException($noEs->name . ' no es una herramienta: se reserva por su cuenta.');
         }
 
-        return DB::transaction(function () use ($user, $herramientas, $desde, $hasta, $proposito) {
+        return DB::transaction(function () use ($user, $herramientas, $desde, $hasta, $proposito, $acompanante) {
             $nombres = $herramientas->pluck('name');
             $primera = $herramientas->first();
 
@@ -285,10 +313,15 @@ class BookingService
                 $herramientas->count() > 1
                     ? trim(($proposito ? $proposito . ' · ' : '') . 'Con ' . $nombres->slice(1)->implode(', '))
                     : $proposito,
+                acompanante: $acompanante,
             );
 
-            $hijas = $herramientas->slice(1)->map(function (Asset $h) use ($user, $desde, $hasta, $primera, $madre) {
-                $hija = $this->reservar($user, $h, $desde, $hasta, 'Con ' . $primera->name);
+            // El acompañante va solo en la madre: su tiempo se aparta una vez,
+            // no una por herramienta.
+            $hijas = $herramientas->slice(1)->map(function (Asset $h) use ($user, $desde, $hasta, $primera, $madre, $acompanante) {
+                $hija = $acompanante
+                    ? $this->reservarAcompanadaSinApartarTiempo($user, $h, $desde, $hasta, 'Con ' . $primera->name, $acompanante)
+                    : $this->reservar($user, $h, $desde, $hasta, 'Con ' . $primera->name);
                 $hija->update(['parent_reservation_id' => $madre->id]);
 
                 return $hija;
@@ -415,6 +448,56 @@ class BookingService
             ->get()
             ->filter(fn (Asset $a) => $this->estaLibre(Asset::class, $a->id, $desde, $hasta))
             ->values();
+    }
+
+    /**
+     * Quien acompaña tiene que poder: ser del equipo, estar activo, estar
+     * habilitado en ese equipo —certifab vigente o asesor declarado— y libre
+     * a esa hora. Y no ser la misma persona a la que acompaña.
+     *
+     * @throws BookingException
+     */
+    private function exigirQuePuedaAcompanar(User $acompanante, User $user, Asset $asset, CarbonInterface $desde, CarbonInterface $hasta): void
+    {
+        if ($acompanante->id === $user->id) {
+            throw new BookingException('Nadie se acompaña a sí mismo: elige a otra persona del equipo.');
+        }
+
+        if ($acompanante->status !== 'activo' || ! $acompanante->hasAnyRole(User::rolesDelEquipo())) {
+            throw new BookingException($acompanante->name . ' no es del equipo del laboratorio, y solo el equipo acompaña.');
+        }
+
+        $habilitado = $this->eligibility->evaluar($acompanante, $asset)->puedeReservar()
+            || $asset->advisors()->whereKey($acompanante->id)->exists();
+
+        if (! $habilitado) {
+            throw new BookingException(
+                $acompanante->name . ' no está habilitado en ' . $asset->name
+                . ': quien acompaña necesita el certifab o estar declarado como asesor del equipo.'
+            );
+        }
+
+        if (! $this->sinApartarAlAcompanante && ($porQue = $this->porQueNoEstaLibre($acompanante, $desde, $hasta))) {
+            throw new BookingException($porQue);
+        }
+    }
+
+    /** Una hija acompañada: misma persona, sin apartarle el tiempo otra vez. */
+    private function reservarAcompanadaSinApartarTiempo(User $user, Asset $asset, CarbonInterface $desde, CarbonInterface $hasta, ?string $proposito, User $acompanante): Reservation
+    {
+        $this->sinApartarAlAcompanante = true;
+
+        try {
+            return $this->reservar($user, $asset, $desde, $hasta, $proposito, [], $acompanante);
+        } finally {
+            $this->sinApartarAlAcompanante = false;
+        }
+    }
+
+    /** El veredicto dice que no, pero solo por el certifab: lo demas esta bien. */
+    private function soloLeFaltaElCertifab(Eligibility $veredicto): bool
+    {
+        return str_starts_with($veredicto->motivo, 'Todavía no tienes el certifab');
     }
 
     private function buscarAcompanante(Asset $asset, CarbonInterface $desde, CarbonInterface $hasta): ?User

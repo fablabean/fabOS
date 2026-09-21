@@ -522,4 +522,75 @@ class CrearReservaDesdeElPanelTest extends TestCase
 
         $this->assertSame(1, Reservation::count(), 'solo la de la otra persona: de la serie no quedó ninguna');
     }
+    // --------------------------------------------- acompañado por el equipo
+
+    /**
+     * «Te presto el robot, pero voy contigo»: sin certifab, con alguien del
+     * equipo habilitado elegido a mano, la reserva pasa y responde quien
+     * acompaña, cuyo tiempo queda apartado.
+     */
+    public function test_sin_certifab_pasa_si_alguien_habilitado_del_equipo_acompana(): void
+    {
+        $persona = $this->alguien();
+        $robot = $this->herramienta('Robot Unitree');
+        $jefa = User::whereHas('roles')->first();
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $robot->id, 'es_responsable' => true]);
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'herramientas', 'user_id' => $persona->id, 'herramienta_ids' => [$robot->id],
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'acompanantes' => [$jefa->id],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $r = Reservation::where('reservable_type', Asset::class)->firstOrFail();
+        $this->assertSame('confirmada', $r->status);
+        $this->assertSame($jefa->id, $r->supervisor_id, 'responde quien acompaña');
+
+        // Y el tiempo de quien acompaña queda apartado, una sola vez.
+        $this->assertSame(1, Reservation::where('reservable_type', User::class)->where('reservable_id', $jefa->id)->count());
+    }
+
+    /** Quien acompaña tiene que poder: sin certifab ni asesoría declarada, no. */
+    public function test_quien_acompana_tiene_que_estar_habilitado(): void
+    {
+        $persona = $this->alguien();
+        $robot = $this->herramienta('Robot Unitree');
+        $jefa = User::whereHas('roles')->first();
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'herramientas', 'user_id' => $persona->id, 'herramienta_ids' => [$robot->id],
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'acompanantes' => [$jefa->id],
+            ])
+            ->call('create');
+
+        $this->assertSame(0, Reservation::count());
+    }
+
+    /** Con varias herramientas acompañadas, el tiempo del acompañante se aparta una vez. */
+    public function test_varias_herramientas_acompanadas_apartan_al_acompanante_una_vez(): void
+    {
+        $persona = $this->alguien();
+        $a = $this->herramienta('Robot');
+        $b = $this->herramienta('Control');
+        $jefa = User::whereHas('roles')->first();
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $a->id, 'es_responsable' => true]);
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $b->id, 'es_responsable' => false]);
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'herramientas', 'user_id' => $persona->id, 'herramienta_ids' => [$a->id, $b->id],
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'acompanantes' => [$jefa->id],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(2, Reservation::where('reservable_type', Asset::class)->count());
+        $this->assertSame(1, Reservation::where('reservable_type', User::class)->count());
+    }
 }

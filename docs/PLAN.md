@@ -79,6 +79,9 @@ decisión tuya
       también desde «Nueva reserva» del panel
 - [x] Un bloqueo de agenda puede ser «trabajo en un proyecto», con varios
       proyectos a la vez; quien intente asignar esa hora ve sus códigos
+- [x] Reserva acompañada a mano desde el panel: con una persona del equipo
+      habilitada elegida como acompañante, quien usa el equipo no necesita
+      certifab; responde quien acompaña y su tiempo queda apartado
 - [x] Repetir una reserva desde el panel: cada semana o cada día, N veces,
       todas o ninguna (una clase de un semestre no son dieciséis formularios)
 - [x] Activos: 82 cargados, con dependencias, grupos y uso desatendido
