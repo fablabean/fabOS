@@ -42,9 +42,11 @@ use Illuminate\Support\Carbon;
  * equipo está ocupado o la persona no está habilitada, se dice igual que
  * allí. Un panel que se salta las reglas es un panel que las vuelve inútiles.
  *
- * Tres cosas se reservan aquí: una asesoría —alguien acompaña—, un equipo por
- * cuenta propia, o un espacio. La producción NO: se programa desde el
- * proyecto, que es donde queda el costo y el material.
+ * Cuatro cosas se reservan aquí: una asesoría —alguien acompaña—, un equipo
+ * por cuenta propia, varias herramientas de una vez, o un espacio. Y todo
+ * menos la asesoría se puede repetir: cada semana o cada día, N veces, todas
+ * o ninguna. La producción NO: se programa desde el proyecto, que es donde
+ * queda el costo y el material.
  */
 class CreateReservation extends CreateRecord
 {
@@ -61,13 +63,14 @@ class CreateReservation extends CreateRecord
                     ToggleButtons::make('tipo')
                         ->label('Tipo')
                         ->options([
-                            'asesoria'  => 'Asesoría',
-                            'autonomia' => 'Equipo por su cuenta',
-                            'espacio'   => 'Un espacio',
+                            'asesoria'     => 'Asesoría',
+                            'autonomia'    => 'Equipo por su cuenta',
+                            'herramientas' => 'Herramientas',
+                            'espacio'      => 'Un espacio',
                         ])
                         // Los botones de Filament no llevan descripcion cada
                         // uno en esta version: va debajo, de una vez.
-                        ->helperText('Asesoría: alguien del equipo acompaña, sin certifab. Por su cuenta: la persona usa la máquina sola y tiene que estar habilitada. La producción no va aquí: se programa desde el proyecto.')
+                        ->helperText('Asesoría: alguien del equipo acompaña, sin certifab. Por su cuenta: la persona usa la máquina sola y tiene que estar habilitada. Herramientas: varias a la vez, en una sola reserva. La producción no va aquí: se programa desde el proyecto.')
                         ->default('asesoria')
                         ->inline()
                         ->required()
@@ -115,6 +118,30 @@ class CreateReservation extends CreateRecord
                         ->required(fn ($get) => $get('tipo') === 'autonomia')
                         ->visible(fn ($get) => $get('tipo') === 'autonomia')
                         ->helperText('Solo los que se reservan. Si la máquina pide visto bueno, la reserva queda como solicitud.'),
+
+                    /*
+                     * Varias herramientas de una vez, por el mismo servicio
+                     * que la lista publica: cada una con su certifab y su
+                     * cupo, todas o ninguna, colgadas de la primera para que
+                     * se cancelen juntas. Con el mismo tope de la coordinacion.
+                     */
+                    Select::make('herramienta_ids')
+                        ->label('Qué herramientas')
+                        ->multiple()
+                        ->options(fn () => Asset::with('area')
+                            ->where('kind', 'herramienta')
+                            ->where('is_reservable', true)
+                            ->orderBy('name')
+                            ->get()
+                            ->mapWithKeys(fn (Asset $a) => [
+                                $a->id => ($a->area?->name ? $a->area->name . ' · ' : '') . $a->name . ($a->puede_salir ? ' · portátil' : ''),
+                            ]))
+                        ->searchable()
+                        ->maxItems(fn () => \App\Support\Settings::maxHerramientasPorReserva())
+                        ->required(fn ($get) => $get('tipo') === 'herramientas')
+                        ->visible(fn ($get) => $get('tipo') === 'herramientas')
+                        ->columnSpanFull()
+                        ->helperText(fn () => 'Hasta ' . \App\Support\Settings::maxHerramientasPorReserva() . ' en una reserva; el tope se cambia en Operación → Préstamo de herramientas. Se reservan juntas y se cancelan juntas.'),
 
                     /*
                      * Para la asesoría se elige SOBRE QUÉ: una máquina concreta
@@ -329,6 +356,33 @@ class CreateReservation extends CreateRecord
                         ->maxLength(500)
                         ->columnSpanFull()
                         ->placeholder('Cortar las piezas del prototipo · Revisar un diseño antes de imprimir'),
+
+                    /*
+                     * Repetir: una clase todos los martes durante un semestre
+                     * no deberia ser dieciseis formularios. Se crean todas o
+                     * ninguna: si la sexta choca con algo, se dice cual, y no
+                     * quedan cinco sueltas que nadie recuerda haber pedido.
+                     */
+                    Select::make('repetir')
+                        ->label('Repetir')
+                        ->options([
+                            'no'      => 'No, solo esta vez',
+                            'semanal' => 'Cada semana, mismo día y hora',
+                            'diaria'  => 'Cada día, misma hora',
+                        ])
+                        ->default('no')
+                        ->live()
+                        ->visible(fn ($get) => $get('tipo') !== 'asesoria'),
+
+                    TextInput::make('veces')
+                        ->label('Cuántas veces en total')
+                        ->numeric()
+                        ->minValue(2)
+                        ->maxValue(52)
+                        ->default(4)
+                        ->required(fn ($get) => ($get('repetir') ?? 'no') !== 'no')
+                        ->visible(fn ($get) => $get('tipo') !== 'asesoria' && ($get('repetir') ?? 'no') !== 'no')
+                        ->helperText('Contando la primera. Dieciséis semanas es un semestre.'),
                 ]),
         ]);
     }
@@ -361,27 +415,54 @@ class CreateReservation extends CreateRecord
         $quien = User::findOrFail($data['user_id']);
         $paraQue = $data['proposito'] ?? null;
 
+        $crear = fn (Carbon $desde, Carbon $hasta): Reservation => match ($data['tipo']) {
+            'autonomia' => app(BookingService::class)->reservar(
+                $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue,
+            ),
+            'herramientas' => app(BookingService::class)->reservarHerramientas(
+                $quien, Asset::whereIn('id', array_map('intval', (array) ($data['herramienta_ids'] ?? [])))->get(), $desde, $hasta, $paraQue,
+            ),
+            'espacio' => app(EspacioBookingService::class)->reservarVarios(
+                $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),
+                $desde, $hasta, (int) ($data['participantes'] ?? 1), [], $paraQue,
+                $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
+                $data['acompanantes_por_espacio'] ?? [],
+            ),
+            'asesoria' => $this->agendarAsesoria(
+                $quien, $data['ambito'], $desde, $hasta, $paraQue,
+                ! empty($data['asesor']) ? User::find($data['asesor']) : null,
+            ),
+        };
+
+        $fechas = self::fechasDeLaSerie($desde, $hasta, $data['repetir'] ?? 'no', (int) ($data['veces'] ?? 1), $data['tipo']);
+
         try {
-            $reserva = match ($data['tipo']) {
-                'autonomia' => app(BookingService::class)->reservar(
-                    $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue,
-                ),
-                'espacio' => app(EspacioBookingService::class)->reservarVarios(
-                    $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),
-                    $desde, $hasta, (int) ($data['participantes'] ?? 1), [], $paraQue,
-                    $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
-                    $data['acompanantes_por_espacio'] ?? [],
-                ),
-                'asesoria' => $this->agendarAsesoria(
-                    $quien, $data['ambito'], $desde, $hasta, $paraQue,
-                    ! empty($data['asesor']) ? User::find($data['asesor']) : null,
-                ),
-            };
+            // Todas o ninguna: la transaccion deshace las anteriores si una
+            // choca, y el aviso dice cual.
+            $reserva = \Illuminate\Support\Facades\DB::transaction(function () use ($crear, $fechas) {
+                $primera = null;
+
+                foreach ($fechas as $i => [$d, $h]) {
+                    try {
+                        $r = $crear($d, $h);
+                    } catch (BookingException $e) {
+                        throw count($fechas) > 1
+                            ? new BookingException('La ' . ($i + 1) . 'ª (' . $d->format('d/m/Y H:i') . ') no se pudo: ' . $e->getMessage() . ' No quedó ninguna.')
+                            : $e;
+                    }
+
+                    $primera ??= $r;
+                }
+
+                return $primera;
+            });
         } catch (BookingException $e) {
             Notification::make()->danger()->title('No se pudo reservar')->body($e->getMessage())->persistent()->send();
 
             throw new Halt;
         }
+
+        $this->cuantas = count($fechas);
 
         // Los acompañantes de una asesoría o de un equipo se anotan aquí; los
         // del espacio ya los anotó su servicio.
@@ -392,6 +473,32 @@ class CreateReservation extends CreateRecord
         }
 
         return $reserva;
+    }
+
+    /** Cuántas se crearon: para decirlo al terminar. */
+    private int $cuantas = 1;
+
+    /**
+     * Las fechas de la serie: la primera y sus repeticiones.
+     *
+     * @return list<array{0:Carbon,1:Carbon}>
+     */
+    private static function fechasDeLaSerie(Carbon $desde, Carbon $hasta, string $repetir, int $veces, string $tipo): array
+    {
+        if ($tipo === 'asesoria' || $repetir === 'no' || $veces < 2) {
+            return [[$desde, $hasta]];
+        }
+
+        $veces = min($veces, 52);
+        $fechas = [];
+
+        for ($i = 0; $i < $veces; $i++) {
+            $fechas[] = $repetir === 'diaria'
+                ? [$desde->copy()->addDays($i), $hasta->copy()->addDays($i)]
+                : [$desde->copy()->addWeeks($i), $hasta->copy()->addWeeks($i)];
+        }
+
+        return $fechas;
     }
 
     /** «asset:12» o «area:3» → el equipo o el area; nulo si no hay nada elegido. */
@@ -439,6 +546,12 @@ class CreateReservation extends CreateRecord
     protected function getCreatedNotificationTitle(): ?string
     {
         $r = $this->getRecord();
+
+        if ($this->cuantas > 1) {
+            return $r->status === 'confirmada'
+                ? $this->cuantas . ' reservas confirmadas'
+                : $this->cuantas . ' reservas anotadas como solicitud: quedan pendientes del visto bueno.';
+        }
 
         return $r->status === 'confirmada'
             ? 'Reserva confirmada'

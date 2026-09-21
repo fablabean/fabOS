@@ -436,4 +436,90 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame($otra->id, $r->fresh()->reservable_id);
         $this->assertStringContainsString('Reasignada por Jefa', $r->fresh()->status_reason);
     }
+    // ------------------------------------------------ herramientas y repetir
+
+    private function herramienta(string $nombre): Asset
+    {
+        return Asset::create([
+            'name' => $nombre, 'area_id' => $this->equipo->area_id, 'risk_family_id' => $this->equipo->risk_family_id,
+            'kind' => 'herramienta', 'status' => 'operativo', 'is_reservable' => true,
+            'min_minutes' => 30, 'autonomous_minutes' => 480, 'max_minutes' => 720,
+        ]);
+    }
+
+    private function habilitada(): User
+    {
+        $persona = $this->alguien();
+        Certifab::create([
+            'public_code' => 'CF-' . $persona->id, 'user_id' => $persona->id,
+            'risk_family_id' => $this->equipo->risk_family_id, 'level' => 'byte', 'granted_at' => now()->subMonth(),
+        ]);
+
+        return $persona;
+    }
+
+    /** Varias herramientas en una sola reserva, como en el sitio: madre e hijas. */
+    public function test_varias_herramientas_en_una_reserva_desde_el_panel(): void
+    {
+        $persona = $this->habilitada();
+        $a = $this->herramienta('Taladro');
+        $b = $this->herramienta('Lijadora');
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'herramientas', 'user_id' => $persona->id, 'herramienta_ids' => [$a->id, $b->id],
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(2, Reservation::count());
+        $madre = Reservation::whereNull('parent_reservation_id')->firstOrFail();
+        $this->assertSame($a->id, $madre->reservable_id);
+        $this->assertSame(1, Reservation::where('parent_reservation_id', $madre->id)->count());
+    }
+
+    /** Una clase todos los lunes no es dieciséis formularios. */
+    public function test_repetir_cada_semana_crea_la_serie_entera(): void
+    {
+        $persona = $this->habilitada();
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'autonomia', 'user_id' => $persona->id, 'asset_id' => $this->equipo->id,
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'repetir' => 'semanal', 'veces' => 3,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $inicios = Reservation::orderBy('starts_at')->get()
+            ->map(fn (Reservation $r) => $r->starts_at->timezone(config('fabos.lab.timezone'))->format('Y-m-d H:i'))
+            ->all();
+
+        $this->assertSame(['2026-08-24 14:00', '2026-08-31 14:00', '2026-09-07 14:00'], $inicios);
+    }
+
+    /** Si una de la serie choca, no queda ninguna, y se dice cuál. */
+    public function test_si_una_de_la_serie_choca_no_queda_ninguna(): void
+    {
+        $persona = $this->habilitada();
+        // La segunda semana la máquina ya está tomada por otra persona.
+        $otra = $this->habilitada();
+        app(\App\Services\Booking\BookingService::class)->reservar(
+            $otra, $this->equipo,
+            Carbon::parse('2026-08-31 15:00', config('fabos.lab.timezone')),
+            Carbon::parse('2026-08-31 17:00', config('fabos.lab.timezone')),
+        );
+
+        Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'autonomia', 'user_id' => $persona->id, 'asset_id' => $this->equipo->id,
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'repetir' => 'semanal', 'veces' => 3,
+            ])
+            ->call('create');
+
+        $this->assertSame(1, Reservation::count(), 'solo la de la otra persona: de la serie no quedó ninguna');
+    }
 }
