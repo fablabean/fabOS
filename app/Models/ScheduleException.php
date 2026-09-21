@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -36,6 +37,7 @@ class ScheduleException extends Model
         'permiso'      => 'Permiso',
         'comision'     => 'Comisión',
         'bloqueo'      => 'Bloqueo de agenda',
+        'proyecto'     => 'Trabajo en un proyecto',
         'festivo'      => 'Festivo',
         'cierre'       => 'Cierre del laboratorio',
     ];
@@ -43,6 +45,17 @@ class ScheduleException extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** A que proyectos va, si es trabajo de proyecto. Varios: asi se trabaja una tarde. */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_schedule_exception');
+    }
+
+    public function esDeProyecto(): bool
+    {
+        return $this->kind === 'proyecto';
     }
 
     /** Sin persona, aplica a todo el laboratorio. */
@@ -128,9 +141,21 @@ class ScheduleException extends Model
             : $rango;
     }
 
-    /** Por que, para decirselo a quien intenta asignar esa hora. */
+    /**
+     * Por que, para decirselo a quien intenta asignar esa hora.
+     *
+     * Con proyectos, sus codigos: «trabajo en PRY-2026-0058, PRY-2026-0061»
+     * dice mas que «bloqueo de agenda», y es lo que hace que la otra persona
+     * no insista.
+     */
     public function motivo(): string
     {
+        $proyectos = $this->esDeProyecto() ? $this->projects->pluck('code')->implode(', ') : '';
+
+        if ($proyectos !== '') {
+            return 'trabajo en ' . $proyectos . ($this->note ? ' · ' . $this->note : '');
+        }
+
         return $this->note ?: (self::TIPOS[$this->kind] ?? $this->kind);
     }
 }

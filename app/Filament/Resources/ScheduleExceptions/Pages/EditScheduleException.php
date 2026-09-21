@@ -41,8 +41,14 @@ class EditScheduleException extends EditRecord
 
         unset($data['weekdays']);
 
+        $proyectos = ($data['kind'] ?? null) === 'proyecto'
+            ? array_map('intval', (array) ($this->form->getRawState()['projects'] ?? []))
+            : [];
+        unset($data['projects']);
+
         if (! filled($data['starts_time'] ?? null) || $dias->isEmpty()) {
             $record->update($data + ['weekday' => null]);
+            $record->projects()->sync($proyectos);
 
             return $record;
         }
@@ -50,15 +56,16 @@ class EditScheduleException extends EditRecord
         $propio = $dias->contains((int) $record->weekday) ? (int) $record->weekday : $dias->first();
         $nuevos = 0;
 
-        DB::transaction(function () use ($record, $data, $dias, $propio, &$nuevos) {
+        DB::transaction(function () use ($record, $data, $dias, $propio, $proyectos, &$nuevos) {
             $record->update($data + ['weekday' => $propio]);
+            $record->projects()->sync($proyectos);
 
             foreach ($dias->reject(fn (int $d) => $d === $propio) as $dia) {
                 if ($this->yaExiste($record, $dia)) {
                     continue;
                 }
 
-                ScheduleException::create($data + ['weekday' => $dia]);
+                ScheduleException::create($data + ['weekday' => $dia])->projects()->sync($proyectos);
                 $nuevos++;
             }
         });

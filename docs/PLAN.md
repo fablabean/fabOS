@@ -77,6 +77,8 @@ decisión tuya
       herramientas», varias en una sola reserva (madre e hijas, todas o
       ninguna) con tope editable en Operación → Préstamo de herramientas;
       también desde «Nueva reserva» del panel
+- [x] Un bloqueo de agenda puede ser «trabajo en un proyecto», con varios
+      proyectos a la vez; quien intente asignar esa hora ve sus códigos
 - [x] Repetir una reserva desde el panel: cada semana o cada día, N veces,
       todas o ninguna (una clase de un semestre no son dieciséis formularios)
 - [x] Activos: 82 cargados, con dependencias, grupos y uso desatendido

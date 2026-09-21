@@ -48,7 +48,33 @@ class ScheduleExceptionForm
                     ->label('Tipo')
                     ->options(ScheduleException::TIPOS)
                     ->required()
-                    ->default('bloqueo'),
+                    ->default('bloqueo')
+                    ->live(),
+
+                /*
+                 * Trabajo en un proyecto: a cuales. Varios, porque una tarde
+                 * de proyecto rara vez es de uno solo. No se guarda como
+                 * columna: las paginas lo sincronizan en cada fila creada, que
+                 * con dias repetidos son varias.
+                 */
+                Select::make('projects')
+                    ->label('Proyectos')
+                    ->multiple()
+                    ->options(fn () => \App\Models\Project::query()
+                        ->where('status', 'activo')
+                        ->whereNot('stage', 'cierre')
+                        ->orderByDesc('id')
+                        ->get()
+                        ->mapWithKeys(fn (\App\Models\Project $p) => [$p->id => $p->code . ' · ' . $p->name]))
+                    ->searchable()
+                    ->visible(fn (Get $get) => $get('kind') === 'proyecto')
+                    ->required(fn (Get $get) => $get('kind') === 'proyecto')
+                    ->dehydrated(false)
+                    ->afterStateHydrated(fn ($component, ?ScheduleException $record) => $component->state(
+                        $record?->projects()->pluck('projects.id')->all() ?? [],
+                    ))
+                    ->columnSpanFull()
+                    ->helperText('Quien intente asignar esa hora verá «trabajo en PRY-…». El tiempo de una tarea concreta se aparta desde el tablero del proyecto; esto es para la tarde entera.'),
 
                 /*
                  * No se guarda: se deduce de si hay horas. Existe para que el

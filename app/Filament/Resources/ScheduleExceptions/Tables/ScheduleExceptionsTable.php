@@ -46,6 +46,13 @@ class ScheduleExceptionsTable
                     ->placeholder('—')
                     ->searchable()
                     ->wrap(),
+
+                TextColumn::make('projects.code')
+                    ->label('Proyectos')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—')
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('user_id')

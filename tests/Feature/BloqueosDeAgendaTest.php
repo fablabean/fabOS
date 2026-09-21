@@ -474,4 +474,78 @@ class BloqueosDeAgendaTest extends TestCase
         $this->assertNull($ausencia->weekday);
         $this->assertSame('Del 14/09/2026 al 18/09/2026', $ausencia->cuando());
     }
+    // ------------------------------------------------------------ proyectos
+
+    private function entraAdmin(): void
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+        $admin = User::create(['name' => 'Admin', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $admin->assignRole(User::ROL_SUPERADMIN);
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($admin->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+    }
+
+    private function proyecto(string $nombre): \App\Models\Project
+    {
+        return \App\Models\Project::create(['name' => $nombre, 'stage' => 'ejecucion', 'status' => 'activo', 'source' => 'correo', 'client_kind' => 'externo']);
+    }
+
+    /**
+     * Un bloqueo puede ser trabajo en varios proyectos a la vez, y quien
+     * intente asignar esa hora ve sus códigos, no «bloqueo de agenda».
+     */
+    public function test_un_bloqueo_de_proyecto_lleva_sus_proyectos_y_lo_dice(): void
+    {
+        $this->entraAdmin();
+        $ana = $this->colaborador('Ana');
+        $dron = $this->proyecto('Dron');
+        $sillas = $this->proyecto('Sillas');
+
+        Livewire::test(CreateScheduleException::class)
+            ->fillForm([
+                'user_id' => $ana->id, 'kind' => 'proyecto', 'alcance' => 'franja',
+                'starts_time' => '14:00', 'ends_time' => '18:00', 'weekdays' => [2, 4],
+                'starts_on' => '2026-09-01', 'ends_on' => '2026-11-30',
+                'projects' => [$dron->id, $sillas->id], 'note' => 'Tarde de taller',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $bloqueos = ScheduleException::where('user_id', $ana->id)->get();
+        $this->assertCount(2, $bloqueos, 'uno por día marcado');
+        // Los proyectos van en las dos filas, no solo en la primera.
+        $this->assertTrue($bloqueos->every(fn (ScheduleException $b) => $b->projects()->count() === 2));
+        $this->assertSame(2, $dron->bloqueos()->count());
+
+        [$d, $h] = $this->franja(self::JUEVES, '15:00', '16:00');
+        $this->assertSame(
+            'Ana tiene esa hora bloqueada (trabajo en ' . $dron->code . ', ' . $sillas->code . ' · Tarde de taller).',
+            app(BookingService::class)->porQueNoEstaLibre($ana, $d, $h),
+        );
+    }
+
+    public function test_al_editar_se_cambian_los_proyectos(): void
+    {
+        $this->entraAdmin();
+        $ana = $this->colaborador('Ana');
+        $dron = $this->proyecto('Dron');
+        $sillas = $this->proyecto('Sillas');
+        $bloqueo = ScheduleException::create([
+            'user_id' => $ana->id, 'kind' => 'proyecto', 'starts_on' => '2026-09-01', 'ends_on' => '2026-09-01',
+            'starts_time' => '14:00', 'ends_time' => '18:00',
+        ]);
+        $bloqueo->projects()->sync([$dron->id]);
+
+        Livewire::test(\App\Filament\Resources\ScheduleExceptions\Pages\EditScheduleException::class, ['record' => $bloqueo->id])
+            ->assertFormSet(['projects' => [$dron->id]])
+            ->fillForm(['projects' => [$sillas->id]])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame([$sillas->id], $bloqueo->projects()->pluck('projects.id')->all());
+    }
 }

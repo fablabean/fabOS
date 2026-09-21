@@ -234,6 +234,12 @@ class Project extends Model
         return $this->modality === 'alianza';
     }
 
+    /** Los bloqueos de agenda del equipo dedicados a este proyecto (§5). */
+    public function bloqueos(): BelongsToMany
+    {
+        return $this->belongsToMany(ScheduleException::class, 'project_schedule_exception');
+    }
+
     public function partners(): HasMany
     {
         return $this->hasMany(ProjectPartner::class)->orderByRaw("array_position(ARRAY['laboratorio','iniciador','aliado','inversor'], role)")->orderBy('id');
