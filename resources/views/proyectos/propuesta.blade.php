@@ -34,8 +34,20 @@
         {{-- Una propuesta se reenvía: al jefe que firma, al área que paga, al
              comité que aprueba. Lo único que se podía mandar era este enlace,
              que caduca y que además trae los botones de aceptar, que no son de
-             quien solo tiene que opinar. --}}
-        <a class="pdf" href="{{ $urlPdf }}">Descargar en PDF</a>
+             quien solo tiene que opinar.
+
+             Lleno y con su flecha: en gris y del tamaño de una etiqueta no se
+             encontraba, y descargarla es de las dos cosas que se vienen a
+             hacer aquí. --}}
+        <a class="pdf" href="{{ $urlPdf }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar en PDF
+        </a>
     </p>
 
     @if ($respondida && $version && $version->version > 1)
@@ -571,11 +583,20 @@
         .estado { margin:.2rem 0 .8rem; display:flex; gap:.5rem;
                   align-items:center; flex-wrap:wrap; }
         .estado .pill { margin:0; }
-        /* Se lee, no grita: el botón que importa en esta página es aceptar. */
-        .estado .pdf { margin-left:auto; font-size:.84rem; text-decoration:none;
-                       padding:.3rem .7rem; border:1px solid var(--rule); border-radius:999px;
-                       color:var(--ink-soft); white-space:nowrap; }
-        .estado .pdf:hover { border-color:var(--accent); color:var(--accent); }
+        /* Lleno, con su flecha y del tamaño de un botón: en gris y del tamaño
+           de una etiqueta no se encontraba. No compite con aceptar, que vive
+           mucho más abajo y en su propio recuadro. */
+        .estado .pdf { margin-left:auto; display:inline-flex; align-items:center; gap:.45rem;
+                       font-size:.92rem; font-weight:600; text-decoration:none; white-space:nowrap;
+                       padding:.5rem 1rem; border-radius:6px;
+                       background:var(--accent); color:#fff; border:1px solid var(--accent); }
+        .estado .pdf:hover { filter:brightness(1.08); color:#fff; }
+        .estado .pdf svg { width:1.05em; height:1.05em; flex:none; }
+        /* En pantalla estrecha se lleva la línea entera: ahí no hay hueco a la
+           derecha y un botón a medias parece un enlace suelto. */
+        @media (max-width:32rem) {
+            .estado .pdf { margin-left:0; width:100%; justify-content:center; }
+        }
         .aceptar textarea { width:100%; margin-bottom:.7rem; }
         .aceptar .botones { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
         .aceptar .botones button { margin:0; }
