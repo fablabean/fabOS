@@ -295,6 +295,7 @@ class SolicitudDeProyectoController extends Controller
             'portada'    => $this->portadaIncrustada($project),
             'soportes'   => $project->evidence->whereNull('project_comment_id'),
             'enlace'     => route('proyectos.propuesta', $project),
+            'logo'       => \App\Support\Settings::logoParaPdf(),
         ])->render();
 
         return Pdf::loadHTML($html)

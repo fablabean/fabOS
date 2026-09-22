@@ -134,6 +134,8 @@ TXT;
             'variables' => $this->variables($proyecto, $datos),
             'clausulas' => $this->clausulas($proyecto, $datos),
             'paraPdf'   => $paraPdf,
+            // Incrustado, no enlazado: el acuerdo se abre sin sesion.
+            'logo'      => \App\Support\Settings::logoParaPdf(),
         ])->render();
     }
 

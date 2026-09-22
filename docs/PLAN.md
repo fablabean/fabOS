@@ -252,6 +252,10 @@ decisión tuya
       la conversación ni los botones—: se reenvía a quien firma o aprueba, que
       no tiene por qué recibir un enlace que caduca. Va por su propia dirección
       firmada, porque la firma cubre la URL entera
+- [x] El logo se sube en Comunicaciones → Marca y ya no vive en el repositorio:
+      sale en la barra del sitio y encabeza los PDF —propuesta, acuerdo de
+      servicio, acuerdo de alianza—, incrustado, porque un documento se abre
+      sin sesión y sin red
 - [x] Equipo del proyecto con proveedores y cliente, tengan cuenta o no
 - [x] Gantt y Kanban sobre una sola tabla de tareas, con tablero propio para
       mirar en reunión y mover tarjetas de un clic

@@ -184,6 +184,67 @@ final class Settings
         return trim((string) Setting::get(self::GUIA_TEXTO, ''));
     }
 
+    /*
+     * El logo del laboratorio (§3).
+     *
+     * Estaba en un archivo del repositorio —`config('fabos.lab.logo')`—, asi
+     * que cambiarlo exigia un despliegue. Una marca se retoca: el dia que
+     * llegue la version definitiva, o la del aniversario, tiene que poder
+     * subirla quien la tiene, no quien tiene acceso al servidor. Se sube en
+     * Comunicaciones → Marca. Sin nada subido, sigue valiendo el del archivo.
+     */
+    public const MARCA_LOGO = 'marca.logo_path';
+
+    /** La ruta del logo subido, en el disco publico. Nula si no hay. */
+    public static function logo(): ?string
+    {
+        $ruta = trim((string) Setting::get(self::MARCA_LOGO, ''));
+
+        return $ruta !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($ruta) ? $ruta : null;
+    }
+
+    /**
+     * El logo como data URI, para los PDF.
+     *
+     * Incrustado y no enlazado: un PDF se guarda, se reenvia y se abre sin
+     * sesion y sin red, y un logo por su direccion saldria roto justo en el
+     * documento que va a leer quien decide.
+     *
+     * Vale el subido; si no hay, el del archivo de configuracion.
+     */
+    public static function logoParaPdf(): ?string
+    {
+        $disco = \Illuminate\Support\Facades\Storage::disk('public');
+
+        if ($ruta = self::logo()) {
+            return self::comoDataUri($disco->get($ruta), $disco->mimeType($ruta) ?: null, $ruta);
+        }
+
+        $deFabrica = (string) config('fabos.lab.logo');
+        $archivo = $deFabrica !== '' ? public_path($deFabrica) : null;
+
+        return $archivo && is_file($archivo)
+            ? self::comoDataUri((string) file_get_contents($archivo), null, $deFabrica)
+            : null;
+    }
+
+    private static function comoDataUri(string $contenido, ?string $tipo, string $ruta): ?string
+    {
+        // Por la extension cuando el disco no sabe decirlo: un SVG suele
+        // llegar como «text/plain» y en el PDF no se pintaria.
+        $tipo = match (strtolower(pathinfo($ruta, PATHINFO_EXTENSION))) {
+            'svg'  => 'image/svg+xml',
+            'png'  => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif'  => 'image/gif',
+            default => $tipo,
+        };
+
+        return $tipo && str_starts_with($tipo, 'image/')
+            ? 'data:' . $tipo . ';base64,' . base64_encode($contenido)
+            : null;
+    }
+
     /** La base del acuerdo de alianza: varias partes que aportan (§11). */
     public const ALIANZA_CLAUSULAS = 'proyectos.alianza_clausulas';
 

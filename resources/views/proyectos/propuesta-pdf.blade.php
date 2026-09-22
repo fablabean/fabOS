@@ -22,6 +22,9 @@
         table{width:100%;border-collapse:collapse}
         .cabecera{border-bottom:2px solid #111;margin-bottom:1.4rem}
         .cabecera td{padding:0 0 .9rem;vertical-align:top}
+        /* Pequeño y encogido a su contenido: encabeza, no ocupa. */
+        .cabecera td.marca{width:1px;padding-right:.9rem;vertical-align:middle}
+        .cabecera td.marca img{height:1.6cm;max-width:4cm}
         h1{font-size:1.35rem;margin:0}
         .meta{font-size:.85rem;color:#666;margin-top:.2rem}
         .derecha{text-align:right}
@@ -44,6 +47,12 @@
 
 <table class="cabecera">
     <tr>
+        {{-- El logo incrustado: un PDF se guarda, se reenvía y se abre sin
+             sesión y sin red, y uno enlazado saldría roto justo en el
+             documento que va a leer quien decide. --}}
+        @if ($logo)
+            <td class="marca"><img src="{{ $logo }}" alt="{{ $lab }}"></td>
+        @endif
         <td>
             <h1>{{ $proyecto->name }}</h1>
             <div class="meta">
