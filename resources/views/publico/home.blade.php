@@ -86,6 +86,16 @@
 @include('publico.banner')
 
 <main>
+    {{-- La guía de reservas, también aquí: es la primera pregunta de quien
+         llega —«¿y yo por dónde?»— y no debería tener que encontrar la
+         página de reservas para hacerla. La respuesta lleva a reservas con
+         el camino resaltado. --}}
+    @if (app(\App\Services\Ia\GuiaDeReservas::class)->disponible())
+        <section style="padding-bottom:0">
+            @include('publico.guia')
+        </section>
+    @endif
+
     <section>
         <p class="rotulo">Qué hay</p>
         {{-- El numero se cuenta, no se escribe: decia «Siete areas de trabajo»

@@ -134,4 +134,41 @@ class GuiaDeReservasTest extends TestCase
 
         $this->get('/reservas')->assertOk()->assertDontSee('Escribe qué necesitas');
     }
+    public function test_la_respuesta_resalta_la_tarjeta_del_camino(): void
+    {
+        $this->responde('herramientas', 'Necesitas herramientas sueltas.');
+        $this->post(route('publico.reservas.guia'), ['necesidad' => 'Me prestan un taladro para un montaje']);
+
+        // Herramientas y espacio comparten tarjeta, y solo esa lleva la marca.
+        $this->get('/reservas')
+            ->assertOk()
+            ->assertSee('class="camino recomendado" id="camino-espacio"', false)
+            ->assertSee('class="camino " id="camino-asesoria"', false);
+    }
+
+    public function test_la_caja_esta_tambien_en_la_portada_y_responde_en_reservas(): void
+    {
+        $this->responde('asesoria');
+
+        $this->get('/')->assertOk()->assertSee('Escribe qué necesitas');
+
+        $this->post(route('publico.reservas.guia'), ['necesidad' => 'Nunca he usado la láser y quiero cortar algo'])
+            ->assertRedirect(route('publico.reservas'));
+    }
+
+    public function test_el_banner_solo_sale_con_imagen(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $this->get('/reservas')->assertOk()->assertDontSee('class="mapa"', false);
+
+        \Illuminate\Support\Facades\Storage::disk('public')->put('guia/mapa.png', 'png');
+        \App\Models\Setting::put(\App\Support\Settings::GUIA_IMAGEN, 'guia/mapa.png', 'comunicaciones');
+        \App\Models\Setting::put(\App\Support\Settings::GUIA_TEXTO, 'Mira el mapa y elige.', 'comunicaciones');
+
+        $this->get('/reservas')
+            ->assertOk()
+            ->assertSee('class="mapa"', false)
+            ->assertSee('storage/guia/mapa.png', false)
+            ->assertSee('Mira el mapa y elige.');
+    }
 }

@@ -163,6 +163,27 @@ final class Settings
     public const ACUERDO_CLAUSULAS  = 'proyectos.acuerdo_clausulas';
     public const ACUERDO_FORMA_PAGO = 'proyectos.acuerdo_forma_pago';
 
+    /*
+     * El banner de la guia de reservas (§10): una foto que ayude a reconocer
+     * el camino sin preguntar —un mapa de los cuatro, una infografia—, y un
+     * texto corto encima. Se editan en Comunicaciones → Guia de reservas.
+     */
+    public const GUIA_IMAGEN = 'reservas.guia_imagen';
+    public const GUIA_TEXTO  = 'reservas.guia_texto';
+
+    /** La ruta de la imagen en el disco publico, si esta subida. */
+    public static function imagenDeLaGuia(): ?string
+    {
+        $ruta = trim((string) Setting::get(self::GUIA_IMAGEN, ''));
+
+        return $ruta !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($ruta) ? $ruta : null;
+    }
+
+    public static function textoDeLaGuia(): string
+    {
+        return trim((string) Setting::get(self::GUIA_TEXTO, ''));
+    }
+
     /** La base del acuerdo de alianza: varias partes que aportan (§11). */
     public const ALIANZA_CLAUSULAS = 'proyectos.alianza_clausulas';
 

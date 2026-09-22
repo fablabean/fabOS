@@ -82,23 +82,20 @@
     .migas a{color:var(--muted);text-decoration:none}
     .migas a:hover{color:var(--accent)}
     .migas strong{color:var(--ink-soft);font-weight:600}
-    /* La guía: una caja, una pregunta, una respuesta. */
-    .guia{padding:0 0 2rem}
-    .guia form{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:1.2rem 1.4rem}
-    .guia label{display:block;margin-bottom:.6rem}
-    .guia label strong{display:block;font-size:1.05rem}
-    .guia .fila{display:flex;gap:.6rem;flex-wrap:wrap}
-    .guia .fila input{flex:1 1 20rem;padding:.7rem .8rem;font:inherit;border:1px solid var(--rule);
-                      border-radius:4px;background:var(--ground);color:var(--ink)}
-    .guia .fila input:focus{outline:2px solid var(--accent);outline-offset:1px}
-    .guia .error{color:#9B2C2C;font-size:.9rem;margin:.5rem 0 0}
-    .guia .respuesta{margin-top:.8rem;padding:1.1rem 1.4rem;border-radius:8px;
-                     background:color-mix(in srgb,var(--accent) 12%,transparent);border-left:4px solid var(--accent)}
-    .guia .respuesta.nada{background:color-mix(in srgb,var(--ink) 6%,transparent);border-left-color:var(--rule)}
-    .guia .cual{margin:0 0 .4rem;font-size:1.25rem;font-weight:700}
-    .guia .cual a{text-decoration:none}
-    .guia .porque{margin:0}
-    .guia .pie{margin:.6rem 0 0;font-size:.8rem;color:var(--muted)}
+    /* El camino recomendado por la guía: se ve desde lejos, y dice «te toca». */
+    .camino.recomendado{outline:3px solid var(--accent);outline-offset:2px;position:relative}
+    .camino.recomendado::before{
+        content:"Te toca";position:absolute;top:-.7rem;left:1rem;background:var(--accent);color:var(--surface);
+        font-family:ui-monospace,Consolas,monospace;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+        padding:.2rem .6rem;border-radius:999px;
+    }
+    .camino:not(.recomendado){transition:opacity .2s}
+    .caminos:has(.recomendado) .camino:not(.recomendado){opacity:.55}
+    .caminos:has(.recomendado) .camino:not(.recomendado):hover{opacity:1}
+    /* El banner de la guía: a lo ancho, con su texto encima. */
+    .mapa{position:relative}
+    .mapa img{display:block;width:100%;max-height:26rem;object-fit:cover;border-radius:8px;border:1px solid var(--rule)}
+    .mapa p{margin:.6rem 0 0;color:var(--ink-soft);font-size:1.02rem}
     .reservas-mias{display:grid;gap:.5rem;margin-bottom:2rem}
     .mia{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:baseline;
          padding:.7rem .9rem;border:1px solid var(--rule);border-radius:6px;
@@ -152,6 +149,26 @@
          página cambiaba de verdad, pero lo nuevo nacía por debajo del pliegue y
          parecía que el clic no había hecho nada. --}}
     @if ($modo === '')
+        @php
+            $guia = session('guia');
+            $recomendado = $guia['camino'] ?? null;
+            // Espacio y herramientas comparten tarjeta.
+            $tarjetaRecomendada = in_array($recomendado, ['espacio', 'herramientas'], true) ? 'espacio' : $recomendado;
+            $imagenGuia = \App\Support\Settings::imagenDeLaGuia();
+        @endphp
+
+        {{-- El banner (§10): una foto que ayude a reconocer el camino sin
+             preguntar. Se sube en Comunicaciones → Guía de reservas; sin
+             foto, no se pinta. --}}
+        @if ($imagenGuia)
+            <section class="mapa" style="padding:1.6rem 0 0">
+                <img src="{{ asset('storage/' . $imagenGuia) }}" alt="Cómo usar el laboratorio" loading="eager">
+                @if (\App\Support\Settings::textoDeLaGuia())
+                    <p>{{ \App\Support\Settings::textoDeLaGuia() }}</p>
+                @endif
+            </section>
+        @endif
+
         <section style="padding-bottom:1rem">
             <p class="rotulo">Reservas</p>
             <h1>¿Cómo quieres usar el laboratorio?</h1>
@@ -161,6 +178,13 @@
             </p>
         </section>
 
+        {{-- La guía va ANTES de los caminos: quien no sabe cuál es el suyo no
+             debería tener que leer las cuatro tarjetas para descubrir que hay
+             quien se lo dice. --}}
+        @if (app(\App\Services\Ia\GuiaDeReservas::class)->disponible())
+            @include('publico.guia')
+        @endif
+
         {{-- Los cuatro caminos. Cada uno con su ilustración, porque el dibujo
              se lee antes que el título y a quien llega por primera vez le dice
              de qué va sin leer. El prototipado asistido sale del catálogo: no
@@ -168,7 +192,7 @@
              espacio es un camino más: antes iba en una línea debajo y nadie
              lo veía. --}}
         <div class="caminos">
-            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
+            <a class="camino {{ $tarjetaRecomendada === 'asesoria' ? 'recomendado' : '' }}" id="camino-asesoria" href="{{ route('publico.reservas', ['modo' => 'asesoria']) }}">
                 <span class="ilus" aria-hidden="true">
                     {{-- Dos personas: una acompaña a la otra. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -183,7 +207,7 @@
                 <span class="pie">Reservas un acompañamiento</span>
             </a>
 
-            <a class="camino" href="{{ route('proyectos.solicitar') }}">
+            <a class="camino {{ $tarjetaRecomendada === 'proyecto' ? 'recomendado' : '' }}" id="camino-proyecto" href="{{ route('proyectos.solicitar') }}">
                 <span class="ilus" aria-hidden="true">
                     {{-- Una impresora sacando una pieza: lo ejecutamos con ella. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -198,7 +222,7 @@
                 <span class="pie">Propones un proyecto</span>
             </a>
 
-            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
+            <a class="camino {{ $tarjetaRecomendada === 'autonomia' ? 'recomendado' : '' }}" id="camino-autonomia" href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
                 <span class="ilus" aria-hidden="true">
                     {{-- Una pieza y una herramienta: la haces tú. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -214,7 +238,7 @@
 
             {{-- Público, a diferencia de /espacios: la bifurcación se puede
                  mirar sin cuenta, y la cuenta se pide al reservar. --}}
-            <a class="camino" href="{{ route('publico.reservas', ['modo' => 'espacio']) }}">
+            <a class="camino {{ $tarjetaRecomendada === 'espacio' ? 'recomendado' : '' }}" id="camino-espacio" href="{{ route('publico.reservas', ['modo' => 'espacio']) }}">
                 <span class="ilus" aria-hidden="true">
                     {{-- Una sala con su puerta y su mesa, y una llave: el grupo y las herramientas. --}}
                     <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -230,41 +254,6 @@
                 <span class="pie">Reservas un espacio o herramientas</span>
             </a>
         </div>
-
-        {{-- La guía (§10): quien no sabe cuál de los cuatro escribe lo que
-             necesita y se le dice cuál, y por qué. Una pregunta, una
-             respuesta, sin hilo. Solo si la IA está encendida. --}}
-        @if (app(\App\Services\Ia\GuiaDeReservas::class)->disponible())
-            @php $guia = session('guia'); @endphp
-            <section class="guia" id="guia">
-                <form method="POST" action="{{ route('publico.reservas.guia') }}">
-                    @csrf
-                    <label for="necesidad">
-                        <span class="rotulo" style="margin-bottom:.3rem">¿No sabes cuál?</span>
-                        <strong>Escribe qué necesitas y te decimos por dónde.</strong>
-                    </label>
-                    <div class="fila">
-                        <input id="necesidad" name="necesidad" type="text" required minlength="8" maxlength="600"
-                               placeholder="Quiero hacer un trofeo en acrílico pero nunca he usado la láser"
-                               value="{{ old('necesidad') }}" autocomplete="off">
-                        <button type="submit" class="btn">Decirme</button>
-                    </div>
-                    @error('necesidad') <p class="error">{{ $message }}</p> @enderror
-                    <x-captcha accion="publico.reservas.guia"/>
-                </form>
-
-                @if ($guia)
-                    <div class="respuesta {{ $guia['camino'] === 'ninguno' ? 'nada' : '' }}">
-                        @if ($guia['camino'] !== 'ninguno')
-                            <p class="rotulo" style="margin-bottom:.2rem">Te toca</p>
-                            <p class="cual"><a href="{{ $guia['url'] }}">{{ $guia['titulo'] }} →</a></p>
-                        @endif
-                        <p class="porque">{{ $guia['porque'] }}</p>
-                        <p class="pie">Es una orientación; las tarjetas de arriba dicen qué hace cada camino. No es un chat: aquí solo se responde por dónde ir.</p>
-                    </div>
-                @endif
-            </section>
-        @endif
 
         {{-- La franja de hoy, que es lo que decide si una sala se confirma sola. --}}
         <p class="lead" style="margin:-1.4rem 0 2rem">
