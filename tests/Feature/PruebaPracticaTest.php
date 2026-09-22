@@ -572,4 +572,77 @@ class PruebaPracticaTest extends TestCase
 
         app(PracticaService::class)->citar($i, $michael, $this->hora('10:30'));
     }
+    // ------------------------------------------------ la segunda oportunidad
+
+    /**
+     * Una práctica fallida es «todavía no», no «nunca»: pasada la semana se
+     * cita de nuevo, con la teoría ya aprobada, y la vieja deja de pedir firma.
+     */
+    public function test_quien_no_paso_la_practica_se_cita_de_nuevo_tras_una_semana(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        // La evaluación pasó y no aprobó.
+        $this->travelTo($this->hora('16:00'));
+        app(TrainingService::class)->reprobar($i->fresh(), 2.5, 'Le faltó nivelar la cama.');
+
+        $i->refresh();
+        $this->assertSame('reprobado', $i->status);
+        $this->assertNotNull($i->failed_at);
+        $this->assertNull($i->practicaSinValidar(), 'la práctica evaluada ya no pide firma');
+        $this->assertFalse($i->puedeRepetirLaPractica(), 'todavía no ha pasado la semana');
+
+        // Al tercer día, no: se dice desde cuándo.
+        $this->travelTo($this->hora('16:00')->addDays(3));
+        try {
+            app(PracticaService::class)->citarDeNuevo($i->fresh(), $michael, Carbon::parse('2026-08-31 14:00', config('fabos.lab.timezone')));
+            $this->fail('faltaban días');
+        } catch (TrainingException $e) {
+            $this->assertStringContainsString('desde el 31/08/2026', $e->getMessage());
+        }
+
+        // A la semana, sí: el lunes siguiente, con quien evalúa.
+        $this->travelTo(Carbon::parse('2026-08-31 07:00', config('fabos.lab.timezone')));
+        $i->refresh();
+        $this->assertTrue($i->puedeRepetirLaPractica());
+
+        $reserva = app(PracticaService::class)->citarDeNuevo($i, $michael, Carbon::parse('2026-08-31 14:00', config('fabos.lab.timezone')));
+
+        $i->refresh();
+        $this->assertSame('inscrito', $i->status, 'vuelve a estar en curso');
+        $this->assertNull($i->grade);
+        $this->assertSame('Le faltó nivelar la cama.', $i->feedback, 'lo de la vez anterior se queda: es lo que hay que practicar');
+        $this->assertTrue($i->teoriaAprobada(), 'la teoría no se repite');
+        $this->assertSame($reserva->id, $i->practicaAgendada()?->id);
+    }
+
+    public function test_desde_el_panel_el_boton_de_citar_de_nuevo_espera_la_semana(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $admin = $this->evaluador('Admin', User::ROL_ADMINISTRADOR);
+        $i = $this->conTeoria();
+        app(TrainingService::class)->reprobar($i, 2.0, 'No');
+        $this->entra($admin);
+
+        $pestana = fn () => Livewire::test(EnrollmentsRelationManager::class, [
+            'ownerRecord' => $this->edicion, 'pageClass' => EditCourseEdition::class,
+        ]);
+
+        // Recién reprobada: el botón está, pero no deja.
+        $pestana()->assertTableActionVisible('citar_de_nuevo', $i)->assertTableActionDisabled('citar_de_nuevo', $i);
+
+        $this->travelTo(Carbon::parse('2026-08-31 07:00', config('fabos.lab.timezone')));
+
+        $pestana()
+            ->assertTableActionEnabled('citar_de_nuevo', $i->fresh())
+            ->callAction(TestAction::make('citar_de_nuevo')->table($i->fresh()), [
+                'inicio' => '2026-08-31 14:00', 'evaluador_id' => $michael->id,
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('inscrito', $i->fresh()->status);
+        $this->assertNotNull($i->fresh()->practicaAgendada());
+    }
 }

@@ -143,6 +143,7 @@ class EnrollmentsRelationManager extends RelationManager
             ])
             ->recordActions([
                 self::citar(),
+                self::citarDeNuevo(),
                 self::firmarPractica(),
                 self::noVino(),
                 self::aprobar(),
@@ -191,6 +192,77 @@ class EnrollmentsRelationManager extends RelationManager
      * cuenta; esta es para cuando la coordinacion ya hablo con ella y quiere
      * dejarlo fijado, o cuando la persona no encuentra hueco.
      */
+    /** Quien evalua y cuando: los mismos campos para la primera cita y para repetirla. */
+    private static function camposDeLaCita(): array
+    {
+        return [
+                    /*
+                     * Primero quien, y despues cuando: la hora no se adivina, se
+                     * elige entre las que esa persona tiene libres de verdad —en
+                     * jornada, sin nada reservado ni bloqueado, fuera de su
+                     * descanso—. Antes se escribia una hora a mano y el choque
+                     * aparecia despues, como un error.
+                     */
+                    Select::make('evaluador_id')
+                        ->label('Quién la evalúa')
+                        ->options(function (RelationManager $livewire) {
+                            $area = $livewire->getOwnerRecord()->course?->area;
+
+                            // Primero quienes asesoran el area del curso; despues
+                            // el resto del equipo, por si toca cubrir.
+                            $delArea = $area ? app(AsesoriaService::class)->asesoresDe($area)->pluck('name', 'id') : collect();
+                            $resto = User::role(User::rolesDelEquipo())->where('status', 'activo')->orderBy('name')->pluck('name', 'id');
+
+                            return $delArea->map(fn ($n) => $n . ' · asesora el área')
+                                ->union($resto->except($delArea->keys()->all()))
+                                ->all();
+                        })
+                        ->searchable()
+                        // En vivo: al cambiar de evaluador cambia la lista de
+                        // horas. Si la hora elegida ya no esta en la lista nueva,
+                        // la validacion lo dice al enviar.
+                        ->live()
+                        ->required(),
+
+                    Select::make('inicio')
+                        ->label('Cuándo')
+                        ->options(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
+                            $evaluador = $get('evaluador_id') ? User::find($get('evaluador_id')) : null;
+
+                            return $evaluador ? app(PracticaService::class)->horasDe($evaluador, $record) : [];
+                        })
+                        ->searchable()
+                        ->required()
+                        // Sin evaluador la lista esta vacia y el marcador lo dice;
+                        // no se deshabilita, porque un campo deshabilitado no
+                        // viaja con el formulario.
+                        ->placeholder(fn (\Filament\Schemas\Components\Utilities\Get $get) => blank($get('evaluador_id'))
+                            ? 'Primero elige quién la evalúa'
+                            : 'Elige una hora libre')
+                        ->helperText(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
+                            if (blank($get('evaluador_id'))) {
+                                return null;
+                            }
+
+                            $evaluador = User::find($get('evaluador_id'));
+                            $cuantas = $evaluador ? count(app(PracticaService::class)->horasDe($evaluador, $record)) : 0;
+
+                            return $cuantas > 0
+                                ? 'Solo horas en que esa persona está libre, de ' . app(PracticaService::class)->minutos()
+                                    . ' minutos, en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7) . ' días.'
+                                : 'Esa persona no tiene horas libres en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7)
+                                    . ' días. Prueba con otra.';
+                        }),
+
+                    Textarea::make('nota')
+                        ->label('Algo que decirle')
+                        ->rows(2)
+                        ->maxLength(300)
+                        ->placeholder('Trae el archivo que quieras imprimir.')
+                        ->helperText('Va en el correo. Opcional.'),
+        ];
+    }
+
     private static function citar(): Action
     {
         return Action::make('citar')
@@ -209,72 +281,7 @@ class EnrollmentsRelationManager extends RelationManager
             ->modalDescription(fn (Enrollment $r) => $r->teoriaLista()
                 ? 'Le llega un correo con la hora y quién la evalúa. Queda reservado el tiempo de esa persona.'
                 : 'Todavía no ha aprobado el examen teórico: la práctica se evalúa sobre eso.')
-            ->schema([
-                /*
-                 * Primero quien, y despues cuando: la hora no se adivina, se
-                 * elige entre las que esa persona tiene libres de verdad —en
-                 * jornada, sin nada reservado ni bloqueado, fuera de su
-                 * descanso—. Antes se escribia una hora a mano y el choque
-                 * aparecia despues, como un error.
-                 */
-                Select::make('evaluador_id')
-                    ->label('Quién la evalúa')
-                    ->options(function (RelationManager $livewire) {
-                        $area = $livewire->getOwnerRecord()->course?->area;
-
-                        // Primero quienes asesoran el area del curso; despues
-                        // el resto del equipo, por si toca cubrir.
-                        $delArea = $area ? app(AsesoriaService::class)->asesoresDe($area)->pluck('name', 'id') : collect();
-                        $resto = User::role(User::rolesDelEquipo())->where('status', 'activo')->orderBy('name')->pluck('name', 'id');
-
-                        return $delArea->map(fn ($n) => $n . ' · asesora el área')
-                            ->union($resto->except($delArea->keys()->all()))
-                            ->all();
-                    })
-                    ->searchable()
-                    // En vivo: al cambiar de evaluador cambia la lista de
-                    // horas. Si la hora elegida ya no esta en la lista nueva,
-                    // la validacion lo dice al enviar.
-                    ->live()
-                    ->required(),
-
-                Select::make('inicio')
-                    ->label('Cuándo')
-                    ->options(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
-                        $evaluador = $get('evaluador_id') ? User::find($get('evaluador_id')) : null;
-
-                        return $evaluador ? app(PracticaService::class)->horasDe($evaluador, $record) : [];
-                    })
-                    ->searchable()
-                    ->required()
-                    // Sin evaluador la lista esta vacia y el marcador lo dice;
-                    // no se deshabilita, porque un campo deshabilitado no
-                    // viaja con el formulario.
-                    ->placeholder(fn (\Filament\Schemas\Components\Utilities\Get $get) => blank($get('evaluador_id'))
-                        ? 'Primero elige quién la evalúa'
-                        : 'Elige una hora libre')
-                    ->helperText(function (\Filament\Schemas\Components\Utilities\Get $get, Enrollment $record) {
-                        if (blank($get('evaluador_id'))) {
-                            return null;
-                        }
-
-                        $evaluador = User::find($get('evaluador_id'));
-                        $cuantas = $evaluador ? count(app(PracticaService::class)->horasDe($evaluador, $record)) : 0;
-
-                        return $cuantas > 0
-                            ? 'Solo horas en que esa persona está libre, de ' . app(PracticaService::class)->minutos()
-                                . ' minutos, en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7) . ' días.'
-                            : 'Esa persona no tiene horas libres en los próximos ' . (int) config('fabos.asesorias.dias_vista', 7)
-                                . ' días. Prueba con otra.';
-                    }),
-
-                Textarea::make('nota')
-                    ->label('Algo que decirle')
-                    ->rows(2)
-                    ->maxLength(300)
-                    ->placeholder('Trae el archivo que quieras imprimir.')
-                    ->helperText('Va en el correo. Opcional.'),
-            ])
+            ->schema(self::camposDeLaCita())
             ->action(function (Enrollment $record, array $data) {
                 // La hora viene de la lista, ya en hora de pared del laboratorio.
                 $inicio = Carbon::parse($data['inicio'], config('fabos.lab.timezone'));
@@ -295,6 +302,55 @@ class EnrollmentsRelationManager extends RelationManager
                 Notification::make()
                     ->success()
                     ->title('Citada')
+                    ->body('El ' . $inicio->format('d/m/Y') . ' a las ' . $inicio->format('H:i') . ' con '
+                        . $reserva->reservable->name . '. Le llegó el correo.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Citar de nuevo a quien no paso la practica (§9).
+     *
+     * Una practica fallida es «todavia no», no «nunca». Pasada la semana la
+     * inscripcion se reabre y se cita igual que la primera vez. Antes de la
+     * semana el boton se ve pero no deja, y dice desde cuando.
+     */
+    private static function citarDeNuevo(): Action
+    {
+        return Action::make('citar_de_nuevo')
+            ->label('Citar de nuevo')
+            ->icon('heroicon-o-arrow-path')
+            ->color('info')
+            ->visible(fn (Enrollment $r) => $r->status === 'reprobado'
+                && $r->edition?->course?->requires_practical
+                && $r->teoriaLista()
+                && auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+            ->disabled(fn (Enrollment $r) => ! $r->puedeRepetirLaPractica())
+            ->tooltip(fn (Enrollment $r) => $r->puedeRepetirLaPractica()
+                ? null
+                : 'Se puede citar de nuevo desde el ' . $r->puedeRepetirDesde()?->timezone(config('fabos.lab.timezone'))->format('d/m/Y'))
+            ->modalHeading(fn (Enrollment $r) => 'Citar de nuevo a ' . ($r->user?->name ?? 'la persona'))
+            ->modalDescription(fn (Enrollment $r) => 'No aprobó la práctica el '
+                . $r->reprobadaEl()?->timezone(config('fabos.lab.timezone'))->format('d/m/Y')
+                . ($r->feedback ? ' («' . \Illuminate\Support\Str::limit($r->feedback, 120) . '»)' : '')
+                . '. La inscripción vuelve a estar en curso, con la teoría ya aprobada, y le llega el correo con la nueva hora.')
+            ->schema(self::camposDeLaCita())
+            ->action(function (Enrollment $record, array $data) {
+                $inicio = Carbon::parse($data['inicio'], config('fabos.lab.timezone'));
+
+                try {
+                    $reserva = app(PracticaService::class)->citarDeNuevo(
+                        $record, User::findOrFail($data['evaluador_id']), $inicio, nota: $data['nota'] ?? null,
+                    );
+                } catch (TrainingException $e) {
+                    Notification::make()->danger()->title('No se pudo citar')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title('Citada de nuevo')
                     ->body('El ' . $inicio->format('d/m/Y') . ' a las ' . $inicio->format('H:i') . ' con '
                         . $reserva->reservable->name . '. Le llegó el correo.')
                     ->send();

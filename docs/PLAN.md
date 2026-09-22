@@ -218,6 +218,9 @@ decisión tuya
       controlado y liberación del propio cupo
 - [x] Verificación pública unificada: un solo `/verificar` para certifabs y
       certificados de curso
+- [x] Segunda oportunidad en la práctica: quien no la pasa queda «no
+      aprobado» con fecha, y a la semana (configurable) se le cita de nuevo
+      con la teoría ya aprobada; la práctica evaluada deja de pedir firma
 - [x] Preinscripción a Fab Academy: a tera no se entra eligiendo una fecha. La
       cohorte planeada recibe interesados sin cuenta desde `/fab-academy`, que
       enseña cuántos somos y cuántos faltan para abrir; preinscribirse no ocupa

@@ -157,10 +157,18 @@ class TrainingService
         }
 
         $inscripcion->update([
-            'status'   => 'reprobado',
-            'grade'    => $nota,
-            'feedback' => $comentario,
+            'status'    => 'reprobado',
+            'grade'     => $nota,
+            'feedback'  => $comentario,
+            'failed_at' => now(),
         ]);
+
+        // La practica que evaluo ya ocurrio: se cierra, para que no siga
+        // pidiendo firma. Sin esto quedaba «falta la firma» para siempre.
+        $inscripcion->practicas()
+            ->whereIn('status', \App\Models\Reservation::BLOQUEANTES)
+            ->where('ends_at', '<', now())
+            ->update(['status' => 'completada', 'status_reason' => 'Evaluada: no aprobó']);
 
         return $inscripcion->refresh();
     }

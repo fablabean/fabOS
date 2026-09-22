@@ -235,6 +235,10 @@ return [
         // Cuanto dura la prueba practica de un curso, delante de la maquina.
         'practica_minutos' => (int) env('PRACTICA_MINUTOS', 60),
 
+        // Cuantos dias esperar para volver a citar a quien no paso la practica.
+        // Una semana: tiempo para practicar, no un castigo.
+        'dias_para_repetir_practica' => (int) env('PRACTICA_DIAS_PARA_REPETIR', 7),
+
         // Fab Academy: lo que este laboratorio puede decir de si mismo y donde
         // se comprueba. La lista de nodos es la de la propia Fab Academy: decir
         // «somos el unico» sin enlazar a quien lo certifica es solo decirlo.

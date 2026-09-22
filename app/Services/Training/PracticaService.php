@@ -219,6 +219,44 @@ class PracticaService
     /**
      * @throws TrainingException
      */
+    /**
+     * Otra oportunidad: quien no paso la practica vuelve a la cita (§9).
+     *
+     * Una practica fallida es «todavia no», no «nunca». Pasada la semana se
+     * reabre la inscripcion —sigue con su teoria aprobada— y se cita como la
+     * primera vez, con el mismo formulario y el mismo correo. La nota y el
+     * comentario de la vez anterior se quedan: son lo que le sirve para saber
+     * que practicar.
+     *
+     * @throws TrainingException
+     */
+    public function citarDeNuevo(
+        Enrollment $inscripcion,
+        User $evaluador,
+        CarbonInterface $desde,
+        ?string $nota = null,
+    ): Reservation {
+        $inscripcion->loadMissing('edition.course');
+
+        if ($inscripcion->status !== 'reprobado') {
+            throw new TrainingException('Solo se cita de nuevo a quien no aprobó la práctica.');
+        }
+
+        if (! $inscripcion->puedeRepetirLaPractica()) {
+            $desdeCuando = $inscripcion->puedeRepetirDesde();
+
+            throw new TrainingException($desdeCuando && $desdeCuando->isFuture()
+                ? 'Todavía no: se puede citar de nuevo desde el ' . $desdeCuando->timezone(config('fabos.lab.timezone'))->format('d/m/Y') . '.'
+                : 'Esta inscripción no puede repetir la práctica.');
+        }
+
+        return DB::transaction(function () use ($inscripcion, $evaluador, $desde, $nota) {
+            $inscripcion->update(['status' => 'inscrito', 'grade' => null]);
+
+            return $this->citar($inscripcion->refresh(), $evaluador, $desde, nota: $nota);
+        });
+    }
+
     private function exigirQueSePuedaAgendar(Enrollment $inscripcion): void
     {
         $inscripcion->loadMissing('edition.course', 'user');

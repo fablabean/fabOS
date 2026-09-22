@@ -20,7 +20,7 @@ class Enrollment extends Model
         'course_edition_id', 'user_id', 'status', 'grade', 'feedback',
         'certificate_code', 'completed_at', 'enrolled_at',
         'theory_score', 'theory_passed_at', 'theory_attempts',
-        'practical_passed_at', 'practical_by', 'practical_notes',
+        'practical_passed_at', 'practical_by', 'practical_notes', 'failed_at',
     ];
 
     protected function casts(): array
@@ -31,7 +31,44 @@ class Enrollment extends Model
             'enrolled_at'  => UtcDateTime::class,
             'theory_passed_at'    => UtcDateTime::class,
             'practical_passed_at' => UtcDateTime::class,
+            'failed_at'           => UtcDateTime::class,
         ];
+    }
+
+    /** Cuando reprobo. Lo de antes de que existiera la columna cuenta desde su ultimo cambio. */
+    public function reprobadaEl(): ?\Carbon\CarbonInterface
+    {
+        if ($this->status !== 'reprobado') {
+            return null;
+        }
+
+        return $this->failed_at ?? $this->updated_at;
+    }
+
+    /**
+     * Desde cuando se le puede volver a citar: una semana despues de reprobar,
+     * contada por dias y no por horas —quien reprobo un lunes por la tarde
+     * puede volver el lunes siguiente por la mañana—.
+     */
+    public function puedeRepetirDesde(): ?\Carbon\CarbonInterface
+    {
+        return $this->reprobadaEl()
+            ?->copy()
+            ->timezone(config('fabos.lab.timezone'))
+            ->addDays((int) config('fabos.formacion.dias_para_repetir_practica', 7))
+            ->startOfDay();
+    }
+
+    /**
+     * Si se le puede citar de nuevo: reprobo la practica de un curso que la
+     * tiene, con la teoria aprobada, y ya paso la semana.
+     */
+    public function puedeRepetirLaPractica(): bool
+    {
+        return $this->status === 'reprobado'
+            && (bool) $this->edition?->course?->requires_practical
+            && $this->teoriaLista()
+            && $this->puedeRepetirDesde()?->isPast();
     }
 
     /** Quien firmo la practica: se ve delante de la maquina, no en una pantalla. */
