@@ -96,7 +96,12 @@ final class GuiaDeReservas
                 ->timeout((int) config('fabos.ia.timeout', 45))
                 ->post('https://api.anthropic.com/v1/messages', [
                     'model'      => config('fabos.ia.modelo'),
-                    'max_tokens' => 400,
+                    'max_tokens' => 600,
+                    // Sin pensamiento: es una clasificacion, no un problema. Con
+                    // el pensamiento encendido —que es lo que trae el modelo por
+                    // defecto— se gastaba el tope de tokens pensando y la
+                    // respuesta llegaba sin el JSON, y se leia como fallo.
+                    'thinking'   => ['type' => 'disabled'],
                     'system'     => $this->instrucciones(),
                     'messages'   => [['role' => 'user', 'content' => "<necesidad>\n{$texto}\n</necesidad>"]],
                     // Un esquema fijo: la respuesta es una decisión, no prosa.
@@ -113,9 +118,17 @@ final class GuiaDeReservas
                 return $this->ninguno('Eso no es algo que pueda resolver aquí.');
             }
 
-            $json = json_decode((string) ($r->json('content.0.text') ?? ''), true);
+            // El primer bloque de texto, este donde este: delante puede venir
+            // otro tipo de bloque.
+            $texto = collect($r->json('content', []))->firstWhere('type', 'text')['text'] ?? '';
+            $json = json_decode((string) $texto, true);
 
             if (! is_array($json) || ! isset($json['camino'])) {
+                Log::warning('IA: la guía respondió sin el esquema', [
+                    'stop_reason' => $r->json('stop_reason'),
+                    'texto'       => str($texto)->limit(200)->value(),
+                ]);
+
                 return null;
             }
 
