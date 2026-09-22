@@ -51,7 +51,7 @@ class GuiaDeReservasTest extends TestCase
         // Con el esquema fijo y lo escrito marcado como dato.
         Http::assertSent(fn ($req) => $req['output_config']['format']['type'] === 'json_schema'
             && str_contains($req['messages'][0]['content'], '<necesidad>')
-            && $req['max_tokens'] <= 400);
+            && $req['max_tokens'] <= 600 && $req['thinking']['type'] === 'disabled');
     }
 
     public function test_lo_que_no_va_del_laboratorio_es_ninguno_sin_enlace(): void
