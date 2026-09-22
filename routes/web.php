@@ -64,6 +64,13 @@ Route::get('/p/{slug}', PaginaPublicaController::class)
  */
 Route::get('/reservas', [PublicSiteController::class, 'equipos'])->name('publico.reservas');
 
+// «Escribe que necesitas y te digo por donde»: una pregunta, una respuesta,
+// uno de los cuatro caminos (§10). Sin sesion, con captcha y limite porque
+// cada pregunta cuesta dinero.
+Route::post('/reservas/guia', [PublicSiteController::class, 'guia'])
+    ->middleware(['throttle:10,1', 'captcha:necesidad'])
+    ->name('publico.reservas.guia');
+
 // La direccion vieja sigue viva: esta pegada en chats y en marcadores, y una
 // pagina que deja de existir sin avisar es una promesa rota.
 Route::get('/equipos', fn (Request $r) => redirect()->route('publico.reservas', $r->query()));

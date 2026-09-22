@@ -236,6 +236,33 @@ class PublicSiteController extends Controller
         ]);
     }
 
+    /**
+     * La guía: lo que escribió la persona, y cuál de los cuatro caminos le
+     * toca. Vuelve a la misma página con la respuesta, sin JavaScript.
+     */
+    public function guia(Request $request)
+    {
+        $datos = $request->validate([
+            'necesidad' => ['required', 'string', 'min:8', 'max:600'],
+        ], [
+            'necesidad.required' => 'Cuéntanos qué necesitas.',
+            'necesidad.min'      => 'Cuéntanos un poco más: con dos palabras no sabemos por dónde.',
+        ]);
+
+        $guia = app(\App\Services\Ia\GuiaDeReservas::class);
+        $respuesta = $guia->recomendar($datos['necesidad']);
+
+        if ($respuesta === null) {
+            return redirect()->route('publico.reservas')->withInput()->withErrors([
+                'necesidad' => $guia->disponible() && $guia->quedanHoy() > 0
+                    ? 'No pudimos leerlo ahora. Prueba otra vez, o elige un camino de los de arriba.'
+                    : 'La guía no está disponible ahora. Elige un camino de los de arriba: cada tarjeta dice para qué sirve.',
+            ]);
+        }
+
+        return redirect()->route('publico.reservas')->withInput()->with('guia', $respuesta);
+    }
+
     public function equipo(Asset $asset)
     {
         abort_unless($asset->is_public, 404);

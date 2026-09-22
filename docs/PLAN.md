@@ -73,6 +73,9 @@ decisión tuya
 
 ### Catálogo
 - [x] Áreas, familias de riesgo, ubicaciones, espacios
+- [x] La guía de reservas: «escribe qué necesitas y te decimos por dónde».
+      Una pregunta, una respuesta con esquema fijo —uno de los cuatro
+      caminos o «ninguno»—, sin hilo, con tope diario y memoria por pregunta
 - [x] Herramientas sueltas: lista pública completa desde «Espacio y
       herramientas», varias en una sola reserva (madre e hijas, todas o
       ninguna) con tope editable en Operación → Préstamo de herramientas;
