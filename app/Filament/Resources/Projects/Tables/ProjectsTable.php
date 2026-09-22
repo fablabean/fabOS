@@ -148,6 +148,25 @@ class ProjectsTable
                     ->state(fn (Project $r) => $r->avance() . '%')
                     ->description(fn (Project $r) => $r->tasks()->count() . ' tareas'),
 
+                /*
+                 * Cuando entro, y cuanto lleva.
+                 *
+                 * La lista se ordena por codigo, que es el orden de llegada
+                 * pero no dice nada del tiempo: una solicitud de la web de
+                 * hace tres meses todavia en «idea» se lee igual que la de
+                 * ayer. Con la antiguedad debajo se ve de un vistazo, y la
+                 * columna se puede ordenar para revisar lo mas viejo primero.
+                 */
+                TextColumn::make('created_at')->sortable()
+                    ->label('Creado')
+                    ->date('d/m/Y')
+                    ->timezone(config('fabos.lab.timezone'))
+                    ->width('1px')
+                    ->extraCellAttributes(['style' => 'white-space:nowrap'])
+                    ->color('gray')
+                    ->description(fn (Project $r) => $r->created_at?->locale('es')->diffForHumans())
+                    ->toggleable(),
+
                 TextColumn::make('due_on')->sortable()
                     ->label('Entrega')
                     ->date('d/m/Y')

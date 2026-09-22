@@ -66,6 +66,29 @@ class BackofficeProyectosTest extends TestCase
     }
 
     /**
+     * Cuando entro cada proyecto, y ordenable por ahi.
+     *
+     * Ordenando por codigo una solicitud de hace tres meses se lee igual que
+     * la de ayer; con la fecha delante se ve que lleva esperando.
+     */
+    public function test_el_listado_dice_cuando_se_creo_cada_proyecto(): void
+    {
+        $admin = $this->conRol(User::ROL_ADMINISTRADOR);
+
+        $viejo = $this->proyecto($admin);
+        $viejo->forceFill(['created_at' => now()->subMonths(3)])->save();
+        $nuevo = $this->proyecto($admin);
+
+        $this->entra($admin);
+
+        Livewire::test(ListProjects::class)
+            ->assertCanRenderTableColumn('created_at')
+            ->assertSee($viejo->created_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y'))
+            ->sortTable('created_at')
+            ->assertCanSeeTableRecords([$viejo, $nuevo], inOrder: true);
+    }
+
+    /**
      * Pestañas por tipo de cliente: un clic, y dice cuantos hay. Son tres
      * tramites distintos y quien administra mira uno a la vez.
      */
