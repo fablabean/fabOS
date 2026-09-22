@@ -146,12 +146,15 @@ class EspaciosFueraDeJornadaTest extends TestCase
 
         // Abrir fuera de horario es una jornada programada: son las horas
         // extras que la decisión cuesta.
-        $this->assertTrue(
-            ShiftAssignment::where('user_id', $quienAbre->id)
-                ->where('starts_at', '<=', $this->hora('19:00')->utc())
-                ->where('ends_at', '>=', $this->hora('21:00')->utc())
-                ->exists(),
-        );
+        $jornada = ShiftAssignment::where('user_id', $quienAbre->id)
+            ->where('starts_at', '<=', $this->hora('19:00')->utc())
+            ->where('ends_at', '>=', $this->hora('21:00')->utc())
+            ->first();
+        $this->assertNotNull($jornada);
+
+        // Y queda ligada a la reserva, no solo nombrada en el motivo.
+        $this->assertSame($r->id, $jornada->reservation_id);
+        $this->assertSame($quienAbre->id, $r->jornadas()->first()->user_id);
     }
 
     public function test_la_bandeja_lista_la_solicitud_del_espacio(): void

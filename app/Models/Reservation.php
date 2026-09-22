@@ -263,6 +263,12 @@ class Reservation extends Model
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
+    /** Las jornadas programadas que se abrieron por esta reserva (§5). */
+    public function jornadas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
+
     /**
      * Quiénes del equipo acompañan (§7).
      *

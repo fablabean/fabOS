@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ShiftAssignments\Schemas;
 
 use App\Models\Project;
+use App\Models\Reservation;
 use App\Models\ShiftAssignment;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
@@ -83,6 +84,27 @@ class ShiftAssignmentForm
                             ->placeholder('Ninguno')
                             ->helperText('Si la jornada se abre por un proyecto. Queda ligada a él.'),
 
+                        /*
+                         * La reserva, si la jornada es por una: el sabado que
+                         * alguien pidio el laboratorio de VR y hay que abrirle.
+                         * Cuando se aprueba una solicitud fuera de horario esto
+                         * se llena solo; aqui es para las que se programan a mano.
+                         */
+                        Select::make('reservation_id')
+                            ->label('Reserva')
+                            ->options(fn () => Reservation::query()
+                                ->with('reservable', 'user')
+                                ->whereIn('status', ['solicitada', 'confirmada'])
+                                ->where('ends_at', '>=', now()->subDay())
+                                ->orderBy('starts_at')
+                                ->limit(200)
+                                ->get()
+                                ->mapWithKeys(fn (Reservation $r) => [$r->id => self::etiquetaDeReserva($r, $tz)]))
+                            ->searchable()
+                            ->placeholder('Ninguna')
+                            ->helperText('Si la jornada es para abrir o atender una reserva: un espacio, un equipo.')
+                            ->columnSpanFull(),
+
                         Toggle::make('counts_as_overtime')
                             ->label('Cuenta como hora extra')
                             ->default(true)
@@ -109,5 +131,17 @@ class ShiftAssignmentForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /** «#280 · Lab. VR · sáb 26/09 08:00–12:00 · Ana»: lo justo para reconocerla. */
+    public static function etiquetaDeReserva(Reservation $r, string $tz): string
+    {
+        $desde = $r->starts_at->timezone($tz);
+        $hasta = $r->ends_at->timezone($tz);
+
+        return '#' . $r->id
+            . ' · ' . $r->nombreDelRecurso()
+            . ' · ' . $desde->isoFormat('ddd D/MM HH:mm') . '–' . $hasta->format('H:i')
+            . ($r->user ? ' · ' . $r->user->name : '');
     }
 }

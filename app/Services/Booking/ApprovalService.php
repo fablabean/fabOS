@@ -112,6 +112,7 @@ class ApprovalService
                     $solicitud->ends_at->copy(),
                     'Apertura por la solicitud #' . $solicitud->id . ' · ' . $nombre,
                     $quienAprueba,
+                    porReserva: $solicitud,
                 );
             }
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ShiftAssignment extends Model
 {
     protected $fillable = [
-        'user_id', 'starts_at', 'ends_at', 'reason', 'project_id',
+        'user_id', 'starts_at', 'ends_at', 'reason', 'project_id', 'reservation_id',
         'counts_as_overtime', 'assigned_by', 'accepted_at', 'conflict_note',
     ];
 
@@ -38,6 +38,15 @@ class ShiftAssignment extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * La reserva por la que se abrio, si es por una (§7): el sabado que
+     * alguien pidio el laboratorio de VR y hay que abrirle.
+     */
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(Reservation::class);
     }
 
     public function minutos(): int

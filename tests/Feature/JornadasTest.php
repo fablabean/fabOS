@@ -411,6 +411,35 @@ class JornadasTest extends TestCase
         $this->assertSame(1, $proyecto->jornadas()->count());
     }
 
+    public function test_una_jornada_programada_puede_ser_por_una_reserva(): void
+    {
+        $this->jefa();
+        $persona = User::factory()->create(['status' => 'activo']);
+        $persona->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+
+        $vr = \App\Models\Space::create(['slug' => 'vr', 'name' => 'Laboratorio de VR', 'type' => 'virtual', 'capacity' => 10, 'is_reservable' => true]);
+        $reserva = \App\Models\Reservation::create([
+            'user_id' => User::factory()->create()->id,
+            'reservable_type' => \App\Models\Space::class, 'reservable_id' => $vr->id,
+            'starts_at' => now()->addDays(4)->setTime(8, 0), 'ends_at' => now()->addDays(4)->setTime(12, 0),
+            'status' => 'confirmada',
+        ]);
+
+        Livewire::test(\App\Filament\Resources\ShiftAssignments\Pages\CreateShiftAssignment::class)
+            ->fillForm([
+                'user_id' => $persona->id,
+                'starts_at' => now()->addDays(4)->format('Y-m-d 07:30'), 'ends_at' => now()->addDays(4)->format('Y-m-d 12:30'),
+                'reason' => 'Abrir el laboratorio de VR', 'reservation_id' => $reserva->id,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $jornada = \App\Models\ShiftAssignment::firstOrFail();
+        $this->assertSame($reserva->id, $jornada->reservation_id);
+        $this->assertSame(1, $reserva->jornadas()->count());
+        $this->assertStringContainsString('Laboratorio de VR', \App\Filament\Resources\ShiftAssignments\Schemas\ShiftAssignmentForm::etiquetaDeReserva($reserva, 'America/Bogota'));
+    }
+
     public function test_la_jornada_programada_no_termina_antes_de_empezar(): void
     {
         $this->jefa();

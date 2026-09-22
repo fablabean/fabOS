@@ -2,6 +2,7 @@
 
 namespace App\Services\Staffing;
 
+use App\Models\Reservation;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Services\Booking\BookingException;
@@ -28,6 +29,7 @@ class ShiftService
         string $motivo,
         ?User $asignadaPor = null,
         bool $cuentaComoExtra = true,
+        ?Reservation $porReserva = null,
     ): ShiftAssignment {
         if ($rechazo = $this->extras->motivoDeRechazo($persona, $desde, $hasta, $cuentaComoExtra)) {
             throw new BookingException($rechazo);
@@ -46,6 +48,9 @@ class ShiftService
             'reason'             => $motivo,
             'counts_as_overtime' => $cuentaComoExtra,
             'assigned_by'        => $asignadaPor?->id,
+            // Si es por una reserva, queda ligada a ella y a su proyecto.
+            'reservation_id'     => $porReserva?->id,
+            'project_id'         => $porReserva?->project_id,
         ]);
     }
 

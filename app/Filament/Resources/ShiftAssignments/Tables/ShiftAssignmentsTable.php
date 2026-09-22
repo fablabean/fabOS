@@ -16,6 +16,7 @@ class ShiftAssignmentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['project', 'reservation.reservable']))
             ->defaultSort('starts_at', 'desc')
             ->columns([
                 TextColumn::make('user.name')->label('Persona')->searchable()->weight('medium'),
@@ -34,7 +35,10 @@ class ShiftAssignmentsTable
                 TextColumn::make('reason')
                     ->label('Motivo')
                     ->limit(30)
-                    ->description(fn (ShiftAssignment $record) => $record->project ? $record->project->code . ' · ' . $record->project->name : null),
+                    ->description(fn (ShiftAssignment $record) => collect([
+                        $record->project ? $record->project->code . ' · ' . $record->project->name : null,
+                        $record->reservation ? 'Reserva #' . $record->reservation->id . ' · ' . $record->reservation->nombreDelRecurso() : null,
+                    ])->filter()->implode(' — ') ?: null),
 
                 TextColumn::make('counts_as_overtime')
                     ->label('Cuenta como')
