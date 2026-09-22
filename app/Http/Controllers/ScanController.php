@@ -105,10 +105,37 @@ class ScanController extends Controller
 
         // Cantidades declaradas de material. Van como texto desde el formulario
         // y se limpian aquí: lo que no sea un número positivo, se ignora.
+        $numero = fn ($v) => (float) str_replace(',', '.', (string) $v);
+
         $materiales = collect($request->input('material', []))
-            ->map(fn ($cantidad) => (float) str_replace(',', '.', (string) $cantidad))
+            ->map($numero)
             ->filter(fn (float $cantidad) => $cantidad > 0)
             ->all();
+
+        /*
+         * Y lo que viene en lámina, por el trozo que se cortó.
+         *
+         * De una hoja de 120×90 no se gasta «una»: se cortan 30×40. Delante de
+         * la máquina se sabe lo que se midió, no la fracción, y pedir la
+         * fracción es pedir la regla de tres —o que se anote una hoja entera,
+         * que descuenta de más del inventario y cobra de más—.
+         *
+         * Manda sobre la cantidad escrita a mano: si alguien llenó las dos, lo
+         * concreto es el trozo.
+         */
+        $largos = (array) $request->input('largo', []);
+        $anchos = (array) $request->input('ancho', []);
+
+        foreach (Supply::find(array_keys($largos + $anchos)) as $insumo) {
+            $laminas = $insumo->laminasDeUnTrozo(
+                $numero($largos[$insumo->id] ?? null),
+                $numero($anchos[$insumo->id] ?? null),
+            );
+
+            if ($laminas !== null && $laminas > 0) {
+                $materiales[$insumo->id] = $laminas;
+            }
+        }
 
         try {
             $this->asistencia->checkOut($reservation, $materiales);

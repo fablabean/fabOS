@@ -80,6 +80,9 @@ decisión tuya
       herramientas», varias en una sola reserva (madre e hijas, todas o
       ninguna) con tope editable en Operación → Préstamo de herramientas;
       también desde «Nueva reserva» del panel
+- [x] Buscador en la lista de herramientas (nombre, área o sala, sin tildes ni
+      JavaScript; conserva lo ya marcado) y banner propio por área: una franja
+      ancha y baja que encabeza cada sección, para reconocerla a media lista
 - [x] Un bloqueo de agenda puede ser «trabajo en un proyecto», con varios
       proyectos a la vez; quien intente asignar esa hora ve sus códigos
 - [x] Reserva acompañada a mano desde el panel: con una persona del equipo
@@ -187,6 +190,11 @@ decisión tuya
       bonificación por colaboración y recargas, todas desde Finanzas
 - [x] Cobro de material real: se declara al cerrar desde el QR del equipo, sale
       del inventario y se suma a la liquidación con su precio congelado
+- [x] Lo que viene en lámina lleva sus medidas: al cerrar una producción —y
+      desde el QR del equipo— se declara el trozo que se cortó —30×40 de una
+      hoja de 120×90— y el sistema saca la fracción. Antes había que anotar la
+      hoja entera, que descuenta de más del inventario y le carga de más al
+      proyecto
 - [ ] Encender el cobro (`Finanzas → Cobros`) cuando se decida la tarifa ancla
 - [x] Presupuesto con saldo derivado: comprometido por lo aprobado, ejecutado
       por lo recibido; no se aprueba por encima del disponible
@@ -240,6 +248,10 @@ decisión tuya
 - [x] Proyectos: embudo idea → propuesta → contrato → brief → ejecución → cierre,
       con compuerta documental en cada paso y responsable obligatorio
 - [x] Ideas que llegan por correo o WhatsApp de quien no tiene cuenta
+- [x] La propuesta se descarga en PDF desde su propia página —lo propuesto, sin
+      la conversación ni los botones—: se reenvía a quien firma o aprueba, que
+      no tiene por qué recibir un enlace que caduca. Va por su propia dirección
+      firmada, porque la firma cubre la URL entera
 - [x] Equipo del proyecto con proveedores y cliente, tengan cuenta o no
 - [x] Gantt y Kanban sobre una sola tabla de tareas, con tablero propio para
       mirar en reunión y mover tarjetas de un clic

@@ -13,11 +13,13 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -181,6 +183,10 @@ class ProduccionesRelationManager extends RelationManager
                                     ->label('Qué')
                                     ->required()
                                     ->searchable()
+                                    // Vivo: de el depende que salgan los campos
+                                    // del trozo, que solo tienen sentido para
+                                    // lo que viene en lamina.
+                                    ->live()
                                     ->options(fn () => Supply::where('is_active', true)
                                         ->orderBy('name')
                                         ->get()
@@ -192,7 +198,15 @@ class ProduccionesRelationManager extends RelationManager
                                     ->label('Cuánto')
                                     ->numeric()
                                     ->required()
-                                    ->minValue(0.001),
+                                    // Un trozo pequeño de una hoja grande da
+                                    // milesimas: el minimo de antes -una
+                                    // milesima- deja pasar 30x40 de una 120x90,
+                                    // pero el paso del campo no.
+                                    ->step('any')
+                                    ->minValue(0.0001)
+                                    ->helperText(fn ($get) => ($insumo = self::insumoDe($get('supply_id')))?->seMideEnLamina()
+                                        ? 'En láminas de ' . $insumo->formato() . '. Escribe el trozo abajo y se calcula solo.'
+                                        : null),
 
                                 /*
                                  * De donde salio. Lo del beneficio semanal se
@@ -212,6 +226,40 @@ class ProduccionesRelationManager extends RelationManager
                                         ReservationSupply::CLIENTE => 'Ni sale de existencias ni se cobra.',
                                         default => 'Descuenta existencias y entra al costo.',
                                     }),
+
+                                /*
+                                 * El trozo que se corto, para lo que viene en
+                                 * lamina. De una hoja de 120x90 no se gasto
+                                 * «una»: se gastaron 30x40, que es una novena
+                                 * parte. Escribirlo aqui llena «Cuanto» solo,
+                                 * y «Cuanto» sigue siendo editable para quien
+                                 * prefiera poner la fraccion a mano o gastar
+                                 * laminas enteras.
+                                 */
+                                Grid::make(3)
+                                    ->columnSpanFull()
+                                    ->visible(fn ($get) => self::insumoDe($get('supply_id'))?->seMideEnLamina() ?? false)
+                                    ->schema([
+                                        TextInput::make('largo')
+                                            ->label('Largo del trozo (cm)')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step('any')
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(fn ($get, $set) => self::calcularElTrozo($get, $set)),
+
+                                        TextInput::make('ancho')
+                                            ->label('Ancho del trozo (cm)')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step('any')
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(fn ($get, $set) => self::calcularElTrozo($get, $set)),
+
+                                        Placeholder::make('trozo')
+                                            ->label('Sale a')
+                                            ->content(fn ($get) => self::cuantaLamina($get)),
+                                    ]),
                             ]),
                     ])
                     ->action(function (Reservation $r, array $data) {
@@ -252,5 +300,58 @@ class ProduccionesRelationManager extends RelationManager
                     }),
             ])
             ->toolbarActions([]);
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | El trozo de lámina
+     |--------------------------------------------------------------------------
+     | De una hoja de 120×90 rara vez se gasta «una». Se corta un pedazo, y lo
+     | que hay que declarar es la fracción. Antes había que hacer la regla de
+     | tres a mano —o anotar la hoja entera, que descuenta de más del inventario
+     | y le carga de más al proyecto—.
+     */
+
+    /** El insumo elegido en esta fila, sin consultarlo dos veces por render. */
+    private static function insumoDe($id): ?Supply
+    {
+        static $vistos = [];
+
+        if (! $id) {
+            return null;
+        }
+
+        return $vistos[$id] ??= Supply::find($id);
+    }
+
+    /** Largo × ancho llenan «Cuánto», que sigue editable a mano. */
+    private static function calcularElTrozo(callable $get, callable $set): void
+    {
+        $laminas = self::insumoDe($get('supply_id'))
+            ?->laminasDeUnTrozo((float) $get('largo'), (float) $get('ancho'));
+
+        if ($laminas !== null) {
+            $set('cantidad', $laminas);
+        }
+    }
+
+    /** Lo que sale, dicho entero: «1.200 cm² · 0,1111 láminas». */
+    private static function cuantaLamina(callable $get): string
+    {
+        $insumo = self::insumoDe($get('supply_id'));
+        $largo = (float) $get('largo');
+        $ancho = (float) $get('ancho');
+        $laminas = $insumo?->laminasDeUnTrozo($largo, $ancho);
+
+        if ($laminas === null) {
+            return $insumo?->seMideEnLamina()
+                ? 'Escribe las dos medidas del trozo.'
+                : '—';
+        }
+
+        return number_format($largo * $ancho, 0, ',', '.') . ' cm² · '
+            . rtrim(rtrim(number_format($laminas, 4, ',', '.'), '0'), ',') . ' '
+            . ($insumo->unit ?: 'láminas')
+            . ' de ' . $insumo->formato();
     }
 }

@@ -9,12 +9,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /** Área del laboratorio: unidad de certificación, espacio y responsable (§7). */
 class Area extends Model
 {
-    protected $fillable = ['slug', 'name', 'description', 'photo_path', 'position'];
+    protected $fillable = ['slug', 'name', 'description', 'photo_path', 'banner_path', 'position'];
 
     /** URL de la foto del area, o null si todavia no tiene. */
     public function fotoUrl(): ?string
     {
         return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+    }
+
+    /**
+     * La franja con la que el area encabeza su seccion.
+     *
+     * Distinta de la foto: esa es cuadrada y sirve para ELEGIR el area. Esta
+     * es ancha y baja, y sirve para RECONOCERLA a media lista, cuando ya se
+     * eligio y se esta bajando por las herramientas de todas.
+     */
+    public function bannerUrl(): ?string
+    {
+        return $this->banner_path ? asset('storage/' . $this->banner_path) : null;
     }
 
     /** Quienes pueden certificar en esta área (§5). */

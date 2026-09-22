@@ -120,6 +120,29 @@
         border:1px solid var(--rule);border-radius:8px;box-shadow:0 -6px 24px rgba(0,0,0,.08);
     }
     .barra-varias .cuenta{font-weight:600}
+
+    /* El buscador de herramientas: treinta y pico repartidas en seis áreas se
+       recorren leyendo, y eso es lo que evita escribir «taladro». */
+    .buscador{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:0 0 1.2rem}
+    .buscador input[type=search]{
+        flex:1 1 16rem;min-width:0;padding:.6rem .8rem;font:inherit;font-size:.95rem;
+        color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+    }
+    .buscador input[type=search]:focus{outline:2px solid var(--accent);outline-offset:1px}
+    .buscador button{
+        padding:.6rem 1.1rem;font:inherit;font-size:.9rem;font-weight:600;cursor:pointer;
+        color:var(--ground);background:var(--accent);border:0;border-radius:6px;
+    }
+
+    /* La franja del área: encabeza su sección para reconocerla a media lista,
+       donde antes solo había un renglón de texto. Recortada a lo alto. */
+    .banner-area{position:relative;margin:0 0 1rem;border-radius:8px;overflow:hidden;
+                 border:1px solid var(--rule);background:var(--ground)}
+    .banner-area img{display:block;width:100%;height:clamp(4.5rem,11vw,7rem);
+                     object-fit:cover;filter:brightness(.55)}
+    .banner-area span{position:absolute;left:0;right:0;bottom:0;padding:.7rem .9rem;color:#fff;
+                      font-size:.95rem;font-weight:600;letter-spacing:.02em;
+                      background:linear-gradient(transparent,rgba(0,0,0,.6))}
 @endsection
 
 @section('content')
@@ -477,6 +500,50 @@
             </a>
         </p>
 
+        {{-- El buscador. Va antes del formulario de marcar varias —dos
+             formularios no se anidan— y se lleva consigo lo ya marcado, para
+             que buscar otra cosa no borre lo que llevabas elegido. Sin
+             JavaScript: así el enlace de una búsqueda se puede compartir. --}}
+        @if ($modo === 'herramientas')
+            <form class="buscador" method="GET" action="{{ route('publico.reservas') }}">
+                <input type="hidden" name="modo" value="herramientas">
+                @if ($soloLibres)<input type="hidden" name="libres" value="1">@endif
+                @foreach ($marcadas as $marcada)
+                    <input type="hidden" name="h[]" value="{{ $marcada }}">
+                @endforeach
+
+                <input type="search" name="q" value="{{ $busca }}"
+                       placeholder="Busca por nombre, área o sala: taladro, gafas, cautín…"
+                       aria-label="Buscar una herramienta">
+                <button type="submit">Buscar</button>
+
+                @if ($busca !== '')
+                    <a class="volver" href="{{ route('publico.reservas', ['modo' => 'herramientas']) }}">
+                        Ver todas
+                    </a>
+                @endif
+            </form>
+
+            @if ($busca !== '')
+                <p class="rotulo">
+                    {{ $total }} {{ $total === 1 ? 'herramienta' : 'herramientas' }} con «{{ $busca }}»
+                </p>
+            @endif
+
+            @if ($total === 0)
+                <div class="aviso">
+                    <p>
+                        @if ($busca !== '')
+                            Ninguna herramienta se llama así. Prueba con una palabra suelta
+                            —«taladro», «gafas»— o <a href="{{ route('publico.reservas', ['modo' => 'herramientas']) }}">mira la lista entera</a>.
+                        @else
+                            Todavía no hay herramientas marcadas como prestables.
+                        @endif
+                    </p>
+                </div>
+            @endif
+        @endif
+
         {{-- En herramientas, la lista es también un formulario: se marcan
              varias y se reservan juntas. Las casillas van FUERA del enlace de
              la tarjeta, que sigue llevando a la ficha de cada una. --}}
@@ -486,8 +553,19 @@
         @endif
 
         @foreach ($eligiendoMaquina ? $porArea : [] as $nombreArea => $equipos)
-            <section id="{{ $equipos->first()->area?->slug }}">
-                <p class="rotulo">{{ $nombreArea }} · {{ $equipos->count() }}</p>
+            @php $laDelArea = $equipos->first()->area; @endphp
+            <section id="{{ $laDelArea?->slug }}">
+                {{-- La franja del área, si la tiene: en una lista larga —las
+                     herramientas de todo el laboratorio— un renglón de texto
+                     no basta para saber a media página en qué área vas. --}}
+                @if ($laDelArea?->bannerUrl())
+                    <div class="banner-area">
+                        <img src="{{ $laDelArea->bannerUrl() }}" alt="{{ $nombreArea }}" loading="lazy">
+                        <span>{{ $nombreArea }} · {{ $equipos->count() }}</span>
+                    </div>
+                @else
+                    <p class="rotulo">{{ $nombreArea }} · {{ $equipos->count() }}</p>
+                @endif
                 <div class="equipos">
                     @foreach ($equipos as $e)
                         @if ($modo === 'herramientas')

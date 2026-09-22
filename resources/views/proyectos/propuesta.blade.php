@@ -30,6 +30,12 @@
         @if ($estado['detalle'])
             <span class="quien">{{ $estado['detalle'] }}</span>
         @endif
+
+        {{-- Una propuesta se reenvía: al jefe que firma, al área que paga, al
+             comité que aprueba. Lo único que se podía mandar era este enlace,
+             que caduca y que además trae los botones de aceptar, que no son de
+             quien solo tiene que opinar. --}}
+        <a class="pdf" href="{{ $urlPdf }}">Descargar en PDF</a>
     </p>
 
     @if ($respondida && $version && $version->version > 1)
@@ -565,6 +571,11 @@
         .estado { margin:.2rem 0 .8rem; display:flex; gap:.5rem;
                   align-items:center; flex-wrap:wrap; }
         .estado .pill { margin:0; }
+        /* Se lee, no grita: el botón que importa en esta página es aceptar. */
+        .estado .pdf { margin-left:auto; font-size:.84rem; text-decoration:none;
+                       padding:.3rem .7rem; border:1px solid var(--rule); border-radius:999px;
+                       color:var(--ink-soft); white-space:nowrap; }
+        .estado .pdf:hover { border-color:var(--accent); color:var(--accent); }
         .aceptar textarea { width:100%; margin-bottom:.7rem; }
         .aceptar .botones { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
         .aceptar .botones button { margin:0; }

@@ -18,7 +18,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Supply extends Model
 {
     protected $fillable = [
-        'area_id', 'category_id', 'location_id', 'name', 'kind', 'sku', 'unit', 'description',
+        'area_id', 'category_id', 'location_id', 'name', 'kind', 'sku', 'unit',
+        'largo_cm', 'ancho_cm', 'description',
         'photo_path', 'public_description',
         'stock', 'reorder_point', 'max_stock', 'last_cost', 'is_active', 'is_public',
         'por_encargo', 'dias_por_encargo',
@@ -56,6 +57,59 @@ class Supply extends Model
     public function esProducto(): bool
     {
         return $this->kind === 'producto';
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Lo que viene en lámina
+     |--------------------------------------------------------------------------
+     | El MDF se compra en hojas de 120×90 y se gasta en trozos de 30×40. Con
+     | las medidas guardadas, quien cierra una producción escribe el pedazo que
+     | cortó y no tiene que hacer la regla de tres —ni acabar anotando una
+     | lámina entera, que descuenta de más y cobra de más—.
+     */
+
+    public function seMideEnLamina(): bool
+    {
+        return (float) $this->largo_cm > 0 && (float) $this->ancho_cm > 0;
+    }
+
+    /** Centímetros cuadrados de una lámina entera. */
+    public function areaDeLaLamina(): ?float
+    {
+        return $this->seMideEnLamina()
+            ? (float) $this->largo_cm * (float) $this->ancho_cm
+            : null;
+    }
+
+    /** «120 × 90 cm», para decirlo en pantalla. */
+    public function formato(): ?string
+    {
+        if (! $this->seMideEnLamina()) {
+            return null;
+        }
+
+        $numero = fn (float $v) => rtrim(rtrim(number_format($v, 2, ',', '.'), '0'), ',');
+
+        return $numero((float) $this->largo_cm) . ' × ' . $numero((float) $this->ancho_cm) . ' cm';
+    }
+
+    /**
+     * Qué fracción de lámina es un trozo de tantos por tantos.
+     *
+     * Cuatro decimales: un recorte pequeño en una hoja grande da números muy
+     * por debajo de la centésima, y redondear antes de tiempo lo dejaría en
+     * cero, que es justo lo que se venía haciendo a mano.
+     */
+    public function laminasDeUnTrozo(float $largo, float $ancho): ?float
+    {
+        $area = $this->areaDeLaLamina();
+
+        if (! $area || $largo <= 0 || $ancho <= 0) {
+            return null;
+        }
+
+        return round($largo * $ancho / $area, 4);
     }
 
     /**

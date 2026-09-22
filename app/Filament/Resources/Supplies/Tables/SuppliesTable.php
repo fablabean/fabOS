@@ -57,7 +57,9 @@ class SuppliesTable
                     ->label('Insumo')
                     ->searchable()
                     ->weight('medium')
-                    ->description(fn (Supply $r) => collect([$r->area?->name, $r->location?->name])
+                    // Con el formato, si viene en lamina: es lo que dice si se
+                    // puede declarar un trozo o hay que anotar hojas enteras.
+                    ->description(fn (Supply $r) => collect([$r->area?->name, $r->location?->name, $r->formato()])
                         ->filter()->implode(' · ') ?: null),
 
                 /*

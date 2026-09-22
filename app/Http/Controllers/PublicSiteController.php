@@ -9,6 +9,7 @@ use App\Models\Certifab;
 use App\Services\Booking\AvailabilityService;
 use App\Services\Booking\EligibilityService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * La cara pública del laboratorio.
@@ -118,6 +119,27 @@ class PublicSiteController extends Controller
         // pagina de cada una al ir a reservarla.
         if ($modo === 'herramientas') {
             $visibles = $visibles->filter(fn (Asset $a) => $a->esHerramienta());
+        }
+
+        /*
+         * El buscador de la lista de herramientas.
+         *
+         * «Son pocas y se buscan por nombre» decia el aviso, y eran treinta y
+         * pico repartidas en seis areas: buscar por nombre era bajar la pagina
+         * entera leyendo. Busca donde una persona busca —el nombre, la familia,
+         * la sala donde esta— y sin JavaScript, que es lo que hace que funcione
+         * tambien al compartir el enlace de una busqueda.
+         */
+        $busca = trim($request->string('q')->toString());
+
+        if ($modo === 'herramientas' && $busca !== '') {
+            $visibles = $visibles->filter(fn (Asset $a) => Str::contains(
+                Str::ascii(mb_strtolower(implode(' ', array_filter([
+                    $a->name, $a->riskFamily?->name, $a->area?->name, $a->space?->name,
+                    $a->puede_salir ? 'portátil' : null,
+                ])))),
+                Str::ascii(mb_strtolower($busca)),
+            ));
         }
 
         if ($modo === 'autonomia') {
@@ -233,6 +255,7 @@ class PublicSiteController extends Controller
             // las que tenia).
             'maxHerramientas' => \App\Support\Settings::maxHerramientasPorReserva(),
             'marcadas' => array_map('intval', (array) $request->input('h', [])),
+            'busca'    => $busca,
         ]);
     }
 

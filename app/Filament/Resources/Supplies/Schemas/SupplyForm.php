@@ -46,6 +46,33 @@ class SupplyForm
                             ->default('unidad')
                             ->placeholder('g, ml, kg, hoja, m, unidad'),
 
+                        /*
+                         * Las medidas, si viene en lamina. No es decoracion:
+                         * con ellas, quien cierra una produccion declara el
+                         * trozo que corto -30x40- y el sistema saca la
+                         * fraccion. Sin ellas hay que anotar la hoja entera o
+                         * hacer la regla de tres a mano.
+                         */
+                        TextInput::make('largo_cm')
+                            ->label('Largo de la lámina (cm)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->step('any')
+                            ->placeholder('120')
+                            ->live(onBlur: true)
+                            ->helperText('Solo si viene en lámina, hoja o plancha. Permite gastar un trozo.'),
+
+                        TextInput::make('ancho_cm')
+                            ->label('Ancho de la lámina (cm)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->step('any')
+                            ->placeholder('90')
+                            ->helperText(fn ($get) => ($largo = (float) $get('largo_cm')) > 0 && ($ancho = (float) $get('ancho_cm')) > 0
+                                ? 'Una lámina son ' . number_format($largo * $ancho, 0, ',', '.') . ' cm².'
+                                : 'Las dos hacen falta para poder declarar trozos.')
+                            ->live(onBlur: true),
+
                         Select::make('area_id')->label('Área')->relationship('area', 'name'),
 
                         Select::make('category_id')

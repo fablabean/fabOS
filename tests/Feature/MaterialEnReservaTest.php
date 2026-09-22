@@ -230,4 +230,86 @@ class MaterialEnReservaTest extends TestCase
         $this->assertSame(954.5, (float) $insumo->fresh()->stock);
         $this->assertSame('completada', $reserva->fresh()->status);
     }
+
+    // ------------------------------------------------------ el trozo de lámina
+
+    /**
+     * Lo que viene en lámina se declara por el trozo que se cortó.
+     *
+     * De una hoja de 120x90 no se gasta «una»: se cortan 30x40. Delante de la
+     * máquina se sabe lo que se midió, no la fracción, y pedir la fracción es
+     * pedir la regla de tres -o que se anote una hoja entera, que descuenta de
+     * más del inventario y cobra de más-.
+     */
+    private function lamina(Asset $equipo): Supply
+    {
+        return $this->insumo($equipo, [
+            'name' => 'MDF 5.5 mm', 'unit' => 'lámina',
+            'largo_cm' => 120, 'ancho_cm' => 90, 'stock' => 10,
+        ]);
+    }
+
+    private function enCurso(User $u, Asset $equipo)
+    {
+        Certifab::firstOrCreate(
+            ['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id],
+            ['level' => 'byte'],
+        );
+
+        $inicio = now()->addMinutes(5);
+        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
+        app(AttendanceService::class)->checkIn($reserva->refresh());
+
+        return $reserva->refresh();
+    }
+
+    public function test_la_pantalla_del_equipo_pide_las_medidas_del_trozo(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $lamina = $this->lamina($equipo);
+        $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->get(route('escaneo.equipo', $equipo->qr_token))
+            ->assertOk()
+            ->assertSee('el trozo que cortaste')
+            ->assertSee('La lámina es de 120 × 90 cm')
+            ->assertSee('name="largo[' . $lamina->id . ']"', false)
+            ->assertSee('name="ancho[' . $lamina->id . ']"', false);
+    }
+
+    public function test_declarar_el_trozo_descuenta_la_fraccion_y_no_la_hoja(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $lamina = $this->lamina($equipo);
+        $reserva = $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->post(route('escaneo.checkout', $reserva), [
+                'largo' => [$lamina->id => '30'],
+                'ancho' => [$lamina->id => '40'],
+            ])
+            ->assertRedirect(route('reservas.index'));
+
+        // 1.200 cm² de 10.800: una novena parte, no una hoja.
+        $this->assertEqualsWithDelta(0.1111, (float) ReservationSupply::firstOrFail()->quantity, 0.0001);
+        $this->assertEqualsWithDelta(10 - 0.1111, (float) $lamina->fresh()->stock, 0.01);
+    }
+
+    public function test_sin_las_dos_medidas_no_se_declara_nada(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $lamina = $this->lamina($equipo);
+        $reserva = $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->post(route('escaneo.checkout', $reserva), ['largo' => [$lamina->id => '30']])
+            ->assertRedirect(route('reservas.index'));
+
+        $this->assertSame(0, ReservationSupply::count());
+        $this->assertSame(10.0, (float) $lamina->fresh()->stock);
+    }
 }

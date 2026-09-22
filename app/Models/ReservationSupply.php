@@ -12,7 +12,9 @@ class ReservationSupply extends Model
 
     protected function casts(): array
     {
-        return ['quantity' => 'decimal:3'];
+        // Cuatro decimales: de una lámina de 120×90 se gastan trozos, y un
+        // recorte de 5×5 es 0,0023 de hoja. Con tres se guardaba 0,002.
+        return ['quantity' => 'decimal:4'];
     }
 
     /**

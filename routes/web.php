@@ -195,6 +195,10 @@ Route::get('/alianzas/{project:code}/gracias', [AlianzaController::class, 'graci
 // porque las dos puertas tienen que valer.
 Route::get('/proyectos/{project}/propuesta', [SolicitudDeProyectoController::class, 'propuesta'])
     ->name('proyectos.propuesta');
+// El PDF va por su propia direccion y no con un «?pdf=1» sobre la anterior: la
+// firma cubre la URL entera, y anadirle un parametro la romperia.
+Route::get('/proyectos/{project}/propuesta.pdf', [SolicitudDeProyectoController::class, 'propuestaEnPdf'])
+    ->name('proyectos.propuesta.pdf');
 Route::post('/proyectos/{project}/aceptar', [SolicitudDeProyectoController::class, 'aceptar'])
     ->name('proyectos.aceptar');
 Route::get('/proyectos/{project}/imagen', [SolicitudDeProyectoController::class, 'imagen'])

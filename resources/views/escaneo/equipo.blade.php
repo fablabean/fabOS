@@ -42,13 +42,38 @@
                     </p>
 
                     @foreach ($insumos as $insumo)
-                        <label for="material-{{ $insumo->id }}">
-                            {{ $insumo->name }} ({{ $insumo->unit }})
-                        </label>
-                        <input id="material-{{ $insumo->id }}"
-                               name="material[{{ $insumo->id }}]"
-                               type="number" step="0.001" min="0" inputmode="decimal"
-                               placeholder="0">
+                        @if ($insumo->seMideEnLamina())
+                            {{-- Lo que viene en lámina se gasta en trozos. De
+                                 una hoja de 120×90 no se gasta «una»: se cortan
+                                 30×40. Delante de la máquina se sabe lo que se
+                                 midió, no la fracción, así que se piden las
+                                 medidas y la cuenta la hace el sistema. --}}
+                            <label for="largo-{{ $insumo->id }}">
+                                {{ $insumo->name }}
+                                <span class="help">— el trozo que cortaste, en cm.
+                                    La lámina es de {{ $insumo->formato() }}</span>
+                            </label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input id="largo-{{ $insumo->id }}"
+                                       name="largo[{{ $insumo->id }}]"
+                                       type="number" step="0.1" min="0" inputmode="decimal"
+                                       placeholder="largo" aria-label="Largo del trozo en centímetros"
+                                       style="flex:1;min-width:0">
+                                <span aria-hidden="true">×</span>
+                                <input name="ancho[{{ $insumo->id }}]"
+                                       type="number" step="0.1" min="0" inputmode="decimal"
+                                       placeholder="ancho" aria-label="Ancho del trozo en centímetros"
+                                       style="flex:1;min-width:0">
+                            </div>
+                        @else
+                            <label for="material-{{ $insumo->id }}">
+                                {{ $insumo->name }} ({{ $insumo->unit }})
+                            </label>
+                            <input id="material-{{ $insumo->id }}"
+                                   name="material[{{ $insumo->id }}]"
+                                   type="number" step="0.001" min="0" inputmode="decimal"
+                                   placeholder="0">
+                        @endif
                     @endforeach
                 @endif
 

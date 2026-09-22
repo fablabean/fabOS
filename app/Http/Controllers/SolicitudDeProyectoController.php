@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\UserCategory;
 use App\Services\Notifications\NotificationService;
 use App\Services\Projects\ProjectException;
@@ -230,6 +231,12 @@ class SolicitudDeProyectoController extends Controller
                 : null,
             'firmado'  => $firmado,
 
+            // El PDF, con su propia firma: quien llega por el correo no tiene
+            // sesión, y la firma de esta página no vale para otra dirección.
+            'urlPdf' => $firmado
+                ? URL::temporarySignedRoute('proyectos.propuesta.pdf', now()->addDays(60), ['project' => $project->id])
+                : route('proyectos.propuesta.pdf', $project),
+
             // La regla vive en el modelo: la misma pregunta la hace el POST de
             // aceptar, y dos respuestas para la misma pregunta acaban
             // contradiciendose -la pantalla escondia el boton y la direccion
@@ -260,6 +267,58 @@ class SolicitudDeProyectoController extends Controller
                 ['project' => $project->id],
             ),
         ]);
+    }
+
+    /**
+     * La propuesta en PDF, para guardarla o pasarla a quien decide.
+     *
+     * Una propuesta se reenvía: al jefe que firma, al área que paga, al comité
+     * que aprueba. Hasta ahora lo único que se podía mandar era el enlace, que
+     * va firmado y caduca —y que además enseña los botones de aceptar, que no
+     * son de quien solo tiene que opinar—. El PDF es lo que se propuso, sin la
+     * conversación ni los botones.
+     *
+     * No es la misma dirección con `?pdf=1`: la firma cubre la URL entera y
+     * añadirle un parámetro la rompería. Va por la suya, con su propia firma.
+     */
+    public function propuestaEnPdf(Request $request, Project $project)
+    {
+        abort_unless($this->puedeVerla($request, $project), 403);
+
+        $project->load(['deliverables', 'lead', 'evidence', 'proposals']);
+
+        $html = view('proyectos.propuesta-pdf', [
+            'proyecto'   => $project,
+            'respondida' => $project->proposal_sent_at !== null,
+            // Incrustada, no enlazada: el PDF se abre sin sesión y una imagen
+            // por su dirección saldría rota.
+            'portada'    => $this->portadaIncrustada($project),
+            'soportes'   => $project->evidence->whereNull('project_comment_id'),
+            'enlace'     => route('proyectos.propuesta', $project),
+        ])->render();
+
+        return Pdf::loadHTML($html)
+            ->setPaper('letter')
+            ->download('propuesta-' . strtolower($project->code) . '.pdf');
+    }
+
+    /** La imagen de referencia como data URI, o nula si no hay o no se puede leer. */
+    private function portadaIncrustada(Project $project): ?string
+    {
+        $ruta = $project->reference_image_path;
+        $disco = Storage::disk('local');
+
+        if (blank($ruta) || ! $disco->exists($ruta)) {
+            return null;
+        }
+
+        $tipo = $disco->mimeType($ruta) ?: 'image/jpeg';
+
+        if (! str_starts_with($tipo, 'image/')) {
+            return null;
+        }
+
+        return 'data:' . $tipo . ';base64,' . base64_encode($disco->get($ruta));
     }
 
     /**
