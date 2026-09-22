@@ -12,13 +12,20 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 /**
- * Los importes se guardan en unidades menores pero se editan en FabCoins:
- * quien administra la tarifa escribe «20», no «2000». La conversión ocurre aquí
- * y en ningún otro sitio.
+ * Los importes se guardan en unidades menores pero se editan en la moneda que
+ * elija quien tarifa: FabCoins para una hora de máquina, pesos para un material
+ * que se cobra por centímetro cuadrado. La conversión ocurre aquí y en ningún
+ * otro sitio.
+ *
+ * Con decimales, además. Una lámina de MDF sale a unos 4 pesos el cm², que son
+ * 0,004 FabCoins: en enteros eso se guardaba como cero y el material acababa
+ * saliendo gratis. La tarifa admite cuatro decimales de unidad menor; lo que se
+ * cobra sigue redondeándose a entero, línea por línea, al cotizar.
  */
 class RateCardForm
 {
@@ -69,26 +76,65 @@ class RateCardForm
                     ]),
 
                 Section::make('Componentes del precio')
-                    ->description('Todo en ' . config('fabos.currency.name') . 's. El total de un trabajo es la suma de lo que aplique.')
+                    ->description('El total de un trabajo es la suma de lo que aplique.')
                     ->columns(2)
                     ->schema([
-                        self::fabcoins('price_minor')
+                        /*
+                         * En que moneda se escribe. No cambia lo que se guarda
+                         * ni lo que se cobra: cambia el teclado mental. Un
+                         * material por cm2 se piensa en pesos —«4 el cm2»— y
+                         * traducirlo a FabCoins de cabeza es como se llega a un
+                         * cero sin darse cuenta.
+                         */
+                        ToggleButtons::make('capture_currency')
+                            ->label('Escribir los precios en')
+                            ->options(RateCard::MONEDAS)
+                            ->default('fbc')
+                            ->inline()
+                            ->live()
+                            ->columnSpanFull()
+                            ->helperText('1 ' . config('fabos.currency.name') . ' = '
+                                . number_format((float) config('fabos.currency.peso_rate'), 0, ',', '.')
+                                . ' pesos. Al cambiar de moneda se convierte lo que ya esté escrito; lo guardado es lo mismo.')
+                            ->afterStateUpdated(function (?string $state, ?string $old, callable $set, callable $get) {
+                                if ($state === $old) {
+                                    return;
+                                }
+
+                                // Lo que hay en pantalla está en la moneda de
+                                // antes: se pasa por unidades menores, que es
+                                // lo único que no depende de cuál se elija.
+                                foreach (self::IMPORTES as $campo) {
+                                    $escrito = $get($campo);
+
+                                    if (! is_numeric($escrito)) {
+                                        continue;
+                                    }
+
+                                    $set($campo, self::comoSeTeclea(
+                                        RateCard::aUnidadesMenores((float) $escrito, $old),
+                                        $state,
+                                    ));
+                                }
+                            }),
+
+                        self::dinero('price_minor')
                             ->label(fn (callable $get) => $get('basis') === 'tiempo' ? 'Por hora' : 'Por unidad')
                             ->required(),
 
-                        self::fabcoins('setup_minor')
+                        self::dinero('setup_minor')
                             ->label('Montaje')
                             ->helperText('Alistamiento del equipo. Se cobra una sola vez, dure lo que dure el trabajo.'),
 
-                        self::fabcoins('supervision_hour_minor')
+                        self::dinero('supervision_hour_minor')
                             ->label('Acompañamiento por hora')
                             ->helperText('Solo se suma cuando la reserva exige que alguien del equipo esté presente.'),
 
-                        self::fabcoins('minimum_minor')
+                        self::dinero('minimum_minor')
                             ->label('Cobro mínimo')
                             ->helperText('Piso del servicio. No arrastra el material.'),
 
-                        self::fabcoins('deposit_minor')
+                        self::dinero('deposit_minor')
                             ->label('Depósito de garantía')
                             ->helperText('Lo que se retiene al reservar. Si hay depósito, es lo que se compromete en vez del total estimado.'),
 
@@ -129,15 +175,61 @@ class RateCardForm
             ]);
     }
 
-    private static function fabcoins(string $campo): TextInput
-    {
-        $unidades = config('fabos.currency.minor_units');
+    /** Los cinco importes de la tarifa, que se convierten juntos. */
+    private const IMPORTES = [
+        'price_minor', 'setup_minor', 'supervision_hour_minor',
+        'minimum_minor', 'deposit_minor',
+    ];
 
+    private static function dinero(string $campo): TextInput
+    {
         return TextInput::make($campo)
             ->numeric()
+            ->minValue(0)
+            // Sin esto el navegador da por inválido cualquier decimal: el paso
+            // de un campo numérico es 1 mientras no se diga otra cosa, y ahí es
+            // donde «0.004» se quedaba por el camino.
+            ->step('any')
             ->default(0)
-            ->prefix(config('fabos.currency.code'))
-            ->formatStateUsing(fn (?int $state) => $state === null ? null : $state / $unidades)
-            ->dehydrateStateUsing(fn (?string $state) => (int) round(((float) $state) * $unidades));
+            ->live(onBlur: true)
+            ->prefix(fn (callable $get) => $get('capture_currency') === 'pesos'
+                ? config('fabos.money.symbol')
+                : config('fabos.currency.code'))
+            // Lo mismo dicho en la otra moneda, mientras se escribe: es la
+            // comprobación de que 0,004 son los 4 pesos que se querían poner.
+            ->suffix(fn ($state, callable $get) => self::equivalencia($state, $get('capture_currency')))
+            ->formatStateUsing(fn ($state, ?RateCard $record) => $state === null
+                ? null
+                : self::comoSeTeclea((float) $state, $record?->capture_currency ?? 'fbc'))
+            ->dehydrateStateUsing(fn ($state, callable $get) => RateCard::aUnidadesMenores(
+                (float) $state,
+                $get('capture_currency'),
+            ));
+    }
+
+    /**
+     * El número tal y como se teclea: con punto y sin ceros de relleno.
+     *
+     * Un campo numérico del navegador quiere punto decimal. Y los ceros
+     * sobrantes se van porque nadie escribe «0,0040»: al volver a abrir la
+     * tarifa tiene que verse lo que se puso.
+     */
+    private static function comoSeTeclea(float $menor, ?string $moneda): string
+    {
+        $valor = RateCard::enSuMoneda($menor, $moneda);
+        $texto = number_format($valor, $moneda === 'pesos' ? 2 : 4, '.', '');
+
+        return str_contains($texto, '.') ? rtrim(rtrim($texto, '0'), '.') : $texto;
+    }
+
+    private static function equivalencia($state, ?string $moneda): ?string
+    {
+        if (! is_numeric($state) || (float) $state == 0.0) {
+            return null;
+        }
+
+        $menor = RateCard::aUnidadesMenores((float) $state, $moneda);
+
+        return '≈ ' . RateCard::enTexto($menor, $moneda === 'pesos' ? 'fbc' : 'pesos');
     }
 }

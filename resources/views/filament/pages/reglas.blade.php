@@ -328,9 +328,24 @@
 
         {{-- ------------------------------------------------ dinero --}}
         @php
-            $enFbc = fn (?int $menor) => $menor
-                ? number_format($menor / $moneda['minor_units'], 2, ',', '.')
-                : '—';
+            // En float y con los decimales que tengan: una tarifa por cm²
+            // vale décimas de unidad menor, y con dos decimales fijos —o
+            // tipado a entero— se leía «0,00» por un material que sí cuesta.
+            $enFbc = function (?float $menor) use ($moneda) {
+                if (! $menor) {
+                    return '—';
+                }
+
+                $valor = $menor / $moneda['minor_units'];
+
+                // Los dos decimales de siempre, salvo que el precio sea más
+                // fino que eso: entonces salen los que hagan falta.
+                if (round($valor, 2) == $valor) {
+                    return number_format($valor, 2, ',', '.');
+                }
+
+                return rtrim(number_format($valor, 4, ',', '.'), '0');
+            };
             $supuestas = $tarifas->where('is_assumed', true)->count();
         @endphp
 

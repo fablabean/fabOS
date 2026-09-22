@@ -35,7 +35,8 @@ class PricingService
     public function precioDe(Supply $insumo, float $cantidad = 1): int
     {
         $tarifa = $this->tarifaDe($insumo);
-        $base = $tarifa ? (int) $tarifa->price_minor : $this->derivadoDelCosto($insumo);
+        // La tarifa puede llevar decimales; lo que se cobra por unidad, no.
+        $base = $tarifa ? (int) round($tarifa->price_minor) : $this->derivadoDelCosto($insumo);
 
         return $this->conEscalon($insumo, $base, $cantidad);
     }
@@ -115,10 +116,13 @@ class PricingService
     {
         $tarifa = $this->tarifaDe($insumo);
 
-        return $tarifa ? $this->aPesos((int) $tarifa->price_minor) : null;
+        // En float: una tarifa por cm² vale décimas de unidad menor, y
+        // truncarla antes de pasarla a pesos devolvería cero por un material
+        // que sí cuesta.
+        return $tarifa ? $this->aPesos((float) $tarifa->price_minor) : null;
     }
 
-    public function aPesos(int $menor): int
+    public function aPesos(float $menor): int
     {
         return (int) round($menor / (int) config('fabos.currency.minor_units') * $this->tasa());
     }
@@ -152,16 +156,20 @@ class PricingService
         }
 
         $valores = [
-            'name'          => 'Venta al público · ' . $insumo->name,
-            'rateable_type' => Supply::class,
-            'rateable_id'   => $insumo->id,
-            'basis'         => 'unidad',
-            'unit'          => $insumo->unit,
-            'price_minor'   => $this->aMenor($pesos),
-            'is_active'     => true,
+            'name'             => 'Venta al público · ' . $insumo->name,
+            'rateable_type'    => Supply::class,
+            'rateable_id'      => $insumo->id,
+            'basis'            => 'unidad',
+            'unit'             => $insumo->unit,
+            // Sin truncar: un insumo que se vende a 4 pesos la unidad son 0,4
+            // unidades menores, y en entero eso era regalarlo.
+            'price_minor'      => RateCard::aUnidadesMenores($pesos, 'pesos'),
+            // Se decidió en pesos: que vuelva a abrirse en pesos.
+            'capture_currency' => 'pesos',
+            'is_active'        => true,
             // Lo puso una persona: no es un supuesto pendiente de decidir.
-            'is_assumed'    => false,
-            'notes'         => 'Se fija desde la ficha del insumo.',
+            'is_assumed'       => false,
+            'notes'            => 'Se fija desde la ficha del insumo.',
         ];
 
         if ($tarifa) {

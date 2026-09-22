@@ -31,7 +31,12 @@ class RateCardsTable
                     ->badge(),
 
                 self::moneda('price_minor', 'Precio')
-                    ->description(fn (RateCard $r) => 'por ' . ($r->unit ?: 'unidad')),
+                    // Y cuanto es eso en pesos: una tarifa por cm2 se decidio
+                    // en pesos, y «0,004» no se reconoce de un vistazo.
+                    ->description(fn (RateCard $r) => 'por ' . ($r->unit ?: 'unidad')
+                        . ((float) $r->price_minor > 0
+                            ? ' · ' . RateCard::enTexto((float) $r->price_minor, 'pesos')
+                            : '')),
 
                 self::moneda('setup_minor', 'Montaje'),
                 self::moneda('supervision_hour_minor', 'Acompañam.'),
@@ -75,13 +80,18 @@ class RateCardsTable
             ]);
     }
 
+    /**
+     * Todas las columnas en FabCoins, aunque la tarifa se escribiera en pesos:
+     * una sola vara para comparar filas. Con los decimales que tenga, que con
+     * dos fijos un precio por cm² se leía «0,00».
+     */
     private static function moneda(string $campo, string $titulo): TextColumn
     {
         return TextColumn::make($campo)
             ->label($titulo)
             ->alignEnd()
-            ->formatStateUsing(fn (?int $state) => $state
-                ? number_format($state / config('fabos.currency.minor_units'), 2, ',', '.')
+            ->formatStateUsing(fn ($state) => (float) $state > 0
+                ? RateCard::enTexto((float) $state)
                 : '—');
     }
 }

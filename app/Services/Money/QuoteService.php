@@ -105,13 +105,18 @@ class QuoteService
 
         // El mínimo protege trabajos cortos que igual ocupan a alguien montando
         // y desmontando. Se compara contra el servicio, nunca contra el material.
-        if ($servicio > 0 && $servicio < $tarifa->minimum_minor) {
+        //
+        // La tarifa lleva decimales —un cm² vale menos que la unidad menor—,
+        // pero lo que se cobra es un entero: el piso se redondea aquí, una vez.
+        $minimo = (int) round($tarifa->minimum_minor);
+
+        if ($servicio > 0 && $servicio < $minimo) {
             $lineas[] = [
                 'concepto' => 'Ajuste al cobro mínimo',
                 'detalle'  => 'El trabajo ocupa el equipo aunque dure poco',
-                'importe'  => $tarifa->minimum_minor - $servicio,
+                'importe'  => $minimo - $servicio,
             ];
-            $servicio = $tarifa->minimum_minor;
+            $servicio = $minimo;
         }
 
         $total = $servicio;
@@ -129,7 +134,7 @@ class QuoteService
             ];
         }
 
-        return new Quote($lineas, $total, $tarifa->deposit_minor, $supuesta, $gratis, $restantes);
+        return new Quote($lineas, (int) $total, (int) round($tarifa->deposit_minor), $supuesta, $gratis, $restantes);
     }
 
     /** Redondea hacia arriba al bloque de facturación. */

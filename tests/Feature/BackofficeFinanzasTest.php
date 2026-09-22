@@ -104,7 +104,8 @@ class BackofficeFinanzasTest extends TestCase
 
         $pantalla->set('data.price_minor', 25)->call('save');
 
-        $this->assertSame(2500, $tarifa->fresh()->price_minor);
+        // Con decimales en la columna: 2500 exactos, pero ya no un entero.
+        $this->assertEqualsWithDelta(2500, $tarifa->fresh()->price_minor, 0.0001);
     }
 
     public function test_las_cuentas_y_los_movimientos_cargan(): void

@@ -166,6 +166,10 @@ decisión tuya
       hashes, claves de idempotencia y verificación desde el backoffice
 - [x] Tarifas compuestas: tiempo + material + montaje + supervisión, con mínimo,
       depósito y bloque de facturación; heredadas equipo → familia → área → base
+- [x] La tarifa admite decimales y se escribe en FabCoins **o en pesos**: un
+      cm² de MDF vale 4 pesos (0,004 FBC), y en enteros se guardaba como cero.
+      Lo que se cobra sigue siendo entero; lo que lleva decimales es el precio
+      unitario, que es una razón, no un saldo
 - [x] Ciclo de cobro de una reserva: se retiene al reservar, se liquida al
       cerrar y la diferencia vuelve
 - [x] La asesoría tiene precio plano (2 FBC, editable): se retiene al pedirla
