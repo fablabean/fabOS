@@ -234,6 +234,12 @@ class Project extends Model
         return $this->modality === 'alianza';
     }
 
+    /** Las jornadas extra abiertas por este proyecto (§5). */
+    public function jornadas(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
+
     /** Los bloqueos de agenda del equipo dedicados a este proyecto (§5). */
     public function bloqueos(): BelongsToMany
     {

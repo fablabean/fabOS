@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ShiftAssignment extends Model
 {
     protected $fillable = [
-        'user_id', 'starts_at', 'ends_at', 'reason',
+        'user_id', 'starts_at', 'ends_at', 'reason', 'project_id',
         'counts_as_overtime', 'assigned_by', 'accepted_at', 'conflict_note',
     ];
 
@@ -32,6 +32,12 @@ class ShiftAssignment extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /** El proyecto por el que se abrio, si es por uno (§11). */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function minutos(): int

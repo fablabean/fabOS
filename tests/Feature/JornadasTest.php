@@ -382,4 +382,47 @@ class JornadasTest extends TestCase
             WorkSchedule::where('user_id', $destino->id)->first()->modalidad,
         );
     }
+    // ------------------------------------------------ jornadas programadas
+
+    /**
+     * La jornada puntual se crea con selectores: quien la asigna es quien la
+     * crea, sin teclear un id, y puede colgar de un proyecto.
+     */
+    public function test_una_jornada_programada_queda_con_quien_la_asigno_y_su_proyecto(): void
+    {
+        $jefa = $this->jefa();
+        $persona = User::factory()->create(['status' => 'activo']);
+        $persona->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+        $proyecto = \App\Models\Project::create(['name' => 'Dron', 'stage' => 'ejecucion', 'status' => 'activo', 'source' => 'correo', 'client_kind' => 'externo']);
+
+        Livewire::test(\App\Filament\Resources\ShiftAssignments\Pages\CreateShiftAssignment::class)
+            ->fillForm([
+                'user_id' => $persona->id,
+                'starts_at' => '2026-09-26 08:00', 'ends_at' => '2026-09-26 12:00',
+                'reason' => 'Apertura del sábado', 'project_id' => $proyecto->id, 'counts_as_overtime' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $jornada = \App\Models\ShiftAssignment::firstOrFail();
+        $this->assertSame($jefa->id, $jornada->assigned_by);
+        $this->assertSame($proyecto->id, $jornada->project_id);
+        $this->assertNull($jornada->accepted_at, 'aceptada se marca con su botón, no en el formulario');
+        $this->assertSame(1, $proyecto->jornadas()->count());
+    }
+
+    public function test_la_jornada_programada_no_termina_antes_de_empezar(): void
+    {
+        $this->jefa();
+        $persona = User::factory()->create(['status' => 'activo']);
+        $persona->assignRole(Role::findOrCreate(User::ROL_PRACTICANTE, 'web'));
+
+        Livewire::test(\App\Filament\Resources\ShiftAssignments\Pages\CreateShiftAssignment::class)
+            ->fillForm([
+                'user_id' => $persona->id,
+                'starts_at' => '2026-09-26 12:00', 'ends_at' => '2026-09-26 08:00', 'reason' => 'Al revés',
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['ends_at']);
+    }
 }

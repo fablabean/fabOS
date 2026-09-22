@@ -31,7 +31,10 @@ class ShiftAssignmentsTable
                     ->label('Duración')
                     ->state(fn (ShiftAssignment $record) => round($record->minutos() / 60, 1) . ' h'),
 
-                TextColumn::make('reason')->label('Motivo')->limit(30),
+                TextColumn::make('reason')
+                    ->label('Motivo')
+                    ->limit(30)
+                    ->description(fn (ShiftAssignment $record) => $record->project ? $record->project->code . ' · ' . $record->project->name : null),
 
                 TextColumn::make('counts_as_overtime')
                     ->label('Cuenta como')
