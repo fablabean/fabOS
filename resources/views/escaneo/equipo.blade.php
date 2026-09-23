@@ -40,7 +40,6 @@
                     <p class="help" style="margin:0 0 .8rem">
                         Solo lo que gastaste. Sale del inventario y se suma a lo que pagas.
                     </p>
-
                     @foreach ($insumos as $insumo)
                         @if ($insumo->seMideEnLamina())
                             {{-- Lo que viene en lámina se gasta en trozos. De
@@ -76,6 +75,20 @@
                         @endif
                     @endforeach
                 @endif
+
+                {{-- Y lo que no está en la lista.
+
+                     El catálogo nunca está completo, y quien acaba de usar la
+                     máquina no tenía dónde decir «gasté media lija» o «se me
+                     fue una boquilla». No descuenta inventario ni se cobra —no
+                     se puede cobrar lo que no tiene precio— pero deja escrito
+                     lo que falta por cargar, que es lo que hoy se pierde. --}}
+                <label for="material_note" style="margin-top:1.2rem">
+                    ¿Usaste algo que no esté aquí?
+                    <span class="help">— opcional. Dilo con tus palabras y lo cargamos nosotros.</span>
+                </label>
+                <input id="material_note" name="material_note" type="text" maxlength="500"
+                       placeholder="Media lija de grano 220, una boquilla de 0.4">
 
                 <button type="submit">Terminé, liberar el equipo</button>
             </form>

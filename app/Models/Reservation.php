@@ -20,7 +20,7 @@ class Reservation extends Model
         'advisory_asset_id', 'advisory_area_id', 'enrollment_id', 'participants', 'shares_seats', 'parent_reservation_id',
         'status', 'mode', 'is_production', 'starts_at', 'ends_at', 'reinstated_at',
         'checked_in_at', 'checked_out_at',
-        'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'status_reason',
+        'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'material_note', 'status_reason',
     ];
 
     protected function casts(): array

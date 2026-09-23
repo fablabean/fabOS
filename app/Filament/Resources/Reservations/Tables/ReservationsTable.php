@@ -116,6 +116,24 @@ class ReservationsTable
                     ->toggleable(),
 
                 TextColumn::make('purpose')->label('Para qué')->limit(40)->placeholder('—')->toggleable(),
+
+                /*
+                 * Lo que gasto y no estaba en la lista.
+                 *
+                 * El catalogo nunca esta completo, y esto es lo que dice que
+                 * falta por cargar. Visible por defecto **solo cuando hay
+                 * algo**: una columna vacia en todas las filas es ruido, pero
+                 * enterrada en el menu de columnas no la mira nadie, y entonces
+                 * escribirlo no habria servido de nada.
+                 */
+                TextColumn::make('material_note')
+                    ->label('Material sin cargar')
+                    ->wrap()
+                    ->color('warning')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->visible(fn () => Reservation::whereNotNull('material_note')->exists()),
             ])
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(Reservation::ESTADOS)->multiple(),

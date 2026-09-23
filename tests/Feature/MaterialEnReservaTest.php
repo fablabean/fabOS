@@ -231,6 +231,76 @@ class MaterialEnReservaTest extends TestCase
         $this->assertSame('completada', $reserva->fresh()->status);
     }
 
+    // ------------------------------------------- lo que se ofrece declarar
+
+    /**
+     * Solo insumos: un producto terminado no se gasta usando una máquina.
+     *
+     * Comparten tabla -los dos se cuentan, se descuentan y se reponen- pero a
+     * quien acababa de imprimir se le preguntaba cuántos «Capibara geométrico»
+     * había gastado, entre otras quince cosas del mismo tipo, y el insumo de
+     * verdad quedaba enterrado en la lista.
+     */
+    public function test_la_pantalla_no_ofrece_productos_terminados(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $this->insumo($equipo, ['name' => 'Filamento PLA negro']);
+        $this->insumo($equipo, ['name' => 'Capibara geometrico', 'kind' => 'producto', 'unit' => 'unidad']);
+        $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->get(route('escaneo.equipo', $equipo->qr_token))
+            ->assertOk()
+            ->assertSee('Filamento PLA negro')
+            ->assertDontSee('Capibara geometrico');
+    }
+
+    /**
+     * Y lo que no está en la lista se dice con palabras.
+     *
+     * El catálogo nunca está completo: en impresión 3D hay UN insumo cargado.
+     * Quien acaba de usar la máquina no tenía dónde decir «gasté media lija», y
+     * eso es justo lo que hace que el insumo acabe existiendo.
+     */
+    public function test_lo_que_no_esta_en_la_lista_se_escribe(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $this->insumo($equipo);
+        $reserva = $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->get(route('escaneo.equipo', $equipo->qr_token))
+            ->assertOk()
+            ->assertSee('¿Usaste algo que no esté aquí?');
+
+        $this->actingAs($u)
+            ->post(route('escaneo.checkout', $reserva), [
+                'material_note' => 'Media lija de grano 220 y una boquilla de 0.4',
+            ])
+            ->assertRedirect(route('reservas.index'));
+
+        $this->assertSame(
+            'Media lija de grano 220 y una boquilla de 0.4',
+            $reserva->fresh()->material_note,
+        );
+    }
+
+    /** Sin escribir nada, no se guarda nada. */
+    public function test_sin_nota_la_reserva_queda_sin_nota(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        $reserva = $this->enCurso($u, $equipo);
+
+        $this->actingAs($u)
+            ->post(route('escaneo.checkout', $reserva), ['material_note' => '   '])
+            ->assertRedirect(route('reservas.index'));
+
+        $this->assertNull($reserva->fresh()->material_note);
+    }
+
     // ------------------------------------------------------ el trozo de lámina
 
     /**

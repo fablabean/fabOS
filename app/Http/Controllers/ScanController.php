@@ -48,10 +48,20 @@ class ScanController extends Controller
             'reserva'   => $this->asistencia->reservaEnCurso($user, $activo),
             'veredicto' => $this->eligibility->evaluar($user, $activo),
             'ordenes'   => $this->mantenimiento->abiertasDe($activo),
-            // Insumos del área del equipo: al cerrar se declara lo que se gastó.
-            // Se ofrecen los de su área y no todo el inventario, porque nadie va
-            // a buscar «filamento» en una lista de cincuenta cosas.
+            /*
+             * Insumos del área del equipo: al cerrar se declara lo que se gastó.
+             * Se ofrecen los de su área y no todo el inventario, porque nadie va
+             * a buscar «filamento» en una lista de cincuenta cosas.
+             *
+             * Y solo insumos, no productos terminados. Comparten tabla —los dos
+             * se cuentan, se descuentan y se reponen— pero un producto no se
+             * consume usando una máquina: se vende. Sin este filtro, a quien
+             * acababa de imprimir se le preguntaba cuántos «Capibara
+             * geométrico» había gastado, entre otras quince cosas del mismo
+             * tipo; el insumo de verdad quedaba enterrado en la lista.
+             */
             'insumos'   => Supply::where('is_active', true)
+                ->where('kind', 'insumo')
                 ->where('stock', '>', 0)
                 ->when($activo->area_id, fn ($q) => $q->where('area_id', $activo->area_id))
                 ->orderBy('name')
@@ -135,6 +145,12 @@ class ScanController extends Controller
             if ($laminas !== null && $laminas > 0) {
                 $materiales[$insumo->id] = $laminas;
             }
+        }
+
+        // Lo que gastó y no estaba en la lista. Se guarda antes de cerrar: si
+        // el cierre falla por otra cosa, lo escrito no se pierde.
+        if (filled($nota = trim((string) $request->input('material_note')))) {
+            $reservation->update(['material_note' => mb_substr($nota, 0, 500)]);
         }
 
         try {
