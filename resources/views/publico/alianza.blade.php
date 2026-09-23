@@ -24,6 +24,12 @@
     .ficha button{margin-top:1.2rem;width:100%;padding:.8rem;font-size:1rem}
     .error{background:color-mix(in srgb,#9B2C2C 12%,transparent);border-radius:6px;padding:.8rem 1rem;margin-bottom:1rem;font-size:.92rem}
     .error ul{margin:0;padding-left:1.1rem}
+    /* El resumen, al ancho.
+       La entradilla del sitio mide 44 caracteres, que está bien para dos
+       líneas de presentación. El resumen de un proyecto es un párrafo entero,
+       y con esa medida quedaba en una columna estrecha de once renglones al
+       lado de media pantalla vacía. */
+    p.lead{max-width:none}
     /* La portada del proyecto, debajo del resumen: una alianza se entiende
        antes viendo lo que se construye que leyendo de qué va. */
     .portada{display:block;width:100%;max-height:26rem;object-fit:cover;
