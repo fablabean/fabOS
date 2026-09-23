@@ -35,14 +35,71 @@ class Enrollment extends Model
         ];
     }
 
-    /** Cuando reprobo. Lo de antes de que existiera la columna cuenta desde su ultimo cambio. */
+    /**
+     * La fecha de reprobar se pone sola, venga por donde venga.
+     *
+     * De ella depende cuando se puede volver a citar, y dejarla al servicio
+     * que reprueba no basta: el estado tambien se cambia desde el formulario
+     * del panel y a mano. Una matricula asi se quedaba sin fecha, la cuenta
+     * caia en `updated_at` —que se mueve con cualquier edicion— y la semana
+     * se reiniciaba sola.
+     *
+     * Y al dejar de estar reprobada se borra: si se la cita de nuevo y vuelve
+     * a reprobar, la semana se cuenta desde ESA vez y no desde la anterior.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $inscripcion) {
+            if ($inscripcion->status !== 'reprobado') {
+                $inscripcion->failed_at = null;
+
+                return;
+            }
+
+            $inscripcion->failed_at ??= $inscripcion->ultimaPracticaVivida()?->starts_at ?? now();
+        });
+    }
+
+    /**
+     * Cuando reprobo.
+     *
+     * Por orden: la fecha que se anoto al reprobar; si no hay —una matricula
+     * marcada antes de que existiera la columna, o arreglada a mano—, la
+     * practica que no paso, que es el dia en que de verdad ocurrio; y solo si
+     * tampoco, la ultima vez que cambio la ficha.
+     *
+     * `updated_at` era lo unico que habia, y no sirve: se mueve cada vez que
+     * se toca la ficha por cualquier motivo, asi que la semana se reiniciaba
+     * sola. Paso de verdad: la practica fue el 15, alguien edito la ficha el
+     * 22, y la pantalla ofrecia citar de nuevo desde el 29.
+     */
     public function reprobadaEl(): ?\Carbon\CarbonInterface
     {
         if ($this->status !== 'reprobado') {
             return null;
         }
 
-        return $this->failed_at ?? $this->updated_at;
+        return $this->failed_at
+            ?? $this->ultimaPracticaVivida()?->starts_at
+            ?? $this->updated_at;
+    }
+
+    /**
+     * La ultima practica que ya empezo: el dia en que se intento.
+     *
+     * Por `starts_at` y no por `ends_at`: quien evalua marca el resultado
+     * delante de la maquina, muchas veces antes de que la franja termine.
+     */
+    public function ultimaPracticaVivida(): ?Reservation
+    {
+        if (! $this->exists) {
+            return null;
+        }
+
+        return $this->practicas()
+            ->where('starts_at', '<', now())
+            ->orderByDesc('starts_at')
+            ->first();
     }
 
     /**

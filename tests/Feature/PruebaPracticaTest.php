@@ -645,4 +645,104 @@ class PruebaPracticaTest extends TestCase
         $this->assertSame('inscrito', $i->fresh()->status);
         $this->assertNotNull($i->fresh()->practicaAgendada());
     }
+
+    // ------------------------------------------ desde cuándo cuenta la semana
+
+    /**
+     * La semana se cuenta desde la práctica, no desde la última edición.
+     *
+     * El fallo, tal cual salió: la práctica fue el lunes, alguien tocó la
+     * ficha una semana después —una nota, un cambio cualquiera— y la pantalla
+     * pasó a ofrecer citar de nuevo una semana más tarde. Cada edición
+     * reiniciaba la espera, y quien no aprobó no tenía forma de que le tocara.
+     */
+    public function test_editar_la_ficha_despues_no_reinicia_la_semana(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        $this->travelTo($this->hora('16:00'));
+        app(TrainingService::class)->reprobar($i->fresh(), 2.5, 'Le faltó nivelar la cama.');
+
+        // Una semana después alguien anota algo en la ficha.
+        $this->travelTo($this->hora('16:00')->addDays(8));
+        $i->fresh()->update(['practical_notes' => 'Se le explicó otra vez el nivelado.']);
+
+        // La cuenta sigue saliendo de la práctica del 24, así que ya puede.
+        $i->refresh();
+        $this->assertSame(
+            '2026-08-31',
+            $i->puedeRepetirDesde()->format('Y-m-d'),
+            'la semana corre desde la práctica, no desde la nota',
+        );
+        $this->assertTrue($i->puedeRepetirLaPractica());
+    }
+
+    /**
+     * Una matrícula sin fecha —marcada antes de que existiera la columna, o a
+     * mano en la base— cuenta desde su práctica, no desde su último cambio.
+     */
+    public function test_sin_fecha_anotada_cuenta_desde_la_practica(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        $this->travelTo($this->hora('16:00'));
+        app(TrainingService::class)->reprobar($i->fresh(), 2.5, 'No');
+
+        // Como estaban las de antes: sin fecha, y tocadas mucho después.
+        $this->travelTo($this->hora('16:00')->addDays(9));
+        \Illuminate\Support\Facades\DB::table('enrollments')
+            ->where('id', $i->id)
+            ->update(['failed_at' => null, 'updated_at' => now()]);
+
+        $this->assertSame('2026-08-31', $i->fresh()->puedeRepetirDesde()->format('Y-m-d'));
+    }
+
+    /** Cambiar el estado a mano, sin pasar por el servicio, también deja fecha. */
+    public function test_marcarla_a_mano_tambien_deja_la_fecha(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        $this->travelTo($this->hora('16:00'));
+        $i->fresh()->update(['status' => 'reprobado']);
+
+        $i->refresh();
+        $this->assertNotNull($i->failed_at);
+        $this->assertSame('2026-08-24', $i->failed_at->timezone(config('fabos.lab.timezone'))->format('Y-m-d'));
+    }
+
+    /**
+     * Y la segunda vez cuenta desde la segunda práctica.
+     *
+     * Si la fecha de la primera se quedara pegada, quien reprueba otra vez
+     * podría ser citado el mismo día: la espera habría caducado hace semanas.
+     */
+    public function test_al_reprobar_de_nuevo_la_semana_arranca_otra_vez(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        $this->travelTo($this->hora('16:00'));
+        app(TrainingService::class)->reprobar($i->fresh(), 2.5, 'No');
+
+        // Pasada la semana se la cita de nuevo: la fecha de la vez anterior se va.
+        $this->travelTo(Carbon::parse('2026-08-31 07:00', config('fabos.lab.timezone')));
+        app(PracticaService::class)->citarDeNuevo($i->fresh(), $michael, Carbon::parse('2026-08-31 14:00', config('fabos.lab.timezone')));
+
+        $this->assertNull($i->fresh()->failed_at, 'ya no está reprobada');
+
+        // Y vuelve a no pasar.
+        $this->travelTo(Carbon::parse('2026-08-31 16:00', config('fabos.lab.timezone')));
+        app(TrainingService::class)->reprobar($i->fresh(), 2.0, 'Otra vez');
+
+        $i->refresh();
+        $this->assertSame('2026-09-07', $i->puedeRepetirDesde()->format('Y-m-d'));
+        $this->assertFalse($i->puedeRepetirLaPractica(), 'la semana empieza de cero');
+    }
 }

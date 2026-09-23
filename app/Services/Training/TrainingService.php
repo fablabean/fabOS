@@ -156,11 +156,14 @@ class TrainingService
             throw new TrainingException('Esa inscripción ya fue aprobada.');
         }
 
+        // La fecha de reprobar la pone el propio modelo, y la ancla en la
+        // practica que no se paso, no en el momento de anotarlo: entre la
+        // sesion y el registro pueden pasar dias, y quien la hizo no tiene por
+        // que esperar una semana desde que a alguien le dio tiempo de marcarlo.
         $inscripcion->update([
-            'status'    => 'reprobado',
-            'grade'     => $nota,
-            'feedback'  => $comentario,
-            'failed_at' => now(),
+            'status'   => 'reprobado',
+            'grade'    => $nota,
+            'feedback' => $comentario,
         ]);
 
         // La practica que evaluo ya ocurrio: se cierra, para que no siga
