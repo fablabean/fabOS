@@ -386,7 +386,7 @@ class Project extends Model
      * consulta; si algún día son cientos, esto es lo primero que habrá que
      * precalcular.
      *
-     * @return array{cuantas:int, mercado:int, nuestro:int, porcentaje:?float, comprometido:int, gastado:int}
+     * @return array{cuantas:int, mercado:int, nuestro:int, porcentaje:?float, comprometido:int, gastado:int, sin_laboratorio:int}
      */
     public static function resumenDeAlianzas(): array
     {
@@ -411,6 +411,10 @@ class Project extends Model
             'porcentaje'   => $mercado > 0 ? round($nuestro / $mercado * 100, 1) : null,
             'comprometido' => (int) $vivas->sum(fn (self $p) => $p->aporteComprometido()),
             'gastado'      => (int) $vivas->sum(fn (self $p) => $costeo->costear($p)['total']),
+            // Las que no tienen al laboratorio entre sus partes: ahi el cero no
+            // es «no hemos puesto nada», es «no sabemos qué ponemos». Decirlo
+            // igual manda a buscar el dato equivocado.
+            'sin_laboratorio' => $vivas->filter(fn (self $p) => $p->parteDelLaboratorio() === null)->count(),
         ];
     }
 

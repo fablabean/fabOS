@@ -57,9 +57,32 @@ class PartnersRelationManager extends RelationManager
             Section::make('Quién')
                 ->columns(2)
                 ->schema([
+                    /*
+                     * El papel del laboratorio no se toca.
+                     *
+                     * Se excluia «El laboratorio» de las opciones para que
+                     * nadie creara una segunda fila suya, y eso degradaba la
+                     * de verdad: al abrirla, el selector no encontraba su
+                     * valor entre las opciones, caia en «Aliado» y al guardar
+                     * lo escribia. La alianza se quedaba sin laboratorio sin
+                     * que nadie lo hubiera pedido, y con ella la cuenta de lo
+                     * que ponemos y de lo que nos toca: el embudo pasaba a
+                     * decir «cero» y «falta pactar».
+                     *
+                     * Ahora su fila lo conserva y nadie mas puede tomarlo.
+                     */
                     Select::make('role')
                         ->label('Papel')
-                        ->options(collect(ProjectPartner::ROLES)->except('laboratorio')->all())
+                        ->options(fn (?ProjectPartner $record) => $record?->esElLaboratorio()
+                            ? ProjectPartner::ROLES
+                            : collect(ProjectPartner::ROLES)->except('laboratorio')->all())
+                        ->disabled(fn (?ProjectPartner $record) => $record?->esElLaboratorio() ?? false)
+                        // Un campo deshabilitado no se envía: sin esto se
+                        // guardaría vacío, que es el mismo problema con otra cara.
+                        ->dehydrated()
+                        ->helperText(fn (?ProjectPartner $record) => $record?->esElLaboratorio()
+                            ? 'De esta fila salen las dos cifras de la alianza: lo que ponemos y lo que nos toca. Por eso no cambia de papel.'
+                            : null)
                         ->default('aliado')
                         ->required(),
 

@@ -414,4 +414,60 @@ class AlianzasTest extends TestCase
             ->assertSee('Quiero unirme')
             ->assertSee('Pedir entrar');
     }
+    // ------------------------------------------ la fila del laboratorio, fija
+
+    /**
+     * Editar la fila del laboratorio no la degrada.
+     *
+     * El fallo, tal cual saliÃ³: el selector de Â«PapelÂ» excluÃ­a Â«El
+     * laboratorioÂ» de sus opciones âpara que nadie creara una segunda fila
+     * suyaâ y al abrir la de verdad no encontraba su valor, caÃ­a en Â«AliadoÂ» y
+     * al guardar lo escribÃ­a. La alianza se quedaba sin laboratorio sin que
+     * nadie lo hubiera pedido, y con ella las dos cifras del embudo: pasaba a
+     * decir Â«nos cuesta 0Â» y Â«falta pactar nuestra participaciÃ³nÂ».
+     */
+    public function test_ponerle_el_aporte_al_laboratorio_no_le_cambia_el_papel(): void
+    {
+        $this->admin();
+        $alianza = $this->alianza();
+        $lab = $alianza->partners()->where('role', 'laboratorio')->firstOrFail();
+
+        Livewire::test(PartnersRelationManager::class, ['ownerRecord' => $alianza, 'pageClass' => EditProject::class])
+            ->callTableAction('edit', $lab, [
+                'name'               => $lab->name,
+                'contribution_kind'  => 'equipos',
+                'contribution_value' => 10_000_000,
+                'share_percent'      => 10,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $lab->refresh();
+
+        $this->assertSame('laboratorio', $lab->role, 'sigue siendo el laboratorio');
+        $this->assertSame(10_000_000, (int) $lab->contribution_value);
+
+        // Y las dos cifras de la alianza vuelven a salir.
+        $alianza->refresh()->load('partners');
+        $this->assertSame(10_000_000, $alianza->aporteComprometido());
+        $this->assertSame(10.0, $alianza->participacionDelLaboratorio());
+    }
+
+    /** Y el embudo lo dice cuando de verdad falta esa fila. */
+    public function test_sin_la_fila_del_laboratorio_el_embudo_lo_dice(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['market_value' => 350_000_000]);
+        $alianza->partners()->where('role', 'laboratorio')->delete();
+
+        $resumen = \App\Models\Project::resumenDeAlianzas();
+
+        $this->assertSame(1, $resumen['sin_laboratorio']);
+        $this->assertSame(0, $resumen['comprometido']);
+
+        $this->admin();
+        $this->get('/admin/projects')
+            ->assertOk()
+            ->assertSee('falta marcar al laboratorio entre las partes')
+            ->assertDontSee('sin aporte pactado todavÃ­a');
+    }
 }

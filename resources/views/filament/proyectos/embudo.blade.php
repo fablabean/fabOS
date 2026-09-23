@@ -99,6 +99,8 @@
                             <div class="valor">
                                 @if ($al['mercado'] === 0)
                                     falta decir cuánto valen
+                                @elseif ($al['sin_laboratorio'] > 0 && $al['nuestro'] === 0)
+                                    falta marcar al laboratorio entre las partes
                                 @elseif ($al['nuestro'] === 0)
                                     falta pactar nuestra participación
                                 @else
@@ -111,9 +113,14 @@
                         <a class="paso alianza" href="{{ $this->enlaceDeAlianzas() }}">
                             <div class="etapa">Nos cuesta</div>
                             <div class="cuantos">{{ $pesos($al['gastado']) }}</div>
+                            {{-- Sin la fila del laboratorio, el cero no es «no
+                                 hemos puesto nada»: es que no sabemos qué ponemos.
+                                 Decirlo igual manda a buscar el dato equivocado. --}}
                             <div class="valor">
                                 @if ($al['comprometido'] > 0)
                                     puesto de {{ $pesos($al['comprometido']) }} comprometidos
+                                @elseif ($al['sin_laboratorio'] > 0)
+                                    falta marcar al laboratorio entre las partes
                                 @else
                                     sin aporte pactado todavía
                                 @endif
