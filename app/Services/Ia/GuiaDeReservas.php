@@ -110,6 +110,7 @@ final class GuiaDeReservas
 
             if ($r->failed()) {
                 Log::warning('IA: la guía de reservas no respondió', ['estado' => $r->status(), 'error' => str($r->body())->limit(300)->value()]);
+                $this->anotarFallo(self::porQue($r->status(), $r->body()));
 
                 return null;
             }
@@ -128,16 +129,73 @@ final class GuiaDeReservas
                     'stop_reason' => $r->json('stop_reason'),
                     'texto'       => str($texto)->limit(200)->value(),
                 ]);
+                $this->anotarFallo('Respondió, pero no con el formato esperado (stop_reason: '
+                    . ($r->json('stop_reason') ?: 'sin dato') . ').');
 
                 return null;
             }
 
+            // Salió bien: lo que hubiera pasado antes, ya no pasa.
+            Cache::forget(self::ULTIMO_FALLO);
+
             return $this->armar($json);
         } catch (\Throwable $e) {
             Log::warning('IA: falló la guía de reservas', ['error' => $e->getMessage()]);
+            $this->anotarFallo('No se pudo llegar a la API: ' . Str::limit($e->getMessage(), 120));
 
             return null;
         }
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Por qué dejó de funcionar
+     |--------------------------------------------------------------------------
+     | La caja le dice a quien escribe «no pudimos leerlo ahora», que es lo que
+     | le sirve: nadie de fuera tiene que enterarse de cómo pagamos la API. Pero
+     | el laboratorio necesita la razón, y hasta ahora la única señal era un
+     | archivo de log en el servidor. Se quedó un día entero sin saldo y nos
+     | enteramos porque alguien lo probó a mano.
+     */
+
+    public const ULTIMO_FALLO = 'ia:guia:ultimo_fallo';
+
+    /** @return array{cuando:\Illuminate\Support\Carbon,motivo:string}|null */
+    public function ultimoFallo(): ?array
+    {
+        $anotado = Cache::get(self::ULTIMO_FALLO);
+
+        if (! is_array($anotado) || blank($anotado['motivo'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'cuando' => \Illuminate\Support\Carbon::parse($anotado['cuando']),
+            'motivo' => (string) $anotado['motivo'],
+        ];
+    }
+
+    private function anotarFallo(string $motivo): void
+    {
+        Cache::put(
+            self::ULTIMO_FALLO,
+            ['cuando' => now()->toIso8601String(), 'motivo' => $motivo],
+            now()->addDays(30),
+        );
+    }
+
+    /** El error de la API, dicho para quien administra y no para quien depura. */
+    private static function porQue(int $estado, string $cuerpo): string
+    {
+        return match (true) {
+            str_contains($cuerpo, 'credit balance') => 'La cuenta de la API se quedó sin saldo. Se recarga en console.anthropic.com → Plans & Billing.',
+            $estado === 401, str_contains($cuerpo, 'authentication') => 'La clave de la API no vale: o se escribió mal, o la revocaron. Se cambia con ANTHROPIC_API_KEY en el servidor.',
+            $estado === 403 => 'La clave no tiene permiso para este modelo.',
+            $estado === 404 => 'El modelo configurado no existe. Se cambia con IA_MODELO en el servidor.',
+            $estado === 429 => 'Demasiadas preguntas seguidas: la API las está limitando. Suele pasarse solo.',
+            $estado >= 500  => 'La API está caída o sobrecargada. Suele pasarse solo.',
+            default         => 'La API respondió con un error ' . $estado . '.',
+        };
     }
 
     /** @param array{camino:string,porque:string} $json */
