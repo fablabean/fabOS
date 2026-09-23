@@ -98,7 +98,9 @@
        —alto fijo y `cover`— se comía justo las palabras que explican cada
        camino. Se ve a su proporción, y en pantalla estrecha se encoge sola. */
     .mapa{position:relative}
-    .mapa img{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--rule)}
+    /* Sin borde: la infografía ya trae el suyo, y el marco gris encima la
+       dejaba con dos. */
+    .mapa img{display:block;width:100%;height:auto;border-radius:8px}
     .mapa p{margin:.6rem 0 0;color:var(--ink-soft);font-size:1.02rem}
     .reservas-mias{display:grid;gap:.5rem;margin-bottom:2rem}
     .mia{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:baseline;
