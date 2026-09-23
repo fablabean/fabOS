@@ -69,7 +69,14 @@
             font-family:ui-monospace,Consolas,monospace;font-size:.68rem;letter-spacing:.18em;
             text-transform:uppercase;color:var(--muted);margin:0 0 .7rem;
         }
-        p.lead{font-size:1.08rem;color:var(--ink-soft);max-width:44ch}
+        /* La entradilla, al ancho de la página.
+
+           Media de 44 caracteres: bien para dos líneas de presentación, mal
+           para lo que de verdad hay debajo —el resumen de un proyecto, lo que
+           explica una sección—, que quedaba en una columna estrecha de diez
+           renglones al lado de media pantalla vacía. El ancho lo pone `main`,
+           que ya es una medida de lectura. */
+        p.lead{font-size:1.08rem;color:var(--ink-soft)}
 
         footer{border-top:1px solid var(--rule);margin-top:3rem;padding:2rem 1.4rem;
                color:var(--muted);font-size:.88rem}
