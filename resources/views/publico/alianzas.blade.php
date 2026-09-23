@@ -26,13 +26,14 @@
             No todo lo que llega al laboratorio es un encargo. A veces alguien trae una idea que
             vale la pena construir juntos: el laboratorio pone máquinas y horas, quien la trajo pone
             la idea y su trabajo, y otros —una empresa, un inversor, otra facultad— ponen lo suyo.
-            Estas son las alianzas abiertas, y a cualquiera se le puede pedir entrar.
+            Estas son las que hay en marcha. A las que están recibiendo aliados se les puede
+            pedir entrar; las demás están aquí para que se vean.
         </p>
 
         @if ($alianzas->isEmpty())
             <div class="vacio">
                 <p style="margin:0">
-                    Ahora mismo no hay alianzas abiertas. Si tienes una idea que valga la pena
+                    Ahora mismo no hay ninguna en el sitio. Si tienes una idea que valga la pena
                     construir juntos, <a href="{{ route('proyectos.solicitar') }}">cuéntanosla</a>: así
                     es como empiezan.
                 </p>
@@ -50,7 +51,11 @@
                             {{ $a->partners->map(fn ($p) => $p->esElLaboratorio() ? $p->name : ($p->organization ?: $p->name))->unique()->implode(', ') }}
                             @if ($a->area) · {{ $a->area->name }} @endif
                         </p>
-                        <p class="pie">{{ $a->alliance_pitch ? 'Busca aliados' : 'Abierta' }} →</p>
+                        {{-- Decirlo aqui evita entrar a una ficha a buscar un
+                             formulario que no esta. --}}
+                        <p class="pie">
+                            {{ $a->admiteAliados() ? ($a->alliance_pitch ? 'Busca aliados' : 'Abierta') : 'En marcha' }} →
+                        </p>
                     </a>
                 @endforeach
             </div>

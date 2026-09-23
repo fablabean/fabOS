@@ -21,7 +21,7 @@ class Project extends Model
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
-        'modality', 'alliance_open', 'alliance_pitch', 'market_value',
+        'modality', 'alliance_open', 'alliance_public', 'alliance_pitch', 'market_value',
     ];
 
     protected function casts(): array
@@ -29,6 +29,7 @@ class Project extends Model
         return [
             'is_internal' => 'boolean',
             'alliance_open' => 'boolean',
+            'alliance_public' => 'boolean',
             'contract_sent_at' => UtcDateTime::class,
             'starts_on' => 'date',
             'due_on'    => 'date',
@@ -313,17 +314,44 @@ class Project extends Model
         return (int) ($this->parteDelLaboratorio()?->contribution_value ?? 0);
     }
 
-    /** Si está en el sitio recibiendo aliados. */
+    /*
+     |--------------------------------------------------------------------------
+     | Mostrarla y abrirla son dos decisiones
+     |--------------------------------------------------------------------------
+     | Había un solo interruptor que hacía las dos cosas: publicaba la alianza
+     | y abría el formulario para pedir entrar. Enseñar lo que el laboratorio
+     | construye obligaba a aceptar que cualquiera se postulara, y no querer lo
+     | segundo dejaba el proyecto invisible.
+     |
+     | Una alianza ya cerrada se quiere seguir mostrando —es la prueba de lo
+     | que aquí se hace—; una que se está cocinando puede convenir que no se
+     | vea todavía. Recibir propuestas exige mostrarse: nadie se postula a lo
+     | que no puede ver.
+     */
+
+    /** Si sale en el sitio. Lo cerrado y lo descartado no se muestran. */
+    public function seMuestraEnElSitio(): bool
+    {
+        return $this->esAlianza() && $this->alliance_public && ! $this->estaCerrado()
+            && ! in_array($this->status, ['pausado', 'perdido', 'descartado'], true);
+    }
+
+    /** Si además recibe propuestas de quien quiera entrar. */
     public function admiteAliados(): bool
     {
-        return $this->esAlianza() && $this->alliance_open && ! $this->estaCerrado()
-            && ! in_array($this->status, ['pausado', 'perdido', 'descartado'], true);
+        return $this->seMuestraEnElSitio() && $this->alliance_open;
+    }
+
+    /** Las que salen en el sitio, se pueda pedir entrar o no. */
+    public function scopeAlianzasPublicas(Builder $query): Builder
+    {
+        return $query->where('modality', 'alianza')->where('alliance_public', true)
+            ->where('status', 'activo')->whereNot('stage', 'cierre');
     }
 
     public function scopeAlianzasAbiertas(Builder $query): Builder
     {
-        return $query->where('modality', 'alianza')->where('alliance_open', true)
-            ->where('status', 'activo')->whereNot('stage', 'cierre');
+        return $query->alianzasPublicas()->where('alliance_open', true);
     }
 
     /**

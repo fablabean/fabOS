@@ -28,7 +28,7 @@ class AlianzaController extends Controller
     {
         return view('publico.alianzas', [
             'alianzas' => Project::query()
-                ->alianzasAbiertas()
+                ->alianzasPublicas()
                 ->with(['area', 'partners' => fn ($q) => $q->confirmados()])
                 ->orderByDesc('updated_at')
                 ->get(),
@@ -37,7 +37,10 @@ class AlianzaController extends Controller
 
     public function show(Project $project)
     {
-        $this->debeEstarAbierta($project);
+        // Basta con que se muestre: el formulario de unirse lo decide la
+        // vista. Exigir aqui que este abierta escondia la alianza entera por
+        // no querer recibir propuestas.
+        abort_unless($project->seMuestraEnElSitio(), 404);
 
         return view('publico.alianza', [
             'alianza' => $project->load('area', 'lead'),
@@ -93,6 +96,7 @@ class AlianzaController extends Controller
         return view('publico.alianza-gracias', ['alianza' => $project]);
     }
 
+    /** Para proponerse hace falta que ademas este abierta. */
     private function debeEstarAbierta(Project $project): void
     {
         abort_unless($project->admiteAliados(), 404);

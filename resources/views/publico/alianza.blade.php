@@ -64,6 +64,10 @@
             @endif
         </div>
 
+        {{-- Mostrarla y abrirla son dos decisiones: una alianza puede
+             enseñarse sin recibir propuestas. Sin esto, no querer lo segundo
+             dejaba el proyecto invisible. --}}
+        @if ($alianza->admiteAliados())
         <div id="unirme">
             @if ($errors->any())
                 <div class="error">
@@ -132,6 +136,15 @@
                 <button type="submit" class="btn">Pedir entrar</button>
             </form>
         </div>
+        @else
+            <div class="ficha">
+                <h2>Esta alianza no está recibiendo propuestas</h2>
+                <p class="help" style="margin:0">
+                    Está aquí para que se vea lo que se está construyendo. Si te interesa,
+                    escríbenos y lo miramos: <a href="{{ route('proyectos.solicitar') }}">cuéntanos tu idea</a>.
+                </p>
+            </div>
+        @endif
     </section>
 </main>
 @endsection

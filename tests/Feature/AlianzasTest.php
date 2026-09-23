@@ -177,7 +177,7 @@ class AlianzasTest extends TestCase
     public function test_quien_pide_entrar_desde_el_sitio_queda_propuesto_y_se_avisa(): void
     {
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true]);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true]);
 
         $parte = app(Alianzas::class)->proponerse($alianza, [
             'name' => 'Luis', 'email' => 'Luis@Empresa.co', 'organization' => 'Empresa', 'role' => 'inversor',
@@ -202,7 +202,7 @@ class AlianzasTest extends TestCase
     public function test_confirmar_fija_la_participacion_y_le_avisa(): void
     {
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true]);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true]);
         $parte = app(Alianzas::class)->proponerse($alianza, ['name' => 'Luis', 'email' => 'luis@test.co', 'contribution_value' => 100]);
 
         app(Alianzas::class)->confirmar($parte, $this->jefa(), 25);
@@ -217,7 +217,7 @@ class AlianzasTest extends TestCase
     public function test_la_pagina_publica_muestra_las_partes_sin_cifras(): void
     {
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true, 'alliance_pitch' => 'Buscamos un aliado en electrónica.']);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true, 'alliance_pitch' => 'Buscamos un aliado en electrónica.']);
         app(Alianzas::class)->agregar($alianza, ['name' => 'Fondo', 'organization' => 'Fondo Semilla', 'contribution_kind' => 'dinero', 'contribution_value' => 20_000_000]);
 
         $this->get('/alianzas')->assertOk()->assertSee('Dron de mapeo');
@@ -243,7 +243,7 @@ class AlianzasTest extends TestCase
     public function test_se_pide_entrar_desde_el_formulario(): void
     {
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true]);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true]);
 
         $this->post(route('alianzas.unirme', $alianza), [
             'nombre' => 'Luis Pérez', 'correo' => 'luis@empresa.co', 'organizacion' => 'Empresa',
@@ -260,7 +260,7 @@ class AlianzasTest extends TestCase
     public function test_la_trampa_para_robots_y_la_autorizacion_valen_aqui_tambien(): void
     {
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true]);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true]);
 
         $this->post(route('alianzas.unirme', $alianza), [
             'nombre' => 'Bot', 'correo' => 'bot@spam.co', 'papel' => 'aliado', 'tipo' => 'otro',
@@ -330,7 +330,7 @@ class AlianzasTest extends TestCase
     {
         $this->admin();
         $alianza = $this->alianza();
-        $alianza->update(['alliance_open' => true]);
+        $alianza->update(['alliance_open' => true, 'alliance_public' => true]);
         $parte = app(Alianzas::class)->proponerse($alianza, ['name' => 'Luis', 'email' => 'luis@test.co']);
 
         Livewire::test(PartnersRelationManager::class, ['ownerRecord' => $alianza, 'pageClass' => EditProject::class])
@@ -352,5 +352,66 @@ class AlianzasTest extends TestCase
 
         $this->assertTrue($p->fresh()->esAlianza());
         Livewire::test(EditProject::class, ['record' => $p->id])->assertActionHidden('alianza');
+    }
+    // ------------------------------------ mostrarla sin abrirla a propuestas
+
+    /**
+     * Mostrar una alianza y recibir propuestas son dos decisiones.
+     *
+     * Había un solo interruptor que hacía las dos cosas: enseñar lo que el
+     * laboratorio construye obligaba a aceptar que cualquiera se postulara, y
+     * no querer lo segundo dejaba el proyecto invisible.
+     */
+    public function test_una_alianza_se_puede_mostrar_sin_recibir_propuestas(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => true, 'alliance_open' => false]);
+
+        $this->assertTrue($alianza->seMuestraEnElSitio());
+        $this->assertFalse($alianza->admiteAliados());
+
+        // Sale en el listado y su ficha se abre.
+        $this->get(route('alianzas.index'))->assertOk()->assertSee($alianza->name);
+        $this->get(route('alianzas.show', $alianza))
+            ->assertOk()
+            ->assertSee('no está recibiendo propuestas')
+            ->assertDontSee('Pedir entrar');
+    }
+
+    /** Y no se puede pedir entrar por la puerta de atrás. */
+    public function test_cerrada_a_propuestas_no_se_puede_proponer_nadie(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => true, 'alliance_open' => false]);
+
+        $this->post(route('alianzas.unirme', $alianza), [
+            'nombre' => 'Luis', 'correo' => 'luis@test.co', 'papel' => 'aliado',
+            'tipo' => 'dinero', 'aporte' => 'Pondría capital para el primer lote.',
+            'autoriza' => '1',
+        ])->assertNotFound();
+    }
+
+    /** Sin mostrarla, no existe para fuera. */
+    public function test_sin_mostrarla_no_sale_ni_se_abre_su_ficha(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => false, 'alliance_open' => true]);
+
+        $this->assertFalse($alianza->admiteAliados(), 'nadie se postula a lo que no puede ver');
+
+        $this->get(route('alianzas.index'))->assertOk()->assertDontSee($alianza->name);
+        $this->get(route('alianzas.show', $alianza))->assertNotFound();
+    }
+
+    /** Abierta del todo, el formulario está donde siempre. */
+    public function test_abierta_sigue_recibiendo(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => true, 'alliance_open' => true]);
+
+        $this->get(route('alianzas.show', $alianza))
+            ->assertOk()
+            ->assertSee('Quiero unirme')
+            ->assertSee('Pedir entrar');
     }
 }

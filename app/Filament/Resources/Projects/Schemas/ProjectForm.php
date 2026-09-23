@@ -93,10 +93,25 @@ class ProjectForm
                             ->content(fn (?Project $record) => Project::MODALIDADES[$record?->modality ?? 'servicio'] ?? 'Servicio')
                             ->visible(fn (?Project $record) => $record?->esAlianza()),
 
-                        Toggle::make('alliance_open')
-                            ->label('Abierta a nuevos aliados en el sitio')
-                            ->helperText('Sale en /alianzas con sus partes y lo que busca, y quien quiera unirse pide entrar. Queda propuesto hasta que lo confirmes.')
+                        /*
+                         * Mostrarla y abrirla son dos decisiones distintas.
+                         *
+                         * Habia un solo interruptor que hacia las dos cosas:
+                         * enseñar lo que el laboratorio construye obligaba a
+                         * aceptar que cualquiera se postulara, y no querer lo
+                         * segundo dejaba el proyecto invisible.
+                         */
+                        Toggle::make('alliance_public')
+                            ->label('Mostrarla en el sitio')
+                            ->helperText('Sale en /alianzas con sus partes y lo que busca. Solo para mirar: unirse es la casilla de abajo.')
                             ->visible(fn (?Project $record) => $record?->esAlianza())
+                            ->live(),
+
+                        Toggle::make('alliance_open')
+                            ->label('Aceptar que pidan unirse')
+                            ->helperText('Quien la vea puede proponerse como aliado. Queda propuesto hasta que lo confirmes; sin esto, la alianza se ve pero no recibe nada.')
+                            // Nadie se postula a lo que no puede ver.
+                            ->visible(fn (?Project $record, Get $get) => $record?->esAlianza() && $get('alliance_public'))
                             ->live(),
 
                         Textarea::make('alliance_pitch')
@@ -104,7 +119,7 @@ class ProjectForm
                             ->rows(3)
                             ->placeholder('Un aliado en electrónica de potencia y capital para el primer lote de diez unidades.')
                             ->helperText('Es lo que se lee en el sitio. Sin dinero ni datos de nadie.')
-                            ->visible(fn (?Project $record, Get $get) => $record?->esAlianza() && $get('alliance_open'))
+                            ->visible(fn (?Project $record, Get $get) => $record?->esAlianza() && $get('alliance_public'))
                             ->columnSpanFull(),
 
                         TextInput::make('code')
