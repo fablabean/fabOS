@@ -251,6 +251,22 @@ class PracticaService
         }
 
         return DB::transaction(function () use ($inscripcion, $evaluador, $desde, $nota) {
+            /*
+             * La cita anterior se cierra: volver a citar es decir que aquella
+             * ya terminó.
+             *
+             * Reprobar por el camino normal la cerraba, pero el estado también
+             * se cambia desde el formulario y a mano, y entonces se quedaba
+             * pidiendo firma para siempre: la pantalla seguía diciendo «falta
+             * la firma» de la vez pasada —en rojo, y con el aviso de que lleva
+             * más de un día hábil— y tapaba a la cita nueva, que es lo que hay
+             * que mirar ahora.
+             */
+            $inscripcion->practicas()
+                ->whereIn('status', Reservation::BLOQUEANTES)
+                ->where('ends_at', '<', now())
+                ->update(['status' => 'completada', 'status_reason' => 'Se citó de nuevo']);
+
             $inscripcion->update(['status' => 'inscrito', 'grade' => null]);
 
             return $this->citar($inscripcion->refresh(), $evaluador, $desde, nota: $nota);

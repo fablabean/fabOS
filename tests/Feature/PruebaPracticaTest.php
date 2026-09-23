@@ -646,6 +646,41 @@ class PruebaPracticaTest extends TestCase
         $this->assertNotNull($i->fresh()->practicaAgendada());
     }
 
+    /**
+     * Citar de nuevo cierra la cita anterior, venga de donde venga.
+     *
+     * Reprobar por el camino normal ya la cerraba, pero el estado también se
+     * cambia desde el formulario y a mano. Las que pasaron por ahí seguían
+     * pidiendo firma para siempre: la pantalla mostraba «falta la firma» de la
+     * vez pasada, en rojo, tapando a la cita nueva.
+     */
+    public function test_citar_de_nuevo_cierra_la_practica_anterior(): void
+    {
+        $michael = $this->evaluador('Michael');
+        $i = $this->conTeoria();
+        $vieja = app(PracticaService::class)->citar($i, $michael, $this->hora('14:00'));
+
+        // Marcada a mano, sin pasar por el servicio: la vieja queda abierta.
+        $this->travelTo($this->hora('16:00'));
+        $i->fresh()->update(['status' => 'reprobado']);
+
+        $this->assertSame($vieja->id, $i->fresh()->practicaSinValidar()?->id, 'sigue pidiendo firma');
+
+        $this->travelTo(Carbon::parse('2026-08-31 07:00', config('fabos.lab.timezone')));
+        $nueva = app(PracticaService::class)->citarDeNuevo(
+            $i->fresh(), $michael, Carbon::parse('2026-08-31 14:00', config('fabos.lab.timezone')),
+        );
+
+        $vieja->refresh();
+        $this->assertSame('completada', $vieja->status);
+        $this->assertSame('Se citó de nuevo', $vieja->status_reason);
+
+        // Y la pantalla pasa a mirar la nueva, no la de la vez pasada.
+        $i->refresh();
+        $this->assertNull($i->practicaSinValidar());
+        $this->assertSame($nueva->id, $i->practicaAgendada()?->id);
+    }
+
     // ------------------------------------------ desde cuándo cuenta la semana
 
     /**
