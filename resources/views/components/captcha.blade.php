@@ -47,6 +47,31 @@
          @endif
          style="margin:{{ $discreto ? '0' : '.9rem 0' }}"></div>
 
+    @if ($discreto)
+        {{-- Una señal de que esto está protegido.
+
+             Sin el widget a la vista no queda nada que lo diga, y un formulario
+             público sin ninguna marca invita a probar suerte. Un escudo y tres
+             palabras bastan: quien va a escribir de verdad ni lo mira, y quien
+             iba a automatizarlo ve que hay algo.
+
+             Va el enlace a la privacidad de Cloudflare porque el widget entero
+             lo lleva, y esconderlo no debería esconder también de quién es el
+             servicio que mira el navegador de quien entra. --}}
+        <p style="display:flex;align-items:center;gap:.3rem;margin:.55rem 0 0;
+                  font-size:.72rem;line-height:1.3;color:var(--muted,#6b7280)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                 style="width:.85em;height:.85em;flex:none">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="m9 12 2 2 4-4"/>
+            </svg>
+            Protegido por
+            <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener nofollow"
+               style="color:inherit;text-decoration:underline">Cloudflare</a>
+        </p>
+    @endif
+
     {{-- Una pagina puede llevar DOS widgets —la de escribir el codigo tiene
          el formulario de entrar y el de reenviar—, y el script se carga una
          sola vez: Turnstile dibuja solo todos los `.cf-turnstile` que
