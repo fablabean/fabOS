@@ -200,4 +200,81 @@ class EligibilityTest extends TestCase
         // Si mandara el de la familia, 600 minutos exigirían visto bueno.
         $this->assertSame(Eligibility::AUTONOMO, $this->evaluar($u, $a, 600)->resultado);
     }
+    // ----------------------------------------- lo que se presta, sin certifab
+
+    /**
+     * Pedir prestada una herramienta no exige estar habilitado.
+     *
+     * El certifab dice que alguien te vio operar una mÃ¡quina. Un multÃ­metro o
+     * unas gafas no son una mÃ¡quina: se piden, se usan y se devuelven, y
+     * exigir un curso para llevarse un taladro solo consigue que nadie lo pida.
+     */
+    public function test_una_herramienta_no_exige_certifab(): void
+    {
+        $u = $this->usuario();
+        $taladro = $this->activo(['kind' => 'herramienta']);
+
+        $this->assertSame(Eligibility::AUTONOMO, $this->evaluar($u, $taladro)->resultado);
+    }
+
+    /** Una mÃ¡quina sigue exigiÃ©ndolo: esto es solo para lo que se presta. */
+    public function test_una_maquina_sigue_exigiendo_certifab(): void
+    {
+        $r = $this->evaluar($this->usuario(), $this->activo(['kind' => 'fijo']));
+
+        $this->assertSame(Eligibility::NO_HABILITADO, $r->resultado);
+    }
+
+    /**
+     * La excepciÃ³n va en la ficha del equipo, no en su familia de riesgo.
+     *
+     * Las familias estÃ¡n mezcladas âÂ«MÃ¡quina mayorÂ» tiene seis mÃ¡quinas fijas y
+     * una pulidoraâ y quitarla ahÃ­ abrirÃ­a tambiÃ©n las mÃ¡quinas. AsÃ­ es como se
+     * deja el robot pidiendo habilitaciÃ³n aunque se preste.
+     */
+    public function test_el_equipo_puede_seguir_exigiendolo(): void
+    {
+        $u = $this->usuario();
+        $robot = $this->activo(['kind' => 'herramienta', 'exige_certifab' => true]);
+
+        $this->assertSame(Eligibility::NO_HABILITADO, $this->evaluar($u, $robot)->resultado);
+
+        // Y con el certifab, adelante.
+        $this->certificar($u, $robot);
+        $this->assertSame(Eligibility::AUTONOMO, $this->evaluar($u, $robot->fresh())->resultado);
+    }
+
+    /** Y al revÃ©s: una mÃ¡quina a la que se le quita la exigencia. */
+    public function test_el_equipo_puede_renunciar_a_exigirlo(): void
+    {
+        $abierta = $this->activo(['kind' => 'fijo', 'exige_certifab' => false]);
+
+        $this->assertSame(Eligibility::AUTONOMO, $this->evaluar($this->usuario(), $abierta)->resultado);
+    }
+
+    /** Apagado el interruptor, la herramienta vuelve a exigirlo. */
+    public function test_con_el_interruptor_apagado_la_herramienta_vuelve_a_exigirlo(): void
+    {
+        \App\Models\Setting::put(\App\Support\Settings::PRESTAMO_SIN_CERTIFAB, false, 'finanzas');
+
+        $r = $this->evaluar($this->usuario(), $this->activo(['kind' => 'herramienta']));
+
+        $this->assertSame(Eligibility::NO_HABILITADO, $r->resultado);
+    }
+
+    /**
+     * Sin certifab, la autonomÃ­a es la que declara el equipo, y lo que el
+     * equipo exija se sigue exigiendo: el mÃ¡ximo, y el acompaÃ±ante si su
+     * familia lo pide. AhÃ­ se detiene lo que de verdad no se presta a nadie.
+     */
+    public function test_sin_certifab_manda_lo_que_diga_el_equipo(): void
+    {
+        $u = $this->usuario();
+
+        $suelta = $this->activo(['kind' => 'herramienta', 'autonomous_minutes' => 60, 'max_minutes' => 720]);
+        $this->assertSame(Eligibility::CON_ACOMPANANTE, $this->evaluar($u, $suelta, 300)->resultado);
+
+        $vigilada = $this->activo(['kind' => 'herramienta'], ['requires_companion' => true]);
+        $this->assertSame(Eligibility::CON_ACOMPANANTE, $this->evaluar($u, $vigilada)->resultado);
+    }
 }

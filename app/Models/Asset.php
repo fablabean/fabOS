@@ -17,7 +17,7 @@ class Asset extends Model
         'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'reserva_con_espacio', 'name', 'kind',
         'brand', 'model', 'serial', 'asset_tag', 'qr_token', 'status',
         'is_reservable', 'booking_mode', 'allows_off_hours_requests',
-        'unattended_use', 'pool_key',
+        'unattended_use', 'exige_certifab', 'pool_key',
         'min_minutes', 'autonomous_minutes', 'max_minutes',
         'purchase_cost', 'purchased_at', 'warranty_until',
         'photo_path', 'video_url', 'public_description', 'is_public',
@@ -40,6 +40,8 @@ class Asset extends Model
             'is_reservable'  => 'boolean',
             'is_public'      => 'boolean',
             'unattended_use' => 'boolean',
+            // Nulo a propósito: es «lo que diga la regla», distinto de «no».
+            'exige_certifab' => 'boolean',
             'allows_off_hours_requests' => 'boolean',
             'purchased_at'   => 'date',
             'warranty_until' => 'date',
@@ -160,6 +162,27 @@ class Asset extends Model
     public function esHerramienta(): bool
     {
         return $this->kind === 'herramienta';
+    }
+
+    /**
+     * Si para usar esto hace falta estar habilitado (§7).
+     *
+     * El certifab dice que alguien te vio operar una maquina. Una herramienta
+     * que se presta no es una maquina: se pide, se usa y se devuelve. Exigir
+     * un curso para llevarse un multimetro solo consigue que nadie lo pida.
+     *
+     * La ficha del equipo manda sobre la regla, en los dos sentidos. Es lo que
+     * se le marca al robot, que se presta pero no se le entrega a cualquiera,
+     * y responde a «deberia ser herramienta y activo fijo a la vez»: lo que se
+     * queria del activo fijo era justo esto.
+     */
+    public function exigeCertifab(): bool
+    {
+        if ($this->exige_certifab !== null) {
+            return (bool) $this->exige_certifab;
+        }
+
+        return ! ($this->esHerramienta() && \App\Support\Settings::prestamoSinCertifab());
     }
 
     /** Lo que se reserva SIEMPRE con este equipo. */

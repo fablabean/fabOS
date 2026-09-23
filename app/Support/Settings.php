@@ -75,6 +75,26 @@ final class Settings
     }
 
     /*
+     * Y tampoco exige estar habilitado (§7).
+     *
+     * El certifab dice que alguien te vio operar una maquina. Un multimetro o
+     * unas gafas de realidad virtual no son una maquina: se piden, se usan y
+     * se devuelven, y exigir un curso para llevarse un taladro solo consigue
+     * que nadie lo pida.
+     *
+     * La excepcion se marca en la ficha del equipo -«exige certifab»-, y no
+     * por familia de riesgo: las familias estan mezcladas, y quitarla ahi
+     * abriria tambien las maquinas fijas que comparten familia con una
+     * herramienta.
+     */
+    public const PRESTAMO_SIN_CERTIFAB = 'reservas.prestamo_sin_certifab';
+
+    public static function prestamoSinCertifab(): bool
+    {
+        return (bool) Setting::get(self::PRESTAMO_SIN_CERTIFAB, true);
+    }
+
+    /*
      * El beneficio semanal de FabCoins (§12): cada semana, a quien tenga
      * correo de una institucion aliada, el sistema le completa el saldo
      * hasta el tope. No se acumula: quien ya tiene el tope o mas, no recibe.

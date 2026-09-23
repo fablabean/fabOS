@@ -103,6 +103,20 @@
                     </span>
                 </span>
             </label>
+
+            <label class="flex items-start gap-3 cursor-pointer mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <input type="checkbox" wire:model="prestamoSinCertifab" class="mt-1 h-4 w-4 rounded">
+                <span>
+                    <span class="font-medium">Tampoco exigir certifab para prestarla</span>
+                    <span class="block text-sm text-gray-500 dark:text-gray-400">
+                        El certifab dice que alguien te vio operar una máquina, y un multímetro
+                        no es una máquina. <strong>La excepción va en la ficha del equipo</strong>,
+                        campo «Exige certifab»: así se deja pidiéndolo lo que no se le entrega a
+                        cualquiera —el robot— sin abrir también las máquinas fijas que comparten
+                        familia de riesgo con una herramienta.
+                    </span>
+                </span>
+            </label>
         </x-filament::section>
 
         {{-- La asesoría tiene precio plano: lo que se paga es el tiempo de

@@ -135,14 +135,39 @@ class PrestamoDeHerramientasTest extends TestCase
         $this->assertSame(5, Settings::maxHerramientasPorReserva());
     }
 
-    public function test_cada_una_sigue_exigiendo_su_certifab(): void
+    /**
+     * Pedir prestada una herramienta no exige estar habilitado.
+     *
+     * El certifab dice que alguien te vio operar una máquina, y un multímetro
+     * no es una máquina: se pide, se usa y se devuelve. Exigir un curso para
+     * llevarse un taladro solo conseguía que nadie lo pidiera.
+     */
+    public function test_una_herramienta_no_exige_certifab(): void
     {
         $sinCertifab = $this->persona(habilitada: false);
         $a = $this->herramienta('Taladro');
 
+        $madre = app(BookingService::class)
+            ->reservarHerramientas($sinCertifab, [$a], $this->desde(), $this->desde()->addHour());
+
+        $this->assertNotNull($madre);
+    }
+
+    /**
+     * Salvo la que se marca en su ficha: se presta, pero no a cualquiera.
+     *
+     * Va por equipo y no por familia de riesgo porque las familias están
+     * mezcladas —«Máquina mayor» tiene seis máquinas fijas y una pulidora— y
+     * quitarla ahí abriría también las máquinas.
+     */
+    public function test_la_que_lo_exige_en_su_ficha_lo_sigue_exigiendo(): void
+    {
+        $sinCertifab = $this->persona(habilitada: false);
+        $robot = $this->herramienta('Robot Unitree', ['exige_certifab' => true]);
+
         $this->expectException(BookingException::class);
 
-        app(BookingService::class)->reservarHerramientas($sinCertifab, [$a], $this->desde(), $this->desde()->addHour());
+        app(BookingService::class)->reservarHerramientas($sinCertifab, [$robot], $this->desde(), $this->desde()->addHour());
     }
 
     public function test_una_maquina_fija_no_entra_en_el_prestamo(): void
@@ -181,22 +206,42 @@ class PrestamoDeHerramientasTest extends TestCase
             ->assertSee(route('reservas.herramientas'), false);
     }
 
+    /**
+     * Antes de elegir hora se ve cuál se puede pedir.
+     *
+     * Ya casi ninguna se atasca —prestar no exige certifab— pero la que lo
+     * exige en su ficha sí, y eso hay que decirlo antes de preguntar por la
+     * hora: descubrirlo al final es haber hecho el camino para nada.
+     */
     public function test_antes_de_elegir_hora_se_ve_cual_se_puede_pedir(): void
     {
-        $u = $this->persona();
+        $u = $this->persona(habilitada: false);
         $a = $this->herramienta('Taladro');
-        $otraFamilia = RiskFamily::create(['area_id' => $this->familia->area_id, 'slug' => 'maquina-mayor', 'name' => 'Máquina mayor']);
-        $b = $this->herramienta('Pulidora', ['risk_family_id' => $otraFamilia->id]);
+        $b = $this->herramienta('Robot Unitree', ['exige_certifab' => true]);
 
         $this->actingAs($u)
             ->get(route('reservas.herramientas', ['h' => [$a->id, $b->id]]))
             ->assertOk()
             ->assertSee('Reservar 2 herramientas')
             ->assertSee('Taladro')
-            ->assertSee('Pulidora')
-            // Sin certifab para la pulidora: se dice antes, y no se ofrece la hora.
+            ->assertSee('Robot Unitree')
+            // Sin certifab para el robot: se dice antes, y no se ofrece la hora.
             ->assertSee('no se puede pedir todavía')
             ->assertDontSee('Elegir horario');
+    }
+
+    /** Y con todas prestables, se va derecho a la hora. */
+    public function test_sin_nada_que_frene_se_ofrece_la_hora(): void
+    {
+        $u = $this->persona(habilitada: false);
+        $a = $this->herramienta('Taladro');
+        $b = $this->herramienta('Lijadora');
+
+        $this->actingAs($u)
+            ->get(route('reservas.herramientas', ['h' => [$a->id, $b->id]]))
+            ->assertOk()
+            ->assertSee('Elegir horario')
+            ->assertDontSee('no se puede pedir todavía');
     }
 
     public function test_se_reservan_desde_el_sitio(): void

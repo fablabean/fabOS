@@ -438,13 +438,18 @@ class CrearReservaDesdeElPanelTest extends TestCase
     }
     // ------------------------------------------------ herramientas y repetir
 
-    private function herramienta(string $nombre): Asset
+    /**
+     * Prestar no exige certifab, así que `exigeCertifab` es lo que convierte
+     * una herramienta en una de las que sí piden habilitación —el robot— y
+     * por tanto en una que puede pedirse acompañada.
+     */
+    private function herramienta(string $nombre, array $extra = []): Asset
     {
-        return Asset::create([
+        return Asset::create(array_merge([
             'name' => $nombre, 'area_id' => $this->equipo->area_id, 'risk_family_id' => $this->equipo->risk_family_id,
             'kind' => 'herramienta', 'status' => 'operativo', 'is_reservable' => true,
             'min_minutes' => 30, 'autonomous_minutes' => 480, 'max_minutes' => 720,
-        ]);
+        ], $extra));
     }
 
     private function habilitada(): User
@@ -557,7 +562,9 @@ class CrearReservaDesdeElPanelTest extends TestCase
     public function test_quien_acompana_tiene_que_estar_habilitado(): void
     {
         $persona = $this->alguien();
-        $robot = $this->herramienta('Robot Unitree');
+        // El robot es de las que sí piden habilitación: por eso se pide
+        // acompañada, y por eso importa quién acompaña.
+        $robot = $this->herramienta('Robot Unitree', ['exige_certifab' => true]);
         $jefa = User::whereHas('roles')->first();
 
         Livewire::test(CreateReservation::class)

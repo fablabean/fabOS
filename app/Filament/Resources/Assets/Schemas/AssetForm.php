@@ -194,6 +194,27 @@ Select::make('status')
                             ->helperText('Impresión 3D: el trabajo corre sin la persona presente.')
                             ->visible(fn ($get) => $get('is_reservable')),
 
+                        /*
+                         * La excepcion a «lo que se presta no exige certifab».
+                         *
+                         * Vacio es lo corriente: manda la regla. Se toca para
+                         * el equipo que se presta pero no se le entrega a
+                         * cualquiera -el robot-, y no por familia de riesgo,
+                         * que estan mezcladas: «Maquina mayor» tiene seis
+                         * maquinas fijas y una pulidora.
+                         */
+                        Select::make('exige_certifab')
+                            ->label('Exige certifab')
+                            ->options([
+                                1 => 'Sí, siempre',
+                                0 => 'No, nunca',
+                            ])
+                            ->placeholder('Lo que diga la regla')
+                            ->visible(fn ($get) => $get('is_reservable'))
+                            ->helperText(fn ($get) => $get('kind') === 'herramienta'
+                                ? 'Por la regla, una herramienta no lo exige (se cambia en Finanzas → Cobros). Ponlo en «sí» para lo que se presta pero no se le entrega a cualquiera.'
+                                : 'Por la regla, una máquina lo exige siempre.'),
+
                         Select::make('pool_key')
                             ->label('Grupo de unidades equivalentes')
                             ->helperText('Si hay varias idénticas, se reserva "una" y el sistema asigna la libre.')

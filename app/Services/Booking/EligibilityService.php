@@ -74,7 +74,19 @@ class EligibilityService
 
         $certifab = $this->certifabVigente($user, $asset);
 
-        if (! $certifab) {
+        /*
+         * Lo que se presta no exige estar habilitado (§7).
+         *
+         * El certifab dice que alguien te vio operar una máquina. Un multímetro
+         * o unas gafas no son una máquina: se piden, se usan y se devuelven, y
+         * exigir un curso para llevarse un taladro solo consigue que nadie lo
+         * pida. Lo decide la ficha del equipo, que es donde está la excepción
+         * del robot.
+         *
+         * Quien SÍ lo tiene sigue usándolo: su certifab manda, con la autonomía
+         * que le dé. Esto solo abre la puerta a quien no lo tiene.
+         */
+        if (! $certifab && $asset->exigeCertifab()) {
             $familia = $asset->riskFamily;
 
             return Eligibility::noHabilitado(
@@ -91,7 +103,17 @@ class EligibilityService
         // --- 3. Acompañamiento y duración ---
 
         $requiereAcompanante = (bool) $asset->riskFamily?->requires_companion;
-        $autonomia = $certifab->autonomia($asset);
+
+        /*
+         * Sin certifab, la autonomía es la que el equipo declara.
+         *
+         * No es un descuido: el certifab gradúa cuánto puede alguien estar solo
+         * con una máquina, y aquí no hay máquina que graduar. Lo que sí sigue
+         * mandando es lo que el equipo diga —el máximo, y si su familia exige
+         * acompañante—, que es donde se detiene lo que de verdad no se presta
+         * a cualquiera.
+         */
+        $autonomia = $certifab?->autonomia($asset) ?? (int) $asset->autonomous_minutes;
 
         if ($minutos !== null) {
             if ($minutos < $asset->min_minutes) {
