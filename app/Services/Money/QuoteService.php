@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\RateCard;
 use App\Models\Reservation;
 use App\Models\User;
+use App\Support\Settings;
 use Carbon\CarbonInterface;
 
 /**
@@ -74,7 +75,28 @@ class QuoteService
         // cobrar. El acompañamiento sí, porque es el tiempo de otra persona.
         $cubierto = $minutos > 0 && $minutosCobrables === 0;
 
-        if ($tarifa->price_minor > 0 && ! $cubierto) {
+        /*
+         * Prestar una herramienta no se cobra, si así se decidió (§12).
+         *
+         * Las tarifas se pensaron para máquinas, y una herramienta heredaba la
+         * de su familia de riesgo: un multímetro acababa cobrando la tarifa
+         * base del laboratorio, más cara que una impresora. Prestar un
+         * destornillador no ocupa una máquina ni gasta nada.
+         *
+         * Gratis es gratis: ni tiempo, ni montaje, ni mínimo, ni acompañante.
+         * El material aparte, que ese sí se consume y no vuelve.
+         */
+        $prestamoSinCosto = $this->esPrestamoSinCosto($activo);
+
+        if ($prestamoSinCosto) {
+            $lineas[] = [
+                'concepto' => 'Préstamo de herramienta',
+                'detalle'  => $activo->name . ' · el laboratorio no cobra por prestarla',
+                'importe'  => 0,
+            ];
+        }
+
+        if ($tarifa->price_minor > 0 && ! $cubierto && ! $prestamoSinCosto) {
             $importe = $this->aplicar($tarifa->price_minor * $minutosCobrables / 60, $factor);
             $servicio += $importe;
             $lineas[] = [
@@ -84,13 +106,13 @@ class QuoteService
             ];
         }
 
-        if ($tarifa->setup_minor > 0 && ! $cubierto) {
+        if ($tarifa->setup_minor > 0 && ! $cubierto && ! $prestamoSinCosto) {
             $importe = $this->aplicar($tarifa->setup_minor, $factor);
             $servicio += $importe;
             $lineas[] = ['concepto' => 'Montaje y alistamiento', 'detalle' => null, 'importe' => $importe];
         }
 
-        if ($conAcompanante && $tarifa->supervision_hour_minor > 0) {
+        if ($conAcompanante && $tarifa->supervision_hour_minor > 0 && ! $prestamoSinCosto) {
             // Sobre el tiempo entero, no sobre el que queda tras el cupo: el
             // acompañante está ahí todo el rato, lo tenga incluido o no.
             $acompanados = $this->redondear($minutos, $tarifa->rounding_minutes);
@@ -108,7 +130,7 @@ class QuoteService
         //
         // La tarifa lleva decimales —un cm² vale menos que la unidad menor—,
         // pero lo que se cobra es un entero: el piso se redondea aquí, una vez.
-        $minimo = (int) round($tarifa->minimum_minor);
+        $minimo = $prestamoSinCosto ? 0 : (int) round($tarifa->minimum_minor);
 
         if ($servicio > 0 && $servicio < $minimo) {
             $lineas[] = [
@@ -134,7 +156,30 @@ class QuoteService
             ];
         }
 
-        return new Quote($lineas, (int) $total, (int) round($tarifa->deposit_minor), $supuesta, $gratis, $restantes);
+        return new Quote(
+            $lineas,
+            (int) $total,
+            $prestamoSinCosto ? 0 : (int) round($tarifa->deposit_minor),
+            $supuesta,
+            $gratis,
+            $restantes,
+        );
+    }
+
+    /**
+     * Si esto es un préstamo de herramienta que no se cobra.
+     *
+     * Con la excepción por tarifa **propia**: ponérsela a un equipo es lo que
+     * significa «este sí cuesta» —las gafas de realidad virtual, el robot—.
+     * Lo heredado no cuenta, o no habría forma de distinguir lo que alguien
+     * decidió de lo que le cayó por su familia de riesgo, que es justo el
+     * problema que esto viene a resolver.
+     */
+    private function esPrestamoSinCosto(Asset $activo): bool
+    {
+        return $activo->esHerramienta()
+            && Settings::prestamoDeHerramientasGratis()
+            && RateCard::propiaDe($activo) === null;
     }
 
     /** Redondea hacia arriba al bloque de facturación. */

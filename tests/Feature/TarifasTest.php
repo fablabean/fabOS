@@ -125,6 +125,100 @@ class TarifasTest extends TestCase
         $this->assertSame(1000, $becado->totalMenor);
     }
 
+    // ------------------------------------------ el préstamo de una herramienta
+
+    /** Una herramienta, con la tarifa heredada de su familia como las máquinas. */
+    private function herramienta(): Asset
+    {
+        $equipo = $this->equipo();
+        $equipo->update(['kind' => 'herramienta']);
+
+        $this->tarifa(null, ['price_minor' => 600, 'setup_minor' => 200, 'minimum_minor' => 300]);
+
+        return $equipo->fresh();
+    }
+
+    /**
+     * Prestar una herramienta no se cobra.
+     *
+     * El fallo, tal cual salió: un MultiTool heredaba la tarifa de su familia
+     * de riesgo —tarifada junto a las máquinas— y una hora salía a 2 FBC más 1
+     * de montaje. Prestar un destornillador no ocupa una máquina ni gasta nada.
+     */
+    public function test_prestar_una_herramienta_no_cuesta(): void
+    {
+        $herramienta = $this->herramienta();
+
+        $c = $this->cotizador()->cotizar($this->persona(), $herramienta, 60);
+
+        $this->assertSame(0, $c->totalMenor);
+        $this->assertSame(0, $c->depositoMenor);
+
+        // Y se dice por qué no cuesta, en vez de dejar la pantalla en blanco.
+        $this->assertTrue($c->tieneDesglose());
+        $this->assertSame('Préstamo de herramienta', $c->lineas[0]['concepto']);
+    }
+
+    /** Ni montaje, ni mínimo, ni el acompañante. */
+    public function test_gratis_es_gratis_tambien_con_acompanante(): void
+    {
+        $herramienta = $this->herramienta();
+        $this->tarifa(null, ['supervision_hour_minor' => 1000]);
+
+        $c = $this->cotizador()->cotizar($this->persona(), $herramienta, 60, conAcompanante: true);
+
+        $this->assertSame(0, $c->totalMenor);
+    }
+
+    /** El material aparte: ese sí se consume y no vuelve. */
+    public function test_el_material_de_un_prestamo_si_se_cobra(): void
+    {
+        $herramienta = $this->herramienta();
+        $material = $this->tarifa(null, ['basis' => 'unidad', 'unit' => 'g', 'price_minor' => 10]);
+
+        $c = $this->cotizador()->cotizar($this->persona(), $herramienta, 60, materiales: [
+            ['tarifa' => $material, 'cantidad' => 50],
+        ]);
+
+        $this->assertSame(500, $c->totalMenor);
+    }
+
+    /**
+     * La excepción se dice con una tarifa PROPIA.
+     *
+     * Es lo que separa «esto sí cuesta» —las gafas de realidad virtual, el
+     * robot— de «le cayó la de su familia», que es el problema de fondo.
+     */
+    public function test_una_herramienta_con_tarifa_propia_si_se_cobra(): void
+    {
+        $herramienta = $this->herramienta();
+        $this->tarifa($herramienta, ['price_minor' => 2500, 'setup_minor' => 500]);
+
+        $c = $this->cotizador()->cotizar($this->persona(), $herramienta, 60);
+
+        $this->assertSame(3000, $c->totalMenor);
+    }
+
+    /** Apagado el interruptor, se cobra como antes. */
+    public function test_con_el_interruptor_apagado_la_herramienta_vuelve_a_cobrar(): void
+    {
+        $herramienta = $this->herramienta();
+        \App\Models\Setting::put(\App\Support\Settings::PRESTAMO_GRATIS, false, 'finanzas');
+
+        $c = $this->cotizador()->cotizar($this->persona(), $herramienta, 60);
+
+        $this->assertSame(800, $c->totalMenor, '6 de la hora más 2 de montaje');
+    }
+
+    /** Y una máquina sigue costando: esto es solo para lo que se presta. */
+    public function test_una_maquina_sigue_cobrando(): void
+    {
+        $equipo = $this->equipo();
+        $this->tarifa(null, ['price_minor' => 600, 'setup_minor' => 200]);
+
+        $this->assertSame(800, $this->cotizador()->cotizar($this->persona(), $equipo, 60)->totalMenor);
+    }
+
     public function test_el_material_va_a_costo_para_todos(): void
     {
         $e = $this->equipo();

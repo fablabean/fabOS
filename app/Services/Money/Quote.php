@@ -23,10 +23,17 @@ class Quote
         public readonly ?int $minutosIncluidosRestantes = null,
     ) {}
 
-    /** Si hay algo que explicar aunque el total sea cero: las horas incluidas. */
+    /**
+     * Si hay algo que explicar aunque el total sea cero.
+     *
+     * Las horas incluidas del certifab, o un préstamo de herramienta que no se
+     * cobra: en los dos casos el total es cero y hay algo que decir. Esconder
+     * el desglose ahí dejaba la pantalla sin explicar **por qué** no cuesta,
+     * que es justo lo que da confianza.
+     */
     public function tieneDesglose(): bool
     {
-        return $this->totalMenor > 0 || $this->minutosIncluidos > 0;
+        return $this->totalMenor > 0 || $this->minutosIncluidos > 0 || $this->lineas !== [];
     }
 
     public function total(): float

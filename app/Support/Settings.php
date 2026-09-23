@@ -54,6 +54,27 @@ final class Settings
     public const COBROS_TIENDA = 'cobros.tienda';
 
     /*
+     * Prestar una herramienta no se cobra (§12).
+     *
+     * Las tarifas se pensaron para maquinas —una hora de laser, una de CNC— y
+     * las herramientas heredaban la de su familia de riesgo, que se tarifo
+     * junto a las maquinas: un multimetro acababa cobrando la tarifa base del
+     * laboratorio, mas cara que una impresora 3D. Prestar un destornillador no
+     * ocupa una maquina ni gasta nada; cobrarlo solo desanima a pedirlo.
+     *
+     * La excepcion se dice poniendole al equipo su **tarifa propia**: eso es
+     * justo lo que significa «esta si cuesta» —las gafas de realidad virtual,
+     * el robot—. Lo heredado no cuenta, o no habria forma de distinguir lo
+     * decidido de lo que cayo por herencia.
+     */
+    public const PRESTAMO_GRATIS = 'cobros.prestamo_de_herramientas_gratis';
+
+    public static function prestamoDeHerramientasGratis(): bool
+    {
+        return (bool) Setting::get(self::PRESTAMO_GRATIS, true);
+    }
+
+    /*
      * El beneficio semanal de FabCoins (§12): cada semana, a quien tenga
      * correo de una institucion aliada, el sistema le completa el saldo
      * hasta el tope. No se acumula: quien ya tiene el tope o mas, no recibe.

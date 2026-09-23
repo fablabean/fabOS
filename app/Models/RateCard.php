@@ -114,6 +114,23 @@ class RateCard extends Model
      * si tampoco, cae en la tarifa base del laboratorio. Así se administran
      * decenas de equipos cambiando unos pocos números.
      */
+    /**
+     * La tarifa **propia** de este equipo, sin herencia.
+     *
+     * Distinta de `para()`, que baja por la cascada hasta encontrar algo.
+     * Aqui la pregunta es otra: si alguien decidio el precio de ESTE equipo.
+     * Es lo que separa «cuesta esto» de «le cayo lo de su familia», y de eso
+     * depende que el prestamo de una herramienta se cobre o no.
+     */
+    public static function propiaDe(Asset $activo, string $basis = 'tiempo'): ?self
+    {
+        return static::vigente()
+            ->where('rateable_type', Asset::class)
+            ->where('rateable_id', $activo->id)
+            ->where('basis', $basis)
+            ->first();
+    }
+
     public static function para(Asset $activo, string $basis = 'tiempo'): ?self
     {
         $candidatos = [

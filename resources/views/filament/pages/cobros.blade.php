@@ -75,6 +75,36 @@
             </label>
         </x-filament::section>
 
+        {{-- Prestar una herramienta no es ocupar una máquina. Las tarifas se
+             pensaron para máquinas y las herramientas heredan la de su familia
+             de riesgo, que se tarifó junto a ellas: un multímetro acababa
+             cobrando la tarifa base del laboratorio, más cara que una
+             impresora 3D. --}}
+        <x-filament::section>
+            <x-slot name="heading">El préstamo de herramientas</x-slot>
+            <x-slot name="description">
+                Prestar un multímetro o un taladro no ocupa una máquina ni gasta nada, y
+                cobrarlo solo desanima a pedirlo. Esto lo pone en cero sin tener que tarifar
+                una por una las {{ \App\Models\Asset::where('kind', 'herramienta')->where('is_reservable', true)->count() }}
+                herramientas que se prestan.
+            </x-slot>
+
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" wire:model="prestamoGratis" class="mt-1 h-4 w-4 rounded">
+                <span>
+                    <span class="font-medium">No cobrar por prestar una herramienta</span>
+                    <span class="block text-sm text-gray-500 dark:text-gray-400">
+                        Ni tiempo, ni montaje, ni mínimo, ni depósito. El material que se gaste
+                        se cobra igual: ese sí se consume.
+                        <strong>La excepción se dice con una tarifa propia</strong>: si un equipo
+                        tiene la suya en <em>Finanzas → Tarifas</em> —no la heredada de su
+                        familia—, se cobra aunque esto esté encendido. Es como se deja cobrando
+                        lo que sí debe costar: las gafas de realidad virtual, el robot.
+                    </span>
+                </span>
+            </label>
+        </x-filament::section>
+
         {{-- La asesoría tiene precio plano: lo que se paga es el tiempo de
              alguien del equipo, no el de una máquina. Se retiene al pedirla y
              se causa cuando quien atiende valida que la persona vino. --}}

@@ -40,6 +40,16 @@ class Cobros extends Page
     /** Lo que cuesta una asesoría, en FabCoins. Plano: se paga el tiempo de una persona. */
     public string $precioAsesoria = '2';
 
+    /**
+     * Prestar una herramienta no se cobra.
+     *
+     * Las tarifas se pensaron para máquinas, y una herramienta hereda la de su
+     * familia de riesgo: un multímetro acababa cobrando la tarifa base del
+     * laboratorio, más cara que una impresora. La excepción se dice poniéndole
+     * al equipo su tarifa propia.
+     */
+    public bool $prestamoGratis = true;
+
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -60,6 +70,7 @@ class Cobros extends Page
     {
         $this->cobrosActivos = Settings::cobrosActivos();
         $this->cobrosTienda = (bool) Setting::get(Settings::COBROS_TIENDA, false);
+        $this->prestamoGratis = Settings::prestamoDeHerramientasGratis();
         $this->precioAsesoria = rtrim(rtrim(number_format(Settings::precioDeAsesoriaMenor() / config('fabos.currency.minor_units'), 2, '.', ''), '0'), '.');
     }
 
@@ -69,6 +80,7 @@ class Cobros extends Page
 
         Setting::put(Settings::COBROS_ACTIVOS, $this->cobrosActivos, 'finanzas');
         Setting::put(Settings::COBROS_TIENDA, $this->cobrosTienda, 'finanzas');
+        Setting::put(Settings::PRESTAMO_GRATIS, $this->prestamoGratis, 'finanzas');
         Setting::put(Settings::ASESORIA_PRECIO, (int) round(((float) $this->precioAsesoria) * config('fabos.currency.minor_units')), 'finanzas');
 
         $tienda = $this->cobrosActivos || $this->cobrosTienda;
