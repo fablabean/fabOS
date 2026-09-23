@@ -82,10 +82,11 @@
     .migas a{color:var(--muted);text-decoration:none}
     .migas a:hover{color:var(--accent)}
     .migas strong{color:var(--ink-soft);font-weight:600}
-    /* El camino recomendado por la guía: se ve desde lejos, y dice «te toca». */
+    /* El camino que sugiere la guía: se ve desde lejos. «Sugerido» y no «te
+       toca», porque esto orienta y no manda: quien llega elige igual. */
     .camino.recomendado{outline:3px solid var(--accent);outline-offset:2px;position:relative}
     .camino.recomendado::before{
-        content:"Te toca";position:absolute;top:-.7rem;left:1rem;background:var(--accent);color:var(--surface);
+        content:"Sugerido";position:absolute;top:-.7rem;left:1rem;background:var(--accent);color:var(--surface);
         font-family:ui-monospace,Consolas,monospace;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
         padding:.2rem .6rem;border-radius:999px;
     }
@@ -93,8 +94,11 @@
     .caminos:has(.recomendado) .camino:not(.recomendado){opacity:.55}
     .caminos:has(.recomendado) .camino:not(.recomendado):hover{opacity:1}
     /* El banner de la guía: a lo ancho, con su texto encima. */
+    /* El banner, entero: es una infografía con texto dentro, y recortarla
+       —alto fijo y `cover`— se comía justo las palabras que explican cada
+       camino. Se ve a su proporción, y en pantalla estrecha se encoge sola. */
     .mapa{position:relative}
-    .mapa img{display:block;width:100%;max-height:26rem;object-fit:cover;border-radius:8px;border:1px solid var(--rule)}
+    .mapa img{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--rule)}
     .mapa p{margin:.6rem 0 0;color:var(--ink-soft);font-size:1.02rem}
     .reservas-mias{display:grid;gap:.5rem;margin-bottom:2rem}
     .mia{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:baseline;
@@ -180,18 +184,6 @@
             $imagenGuia = \App\Support\Settings::imagenDeLaGuia();
         @endphp
 
-        {{-- El banner (§10): una foto que ayude a reconocer el camino sin
-             preguntar. Se sube en Comunicaciones → Guía de reservas; sin
-             foto, no se pinta. --}}
-        @if ($imagenGuia)
-            <section class="mapa" style="padding:1.6rem 0 0">
-                <img src="{{ asset('storage/' . $imagenGuia) }}" alt="Cómo usar el laboratorio" loading="eager">
-                @if (\App\Support\Settings::textoDeLaGuia())
-                    <p>{{ \App\Support\Settings::textoDeLaGuia() }}</p>
-                @endif
-            </section>
-        @endif
-
         <section style="padding-bottom:1rem">
             <p class="rotulo">Reservas</p>
             <h1>¿Cómo quieres usar el laboratorio?</h1>
@@ -200,6 +192,23 @@
                 necesitas y lo que tienes que hacer.
             </p>
         </section>
+
+        {{-- El banner (§10): una foto que ayude a reconocer el camino sin
+             preguntar. Se sube en Comunicaciones → Guía de reservas; sin foto,
+             no se pinta.
+
+             Va después del título y antes de la caja de la guía: arriba del
+             todo empujaba la pregunta —«¿cómo quieres usar el laboratorio?»—
+             fuera de la pantalla, y quien llega leía la respuesta antes que la
+             pregunta. --}}
+        @if ($imagenGuia)
+            <section class="mapa" style="padding:0 0 1.6rem">
+                <img src="{{ asset('storage/' . $imagenGuia) }}" alt="Cómo usar el laboratorio" loading="eager">
+                @if (\App\Support\Settings::textoDeLaGuia())
+                    <p>{{ \App\Support\Settings::textoDeLaGuia() }}</p>
+                @endif
+            </section>
+        @endif
 
         {{-- La guía va ANTES de los caminos: quien no sabe cuál es el suyo no
              debería tener que leer las cuatro tarjetas para descubrir que hay

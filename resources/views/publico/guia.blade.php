@@ -29,7 +29,7 @@
                 @csrf
                 <label for="necesidad">
                     <span class="rotulo" style="margin-bottom:.3rem">¿No sabes cuál?</span>
-                    <strong>Escribe qué necesitas y te decimos por dónde.</strong>
+                    <strong>Escribe qué necesitas y te guiaremos en la opción que debes tomar.</strong>
                 </label>
                 <div class="fila">
                     <input id="necesidad" name="necesidad" type="text" required minlength="8" maxlength="600"
@@ -44,7 +44,9 @@
             @if ($guia)
                 <div class="respuesta {{ $guia['camino'] === 'ninguno' ? 'nada' : '' }}">
                     @if ($guia['camino'] !== 'ninguno')
-                        <p class="rotulo" style="margin-bottom:.2rem">Te toca</p>
+                        {{-- «Sugerido» y no «te toca»: esto orienta, no manda.
+                             Quien llega puede elegir otro camino igual. --}}
+                        <p class="rotulo" style="margin-bottom:.2rem">Sugerido</p>
                         <p class="cual"><a href="{{ $guia['url'] }}">{{ $guia['titulo'] }} →</a></p>
                     @endif
                     <p class="porque">{{ $guia['porque'] }}</p>
