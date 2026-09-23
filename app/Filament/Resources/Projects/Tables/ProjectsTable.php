@@ -40,7 +40,13 @@ class ProjectsTable
             ->defaultSort('id', 'desc')
             // El semaforo de la entrega: la fila se tiñe segun cuanto falta,
             // y en rojo si ya paso sin cerrarse. Los estilos van en el panel.
-            ->recordClasses(fn (Project $r) => $r->semaforo())
+            //
+            // Y las alianzas llevan franja azul: en una lista de cincuenta
+            // encargos, los cuatro proyectos que no son encargo se pierden, y
+            // son justo los que se cuentan de otra manera.
+            ->recordClasses(fn (Project $r) => trim(
+                ($r->esAlianza() ? 'es-alianza ' : '') . ($r->semaforo() ?? '')
+            ) ?: null)
             ->columns([
                 TextColumn::make('code')->sortable()
                     ->label('Código')
@@ -196,6 +202,10 @@ class ProjectsTable
                         ->where('source', 'formulario')
                         ->whereNull('proposal_sent_at')
                         ->where('stage', 'idea')),
+
+                // Para mirar solo lo que no es un encargo, que se cuenta de
+                // otra manera. Es a donde llevan las tarjetas de alianzas.
+                SelectFilter::make('modality')->label('Modalidad')->options(Project::MODALIDADES),
 
                 SelectFilter::make('stage')->label('Etapa')->options(Project::ETAPAS),
                 SelectFilter::make('status')->label('Estado')->options(Project::ESTADOS)->default('activo'),

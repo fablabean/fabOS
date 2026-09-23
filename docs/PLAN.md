@@ -259,6 +259,11 @@ decisión tuya
 - [x] Equipo del proyecto con proveedores y cliente, tengan cuenta o no
 - [x] Gantt y Kanban sobre una sola tabla de tareas, con tablero propio para
       mirar en reunión y mover tarjetas de un clic
+- [x] Las alianzas se cuentan aparte del embudo, que mide trabajo vendido: van
+      en su propio bloque con dos lecturas —lo que vale el proyecto en el
+      mercado y qué parte es nuestra según el % pactado, y lo que nos cuesta,
+      dicho como lo comprometido frente a lo ya gastado—. En el listado, franja
+      azul y filtro por modalidad
 - [x] Alianzas: un proyecto con modalidad «alianza» tiene partes que aportan
       —el laboratorio entre ellas— con aporte valorado y participación;
       acuerdo de alianza con cláusulas propias; alianzas abiertas en

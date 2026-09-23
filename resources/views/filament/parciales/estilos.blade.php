@@ -14,4 +14,10 @@
     .dark tr.entrega-hoy     { background: color-mix(in srgb, #F6AD55 14%, transparent); }
     .dark tr.entrega-manana  { background: color-mix(in srgb, #F6E05E 12%, transparent); }
     .dark tr.entrega-pasado  { background: color-mix(in srgb, #68D391 12%, transparent); }
+
+    /* Las alianzas, en azul. Va despues del semaforo a proposito: gana la
+       franja, porque «esto no es un encargo» es lo que cuesta ver en una lista
+       de cincuenta, y el color de la entrega sigue tiñendo la fila igual. */
+    tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #2B6CB0; }
+    .dark tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #63B3ED; }
 </style>

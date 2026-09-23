@@ -30,6 +30,25 @@ class EmbudoDeProyectos extends Widget
         return Project::resumenDelEmbudo($this->ano());
     }
 
+    /**
+     * Las alianzas, aparte y en sus dos cifras (§11).
+     *
+     * No son una etapa más del embudo: no hay cliente ni precio, así que su
+     * valor no es venta y sumarlo con lo demás diría que vendimos algo que
+     * nadie encargó. Se leen de otra manera —lo que valen fuera y lo que nos
+     * cuestan— y por eso van en su propia fila.
+     */
+    public function getAlianzas(): array
+    {
+        return Project::resumenDeAlianzas();
+    }
+
+    /** El listado filtrado a alianzas, que es a donde llevan sus tarjetas. */
+    public function enlaceDeAlianzas(): string
+    {
+        return '/admin/projects?tableFilters[modality][value]=alianza';
+    }
+
     public function ano(): int
     {
         return (int) now(config('fabos.lab.timezone'))->year;

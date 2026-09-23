@@ -21,7 +21,7 @@ class Project extends Model
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
-        'modality', 'alliance_open', 'alliance_pitch',
+        'modality', 'alliance_open', 'alliance_pitch', 'market_value',
     ];
 
     protected function casts(): array
@@ -77,6 +77,7 @@ class Project extends Model
         $valor = 'coalesce(nullif(agreed_value, 0), estimated_value, 0)';
 
         $activos = static::query()
+            ->soloServicios()
             ->where('status', 'activo')
             ->selectRaw("stage, count(*) as cuantos, sum($valor) as valor")
             ->groupBy('stage')
@@ -88,12 +89,14 @@ class Project extends Model
         // ultima vez que se toco. Seis proyectos cerrados sin fecha dejaban
         // la tarjeta de cierre en cero con todo el ano trabajado.
         $cerrados = static::query()
+            ->soloServicios()
             ->where('status', 'cerrado')
             ->whereRaw('extract(year from coalesce(closed_at, updated_at)) = ?', [$ano])
             ->selectRaw("count(*) as cuantos, sum($valor) as valor")
             ->first();
 
         $enPausa = static::query()
+            ->soloServicios()
             ->where('status', 'pausado')
             ->selectRaw("count(*) as cuantos, sum($valor) as valor")
             ->first();
@@ -263,6 +266,53 @@ class Project extends Model
         return (float) $this->partners()->confirmados()->sum('share_percent');
     }
 
+    /*
+     |--------------------------------------------------------------------------
+     | Una alianza se lee de dos maneras
+     |--------------------------------------------------------------------------
+     | Cuánto vale el proyecto allá afuera —y qué parte de eso es nuestra— y
+     | cuánto nos cuesta ponerlo en pie. No es lo mismo que un servicio, donde
+     | hay un cliente y un precio: aquí no entra plata por hacerlo, se pone y
+     | se espera. Por eso estas cifras van aparte del embudo de servicios, que
+     | mide trabajo vendido.
+     */
+
+    /**
+     * La fila del laboratorio entre las partes, si ya está.
+     *
+     * Por la relación y no por una consulta: así una pantalla que precarga
+     * `partners` resuelve todas las alianzas sin volver a la base por cada una.
+     */
+    public function parteDelLaboratorio(): ?ProjectPartner
+    {
+        return $this->partners
+            ->first(fn (ProjectPartner $p) => $p->role === 'laboratorio' && $p->estaConfirmado());
+    }
+
+    /** Nuestro porcentaje pactado en esta alianza. */
+    public function participacionDelLaboratorio(): float
+    {
+        return (float) ($this->parteDelLaboratorio()?->share_percent ?? 0);
+    }
+
+    /** Lo que nos corresponde del valor de mercado, en pesos. */
+    public function nuestraParteDelMercado(): int
+    {
+        return (int) round((int) $this->market_value * $this->participacionDelLaboratorio() / 100);
+    }
+
+    /**
+     * Lo que nos comprometimos a poner: el aporte valorado del laboratorio.
+     *
+     * Es lo pactado con las otras partes —lo que sustenta nuestro porcentaje—,
+     * no lo que llevamos gastado. Las dos cifras se miran juntas: la distancia
+     * entre ellas es lo que falta por poner, o lo que nos pasamos.
+     */
+    public function aporteComprometido(): int
+    {
+        return (int) ($this->parteDelLaboratorio()?->contribution_value ?? 0);
+    }
+
     /** Si está en el sitio recibiendo aliados. */
     public function admiteAliados(): bool
     {
@@ -274,6 +324,66 @@ class Project extends Model
     {
         return $query->where('modality', 'alianza')->where('alliance_open', true)
             ->where('status', 'activo')->whereNot('stage', 'cierre');
+    }
+
+    /**
+     * Lo que se encarga y se cobra, sin las alianzas.
+     *
+     * El embudo mide trabajo vendido: etapas, valor, cierre del año. Una
+     * alianza no tiene cliente ni precio, y sumar su valor ahí decía que
+     * habíamos vendido algo que nadie encargó. Cuentan aparte, y de otra
+     * manera.
+     */
+    public function scopeSoloServicios(Builder $query): Builder
+    {
+        return $query->where('modality', '<>', 'alianza');
+    }
+
+    public function scopeAlianzas(Builder $query): Builder
+    {
+        return $query->where('modality', 'alianza');
+    }
+
+    /**
+     * Las alianzas vivas, en sus dos cifras (§11).
+     *
+     * Lo que valen allá afuera y qué parte es nuestra; y lo que nos cuesta,
+     * dicho dos veces: lo que nos comprometimos a poner y lo que llevamos
+     * puesto. La distancia entre esas dos es lo que falta —o lo que nos
+     * pasamos—, y es la pregunta que una sola cifra no contesta.
+     *
+     * El gasto real se costea proyecto por proyecto porque sale de cuatro
+     * sitios distintos —máquina, material, compras y horas— y no hay una
+     * columna que sumar. Son pocas alianzas y van en una pantalla que ya
+     * consulta; si algún día son cientos, esto es lo primero que habrá que
+     * precalcular.
+     *
+     * @return array{cuantas:int, mercado:int, nuestro:int, porcentaje:?float, comprometido:int, gastado:int}
+     */
+    public static function resumenDeAlianzas(): array
+    {
+        $vivas = static::query()
+            ->alianzas()
+            ->whereIn('status', ['activo', 'pausado'])
+            ->with('partners')
+            ->get();
+
+        $costeo = app(\App\Services\Projects\CostingService::class);
+
+        $mercado = (int) $vivas->sum(fn (self $p) => (int) $p->market_value);
+        $nuestro = (int) $vivas->sum(fn (self $p) => $p->nuestraParteDelMercado());
+
+        return [
+            'cuantas'      => $vivas->count(),
+            'mercado'      => $mercado,
+            'nuestro'      => $nuestro,
+            // El porcentaje del conjunto sale de las cifras, no del promedio
+            // de los porcentajes: una alianza pequeña con el 80% no debe pesar
+            // lo mismo que una grande con el 10%.
+            'porcentaje'   => $mercado > 0 ? round($nuestro / $mercado * 100, 1) : null,
+            'comprometido' => (int) $vivas->sum(fn (self $p) => $p->aporteComprometido()),
+            'gastado'      => (int) $vivas->sum(fn (self $p) => $costeo->costear($p)['total']),
+        ];
     }
 
     /** Solo el área institucional pasa por el traslado presupuestal. */

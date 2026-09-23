@@ -270,8 +270,43 @@ class ProjectForm
                             ])
                             ->columns(3),
 
+                        /*
+                         * Lo que vale la alianza alla afuera (§11).
+                         *
+                         * Solo en modalidad alianza, y en lugar del estimado y
+                         * el acordado: ahi no hay cliente que pague, asi que
+                         * esos dos no dicen nada. Lo que dice algo es cuanto
+                         * vale el negocio y que parte es nuestra, que sale del
+                         * porcentaje pactado en la pestaña «Aliados».
+                         */
+                        TextInput::make('market_value')
+                            ->label('Valor de mercado del proyecto')
+                            ->visible(fn (?Project $record) => $record?->esAlianza() ?? false)
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->columnSpanFull()
+                            ->helperText(function (?Project $record) {
+                                if (! $record?->esAlianza()) {
+                                    return null;
+                                }
+
+                                $pct = $record->participacionDelLaboratorio();
+                                $simbolo = config('fabos.money.symbol');
+
+                                return $pct > 0
+                                    ? 'En cuánto se valora el proyecto en el mercado. Con nuestro '
+                                        . rtrim(rtrim(number_format($pct, 2, ',', '.'), '0'), ',')
+                                        . '% pactado, nos corresponden ' . $simbolo
+                                        . number_format($record->nuestraParteDelMercado(), 0, ',', '.') . '.'
+                                    : 'En cuánto se valora el proyecto en el mercado. Todavía no hay participación del laboratorio pactada: se anota en la pestaña «Aliados».';
+                            }),
+
                         TextInput::make('estimated_value')
                             ->label(fn (Get $get) => $get('is_internal') ? 'Valor estimado del beneficio' : 'Valor estimado')
+                            // En una alianza no hay cliente ni precio: el valor
+                            // que importa es el de mercado, arriba.
+                            ->hidden(fn (?Project $record) => $record?->esAlianza() ?? false)
                             ->numeric()
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
@@ -282,8 +317,10 @@ class ProjectForm
                         TextInput::make('agreed_value')
                             ->label('Valor acordado')
                             // En un compromiso interno no hay contrato que
-                            // acordar: el campo solo confundiria.
-                            ->hidden(fn (Get $get) => (bool) $get('is_internal'))
+                            // acordar, y en una alianza no hay cliente: el
+                            // campo solo confundiria.
+                            ->hidden(fn (Get $get, ?Project $record) => (bool) $get('is_internal')
+                                || ($record?->esAlianza() ?? false))
                             ->numeric()
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
