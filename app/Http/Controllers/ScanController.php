@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\Reservation;
-use App\Models\Supply;
 use App\Services\Booking\AttendanceService;
 use App\Services\Booking\BookingException;
 use App\Services\Booking\EligibilityService;
@@ -48,24 +47,6 @@ class ScanController extends Controller
             'reserva'   => $this->asistencia->reservaEnCurso($user, $activo),
             'veredicto' => $this->eligibility->evaluar($user, $activo),
             'ordenes'   => $this->mantenimiento->abiertasDe($activo),
-            /*
-             * Insumos del área del equipo: al cerrar se declara lo que se gastó.
-             * Se ofrecen los de su área y no todo el inventario, porque nadie va
-             * a buscar «filamento» en una lista de cincuenta cosas.
-             *
-             * Y solo insumos, no productos terminados. Comparten tabla —los dos
-             * se cuentan, se descuentan y se reponen— pero un producto no se
-             * consume usando una máquina: se vende. Sin este filtro, a quien
-             * acababa de imprimir se le preguntaba cuántos «Capibara
-             * geométrico» había gastado, entre otras quince cosas del mismo
-             * tipo; el insumo de verdad quedaba enterrado en la lista.
-             */
-            'insumos'   => Supply::where('is_active', true)
-                ->where('kind', 'insumo')
-                ->where('stock', '>', 0)
-                ->when($activo->area_id, fn ($q) => $q->where('area_id', $activo->area_id))
-                ->orderBy('name')
-                ->get(),
         ]);
     }
 
@@ -113,48 +94,28 @@ class ScanController extends Controller
     {
         abort_unless($reservation->user_id === $request->user()->id, 403);
 
-        // Cantidades declaradas de material. Van como texto desde el formulario
-        // y se limpian aquí: lo que no sea un número positivo, se ignora.
-        $numero = fn ($v) => (float) str_replace(',', '.', (string) $v);
-
-        $materiales = collect($request->input('material', []))
-            ->map($numero)
-            ->filter(fn (float $cantidad) => $cantidad > 0)
-            ->all();
-
         /*
-         * Y lo que viene en lámina, por el trozo que se cortó.
+         * Al cerrar no se pasa inventario.
          *
-         * De una hoja de 120×90 no se gasta «una»: se cortan 30×40. Delante de
-         * la máquina se sabe lo que se midió, no la fracción, y pedir la
-         * fracción es pedir la regla de tres —o que se anote una hoja entera,
-         * que descuenta de más del inventario y cobra de más—.
+         * Se ofrecia la lista de insumos del area para declarar cuanto se
+         * gasto, y era una lista que el catalogo no sostiene: en impresion 3D
+         * habia un insumo de verdad y quince productos terminados tapandolo.
+         * Quien acaba de usar la maquina viene a soltarla, no a hacer un
+         * inventario.
          *
-         * Manda sobre la cantidad escrita a mano: si alguien llenó las dos, lo
-         * concreto es el trozo.
+         * Lo que se quiera llevar se compra en la tienda, que es donde hay
+         * precio y existencia. Y lo que se gasto se dice con palabras, abajo:
+         * de ahi sale lo que falta por cargar.
+         *
+         * Se guarda antes de cerrar: si el cierre falla por otra cosa, lo
+         * escrito no se pierde.
          */
-        $largos = (array) $request->input('largo', []);
-        $anchos = (array) $request->input('ancho', []);
-
-        foreach (Supply::find(array_keys($largos + $anchos)) as $insumo) {
-            $laminas = $insumo->laminasDeUnTrozo(
-                $numero($largos[$insumo->id] ?? null),
-                $numero($anchos[$insumo->id] ?? null),
-            );
-
-            if ($laminas !== null && $laminas > 0) {
-                $materiales[$insumo->id] = $laminas;
-            }
-        }
-
-        // Lo que gastó y no estaba en la lista. Se guarda antes de cerrar: si
-        // el cierre falla por otra cosa, lo escrito no se pierde.
         if (filled($nota = trim((string) $request->input('material_note')))) {
             $reservation->update(['material_note' => mb_substr($nota, 0, 500)]);
         }
 
         try {
-            $this->asistencia->checkOut($reservation, $materiales);
+            $this->asistencia->checkOut($reservation);
         } catch (BookingException $e) {
             return back()->withErrors(['reserva' => $e->getMessage()]);
         }

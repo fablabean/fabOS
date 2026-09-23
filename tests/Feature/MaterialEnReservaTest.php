@@ -193,55 +193,33 @@ class MaterialEnReservaTest extends TestCase
         $this->assertSame(46_800, app(LedgerService::class)->saldoDe($u));
     }
 
-    public function test_la_pantalla_del_equipo_ofrece_declarar_material(): void
-    {
-        $u = $this->persona();
-        $equipo = $this->equipo();
-        $this->insumo($equipo, ['name' => 'Filamento PLA negro']);
-
-        Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'byte']);
-        $inicio = now()->addMinutes(5);
-        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
-        app(AttendanceService::class)->checkIn($reserva->refresh());
-
-        $this->actingAs($u)
-            ->get(route('escaneo.equipo', $equipo->qr_token))
-            ->assertOk()
-            ->assertSee('¿Usaste material?')
-            ->assertSee('Filamento PLA negro');
-    }
-
-    public function test_se_declara_material_cerrando_desde_el_equipo(): void
-    {
-        $u = $this->persona();
-        $equipo = $this->equipo();
-        $insumo = $this->insumo($equipo, ['stock' => 1000]);
-
-        Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'byte']);
-        $inicio = now()->addMinutes(5);
-        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
-        app(AttendanceService::class)->checkIn($reserva->refresh());
-
-        // Con coma decimal, como lo escribiría alguien aquí.
-        $this->actingAs($u)
-            ->post(route('escaneo.checkout', $reserva), ['material' => [$insumo->id => '45,5']])
-            ->assertRedirect(route('reservas.index'));
-
-        $this->assertSame(954.5, (float) $insumo->fresh()->stock);
-        $this->assertSame('completada', $reserva->fresh()->status);
-    }
-
     // ------------------------------------------- lo que se ofrece declarar
 
+    /** Reserva, llega, y se queda delante del equipo. */
+    private function enCurso(User $u, Asset $equipo)
+    {
+        Certifab::firstOrCreate(
+            ['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id],
+            ['level' => 'byte'],
+        );
+
+        $inicio = now()->addMinutes(5);
+        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
+        app(AttendanceService::class)->checkIn($reserva->refresh());
+
+        return $reserva->refresh();
+    }
+
     /**
-     * Solo insumos: un producto terminado no se gasta usando una máquina.
+     * La pantalla no pide un inventario: pregunta con palabras.
      *
-     * Comparten tabla -los dos se cuentan, se descuentan y se reponen- pero a
-     * quien acababa de imprimir se le preguntaba cuántos «Capibara geométrico»
-     * había gastado, entre otras quince cosas del mismo tipo, y el insumo de
-     * verdad quedaba enterrado en la lista.
+     * Se ofrecía la lista de insumos del área para declarar cuánto se gastó, y
+     * era una lista que el catálogo no sostiene: en impresión 3D había un
+     * insumo de verdad y quince productos terminados tapándolo. Quien acaba de
+     * usar la máquina viene a soltarla, no a hacer un inventario; lo que se
+     * quiera llevar se compra en la tienda, que es donde hay precio.
      */
-    public function test_la_pantalla_no_ofrece_productos_terminados(): void
+    public function test_la_pantalla_no_pide_inventario_sino_palabras(): void
     {
         $u = $this->persona();
         $equipo = $this->equipo();
@@ -252,28 +230,29 @@ class MaterialEnReservaTest extends TestCase
         $this->actingAs($u)
             ->get(route('escaneo.equipo', $equipo->qr_token))
             ->assertOk()
-            ->assertSee('Filamento PLA negro')
-            ->assertDontSee('Capibara geometrico');
+            ->assertSee('¿Usaste material?')
+            ->assertDontSee('Filamento PLA negro')
+            ->assertDontSee('Capibara geometrico')
+            ->assertDontSee('name="material[', false);
     }
 
     /**
-     * Y lo que no está en la lista se dice con palabras.
+     * Lo que se gastó se dice con palabras.
      *
-     * El catálogo nunca está completo: en impresión 3D hay UN insumo cargado.
-     * Quien acaba de usar la máquina no tenía dónde decir «gasté media lija», y
-     * eso es justo lo que hace que el insumo acabe existiendo.
+     * No descuenta inventario ni se cobra —no se puede cobrar lo que no tiene
+     * precio— pero deja escrito lo que hay que reponer, que es lo que antes se
+     * perdía en cuanto la persona cerraba la pestaña.
      */
-    public function test_lo_que_no_esta_en_la_lista_se_escribe(): void
+    public function test_lo_que_se_gasto_se_escribe(): void
     {
         $u = $this->persona();
         $equipo = $this->equipo();
-        $this->insumo($equipo);
         $reserva = $this->enCurso($u, $equipo);
 
         $this->actingAs($u)
             ->get(route('escaneo.equipo', $equipo->qr_token))
             ->assertOk()
-            ->assertSee('¿Usaste algo que no esté aquí?');
+            ->assertSee('¿Usaste material?');
 
         $this->actingAs($u)
             ->post(route('escaneo.checkout', $reserva), [
@@ -301,85 +280,14 @@ class MaterialEnReservaTest extends TestCase
         $this->assertNull($reserva->fresh()->material_note);
     }
 
-    // ------------------------------------------------------ el trozo de lámina
-
-    /**
-     * Lo que viene en lámina se declara por el trozo que se cortó.
-     *
-     * De una hoja de 120x90 no se gasta «una»: se cortan 30x40. Delante de la
-     * máquina se sabe lo que se midió, no la fracción, y pedir la fracción es
-     * pedir la regla de tres -o que se anote una hoja entera, que descuenta de
-     * más del inventario y cobra de más-.
+    /*
+     |--------------------------------------------------------------------------
+     | El trozo de lamina
+     |--------------------------------------------------------------------------
+     | De una hoja de 120x90 no se gasta «una»: se cortan 30x40. Esa cuenta se
+     | hace ahora solo al cerrar una produccion desde el panel, y se defiende
+     | en TrozoDeLaminaTest. Desde el QR ya no se declara inventario: quien
+     | acaba de usar la maquina viene a soltarla, y lo que gasto lo dice con
+     | palabras.
      */
-    private function lamina(Asset $equipo): Supply
-    {
-        return $this->insumo($equipo, [
-            'name' => 'MDF 5.5 mm', 'unit' => 'lámina',
-            'largo_cm' => 120, 'ancho_cm' => 90, 'stock' => 10,
-        ]);
-    }
-
-    private function enCurso(User $u, Asset $equipo)
-    {
-        Certifab::firstOrCreate(
-            ['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id],
-            ['level' => 'byte'],
-        );
-
-        $inicio = now()->addMinutes(5);
-        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
-        app(AttendanceService::class)->checkIn($reserva->refresh());
-
-        return $reserva->refresh();
-    }
-
-    public function test_la_pantalla_del_equipo_pide_las_medidas_del_trozo(): void
-    {
-        $u = $this->persona();
-        $equipo = $this->equipo();
-        $lamina = $this->lamina($equipo);
-        $this->enCurso($u, $equipo);
-
-        $this->actingAs($u)
-            ->get(route('escaneo.equipo', $equipo->qr_token))
-            ->assertOk()
-            ->assertSee('el trozo que cortaste')
-            ->assertSee('La lámina es de 120 × 90 cm')
-            ->assertSee('name="largo[' . $lamina->id . ']"', false)
-            ->assertSee('name="ancho[' . $lamina->id . ']"', false);
-    }
-
-    public function test_declarar_el_trozo_descuenta_la_fraccion_y_no_la_hoja(): void
-    {
-        $u = $this->persona();
-        $equipo = $this->equipo();
-        $lamina = $this->lamina($equipo);
-        $reserva = $this->enCurso($u, $equipo);
-
-        $this->actingAs($u)
-            ->post(route('escaneo.checkout', $reserva), [
-                'largo' => [$lamina->id => '30'],
-                'ancho' => [$lamina->id => '40'],
-            ])
-            ->assertRedirect(route('reservas.index'));
-
-        // 1.200 cm² de 10.800: una novena parte, no una hoja.
-        $this->assertEqualsWithDelta(0.1111, (float) ReservationSupply::firstOrFail()->quantity, 0.0001);
-        $this->assertEqualsWithDelta(10 - 0.1111, (float) $lamina->fresh()->stock, 0.01);
-    }
-
-    public function test_sin_las_dos_medidas_no_se_declara_nada(): void
-    {
-        $u = $this->persona();
-        $equipo = $this->equipo();
-        $lamina = $this->lamina($equipo);
-        $reserva = $this->enCurso($u, $equipo);
-
-        $this->actingAs($u)
-            ->post(route('escaneo.checkout', $reserva), ['largo' => [$lamina->id => '30']])
-            ->assertRedirect(route('reservas.index'));
-
-        $this->assertSame(0, ReservationSupply::count());
-        $this->assertSame(10.0, (float) $lamina->fresh()->stock);
-    }
 }

@@ -33,62 +33,24 @@
             <form method="POST" action="{{ route('escaneo.checkout', $reserva) }}">
                 @csrf
 
-                {{-- El material se declara al cerrar, no al reservar: nadie sabe
-                     de antemano cuántos gramos va a gastar. --}}
-                @if ($insumos->isNotEmpty())
-                    <p style="margin:1.2rem 0 .4rem;font-weight:600">¿Usaste material?</p>
-                    <p class="help" style="margin:0 0 .8rem">
-                        Solo lo que gastaste. Sale del inventario y se suma a lo que pagas.
-                    </p>
-                    @foreach ($insumos as $insumo)
-                        @if ($insumo->seMideEnLamina())
-                            {{-- Lo que viene en lámina se gasta en trozos. De
-                                 una hoja de 120×90 no se gasta «una»: se cortan
-                                 30×40. Delante de la máquina se sabe lo que se
-                                 midió, no la fracción, así que se piden las
-                                 medidas y la cuenta la hace el sistema. --}}
-                            <label for="largo-{{ $insumo->id }}">
-                                {{ $insumo->name }}
-                                <span class="help">— el trozo que cortaste, en cm.
-                                    La lámina es de {{ $insumo->formato() }}</span>
-                            </label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input id="largo-{{ $insumo->id }}"
-                                       name="largo[{{ $insumo->id }}]"
-                                       type="number" step="0.1" min="0" inputmode="decimal"
-                                       placeholder="largo" aria-label="Largo del trozo en centímetros"
-                                       style="flex:1;min-width:0">
-                                <span aria-hidden="true">×</span>
-                                <input name="ancho[{{ $insumo->id }}]"
-                                       type="number" step="0.1" min="0" inputmode="decimal"
-                                       placeholder="ancho" aria-label="Ancho del trozo en centímetros"
-                                       style="flex:1;min-width:0">
-                            </div>
-                        @else
-                            <label for="material-{{ $insumo->id }}">
-                                {{ $insumo->name }} ({{ $insumo->unit }})
-                            </label>
-                            <input id="material-{{ $insumo->id }}"
-                                   name="material[{{ $insumo->id }}]"
-                                   type="number" step="0.001" min="0" inputmode="decimal"
-                                   placeholder="0">
-                        @endif
-                    @endforeach
-                @endif
+                {{-- Nada de inventario aquí.
 
-                {{-- Y lo que no está en la lista.
+                     Se ofrecía la lista de insumos del área para declarar
+                     cuánto se gastó, y era una lista que el catálogo no
+                     sostiene: en impresión 3D había un insumo de verdad y
+                     quince productos terminados tapándolo. Quien acaba de usar
+                     la máquina viene a soltarla, no a hacer un inventario.
 
-                     El catálogo nunca está completo, y quien acaba de usar la
-                     máquina no tenía dónde decir «gasté media lija» o «se me
-                     fue una boquilla». No descuenta inventario ni se cobra —no
-                     se puede cobrar lo que no tiene precio— pero deja escrito
-                     lo que falta por cargar, que es lo que hoy se pierde. --}}
+                     Lo que se quiera llevar se compra en la tienda, que es
+                     donde hay precio y existencia. Lo que se gastó se dice con
+                     palabras, y de ahí sale lo que falta por cargar. --}}
                 <label for="material_note" style="margin-top:1.2rem">
-                    ¿Usaste algo que no esté aquí?
-                    <span class="help">— opcional. Dilo con tus palabras y lo cargamos nosotros.</span>
+                    ¿Usaste material?
+                    <span class="help">&mdash; opcional, y con tus palabras. Nos sirve para
+                        reponer lo que se acaba.</span>
                 </label>
                 <input id="material_note" name="material_note" type="text" maxlength="500"
-                       placeholder="Media lija de grano 220, una boquilla de 0.4">
+                       placeholder="Unos 40 g de PLA negro, media lija de 220">
 
                 <button type="submit">Terminé, liberar el equipo</button>
             </form>
