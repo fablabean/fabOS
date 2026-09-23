@@ -466,7 +466,22 @@ class SolicitudDeProyectoController extends Controller
      */
     public function imagen(Request $request, Project $project)
     {
-        abort_unless($this->puedeVerla($request, $project), 403);
+        /*
+         * Una alianza que se muestra, muestra también su foto (§11).
+         *
+         * Solo aquí, y solo la de portada. La página pública de la alianza ya
+         * enseña su nombre, de qué va y quiénes son sus partes; la foto no es
+         * más sensible que eso, y sin ella la ficha de un proyecto que se está
+         * construyendo con otros se lee como un formulario.
+         *
+         * La propuesta y los documentos siguen cerrados: ahí sí hay precios,
+         * cláusulas y datos de quien encarga.
+         */
+        abort_unless(
+            $project->seMuestraEnElSitio() || $this->puedeVerla($request, $project),
+            403,
+        );
+
         abort_unless(filled($project->reference_image_path), 404);
 
         $disco = Storage::disk('local');

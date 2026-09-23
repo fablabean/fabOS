@@ -24,6 +24,10 @@
     .ficha button{margin-top:1.2rem;width:100%;padding:.8rem;font-size:1rem}
     .error{background:color-mix(in srgb,#9B2C2C 12%,transparent);border-radius:6px;padding:.8rem 1rem;margin-bottom:1rem;font-size:.92rem}
     .error ul{margin:0;padding-left:1.1rem}
+    /* La portada del proyecto, debajo del resumen: una alianza se entiende
+       antes viendo lo que se construye que leyendo de qué va. */
+    .portada{display:block;width:100%;max-height:26rem;object-fit:cover;
+             border-radius:8px;margin-top:1.4rem}
 @endsection
 
 @section('content')
@@ -33,6 +37,11 @@
         <h1>{{ $alianza->name }}</h1>
         @if ($alianza->summary)
             <p class="lead">{{ $alianza->summary }}</p>
+        @endif
+
+        @if ($alianza->reference_image_path)
+            <img class="portada" src="{{ route('proyectos.imagen', $alianza) }}"
+                 alt="{{ $alianza->name }}" loading="eager">
         @endif
     </section>
 

@@ -5,9 +5,16 @@
 @section('styles')
     .alianzas{display:grid;gap:1.2rem;grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))}
     .alianza{
-        background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:1.5rem;
-        display:flex;flex-direction:column;gap:.6rem;text-decoration:none;color:var(--ink);
+        background:var(--surface);border:1px solid var(--rule);border-radius:8px;
+        overflow:hidden;display:flex;flex-direction:column;gap:.6rem;
+        text-decoration:none;color:var(--ink);
     }
+    /* La foto va al borde, y el texto lleva el respiro: una tarjeta con la
+       imagen enmarcada por dentro parece un adjunto, no una portada. */
+    .alianza > :not(img){padding-left:1.5rem;padding-right:1.5rem}
+    .alianza > :first-child:not(img){padding-top:1.5rem}
+    .alianza > :last-child{padding-bottom:1.5rem}
+    .alianza img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;margin-bottom:.4rem}
     .alianza:hover{border-color:var(--accent)}
     .alianza h2{margin:0;font-size:1.2rem}
     .alianza .busca{color:var(--ink-soft);font-size:.95rem;margin:0}
@@ -42,6 +49,12 @@
             <div class="alianzas">
                 @foreach ($alianzas as $a)
                     <a class="alianza" href="{{ route('alianzas.show', $a) }}">
+                        {{-- La portada del proyecto: una alianza se reconoce
+                             antes por lo que se está construyendo que por su
+                             nombre. Sin foto, la tarjeta sigue igual. --}}
+                        @if ($a->reference_image_path)
+                            <img src="{{ route('proyectos.imagen', $a) }}" alt="" loading="lazy">
+                        @endif
                         <h2>{{ $a->name }}</h2>
                         @if ($a->summary)
                             <p class="busca">{{ \Illuminate\Support\Str::limit($a->summary, 180) }}</p>

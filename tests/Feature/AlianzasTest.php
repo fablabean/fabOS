@@ -470,4 +470,49 @@ class AlianzasTest extends TestCase
             ->assertSee('falta marcar al laboratorio entre las partes')
             ->assertDontSee('sin aporte pactado todavÃ­a');
     }
+    // ------------------------------------------------ la foto, en lo pÃºblico
+
+    /** Una alianza que se muestra, muestra su portada. */
+    public function test_la_alianza_publica_ensena_la_foto_del_proyecto(): void
+    {
+        \Illuminate\Support\Facades\Storage::disk('local')->put('proyectos/dron.jpg', 'imagen');
+
+        $alianza = $this->alianza();
+        $alianza->update([
+            'alliance_public' => true, 'alliance_open' => true,
+            'reference_image_path' => 'proyectos/dron.jpg',
+        ]);
+
+        $this->get(route('alianzas.index'))->assertOk()->assertSee(route('proyectos.imagen', $alianza), false);
+        $this->get(route('alianzas.show', $alianza))->assertOk()->assertSee(route('proyectos.imagen', $alianza), false);
+
+        // Y se sirve sin sesiÃ³n: si diera 403, la ficha saldrÃ­a con un hueco.
+        $this->get(route('proyectos.imagen', $alianza))->assertOk();
+    }
+
+    /** La de un proyecto que no se muestra sigue cerrada. */
+    public function test_la_foto_de_lo_que_no_se_muestra_no_se_sirve(): void
+    {
+        \Illuminate\Support\Facades\Storage::disk('local')->put('proyectos/dron.jpg', 'imagen');
+
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => false, 'reference_image_path' => 'proyectos/dron.jpg']);
+
+        $this->get(route('proyectos.imagen', $alianza))->assertForbidden();
+    }
+
+    /**
+     * Y abrir la foto no abre la propuesta.
+     *
+     * AhÃ­ hay precios, clÃ¡usulas y datos de quien encarga: que la portada de
+     * una alianza sea pÃºblica no dice nada de eso.
+     */
+    public function test_la_propuesta_de_una_alianza_publica_sigue_cerrada(): void
+    {
+        $alianza = $this->alianza();
+        $alianza->update(['alliance_public' => true, 'reference_image_path' => 'proyectos/dron.jpg']);
+
+        $this->get(route('proyectos.propuesta', $alianza))->assertForbidden();
+        $this->get(route('proyectos.propuesta.pdf', $alianza))->assertForbidden();
+    }
 }
