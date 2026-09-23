@@ -100,6 +100,104 @@ class GuiaDeReservasTest extends TestCase
         $this->assertNull(app(GuiaDeReservas::class)->recomendar('Quiero imprimir una pieza en 3D'));
     }
 
+    // -------------------------------------------------- lo que nos preguntan
+
+    /**
+     * Cada consulta queda anotada con lo que escribieron y lo que se les dijo.
+     *
+     * Es lo más valioso que produce la guía: la gente dice con sus palabras
+     * qué quiere hacer -no lo que el catálogo le ofrece- y eso dice qué cursos
+     * faltan y qué máquina nadie encuentra. Se perdía al cerrar la pestaña.
+     */
+    public function test_la_consulta_queda_anotada_con_su_sugerencia(): void
+    {
+        $this->responde('asesoria', 'Nunca has usado la láser.');
+
+        app(GuiaDeReservas::class)->recomendar('Quiero hacer un trofeo en acrilico');
+
+        $anotada = \App\Models\ConsultaDeGuia::firstOrFail();
+
+        $this->assertSame('Quiero hacer un trofeo en acrilico', $anotada->texto);
+        $this->assertSame('asesoria', $anotada->camino);
+        $this->assertStringContainsString('láser', $anotada->porque);
+        $this->assertFalse($anotada->de_memoria);
+        $this->assertNull($anotada->user_id, 'quien escribe sin cuenta queda sin identificar');
+    }
+
+    /** Con sesión, queda de quién fue: sirve para devolver la llamada. */
+    public function test_con_sesion_se_sabe_quien_pregunto(): void
+    {
+        $this->responde('herramientas');
+        $quien = \App\Models\User::create(['name' => 'Ana', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+
+        $this->actingAs($quien);
+        app(GuiaDeReservas::class)->recomendar('Me prestan un taladro para un montaje');
+
+        $this->assertSame($quien->id, \App\Models\ConsultaDeGuia::firstOrFail()->user_id);
+    }
+
+    /**
+     * La repetida también cuenta, y se marca.
+     *
+     * La pregunta se hizo igual; contarla solo cuando cuesta diría que nos
+     * consultan menos de lo que nos consultan. Aparte, para que el gasto siga
+     * cuadrando con las llamadas a la API.
+     */
+    public function test_la_pregunta_repetida_cuenta_y_se_marca(): void
+    {
+        $this->responde('espacio');
+        $guia = app(GuiaDeReservas::class);
+
+        $guia->recomendar('Necesito el taller para una clase');
+        $guia->recomendar('necesito el TALLER para una clase');
+
+        $this->assertSame(2, \App\Models\ConsultaDeGuia::count());
+        Http::assertSentCount(1);
+        $this->assertTrue(\App\Models\ConsultaDeGuia::latest('id')->first()->de_memoria);
+    }
+
+    /** Lo que no va del laboratorio también se anota: dice qué se esperaba. */
+    public function test_lo_ajeno_tambien_queda_anotado(): void
+    {
+        $this->responde('ninguno', 'Aquí solo orientamos sobre el laboratorio.');
+
+        app(GuiaDeReservas::class)->recomendar('Cuéntame un chiste sobre programadores');
+
+        $this->assertSame('ninguno', \App\Models\ConsultaDeGuia::firstOrFail()->camino);
+    }
+
+    /** Y si falla, no se anota nada: no hubo sugerencia que guardar. */
+    public function test_un_fallo_no_deja_consulta(): void
+    {
+        Http::fake(['api.anthropic.com/*' => Http::response(['error' => ['type' => 'x']], 500)]);
+
+        app(GuiaDeReservas::class)->recomendar('Quiero imprimir una pieza en 3D');
+
+        $this->assertSame(0, \App\Models\ConsultaDeGuia::count());
+    }
+
+    public function test_el_panel_ensena_lo_que_preguntan(): void
+    {
+        $this->responde('asesoria', 'Nunca has usado la láser.');
+        app(GuiaDeReservas::class)->recomendar('Quiero hacer un trofeo en acrilico');
+
+        $jefa = \App\Models\User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $jefa->assignRole(\Spatie\Permission\Models\Role::findOrCreate(\App\Models\User::ROL_ADMINISTRADOR, 'web'));
+
+        $factores = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $factores->generarSecreto($jefa);
+        $factores->confirmar($jefa, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($jefa->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->get(\App\Filament\Pages\GuiaDeReservas::getUrl())
+            ->assertOk()
+            ->assertSee('Lo que nos preguntan')
+            ->assertSee('Quiero hacer un trofeo en acrilico')
+            // El número va en negrita, así que el recuento se lee partido.
+            ->assertSeeInOrder(['>1<', 'consulta en total'], false);
+    }
+
     // ------------------------------------------------------ por qué se cayó
 
     /**

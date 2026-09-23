@@ -2,6 +2,7 @@
 
 namespace App\Services\Ia;
 
+use App\Models\ConsultaDeGuia;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,8 @@ final class GuiaDeReservas
         $enMemoria = 'ia:guia:' . md5(mb_strtolower($texto));
 
         if ($guardada = Cache::get($enMemoria)) {
+            $this->anotarConsulta($texto, $guardada, deMemoria: true);
+
             return $guardada;
         }
 
@@ -83,7 +86,40 @@ final class GuiaDeReservas
         Cache::put($this->claveDelDia(), (int) Cache::get($this->claveDelDia(), 0) + 1, now()->endOfDay());
         Cache::put($enMemoria, $respuesta, now()->addDay());
 
+        $this->anotarConsulta($texto, $respuesta, deMemoria: false);
+
         return $respuesta;
+    }
+
+    /**
+     * Queda registrada: lo que escribieron y qué se les dijo (§10).
+     *
+     * Es lo más valioso que produce la guía —la gente dice con sus palabras
+     * qué quiere hacer, no lo que el catálogo le ofrece— y hasta ahora se
+     * perdía en cuanto cerraban la pestaña.
+     *
+     * También las contestadas de memoria: la pregunta se hizo igual, y
+     * contarlas solo cuando cuestan diría que nos consultan menos de lo que
+     * nos consultan. Se anotan aparte para que el gasto siga cuadrando.
+     *
+     * Y nunca revienta la respuesta: llevar la cuenta es útil, pero no tanto
+     * como contestarle a quien está esperando.
+     *
+     * @param  array{camino:string,titulo:?string,url:?string,porque:string}  $respuesta
+     */
+    private function anotarConsulta(string $texto, array $respuesta, bool $deMemoria): void
+    {
+        try {
+            ConsultaDeGuia::create([
+                'user_id'    => auth()->id(),
+                'texto'      => $texto,
+                'camino'     => $respuesta['camino'],
+                'porque'     => $respuesta['porque'] ?: null,
+                'de_memoria' => $deMemoria,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('IA: no se pudo anotar la consulta de la guía', ['error' => $e->getMessage()]);
+        }
     }
 
     private function preguntar(string $texto): ?array

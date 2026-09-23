@@ -11,7 +11,20 @@
     justo encima del botón y sin explicación: explicar algo que no pide nada
     preocupa más que tranquiliza.
 --}}
-@props(['accion' => null])
+{{--
+    `discreto`: el widget no se dibuja salvo que haga falta resolver algo.
+
+    Turnstile casi siempre pasa solo mirando el navegador, y en ese caso la
+    casilla de 300×65 que queda es un cartel de Cloudflare más grande que el
+    campo que protege. Con `interaction-only` no ocupa nada mientras no pida
+    nada, y aparece entero el día que sí. Sigue validando igual: lo que cambia
+    es si se ve, no si se comprueba.
+
+    No es el defecto: en un formulario que manda correo, ver la casilla marcada
+    antes de pulsar «enviar» tranquiliza. Se usa donde el widget pesa más que
+    el trámite —una caja de una línea— y no donde hay algo en juego.
+--}}
+@props(['accion' => null, 'discreto' => false])
 
 @php($turnstile = app(\App\Services\Auth\Turnstile::class))
 
@@ -26,7 +39,13 @@
          data-language="es"
          {{-- El tema sigue al del sistema, como el resto del sitio. --}}
          data-theme="auto"
-         style="margin:.9rem 0"></div>
+         @if ($discreto)
+             data-appearance="interaction-only"
+             {{-- Se estira a lo que haya: el día que aparezca, encaja en el
+                  formulario en vez de desbordarlo en un teléfono. --}}
+             data-size="flexible"
+         @endif
+         style="margin:{{ $discreto ? '0' : '.9rem 0' }}"></div>
 
     {{-- Una pagina puede llevar DOS widgets —la de escribir el codigo tiene
          el formulario de entrar y el de reenviar—, y el script se carga una

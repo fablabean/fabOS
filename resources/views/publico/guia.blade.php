@@ -38,7 +38,10 @@
                     <button type="submit" class="btn">Decirme</button>
                 </div>
                 @error('necesidad') <p class="error">{{ $message }}</p> @enderror
-                <x-captcha accion="publico.reservas.guia"/>
+                {{-- Discreto: aquí la casilla de Cloudflare era más grande que
+                     la caja de una línea que protege. Sigue comprobando igual;
+                     aparece solo si hay algo que resolver. --}}
+                <x-captcha accion="publico.reservas.guia" :discreto="true"/>
             </form>
 
             @if ($guia)
