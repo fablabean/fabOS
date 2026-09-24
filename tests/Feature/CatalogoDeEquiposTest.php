@@ -436,8 +436,8 @@ class CatalogoDeEquiposTest extends TestCase
         $segundo = $this->get('/reservas?modo=asesoria')->assertOk()->getContent();
 
         // La descripción larga de los tres caminos ya no está.
-        $this->assertStringContainsString('Reservas un acompañamiento', $primero);
-        $this->assertStringNotContainsString('Reservas un acompañamiento', $segundo);
+        $this->assertStringContainsString('Reservar asesoría', $primero);
+        $this->assertStringNotContainsString('Reservar asesoría', $segundo);
 
         // En su lugar, una miga que dice dónde estás y deja volver.
         $this->assertStringContainsString('Dónde estás', $segundo);
@@ -446,6 +446,24 @@ class CatalogoDeEquiposTest extends TestCase
         // Y la página siguiente es más corta que la primera: lo nuevo cabe
         // arriba en vez de nacer por debajo del pliegue.
         $this->assertLessThan(strlen($primero), strlen($segundo));
+    }
+
+    /**
+     * Cada camino termina en un botón, y los cuatro dicen qué hacen.
+     *
+     * La tarjeta entera era el enlace desde el principio, pero el pie —un
+     * renglón gris en versalitas— se leía como una etiqueta y no como algo en
+     * lo que se hace clic: quien llegaba se quedaba mirando las cuatro
+     * tarjetas sin saber que ya estaba delante de la puerta.
+     */
+    public function test_cada_camino_termina_en_un_boton(): void
+    {
+        $this->get('/reservas')
+            ->assertOk()
+            ->assertSee('Reservar asesoría')
+            ->assertSee('Proponer un proyecto')
+            ->assertSee('Reservar máquina')
+            ->assertSee('Reservar espacio o herramientas');
     }
 
     /** Y la miga deja volver al paso anterior sin el botón del navegador. */

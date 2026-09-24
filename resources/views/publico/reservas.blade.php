@@ -34,10 +34,14 @@
        alguien al lado, encargandolo, o por tu cuenta. */
     .caminos{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
              gap:1rem;margin:0 0 2.4rem}
+    /* En columna, para que los botones del pie queden a la misma altura
+       aunque un camino se explique en dos renglones y otro en cinco. Cuatro
+       botones bailando cada uno a su altura se leen como cuatro cosas
+       distintas; alineados, se leen como cuatro puertas. */
     .camino{
-        display:block;padding:1.3rem 1.4rem;border-radius:8px;text-decoration:none;
-        border:1px solid var(--rule);background:var(--surface);color:inherit;
-        transition:border-color .12s,transform .12s;
+        display:flex;flex-direction:column;padding:1.3rem 1.4rem;border-radius:8px;
+        text-decoration:none;border:1px solid var(--rule);background:var(--surface);
+        color:inherit;transition:border-color .12s,transform .12s;
     }
     .camino:hover{border-color:var(--accent);transform:translateY(-2px)}
     .camino.puesto{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -48,9 +52,31 @@
     .camino .ilus svg{width:100%;height:100%;display:block}
     .camino b{display:block;font-size:1.15rem;margin-bottom:.35rem}
     .camino span{font-size:.86rem;color:var(--ink-soft);line-height:1.45;display:block}
-    .camino .pie{display:block;margin-top:.6rem;font-size:.75rem;color:var(--muted);
-                 font-family:ui-monospace,Consolas,monospace;letter-spacing:.06em;
-                 text-transform:uppercase}
+    .camino b + span{margin-bottom:1rem}
+
+    /* El pie, de botón.
+       La tarjeta entera es el enlace desde el principio, pero nadie lo sabía:
+       el pie era un renglón gris en versalitas y se leía como una etiqueta, no
+       como algo en lo que se hace clic. Quien llegaba se quedaba mirando las
+       cuatro tarjetas sin darse cuenta de que ya estaba delante de la puerta.
+
+       Botón de mentira a propósito: un <button> o un <a> dentro de otro <a> no
+       es HTML válido, y lo que falta aquí no es un clic más sino que se vea
+       el que ya hay. Por eso tampoco lleva foco propio —lo tiene la tarjeta— y
+       se enciende cuando la tarjeta se señala, con el ratón o con el teclado. */
+    .camino .pie{
+        display:inline-flex;align-items:center;gap:.4rem;align-self:flex-start;
+        margin-top:auto;padding:.5rem .95rem;border-radius:6px;
+        font-size:.87rem;font-weight:600;color:var(--accent);
+        border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+        transition:background .12s,color .12s,border-color .12s;
+    }
+    .camino .pie::after{content:'→';font-weight:400}
+    .camino:hover .pie,
+    .camino:focus-visible .pie,
+    .camino.recomendado .pie{
+        color:var(--ground);background:var(--accent);border-color:var(--accent);
+    }
 
     /* Las areas, con foto: «impresion 3D» se reconoce de un vistazo; «Prusa
        MK4» no, si nunca has entrado. */
@@ -238,7 +264,7 @@
                 <span>Recibes una explicación personalizada para que conozcas cómo sacarle
                       todo el jugo al fablab. No incluye producción de piezas, pero sí te
                       podemos ayudar a entender cómo es el proceso productivo.</span>
-                <span class="pie">Reservas un acompañamiento</span>
+                <span class="pie">Reservar asesoría</span>
             </a>
 
             <a class="camino {{ $tarjetaRecomendada === 'proyecto' ? 'recomendado' : '' }}" id="camino-proyecto" href="{{ route('proyectos.solicitar') }}">
@@ -253,7 +279,7 @@
                 <span>No operas tú solo: nos cuentas qué necesitas (fabricar una pieza,
                       configurar un equipo o personalizar un software) y nuestro equipo
                       te asiste y ejecuta el proceso.</span>
-                <span class="pie">Propones un proyecto</span>
+                <span class="pie">Proponer un proyecto</span>
             </a>
 
             <a class="camino {{ $tarjetaRecomendada === 'autonomia' ? 'recomendado' : '' }}" id="camino-autonomia" href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}">
@@ -267,7 +293,7 @@
                 <b>Hago mi pieza</b>
                 <span>Reservas y operas por tu cuenta, en los equipos donde ya tienes
                       certifab.</span>
-                <span class="pie">Reservas la máquina</span>
+                <span class="pie">Reservar máquina</span>
             </a>
 
             {{-- Público, a diferencia de /espacios: la bifurcación se puede
@@ -285,7 +311,7 @@
                 <span>Una sala o un taller con las herramientas que hay dentro, para trabajar
                       en grupo o dar una clase. O solo unas herramientas, para usarlas
                       donde estés.</span>
-                <span class="pie">Reservas un espacio o herramientas</span>
+                <span class="pie">Reservar espacio o herramientas</span>
             </a>
         </div>
 
