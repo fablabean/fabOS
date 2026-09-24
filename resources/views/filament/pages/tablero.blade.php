@@ -47,6 +47,21 @@
             background:var(--primary-500);opacity:.8;
         }
         .tb .barras small{font-size:.68rem;color:rgb(107 114 128);white-space:nowrap}
+
+        /* En que se reserva: una fila por tipo. Horizontal y no en columnas,
+           porque lo que se compara son seis nombres y el ojo los lee antes en
+           una lista que en un pie de grafico. */
+        .tb .tipos{display:grid;gap:.55rem}
+        .tb .tipos .fila{display:grid;grid-template-columns:9rem 1fr auto;gap:.8rem;align-items:center}
+        .tb .tipos .que{font-size:.85rem;font-weight:500}
+        .tb .tipos .riel{background:rgba(128,128,128,.14);border-radius:4px;height:1.1rem;overflow:hidden}
+        .tb .tipos .riel i{display:block;height:100%;min-width:3px;border-radius:4px;
+                           background:var(--primary-500);opacity:.8}
+        .tb .tipos .dato{font-size:.78rem;color:rgb(107 114 128);white-space:nowrap;font-variant-numeric:tabular-nums}
+        @media (max-width:640px){
+            .tb .tipos .fila{grid-template-columns:1fr auto;gap:.2rem .6rem}
+            .tb .tipos .riel{grid-column:1 / -1}
+        }
     </style>
 
     <div class="tb">
@@ -129,6 +144,43 @@
                 <p class="nota" style="margin:0">
                     Todavía no hay sesiones cerradas. Las horas aparecen aquí cuando la gente
                     registra su llegada y su salida escaneando el QR de la máquina.
+                </p>
+            @endif
+        </x-filament::section>
+
+        {{-- --------------------------------------------- en que se reserva --}}
+        <x-filament::section>
+            <x-slot name="heading">En qué se reserva</x-slot>
+            <x-slot name="description">
+                Las mismas {{ $tendencia->count() }} semanas, repartidas por tipo de actividad.
+                Cada reserva cuenta en un solo sitio.
+            </x-slot>
+
+            @if ($porTipo->isNotEmpty())
+                @php $masAlto = max(1, $porTipo->max('cuantas')); @endphp
+
+                <div class="tipos">
+                    @foreach ($porTipo as $t)
+                        <div class="fila">
+                            <span class="que">{{ $t['tipo'] }}</span>
+                            <span class="riel">
+                                <i style="width:{{ max(2, round($t['cuantas'] / $masAlto * 100)) }}%"></i>
+                            </span>
+                            <span class="dato">
+                                {{ $t['cuantas'] }} · {{ $horas($t['minutos']) }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <p class="nota" style="margin:.8rem 0 0">
+                    La barra compara el número de reservas; al lado va también el tiempo, que no
+                    siempre va junto: veinte préstamos de media hora no son lo mismo que dos
+                    jornadas de láser. El bloque de quien acompaña no cuenta aparte.
+                </p>
+            @else
+                <p class="nota" style="margin:0">
+                    Todavía no hay reservas en este periodo.
                 </p>
             @endif
         </x-filament::section>

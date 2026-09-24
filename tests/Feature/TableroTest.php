@@ -8,7 +8,9 @@ use App\Models\Asset;
 use App\Models\Budget;
 use App\Models\Certifab;
 use App\Models\Project;
+use App\Models\Reservation;
 use App\Models\RiskFamily;
+use App\Models\Space;
 use App\Models\Supply;
 use App\Models\User;
 use App\Models\UserCategory;
@@ -367,5 +369,101 @@ class TableroTest extends TestCase
             $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Insumos bajo mínimos'),
             'y quien sí abre insumos la sigue recibiendo',
         );
+    }
+    // --------------------------------------------- en qué se reserva
+
+    /**
+     * Cuánto se usó lo dice la tendencia; de qué, este reparto.
+     *
+     * Ocho semanas planas pueden ser un laboratorio parado o uno donde todo
+     * son asesorías y nadie opera nada por su cuenta, y eso se arregla con
+     * cosas distintas: más cursos, o más difusión.
+     */
+    public function test_reparte_las_reservas_por_tipo(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'byte']);
+
+        $desde = now()->addMinutes(5);
+        app(BookingService::class)->reservar($u, $equipo, $desde, $desde->copy()->addHour());
+
+        // Una asesoría: el tiempo de alguien del equipo.
+        $asesor = $this->persona(User::ROL_ADMINISTRADOR);
+        Reservation::create([
+            'user_id' => $u->id, 'reservable_type' => User::class, 'reservable_id' => $asesor->id,
+            'starts_at' => $desde->copy()->addDay(), 'ends_at' => $desde->copy()->addDay()->addHour(),
+            'status' => 'confirmada', 'mode' => 'asesoria',
+        ]);
+
+        // Un espacio, con el bloque de quien acompaña colgando: ese NO cuenta
+        // aparte, o se contaría dos veces la misma tarde.
+        $sala = Space::create([
+            'slug' => 's-' . uniqid(), 'name' => 'Taller', 'type' => 'fisico',
+            'capacity' => 10, 'is_reservable' => true,
+        ]);
+        $madre = Reservation::create([
+            'user_id' => $u->id, 'reservable_type' => Space::class, 'reservable_id' => $sala->id,
+            'starts_at' => $desde->copy()->addDays(2), 'ends_at' => $desde->copy()->addDays(2)->addHour(),
+            'status' => 'confirmada', 'mode' => 'directa',
+        ]);
+        Reservation::create([
+            'user_id' => $u->id, 'reservable_type' => User::class, 'reservable_id' => $asesor->id,
+            'parent_reservation_id' => $madre->id,
+            'starts_at' => $desde->copy()->addDays(2), 'ends_at' => $desde->copy()->addDays(2)->addHour(),
+            'status' => 'confirmada', 'mode' => 'directa',
+        ]);
+
+        $reparto = $this->tablero()->porTipo()->keyBy('tipo');
+
+        $this->assertSame(1, $reparto['Máquinas']['cuantas'] ?? null);
+        $this->assertSame(1, $reparto['Asesorías']['cuantas'] ?? null);
+        $this->assertSame(1, $reparto['Espacios']['cuantas'] ?? null);
+        $this->assertSame(3, $reparto->sum('cuantas'), 'el bloque de quien acompaña no cuenta aparte');
+    }
+
+    /** Una producción es del proyecto, aunque corra en una máquina. */
+    public function test_una_produccion_cuenta_como_proyecto(): void
+    {
+        $equipo = $this->equipo();
+
+        Reservation::create([
+            'user_id' => $this->persona()->id,
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id,
+            'starts_at' => now()->addHour(), 'ends_at' => now()->addHours(2),
+            'status' => 'confirmada', 'mode' => 'directa', 'is_production' => true,
+        ]);
+
+        $reparto = $this->tablero()->porTipo()->keyBy('tipo');
+
+        $this->assertSame(1, $reparto['Proyectos']['cuantas'] ?? null);
+        $this->assertNull($reparto['Máquinas'] ?? null);
+    }
+
+    /** Sin reservas, la sección lo dice en vez de pintar seis ceros. */
+    public function test_sin_reservas_no_hay_reparto(): void
+    {
+        $this->assertTrue($this->tablero()->porTipo()->isEmpty());
+    }
+
+    public function test_el_tablero_ensena_el_reparto(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'byte']);
+        $desde = now()->addMinutes(5);
+        app(BookingService::class)->reservar($u, $equipo, $desde, $desde->copy()->addHour());
+
+        $admin = $this->persona(User::ROL_ADMINISTRADOR);
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($admin->fresh())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->get('/admin/tablero')
+            ->assertOk()
+            ->assertSee('En qué se reserva')
+            ->assertSee('Máquinas');
     }
 }

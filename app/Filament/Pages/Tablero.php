@@ -75,6 +75,10 @@ class Tablero extends Page
             // necesita saber qué está en uso y qué se detuvo hoy.
             'ahora'     => $servicio->ahora(),
             'tendencia' => $servicio->tendencia(),
+            // Cuánto se usó lo dice la tendencia; de qué, esto. Ocho semanas
+            // planas pueden ser un laboratorio parado o uno donde todo son
+            // asesorías, y eso se arregla con cosas distintas.
+            'porTipo'   => $servicio->porTipo(),
 
             // Estas dos preguntan a la matriz de accesos.
             'alertas'   => $servicio->alertas($quien),

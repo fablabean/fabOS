@@ -7,6 +7,7 @@ use App\Models\Budget;
 use App\Models\Project;
 use App\Models\PurchaseRequest;
 use App\Models\Reservation;
+use App\Models\Space;
 use App\Models\Supply;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -211,6 +212,77 @@ class DashboardService
                     : $r->starts_at->diffInMinutes($r->ends_at)),
             ];
         });
+    }
+
+    /**
+     * En qué se reserva el laboratorio (§17).
+     *
+     * La gráfica de arriba dice cuánto se usó; esta dice de qué. No es lo
+     * mismo: ocho semanas planas pueden ser un laboratorio parado o uno donde
+     * todo son asesorías y nadie opera nada por su cuenta, y eso se responde
+     * con cosas distintas —más cursos, o más difusión—.
+     *
+     * Cada reserva cae en un sitio y solo uno. El orden de las preguntas es la
+     * regla: una producción sobre una herramienta es producción, y una
+     * práctica es formación aunque ocupe el tiempo de alguien como una
+     * asesoría.
+     *
+     * Fuera queda el bloque de quien acompaña —el tiempo que se le aparta
+     * cuelga de la reserva que acompaña— porque contarlo sería contar dos
+     * veces la misma tarde.
+     *
+     * @return Collection<int,array{tipo:string,cuantas:int,minutos:int}>
+     */
+    public function porTipo(int $semanas = 8): Collection
+    {
+        $tz = config('fabos.lab.timezone');
+        $desde = Carbon::now($tz)->startOfWeek()->subWeeks($semanas - 1)->utc();
+
+        $reservas = Reservation::query()
+            ->whereIn('status', ['completada', 'en_curso', 'confirmada'])
+            ->where('starts_at', '>=', $desde)
+            // El bloque de quien acompaña, fuera: no es una actividad más.
+            ->whereNot(fn ($q) => $q
+                ->where('reservable_type', User::class)
+                ->whereNotNull('parent_reservation_id'))
+            ->get();
+
+        $orden = ['Asesorías', 'Prácticas', 'Proyectos', 'Máquinas', 'Espacios', 'Herramientas'];
+
+        $contadas = $reservas
+            ->groupBy(fn (Reservation $r) => $this->enQueCae($r))
+            ->map(fn (Collection $grupo, string $tipo) => [
+                'tipo'    => $tipo,
+                'cuantas' => $grupo->count(),
+                'minutos' => (int) $grupo->sum(fn (Reservation $r) => $r->checked_in_at && $r->checked_out_at
+                    ? $r->checked_in_at->diffInMinutes($r->checked_out_at)
+                    : $r->starts_at->diffInMinutes($r->ends_at)),
+            ]);
+
+        // En el orden de siempre, y sin las vacías: una fila en cero repetida
+        // cada semana enseña a no mirar la gráfica.
+        return collect($orden)
+            ->map(fn (string $tipo) => $contadas->get($tipo))
+            ->filter()
+            ->values();
+    }
+
+    /** Dónde cuenta esta reserva. El orden de las preguntas es la regla. */
+    private function enQueCae(Reservation $reserva): string
+    {
+        return match (true) {
+            $reserva->mode === 'asesoria' => 'Asesorías',
+            $reserva->mode === 'practica' => 'Prácticas',
+            // Producir es el laboratorio corriendo su máquina para un encargo:
+            // no es que alguien la reservara. Una reserva corriente cargada a
+            // un proyecto sigue siendo uso de máquina, que es lo que fue.
+            $reserva->esProduccion() || $reserva->mode === 'proyecto' => 'Proyectos',
+            $reserva->reservable_type === Space::class => 'Espacios',
+            $reserva->reservable_type === Asset::class => $reserva->reservable?->esHerramienta()
+                ? 'Herramientas'
+                : 'Máquinas',
+            default => 'Máquinas',
+        };
     }
 
     /** El pulso del dinero y de las compras, sin abrir cada módulo. */
