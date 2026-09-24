@@ -99,6 +99,13 @@
                         @if ($curso->hours && $curso->price_minor) · @endif
                         @if ($curso->price_minor)
                             {{ number_format($curso->precio(), 2, ',', '.') }} {{ config('fabos.currency.code') }}
+                            {{-- Y en dólares, si el curso lo pide: Fab Academy
+                                 tiene un precio en dólares y lo mira gente de
+                                 fuera. Con la TRM del día, así que la cifra no
+                                 envejece sola como lo haría escrita a mano. --}}
+                            @if ($curso->mostrar_usd)
+                                · {{ \App\Support\Dinero::enTexto((float) $curso->price_minor, 'usd') }}
+                            @endif
                         @endif
                     </p>
                 @endif

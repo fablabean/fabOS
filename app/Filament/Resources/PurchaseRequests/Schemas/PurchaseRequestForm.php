@@ -71,10 +71,15 @@ class PurchaseRequestForm
                             ->numeric()
                             ->minValue(1)
                             ->prefix(config('fabos.money.symbol'))
-                            ->default(config('fabos.money.usd_rate'))
+                            // La TRM de verdad, no la cifra de la configuracion.
+                            // Su ayuda ya prometia «la TRM del dia» mientras
+                            // ofrecia un supuesto escrito el dia que se monto
+                            // esto; quien no la corregia comparaba contra el
+                            // presupuesto con la tasa del ano pasado.
+                            ->default(fn () => round(\App\Support\Dinero::tasaUsd()))
                             ->visible(fn (Get $get) => $get('currency') === 'USD')
                             ->required(fn (Get $get) => $get('currency') === 'USD')
-                            ->helperText('La TRM del día, o la que use compras. Con esto se compara contra el presupuesto.'),
+                            ->helperText(fn () => 'Llega con la TRM del día. Cámbiala si compras usa otra.'),
 
                         Select::make('budget_id')
                             ->label('Presupuesto')

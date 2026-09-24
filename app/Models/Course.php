@@ -19,7 +19,7 @@ class Course extends Model
     protected $fillable = [
         'slug', 'name', 'area_id', 'level', 'summary', 'description',
         'requirements', 'hours', 'passing_score', 'requires_practical',
-        'photo_path', 'price_minor', 'is_active', 'is_public', 'by_preenrollment',
+        'photo_path', 'price_minor', 'mostrar_usd', 'is_active', 'is_public', 'by_preenrollment',
     ];
 
     protected function casts(): array

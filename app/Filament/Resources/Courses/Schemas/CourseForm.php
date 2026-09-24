@@ -58,6 +58,19 @@ class CourseForm
                         CampoDeDinero::make('price_minor')
                             ->label('Costo')
                             ->helperText('Cero si no tiene costo para la comunidad.'),
+
+                        /*
+                         * Lo que se vende fuera se dice tambien en dolares.
+                         *
+                         * Fab Academy tiene un precio en dolares y lo mira
+                         * gente de fuera del pais; verlo solo en pesos obliga a
+                         * cada uno a buscar la tasa. La conversion usa la TRM
+                         * del dia, asi que la cifra no envejece sola.
+                         */
+                        Toggle::make('mostrar_usd')
+                            ->label('Enseñar también el precio en dólares')
+                            ->helperText('En el catálogo público, al lado del precio. Con la TRM del día.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Qué habilita')

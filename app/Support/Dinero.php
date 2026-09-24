@@ -28,12 +28,30 @@ final class Dinero
         return (float) config('fabos.currency.peso_rate');
     }
 
+    /**
+     * Cuántos pesos vale un dólar, hoy.
+     *
+     * La TRM de verdad, no el supuesto de la configuración: un programa que se
+     * vende en dólares —Fab Academy— no se cotiza con la tasa del año pasado.
+     * La consulta y sus respaldos viven en `TasaDeCambio`.
+     */
+    public static function tasaUsd(): float
+    {
+        return app(\App\Services\Money\TasaDeCambio::class)->pesosPorDolar();
+    }
+
     /** Unidades menores → lo que se teclea, en la moneda que sea. */
     public static function enMoneda(float $menor, ?string $moneda): float
     {
-        return $moneda === 'pesos'
-            ? $menor / self::unidades() * self::tasa()
-            : $menor / self::unidades();
+        $fabcoins = $menor / self::unidades();
+
+        return match ($moneda) {
+            'pesos' => $fabcoins * self::tasa(),
+            // Por los pesos, que es donde vive la equivalencia: un FabCoin son
+            // mil pesos, y los pesos por dólar los pone la TRM del día.
+            'usd'   => $fabcoins * self::tasa() / self::tasaUsd(),
+            default => $fabcoins,
+        };
     }
 
     /**
@@ -45,9 +63,11 @@ final class Dinero
      */
     public static function aMenor(float $escrito, ?string $moneda): float
     {
-        $menor = $moneda === 'pesos'
-            ? $escrito / self::tasa() * self::unidades()
-            : $escrito * self::unidades();
+        $menor = match ($moneda) {
+            'pesos' => $escrito / self::tasa() * self::unidades(),
+            'usd'   => $escrito * self::tasaUsd() / self::tasa() * self::unidades(),
+            default => $escrito * self::unidades(),
+        };
 
         return round($menor, 4);
     }
@@ -62,7 +82,7 @@ final class Dinero
     public static function enTexto(float $menor, ?string $moneda = 'fbc'): string
     {
         $valor = self::enMoneda($menor, $moneda);
-        $texto = number_format($valor, $moneda === 'pesos' ? 2 : 4, ',', '.');
+        $texto = number_format($valor, self::decimales($moneda), ',', '.');
 
         if (str_contains($texto, ',')) {
             $texto = rtrim(rtrim($texto, '0'), ',');
@@ -75,16 +95,29 @@ final class Dinero
     public static function comoSeTeclea(float $menor, ?string $moneda): string
     {
         $valor = self::enMoneda($menor, $moneda);
-        $texto = number_format($valor, $moneda === 'pesos' ? 2 : 4, '.', '');
+        $texto = number_format($valor, self::decimales($moneda), '.', '');
 
         return str_contains($texto, '.') ? rtrim(rtrim($texto, '0'), '.') : $texto;
     }
 
+    /**
+     * Cuántos decimales tiene sentido escribir en cada una.
+     *
+     * Cuatro en FabCoins porque un cm² de material vale milésimas; dos en las
+     * de verdad, que es como se escriben los precios.
+     */
+    private static function decimales(?string $moneda): int
+    {
+        return in_array($moneda, ['pesos', 'usd'], true) ? 2 : 4;
+    }
+
     public static function simbolo(?string $moneda): string
     {
-        return $moneda === 'pesos'
-            ? (string) config('fabos.money.symbol')
-            : (string) config('fabos.currency.code');
+        return match ($moneda) {
+            'pesos' => (string) config('fabos.money.symbol'),
+            'usd'   => 'USD',
+            default => (string) config('fabos.currency.code'),
+        };
     }
 
     /** La otra: sirve para decir la equivalencia al lado de lo que se escribe. */
@@ -99,6 +132,10 @@ final class Dinero
         return [
             'fbc'   => (string) config('fabos.currency.name') . 's',
             'pesos' => 'Pesos',
+            // El dólar, para lo que se vende fuera: Fab Academy tiene un
+            // precio en dólares y traducirlo a mano cada semestre, con una
+            // tasa que cambia a diario, es como se cotiza de menos.
+            'usd'   => 'Dólares',
         ];
     }
 }

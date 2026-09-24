@@ -113,6 +113,15 @@ final class Settings
      */
     public const MONEDA_DE_TRABAJO = 'cobros.moneda_de_trabajo';
 
+    /*
+     * La ultima TRM que se pudo consultar, con su fecha.
+     *
+     * No es un ajuste que nadie escriba: lo guarda el servicio al conseguirla.
+     * Existe para el dia que no haya red —la de ayer sirve mucho mejor que el
+     * supuesto de la configuracion, que lleva ahi desde que se monto esto—.
+     */
+    public const TRM_ULTIMA = 'finanzas.trm_ultima';
+
     public static function monedaDeTrabajo(): string
     {
         return Setting::get(self::MONEDA_DE_TRABAJO, 'fbc') === 'pesos' ? 'pesos' : 'fbc';
