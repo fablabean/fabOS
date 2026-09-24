@@ -57,7 +57,10 @@ class AssetSeeder extends Seeder
                     'unattended_use'     => $f['desatendido'] ?? false,
                     'pool_key'           => $f['pool'] ?? null,
                     'min_minutes'        => $f['min'] ?? 30,
-                    'autonomous_minutes' => $f['autonomo'] ?? 60,
+                    // Si trabaja sola, se puede dejar sola: seis horas sin
+                    // visto bueno. Una hora es para lo que se usa de pie.
+                    'autonomous_minutes' => $f['autonomo']
+                        ?? (($f['desatendido'] ?? false) ? Asset::AUTONOMIA_DESATENDIDA : 60),
                     'max_minutes'        => $f['max'] ?? 720,
                     'qr_token'           => Str::uuid()->toString(),
                 ]

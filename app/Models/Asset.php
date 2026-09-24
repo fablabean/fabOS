@@ -13,6 +13,20 @@ class Asset extends Model
 {
     use SoftDeletes;
 
+    /**
+     * Cuánto se puede dejar sola una máquina que trabaja desatendida (§7).
+     *
+     * Una impresión 3D de seis horas es un trabajo corriente: se deja puesta y
+     * uno se va. Con el valor de siempre —una hora— cualquier impresión normal
+     * caía en «requiere visto bueno», y la coordinación terminaba aprobando a
+     * mano lo que nunca tuvo que pasar por sus manos.
+     *
+     * Es con lo que nace el equipo, no una regla fija: el campo de la ficha
+     * sigue mandando, para subirlo donde el trabajo largo es la norma o
+     * bajarlo donde ocupar la máquina de más estorba.
+     */
+    public const AUTONOMIA_DESATENDIDA = 360;
+
     protected $fillable = [
         'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'reserva_con_espacio', 'name', 'kind',
         'brand', 'model', 'serial', 'asset_tag', 'qr_token', 'status',
