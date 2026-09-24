@@ -136,4 +136,44 @@ class TasaDeCambioTest extends TestCase
 
         $this->get('/formacion')->assertOk()->assertDontSee('USD');
     }
+    /**
+     * Elegir «Dólares» en el formulario surte efecto.
+     *
+     * El fallo, tal cual salió: el dólar se añadió a las conversiones pero la
+     * lista de monedas que el campo aceptaba se quedó con dos. Elegir
+     * «Dólares» no hacía nada —el campo seguía leyendo y guardando en
+     * FabCoins, sin decirlo— y 3.500 dólares se guardaron como 3.500
+     * FabCoins: la cuarta parte de lo que se quiso poner.
+     */
+    public function test_elegir_dolares_en_el_formulario_surte_efecto(): void
+    {
+        $this->responde(4_000);
+
+        $jefa = \App\Models\User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $jefa->assignRole(\Spatie\Permission\Models\Role::findOrCreate(\App\Models\User::ROL_ADMINISTRADOR, 'web'));
+
+        $factores = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $factores->generarSecreto($jefa);
+        $factores->confirmar($jefa, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($jefa->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        $curso = Course::create([
+            'slug' => 'fa-' . uniqid(), 'name' => 'Fab Academy', 'level' => 'tera',
+            'hours' => 500, 'price_minor' => 0, 'is_active' => true, 'is_public' => true,
+        ]);
+
+        \Livewire\Livewire::test(
+            \App\Filament\Resources\Courses\Pages\EditCourse::class,
+            ['record' => $curso->getRouteKey()],
+        )
+            ->set('data.' . \App\Filament\Componentes\CampoDeDinero::CAMPO, 'usd')
+            ->set('data.price_minor', '3500')
+            ->call('save');
+
+        // 3.500 dólares · a 4.000 pesos el dólar son 14.000.000 de pesos · a
+        // mil pesos el FabCoin, 14.000 FabCoins.
+        $this->assertSame(1_400_000, (int) $curso->fresh()->price_minor);
+    }
 }

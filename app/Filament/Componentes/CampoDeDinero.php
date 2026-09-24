@@ -55,9 +55,10 @@ final class CampoDeDinero
             ->live()
             ->dehydrated(false)
             ->columnSpanFull()
-            ->helperText('1 ' . config('fabos.currency.name') . ' = '
-                . number_format(Dinero::tasa(), 0, ',', '.')
-                . ' pesos. Lo guardado es lo mismo en los dos casos; esto solo cambia en qué se teclea.')
+            ->helperText(fn () => '1 ' . config('fabos.currency.name') . ' = '
+                . number_format(Dinero::tasa(), 0, ',', '.') . ' pesos · 1 dólar = '
+                . number_format(Dinero::tasaUsd(), 0, ',', '.') . ' pesos (TRM de hoy). '
+                . 'Se guarda lo mismo en las tres; esto solo cambia en qué se teclea.')
             ->afterStateUpdated(function (?string $state, ?string $old, callable $set, callable $get) use ($campos) {
                 if ($state === $old) {
                     return;
@@ -112,7 +113,12 @@ final class CampoDeDinero
     {
         $elegida = $get(self::CAMPO);
 
-        return in_array($elegida, ['fbc', 'pesos'], true) ? $elegida : Settings::monedaDeTrabajo();
+        // La lista sale de `Dinero`, no escrita aqui: cuando se anadio el
+        // dolar, esta se quedo con dos y elegir «Dolares» no hacia nada —el
+        // campo seguia leyendo y guardando en FabCoins, sin decirlo—.
+        return array_key_exists((string) $elegida, Dinero::monedas())
+            ? (string) $elegida
+            : Settings::monedaDeTrabajo();
     }
 
     private static function equivalencia($state, ?string $moneda): ?string
