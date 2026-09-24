@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Dinero;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -53,43 +54,26 @@ class RateCard extends Model
         return $this->capture_currency === 'pesos';
     }
 
-    /** Unidades menores → lo que se teclea, en la moneda que sea. */
+    /*
+     * Las conversiones viven en `Dinero`, no aquí: las hace también el
+     * formulario de un curso, el de un servicio y el de la dotación, y tres
+     * copias de la misma regla acaban eligiendo decimales distintos. Estos
+     * métodos se quedan porque es donde se buscan desde una tarifa.
+     */
+
     public static function enSuMoneda(float $menor, ?string $moneda): float
     {
-        return $moneda === 'pesos'
-            ? $menor / config('fabos.currency.minor_units') * (float) config('fabos.currency.peso_rate')
-            : $menor / config('fabos.currency.minor_units');
+        return Dinero::enMoneda($menor, $moneda);
     }
 
-    /** Lo tecleado → unidades menores, que es como se guarda. */
     public static function aUnidadesMenores(float $escrito, ?string $moneda): float
     {
-        $menor = $moneda === 'pesos'
-            ? $escrito / (float) config('fabos.currency.peso_rate') * config('fabos.currency.minor_units')
-            : $escrito * config('fabos.currency.minor_units');
-
-        // Cuatro decimales es lo que guarda la columna: redondear aqui evita
-        // que lo escrito y lo guardado difieran en el ultimo digito.
-        return round($menor, 4);
+        return Dinero::aMenor($escrito, $moneda);
     }
 
-    /**
-     * Un importe para leerlo: sin ceros de relleno y sin quedarse en «0,00».
-     *
-     * Con dos decimales fijos, 0,004 FabCoins se mostraba como «0,00» —el
-     * mismo cero que llevo a este cambio—. Los decimales salen solo si los hay.
-     */
     public static function enTexto(float $menor, ?string $moneda = 'fbc'): string
     {
-        $valor = self::enSuMoneda($menor, $moneda);
-        $decimales = $moneda === 'pesos' ? 2 : 4;
-        $texto = number_format($valor, $decimales, ',', '.');
-
-        if (str_contains($texto, ',')) {
-            $texto = rtrim(rtrim($texto, '0'), ',');
-        }
-
-        return $texto . ' ' . ($moneda === 'pesos' ? config('fabos.money.symbol') : config('fabos.currency.code'));
+        return Dinero::enTexto($menor, $moneda);
     }
 
     /** Tarifa por defecto del laboratorio, la que aplica si nada más encaja. */

@@ -95,6 +95,30 @@ final class Settings
     }
 
     /*
+     * En que moneda se trabaja en el panel (§12).
+     *
+     * Todo importe se guarda en unidades menores de FabCoin, que es como lo
+     * lleva el libro contable. Lo que decide esto es en que se escribe y en
+     * que se lee mientras se administra.
+     *
+     * Hacia falta porque cada pantalla habia elegido la suya: un curso se
+     * tarifaba en FabCoins, un servicio de la tienda en pesos y un insumo
+     * tambien en pesos, sin que nadie lo hubiera decidido asi. Quien pasaba de
+     * una a otra tenia que acordarse de en cual estaba.
+     *
+     * No toca el sitio publico: ahi la regla es otra y es buena —a quien entra
+     * sin cuenta se le habla en pesos, a quien la tiene en FabCoins, porque el
+     * saldo es suyo— y forzarla desde aqui le diria a alguien el precio en una
+     * moneda que no es la de su saldo.
+     */
+    public const MONEDA_DE_TRABAJO = 'cobros.moneda_de_trabajo';
+
+    public static function monedaDeTrabajo(): string
+    {
+        return Setting::get(self::MONEDA_DE_TRABAJO, 'fbc') === 'pesos' ? 'pesos' : 'fbc';
+    }
+
+    /*
      * El beneficio semanal de FabCoins (§12): cada semana, a quien tenga
      * correo de una institucion aliada, el sistema le completa el saldo
      * hasta el tope. No se acumula: quien ya tiene el tope o mas, no recibe.

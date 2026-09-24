@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Supplies\Pages;
 use App\Filament\Acciones\GenerarIlustracion;
 use App\Filament\Resources\Supplies\SupplyResource;
 use App\Services\Money\PricingService;
+use App\Support\Dinero;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -31,14 +32,19 @@ class EditSupply extends EditRecord
      */
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['precio_venta'] = app(PricingService::class)->precioEnPesosDe($this->record);
+        // En unidades menores: el campo lo pinta en la moneda de trabajo.
+        $pesos = app(PricingService::class)->precioEnPesosDe($this->record);
+        $data['precio_venta'] = $pesos === null ? null : Dinero::aMenor($pesos, 'pesos');
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $this->precio = filled($data['precio_venta'] ?? null) ? (int) $data['precio_venta'] : null;
+        // Y vuelve a pesos, que es como se fija la tarifa del insumo.
+        $this->precio = filled($data['precio_venta'] ?? null)
+            ? (int) round(Dinero::enMoneda((float) $data['precio_venta'], 'pesos'))
+            : null;
 
         unset($data['precio_venta']);
 

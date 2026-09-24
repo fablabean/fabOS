@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Supplies\Pages;
 use App\Filament\Resources\Supplies\SupplyResource;
 use App\Services\Inventory\StockService;
 use App\Services\Money\PricingService;
+use App\Support\Dinero;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateSupply extends CreateRecord
@@ -20,7 +21,10 @@ class CreateSupply extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->inicial = (float) ($data['existencia_inicial'] ?? 0);
-        $this->precio = filled($data['precio_venta'] ?? null) ? (int) $data['precio_venta'] : null;
+        // El campo lo entrega en unidades menores; la tarifa se fija en pesos.
+        $this->precio = filled($data['precio_venta'] ?? null)
+            ? (int) round(Dinero::enMoneda((float) $data['precio_venta'], 'pesos'))
+            : null;
 
         unset($data['existencia_inicial'], $data['precio_venta']);
 

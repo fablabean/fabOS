@@ -58,6 +58,15 @@ class Cobros extends Page
      */
     public bool $prestamoSinCertifab = true;
 
+    /**
+     * En que moneda se escriben y se leen los importes del panel.
+     *
+     * Cada pantalla habia elegido la suya: un curso en FabCoins, un servicio
+     * de la tienda en pesos, una dotacion en unidades menores crudas. Quien
+     * pasaba de una a otra tenia que acordarse de en cual estaba.
+     */
+    public string $monedaDeTrabajo = 'fbc';
+
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -80,6 +89,7 @@ class Cobros extends Page
         $this->cobrosTienda = (bool) Setting::get(Settings::COBROS_TIENDA, false);
         $this->prestamoGratis = Settings::prestamoDeHerramientasGratis();
         $this->prestamoSinCertifab = Settings::prestamoSinCertifab();
+        $this->monedaDeTrabajo = Settings::monedaDeTrabajo();
         $this->precioAsesoria = rtrim(rtrim(number_format(Settings::precioDeAsesoriaMenor() / config('fabos.currency.minor_units'), 2, '.', ''), '0'), '.');
     }
 
@@ -91,6 +101,7 @@ class Cobros extends Page
         Setting::put(Settings::COBROS_TIENDA, $this->cobrosTienda, 'finanzas');
         Setting::put(Settings::PRESTAMO_GRATIS, $this->prestamoGratis, 'finanzas');
         Setting::put(Settings::PRESTAMO_SIN_CERTIFAB, $this->prestamoSinCertifab, 'finanzas');
+        Setting::put(Settings::MONEDA_DE_TRABAJO, $this->monedaDeTrabajo, 'finanzas');
         Setting::put(Settings::ASESORIA_PRECIO, (int) round(((float) $this->precioAsesoria) * config('fabos.currency.minor_units')), 'finanzas');
 
         $tienda = $this->cobrosActivos || $this->cobrosTienda;

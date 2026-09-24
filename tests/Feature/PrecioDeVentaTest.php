@@ -159,6 +159,9 @@ class PrecioDeVentaTest extends TestCase
 
     public function test_se_pone_al_crear_el_insumo(): void
     {
+        // En pesos, que es la moneda de trabajo que se elija en Cobros. La
+        // tarifa se sigue fijando en pesos por dentro.
+        \App\Models\Setting::put(\App\Support\Settings::MONEDA_DE_TRABAJO, 'pesos', 'finanzas');
         $this->admin();
 
         Livewire::test(CreateSupply::class)
@@ -176,6 +179,7 @@ class PrecioDeVentaTest extends TestCase
 
     public function test_se_edita_desde_la_ficha_y_se_lee_de_vuelta(): void
     {
+        \App\Models\Setting::put(\App\Support\Settings::MONEDA_DE_TRABAJO, 'pesos', 'finanzas');
         $this->admin();
         $insumo = $this->insumo();
 
@@ -190,6 +194,19 @@ class PrecioDeVentaTest extends TestCase
         $this->assertSame(32_000, app(PricingService::class)->precioEnPesosDe($insumo->fresh()));
     }
 
+    /** Y en FabCoins, el mismo precio se escribe con otro numero. */
+    public function test_el_insumo_se_lee_en_la_moneda_de_trabajo(): void
+    {
+        $this->admin();
+        $insumo = $this->insumo();
+
+        app(PricingService::class)->fijarPrecioEnPesos($insumo, 25_000);
+
+        // 25.000 pesos son 25 FabCoins a mil pesos el FabCoin.
+        Livewire::test(EditSupply::class, ['record' => $insumo->getKey()])
+            ->assertFormSet(['precio_venta' => 25]);
+    }
+
     // ------------------------------------------------------------ servicios
 
     /**
@@ -199,8 +216,16 @@ class PrecioDeVentaTest extends TestCase
      * pesos son 3.000 centésimas— y un cero de más ahí sale publicado en la
      * tienda. El libro sigue guardando unidades menores.
      */
-    public function test_el_precio_de_un_servicio_se_escribe_en_pesos(): void
+    /**
+     * El precio de un servicio se escribe en la moneda de trabajo.
+     *
+     * Estaba fijo en pesos mientras un curso se tarifaba en FabCoins y una
+     * dotacion en unidades menores crudas: quien pasaba de una pantalla a otra
+     * tenia que acordarse de en cual estaba. Ahora lo decide un solo ajuste.
+     */
+    public function test_el_precio_de_un_servicio_se_escribe_en_la_moneda_de_trabajo(): void
     {
+        \App\Models\Setting::put(\App\Support\Settings::MONEDA_DE_TRABAJO, 'pesos', 'finanzas');
         $this->admin();
 
         Livewire::test(CreateServiceOffering::class)
@@ -216,8 +241,8 @@ class PrecioDeVentaTest extends TestCase
         $this->assertSame(3_000, (int) $servicio->price_minor);
     }
 
-    /** Y se lee de vuelta en pesos, no en centésimas. */
-    public function test_el_precio_de_un_servicio_se_lee_de_vuelta_en_pesos(): void
+    /** Y en FabCoins, el mismo precio se escribe con otro numero. */
+    public function test_en_fabcoins_el_servicio_se_escribe_en_fabcoins(): void
     {
         $this->admin();
 
@@ -225,6 +250,12 @@ class PrecioDeVentaTest extends TestCase
             'name' => 'Corte láser', 'unit' => 'hoja',
             'price_minor' => 3_000, 'is_active' => true, 'is_public' => true,
         ]);
+
+        // 3.000 unidades menores son 30 FabCoins, o 30.000 pesos.
+        Livewire::test(EditServiceOffering::class, ['record' => $servicio->getKey()])
+            ->assertFormSet(['price_minor' => 30]);
+
+        \App\Models\Setting::put(\App\Support\Settings::MONEDA_DE_TRABAJO, 'pesos', 'finanzas');
 
         Livewire::test(EditServiceOffering::class, ['record' => $servicio->getKey()])
             ->assertFormSet(['price_minor' => 30_000]);

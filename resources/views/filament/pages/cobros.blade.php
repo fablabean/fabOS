@@ -75,6 +75,37 @@
             </label>
         </x-filament::section>
 
+        {{-- Cada pantalla había elegido su moneda: un curso se tarifaba en
+             FabCoins, un servicio de la tienda en pesos y una dotación en
+             unidades menores crudas. Quien pasaba de una a otra tenía que
+             acordarse de en cuál estaba, y escribir 11.200 donde iban
+             11.200.000 no da ningún error: da un curso regalado. --}}
+        <x-filament::section>
+            <x-slot name="heading">La moneda de trabajo</x-slot>
+            <x-slot name="description">
+                En qué se escriben y se leen los importes <strong>del panel</strong>. Lo guardado
+                es lo mismo en los dos casos: 1 {{ config('fabos.currency.name') }} =
+                {{ number_format(\App\Support\Dinero::tasa(), 0, ',', '.') }} pesos.
+            </x-slot>
+
+            <div class="max-w-xs">
+                <select wire:model="monedaDeTrabajo"
+                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800">
+                    @foreach (\App\Support\Dinero::monedas() as $clave => $nombre)
+                        <option value="{{ $clave }}">{{ $nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                Cada formulario trae además un selector para escribir un importe suelto en la otra
+                moneda sin cambiar esto, con la equivalencia al lado mientras se teclea.
+                <strong>El sitio público no cambia</strong>: a quien entra sin cuenta se le sigue
+                hablando en pesos y a quien la tiene en {{ config('fabos.currency.name') }}s,
+                porque el saldo es suyo.
+            </p>
+        </x-filament::section>
+
         {{-- Prestar una herramienta no es ocupar una máquina. Las tarifas se
              pensaron para máquinas y las herramientas heredan la de su familia
              de riesgo, que se tarifó junto a ellas: un multímetro acababa

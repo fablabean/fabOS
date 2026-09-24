@@ -10,6 +10,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use App\Filament\Componentes\CampoDeDinero;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
@@ -126,11 +127,17 @@ class SupplyForm
                          * hace que una pieza impresa se venda por el precio del
                          * plastico que lleva.
                          */
-                        TextInput::make('precio_venta')
+                        /*
+                         * En la moneda de trabajo, como el resto del panel. Se
+                         * guarda en pesos -la tarifa del insumo se fija asi- y
+                         * la conversion ocurre al entrar y al salir de esta
+                         * pantalla, no en la cabeza de quien pone el precio.
+                         */
+                        CampoDeDinero::selector(['precio_venta']),
+
+                        CampoDeDinero::make('precio_venta')
                             ->label('Precio de venta al público')
-                            ->numeric()
-                            ->minValue(0)
-                            ->prefix(config('fabos.money.symbol'))
+                            ->default(null)
                             ->helperText('Lo que paga quien compra. Si se deja vacío, la tienda estima un precio con el costo y el margen, y avisa de que lo hizo.'),
 
                         FileUpload::make('photo_path')

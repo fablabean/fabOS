@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Courses\Schemas;
 use App\Models\Course;
 use App\Services\Media\OptimizadorDeImagen;
 use Filament\Forms\Components\Checkbox;
+use App\Filament\Componentes\CampoDeDinero;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -43,14 +44,20 @@ class CourseForm
 
                         TextInput::make('hours')->label('Duración en horas')->numeric(),
 
-                        TextInput::make('price_minor')
+                        /*
+                         * El costo se escribe en la moneda de trabajo del
+                         * laboratorio, no en la que este formulario decidiera
+                         * por su cuenta: estaba fijo en FabCoins mientras un
+                         * servicio de la tienda se tarifaba en pesos, y quien
+                         * pasaba de uno a otro tenia que acordarse de en cual
+                         * estaba. Escribir 11.200 donde iban 11.200.000 no da
+                         * ningun error: da un curso regalado.
+                         */
+                        CampoDeDinero::selector(['price_minor']),
+
+                        CampoDeDinero::make('price_minor')
                             ->label('Costo')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix(config('fabos.currency.code'))
-                            ->helperText('Cero si no tiene costo para la comunidad.')
-                            ->formatStateUsing(fn (?int $state) => $state === null ? null : $state / config('fabos.currency.minor_units'))
-                            ->dehydrateStateUsing(fn (?string $state) => (int) round(((float) $state) * config('fabos.currency.minor_units'))),
+                            ->helperText('Cero si no tiene costo para la comunidad.'),
                     ]),
 
                 Section::make('Qué habilita')

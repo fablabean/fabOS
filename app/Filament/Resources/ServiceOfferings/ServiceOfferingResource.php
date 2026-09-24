@@ -17,6 +17,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use App\Filament\Componentes\CampoDeDinero;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
@@ -92,17 +93,11 @@ class ServiceOfferingResource extends Resource
                      * guardando unidades menores; la traduccion la hace el
                      * formulario, que es donde no se equivoca.
                      */
-                    TextInput::make('price_minor')
+                    CampoDeDinero::selector(['price_minor']),
+
+                    CampoDeDinero::make('price_minor')
                         ->label('Precio de venta al público')
-                        ->numeric()
                         ->required()
-                        ->minValue(0)
-                        ->prefix(config('fabos.money.symbol'))
-                        ->formatStateUsing(fn (?int $state) => $state === null
-                            ? null
-                            : app(PricingService::class)->aPesos((int) $state))
-                        ->dehydrateStateUsing(fn ($state) => app(PricingService::class)
-                            ->aMenor((int) $state))
                         ->helperText('Lo que paga quien lo compra. Se guarda en FabCoins a la tasa del laboratorio.'),
 
                     /*
