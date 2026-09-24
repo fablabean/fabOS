@@ -26,7 +26,7 @@
         .inst .paso b{display:block;font-size:.95rem}
         .inst .paso span{display:block;font-size:.82rem;color:rgb(107 114 128)}
         .inst .barra{height:6px;border-radius:3px;background:rgba(128,128,128,.25);overflow:hidden;margin:.6rem 0 1rem}
-        .inst .barra i{display:block;height:100%;background:rgb(var(--primary-500))}
+        .inst .barra i{display:block;height:100%;background:var(--primary-500)}
         .inst pre{
             font-size:.75rem;line-height:1.5;padding:.9rem;border-radius:8px;overflow-x:auto;
             background:rgba(128,128,128,.10);max-height:20rem;

@@ -3,9 +3,9 @@
     <style>
         .reglas h3{font-size:1.05rem;font-weight:700;margin:0 0 .35rem}
         .reglas .porque{
-            border-left:3px solid rgb(var(--primary-500));
+            border-left:3px solid var(--primary-500);
             padding:.55rem .85rem;margin:.7rem 0 0;font-size:.88rem;
-            background:rgba(var(--primary-500),.06);border-radius:0 4px 4px 0;
+            background:color-mix(in srgb,var(--primary-500) 6%,transparent);border-radius:0 4px 4px 0;
         }
         .reglas .porque b{font-weight:600}
         .reglas dl{display:grid;grid-template-columns:auto 1fr;gap:.35rem 1rem;margin:.6rem 0 0;font-size:.9rem}

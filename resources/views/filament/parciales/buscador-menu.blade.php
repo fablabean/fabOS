@@ -26,7 +26,7 @@
         border:1px solid rgba(128,128,128,.28);background:rgba(128,128,128,.07);
         color:inherit;outline:none;
     }
-    .fi-buscador-menu input:focus{border-color:rgb(var(--primary-500));background:transparent}
+    .fi-buscador-menu input:focus{border-color:var(--primary-500);background:transparent}
     .fi-buscador-menu input::-webkit-search-cancel-button{cursor:pointer}
     .fi-buscador-menu kbd{
         position:absolute;right:.55rem;top:50%;transform:translateY(-50%);

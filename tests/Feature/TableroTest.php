@@ -206,6 +206,45 @@ class TableroTest extends TestCase
             ->assertSee('Ahora mismo');
     }
 
+    /**
+     * Las barras se pintan de verdad.
+     *
+     * Estaban en `rgb(var(--primary-500))`, que es como Filament 3 exponía el
+     * color: tres números sueltos. La 4 entrega el color entero, así que eso
+     * era CSS inválido y la barra salía sin fondo. La gráfica se veía como una
+     * fila de cifras flotando en un recuadro vacío, y nada fallaba en ninguna
+     * parte. Estaba en cinco sitios del panel.
+     */
+    public function test_la_grafica_de_uso_se_pinta(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+        Certifab::create(['user_id' => $u->id, 'risk_family_id' => $equipo->risk_family_id, 'level' => 'byte']);
+
+        $inicio = now()->addMinutes(5);
+        $reserva = app(BookingService::class)->reservar($u, $equipo, $inicio, $inicio->copy()->addHour());
+        $asistencia = app(AttendanceService::class);
+        $asistencia->checkIn($reserva->refresh());
+        $this->travel(45)->minutes();
+        $asistencia->checkOut($reserva->refresh());
+        $this->travelBack();
+
+        $admin = $this->persona(User::ROL_ADMINISTRADOR);
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($admin->fresh())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->get('/admin/tablero')
+            ->assertOk()
+            ->assertSee('class="barras"', false)
+            ->assertSee('background:var(--primary-500)', false)
+            // El formato de la 3 no vuelve por la puerta de atrás.
+            ->assertDontSee('rgb(var(--', false)
+            ->assertDontSee('rgba(var(--', false);
+    }
+
     public function test_quien_no_entra_al_backoffice_no_ve_el_tablero(): void
     {
         $this->actingAs($this->persona())
