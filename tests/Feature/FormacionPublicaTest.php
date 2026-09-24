@@ -179,4 +179,36 @@ class FormacionPublicaTest extends TestCase
         $this->assertTrue($induccion->riskFamilies->isEmpty(), 'la inducción no abre máquinas');
         $this->assertSame(8, Course::count());
     }
+    // -------------------------------------------------------------- la foto
+
+    /**
+     * La foto del curso sale en el catálogo.
+     *
+     * El campo existía y se podía subir desde la ficha, pero no se pintaba en
+     * ninguna parte: la foto se guardaba y no la veía nadie. Un curso se elige
+     * también por lo que se ve que se hace en él.
+     */
+    public function test_el_curso_ensena_su_foto(): void
+    {
+        $curso = $this->curso(['photo_path' => 'cursos/impresion.jpg']);
+
+        $this->get('/formacion')
+            ->assertOk()
+            ->assertSee('cursos/impresion.jpg', false)
+            ->assertSee('class="curso con-foto"', false);
+    }
+
+    /** Sin foto, la tarjeta es la de siempre y no se parte en dos. */
+    public function test_sin_foto_la_tarjeta_no_cambia(): void
+    {
+        $this->curso();
+
+        // Sobre el marcado, no sobre los estilos: la hoja de estilos nombra
+        // `.curso.con-foto` siempre, la haya o no.
+        $this->get('/formacion')
+            ->assertOk()
+            ->assertSee('class="curso "', false)
+            ->assertDontSee('class="curso con-foto"', false)
+            ->assertDontSee('<img class="foto"', false);
+    }
 }

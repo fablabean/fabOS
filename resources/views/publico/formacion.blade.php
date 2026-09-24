@@ -7,6 +7,20 @@
         padding:1.6rem;margin-bottom:1.2rem;
     }
     .curso h2{margin:0 0 .2rem;font-size:1.25rem}
+    /* Con foto, la tarjeta se parte en dos: el texto a la izquierda y la
+       imagen ocupando el alto entero a la derecha, que es donde antes había
+       media tarjeta vacía. La foto va primero en el HTML para que en un
+       teléfono —donde no hay dos columnas— encabece en vez de quedar al final,
+       después del botón de inscribirse. */
+    .curso.con-foto{display:grid;grid-template-columns:minmax(0,1fr) 16rem;gap:0 1.6rem;align-items:start}
+    .curso.con-foto > *{grid-column:1}
+    .curso.con-foto > .foto{grid-column:2;grid-row:1 / -1;align-self:stretch}
+    .curso .foto{display:block;width:100%;height:100%;min-height:11rem;max-height:17rem;
+                 object-fit:cover;border-radius:6px}
+    @media (max-width:760px){
+        .curso.con-foto{grid-template-columns:1fr}
+        .curso.con-foto > .foto{grid-column:1;grid-row:auto;height:auto;max-height:12rem;margin-bottom:1rem}
+    }
     .nivel{
         display:inline-block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
         font-weight:700;padding:.25rem .55rem;border-radius:4px;
@@ -55,7 +69,15 @@
         @enderror
 
         @forelse ($cursos as $curso)
-            <article class="curso">
+            <article class="curso {{ $curso->photo_path ? 'con-foto' : '' }}">
+                {{-- La foto del curso: se sube desde su ficha y hasta ahora no
+                     se pintaba en ninguna parte. Un curso se elige también por
+                     lo que se ve que se hace en él. --}}
+                @if ($curso->photo_path)
+                    <img class="foto" src="{{ asset('storage/' . $curso->photo_path) }}"
+                         alt="{{ $curso->name }}" loading="lazy">
+                @endif
+
                 <span class="nivel">{{ $curso->level }}</span>
                 <h2>{{ $curso->name }}</h2>
 

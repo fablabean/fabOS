@@ -82,6 +82,7 @@ class CourseForm
 
                         FileUpload::make('photo_path')
                             ->label('Foto')
+                            ->helperText('Sale en el catálogo de /formación, al lado del curso, recortada a lo alto de la tarjeta. Algo de lo que se hace en él: una pieza saliendo de la máquina, alguien trabajando.')
                             // Disco publico EXPLICITO. El disco por defecto es
                             // `local`, cuya raiz en Laravel 11+ es
                             // storage/app/private: el archivo se guardaba ahi,
