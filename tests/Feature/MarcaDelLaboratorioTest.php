@@ -300,6 +300,152 @@ class MarcaDelLaboratorioTest extends TestCase
         $this->assertFalse(Settings::marcaConTexto());
     }
 
+    // ------------------------------------------------------------ fondo oscuro
+
+    /**
+     * Las cuatro combinaciones van en la página y el CSS elige.
+     *
+     * Un logo está dibujado para un fondo: el mismo archivo sobre el contrario
+     * se pierde, y aclararlo con un filtro le quita los colores.
+     */
+    public function test_las_dos_versiones_llevan_su_variante_oscura(): void
+    {
+        Storage::fake('public');
+
+        foreach (['larga', 'compacta', 'larga-oscura', 'compacta-oscura'] as $cual) {
+            Storage::disk('public')->put("marca/{$cual}.png", $cual);
+        }
+
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO_OSCURO, 'marca/larga-oscura.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_OSCURO, 'marca/compacta-oscura.png', 'comunicaciones');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('class="larga clara"', false)
+            ->assertSee('class="compacta clara"', false)
+            ->assertSee('class="larga oscura"', false)
+            ->assertSee('class="compacta oscura"', false)
+            ->assertSee('marca/larga-oscura.png', false)
+            ->assertSee('marca/compacta-oscura.png', false);
+    }
+
+    /**
+     * Falta la compacta oscura: se usa la larga oscura, no la compacta clara.
+     *
+     * El orden del respaldo importa. Una larga oscura apretada en el móvil se
+     * ve mal pero se ve; una compacta clara sobre fondo oscuro no se ve en
+     * absoluto. Entre pasarlo mal y desaparecer, pasarlo mal.
+     */
+    public function test_el_respaldo_se_queda_en_la_familia_oscura(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/compacta.png', 'compacta');
+        Storage::disk('public')->put('marca/larga-oscura.png', 'oscura');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO_OSCURO, 'marca/larga-oscura.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_BARRA, '#171A15', 'comunicaciones');
+
+        // Barra oscura y sin compacta oscura: el hueco del móvil lo llena la
+        // larga oscura. Se mira el hueco y no la página entera, porque el
+        // icono de la pestaña tiene su propia cadena —no le afecta el modo—
+        // y ahí sí sale la compacta clara, que es lo correcto.
+        $oscura = Storage::disk('public')->url('marca/larga-oscura.png');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('class="compacta clara"><img src="' . $oscura, false)
+            ->assertSee('class="larga clara"><img src="' . $oscura, false);
+    }
+
+    /** Y sin ninguna variante oscura, la clara: es lo que había. */
+    public function test_sin_variante_oscura_vale_la_clara(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+
+        $this->assertNull(Settings::logoLargoOscuro());
+
+        // Las cuatro ranuras existen igual, todas con el mismo archivo: la
+        // marca no puede desaparecer en modo oscuro por no haber subido otra.
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('class="larga oscura"', false)
+            ->assertSee('marca/larga.png', false);
+    }
+
+    /**
+     * Con un color fijo en la barra manda ese color, no el modo del sistema.
+     *
+     * Es el cruce que había que resolver: un color puesto a mano es el mismo
+     * para todo el mundo. Sin esto, una barra en negro enseñaría el logo claro
+     * sólo a quien tenga el sistema en modo oscuro, y el negro sobre negro al
+     * resto.
+     */
+    public function test_la_barra_oscura_fija_impone_la_version_oscura(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/larga-oscura.png', 'oscura');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO_OSCURO, 'marca/larga-oscura.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_BARRA, '#171A15', 'comunicaciones');
+
+        $this->assertSame('oscuro', Settings::modoDeLaBarra());
+
+        // Una sola pareja, y es la oscura: dejar las dos y que decidiera el
+        // CSS por el modo del sistema es justo el fallo que esto evita.
+        $oscura = Storage::disk('public')->url('marca/larga-oscura.png');
+        $clara = Storage::disk('public')->url('marca/larga.png');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('class="larga clara"><img src="' . $oscura, false)
+            ->assertDontSee('class="larga clara"><img src="' . $clara, false)
+            // Y no se manda la otra pareja: con el color fijo no hay nada que
+            // decidir en el navegador.
+            ->assertDontSee('class="larga oscura"', false);
+    }
+
+    /** Y una barra clara fija impone la clara, por el mismo motivo. */
+    public function test_la_barra_clara_fija_impone_la_version_clara(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/larga-oscura.png', 'oscura');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO_OSCURO, 'marca/larga-oscura.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_BARRA, '#F6F6F2', 'comunicaciones');
+
+        $this->assertSame('claro', Settings::modoDeLaBarra());
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('marca/larga.png', false)
+            ->assertDontSee('marca/larga-oscura.png', false);
+    }
+
+    /** Sin color fijo, manda el sistema de quien mira. */
+    public function test_sin_color_fijo_manda_el_sistema(): void
+    {
+        $this->assertSame('auto', Settings::modoDeLaBarra());
+    }
+
+    /** El PDF se queda en la clara: el papel es blanco. */
+    public function test_el_pdf_no_usa_la_version_oscura(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/larga-oscura.png', 'oscura');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO_OSCURO, 'marca/larga-oscura.png', 'comunicaciones');
+
+        $this->assertStringContainsString(base64_encode('larga'), (string) Settings::logoParaPdf());
+        $this->assertStringNotContainsString(base64_encode('oscura'), (string) Settings::logoParaPdf());
+    }
+
     // ----------------------------------------------------- el icono de la pestaña
 
     /**

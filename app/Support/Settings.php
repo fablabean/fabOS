@@ -284,6 +284,20 @@ final class Settings
     public const MARCA_LOGO_LARGO = 'marca.logo_largo_path';
 
     /**
+     * Las mismas dos, para fondo oscuro (§3).
+     *
+     * Un logo esta dibujado para un fondo. El mismo archivo sobre el contrario
+     * se pierde: negro sobre negro no se ve, y una marca que se aclara con un
+     * filtro pierde sus colores y queda gris. Quien tiene la marca casi
+     * siempre tiene las dos versiones; lo unico que faltaba era donde ponerlas.
+     *
+     * Sin version oscura vale la clara, que es lo que habia.
+     */
+    public const MARCA_LOGO_LARGO_OSCURO = 'marca.logo_largo_oscuro_path';
+
+    public const MARCA_LOGO_OSCURO = 'marca.logo_oscuro_path';
+
+    /**
      * Y el icono de la pestana, que pide lo suyo (§3).
      *
      * La compacta servia de apano, pero un favicon no es un logo pequeno: se
@@ -342,6 +356,42 @@ final class Settings
     public static function favicon(): ?string
     {
         return self::rutaSubida(self::MARCA_FAVICON);
+    }
+
+    /** Las dos versiones para fondo oscuro. Nulas si no hay. */
+    public static function logoLargoOscuro(): ?string
+    {
+        return self::rutaSubida(self::MARCA_LOGO_LARGO_OSCURO);
+    }
+
+    public static function logoOscuro(): ?string
+    {
+        return self::rutaSubida(self::MARCA_LOGO_OSCURO);
+    }
+
+    /**
+     * Sobre que fondo se va a ver la marca en la barra.
+     *
+     * Aqui se cruzan dos cosas y conviene que se crucen bien. El sistema de
+     * quien mira puede estar en modo oscuro, pero si el laboratorio fijo un
+     * color para la barra, ese color es el mismo para todo el mundo y el modo
+     * del sistema no lo cambia. Sin esto, una barra puesta en negro a mano
+     * enseñaria el logo claro solo a quien tenga el movil en modo oscuro, y el
+     * negro sobre negro al resto.
+     *
+     * - `auto`   · manda el sistema de quien mira, y se decide con CSS.
+     * - `claro`  · barra clara fijada a mano: siempre la version clara.
+     * - `oscuro` · barra oscura fijada a mano: siempre la oscura.
+     */
+    public static function modoDeLaBarra(): string
+    {
+        $barra = self::colorDeLaBarra();
+
+        return match (true) {
+            $barra === null => 'auto',
+            $barra['oscuro'] => 'oscuro',
+            default => 'claro',
+        };
     }
 
     private static function rutaSubida(string $clave): ?string

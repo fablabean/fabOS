@@ -62,6 +62,8 @@ class Marca extends Page
         $this->form->fill([
             'logo'       => Settings::logo(),
             'logo_largo' => Settings::logoLargo(),
+            'logo_largo_oscuro' => Settings::logoLargoOscuro(),
+            'logo_oscuro'       => Settings::logoOscuro(),
             'favicon'    => Settings::favicon(),
             'alto'       => Settings::altoDeLaMarca(),
             'con_texto'  => Settings::marcaConTexto(),
@@ -96,6 +98,16 @@ class Marca extends Page
                         Toggle::make('con_texto')
                             ->label('Escribir el nombre al lado del logo')
                             ->helperText('Apágalo si tu versión larga ya lleva el nombre dentro: si no, queda escrito dos veces en la misma barra.'),
+                    ]),
+
+                Section::make('Para fondo oscuro')
+                    ->description('Un logo está dibujado para un fondo: el mismo archivo sobre el contrario se pierde, y aclararlo con un filtro le quita los colores y lo deja gris. Sin nada aquí se usa la versión clara en los dos casos.')
+                    ->schema([
+                        self::casilla('logo_largo_oscuro', 'Versión larga, para fondo oscuro')
+                            ->helperText('Sale cuando quien mira tiene el sistema en modo oscuro. Si fijaste un color oscuro para la barra, sale siempre: ese color es el mismo para todo el mundo y el modo del sistema no lo cambia.'),
+
+                        self::casilla('logo_oscuro', 'Versión compacta, para fondo oscuro')
+                            ->helperText('La misma regla, para el móvil.'),
                     ]),
 
                 Section::make('El icono de la pestaña')
@@ -144,11 +156,17 @@ class Marca extends Page
     {
         $estado = $this->form->getState();
 
-        $antes = array_filter([Settings::logoLargo(), Settings::logo(), Settings::favicon()]);
+        $antes = array_filter([
+            Settings::logoLargo(), Settings::logo(),
+            Settings::logoLargoOscuro(), Settings::logoOscuro(),
+            Settings::favicon(),
+        ]);
 
         $ahora = [
             Settings::MARCA_LOGO_LARGO => trim((string) ($estado['logo_largo'] ?? '')),
             Settings::MARCA_LOGO       => trim((string) ($estado['logo'] ?? '')),
+            Settings::MARCA_LOGO_LARGO_OSCURO => trim((string) ($estado['logo_largo_oscuro'] ?? '')),
+            Settings::MARCA_LOGO_OSCURO       => trim((string) ($estado['logo_oscuro'] ?? '')),
             Settings::MARCA_FAVICON    => trim((string) ($estado['favicon'] ?? '')),
         ];
 

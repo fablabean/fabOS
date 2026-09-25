@@ -25,7 +25,14 @@
             <li><strong>Compacta</strong> · la barra en el móvil, por debajo de 640 píxeles.</li>
             <li><strong>Icono</strong> · la pestaña del navegador, en el sitio y en el panel.
                 Sin icono propio se usa la compacta, y sin compacta la larga.</li>
+            <li><strong>Para fondo oscuro</strong> · las mismas dos, cuando quien mira tiene el
+                sistema en modo oscuro. Con un color fijo en la barra manda ese color y no el
+                sistema, porque el color es el mismo para todo el mundo.</li>
         </ul>
+
+        <p class="text-sm mt-3">
+            En los PDF sale siempre la versión clara: el papel es blanco.
+        </p>
 
         <p class="text-sm mt-3">
             @if ($largo || $logo)
