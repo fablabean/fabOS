@@ -6,17 +6,30 @@
     <title>@yield('title', config('fabos.lab.name'))</title>
     @include('partials.iconos')
     <meta name="description" content="@yield('description', config('fabos.lab.tagline') . ' de ' . config('fabos.lab.institution') . '.')">
+    @include('partials.tema')
     <style>
         :root{
             --ground:#E8E8E2; --surface:#F6F6F2; --ink:#191A16; --ink-soft:#3D4038;
             --muted:#6E7066; --rule:#C7C7BD; --accent:#0D6E63;
             --banner:#171A15; --banner-ink:#F3F4EC; --banner-muted:#A0A697; --banner-accent:#5CC9B8;
+            --marca-clara:flex; --marca-oscura:none;
         }
+        /* Tres estados —claro, oscuro, el del sistema—, como en el panel.
+           El `:not` es la pieza que hace falta: sin él, elegir «claro» no
+           serviría de nada en un equipo con el sistema en oscuro, porque la
+           consulta de medios ganaría igual. Con él, elegir manda y no elegir
+           deja que mande el sistema, que es lo que había. */
         @media (prefers-color-scheme:dark){
-            :root{
+            :root:not([data-theme="light"]){
                 --ground:#131511; --surface:#1B1E19; --ink:#E9EAE2; --ink-soft:#C6C8BC;
                 --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8;
+                --marca-clara:none; --marca-oscura:flex;
             }
+        }
+        :root[data-theme="dark"]{
+            --ground:#131511; --surface:#1B1E19; --ink:#E9EAE2; --ink-soft:#C6C8BC;
+            --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8;
+            --marca-clara:none; --marca-oscura:flex;
         }
         *{box-sizing:border-box}
         body{margin:0;background:var(--ground);color:var(--ink);line-height:1.65;

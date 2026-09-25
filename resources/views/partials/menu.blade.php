@@ -26,6 +26,29 @@
     <a href="{{ route('tienda.publica') }}">Tienda</a>
     <a href="{{ route('preguntas.index') }}">Preguntas</a>
 
+    {{-- Claro, oscuro o el del sistema, como en el panel. Fuera de @auth a
+         propósito: quien llega sin cuenta es justo quien más lo necesita —el
+         panel no lo verá nunca— y leer una portada en el modo equivocado no
+         depende de tener usuario. --}}
+    <div class="tema" role="group" aria-label="Tema del sitio">
+        <button type="button" data-tema="light" title="Claro" aria-label="Tema claro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+            </svg>
+        </button>
+        <button type="button" data-tema="dark" title="Oscuro" aria-label="Tema oscuro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+        </button>
+        <button type="button" data-tema="system" title="El del sistema" aria-label="El tema del sistema">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+        </button>
+    </div>
+
     @auth
         {{-- Aportar exige cuenta: lo que se sube queda atribuido a quien lo
              subió, que es lo que permite reconocérselo después. --}}
@@ -138,6 +161,21 @@
     .menu-usuario .salir{display:block;border-top:1px solid var(--rule);margin-top:.25rem;padding-top:.25rem}
 
     /* El saldo y su detalle. */
+    /* El selector de tema: tres botones pegados, como en el panel. */
+    .tema{display:inline-flex;gap:.1rem;padding:.15rem;border:1px solid var(--rule);border-radius:999px}
+    .tema button{
+        display:inline-flex;align-items:center;justify-content:center;margin:0;
+        width:1.75rem;height:1.75rem;padding:0;border:0;border-radius:999px;
+        background:transparent;color:var(--muted);cursor:pointer;
+    }
+    .tema button svg{width:.95rem;height:.95rem;display:block}
+    .tema button:hover{color:var(--ink)}
+    /* El elegido, marcado. Lo pone el guion al arrancar: sin él los tres se
+       ven igual y no hay forma de saber en cuál está. */
+    .tema button[aria-pressed="true"]{
+        background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);
+    }
+
     .saldo{position:relative}
     .saldo-boton{
         display:inline-flex;align-items:baseline;gap:.3rem;background:color-mix(in srgb,var(--accent) 12%,transparent);
@@ -280,6 +318,53 @@
             pares.forEach(function (par) {
                 if (!par.menu.hidden) { abrir(par, false); par.boton.focus(); }
             });
+        });
+    })();
+
+    /*
+     * El tema: claro, oscuro o el del sistema.
+     *
+     * Lo elegido se guarda en el navegador y no en la cuenta, a propósito:
+     * quien llega sin cuenta también elige, y la elección es de este aparato
+     * —el portátil del laboratorio a pleno sol y el teléfono de noche no
+     * quieren lo mismo—, no de la persona.
+     *
+     * Aplicarlo lo hace el guion del <head>, que corre antes de pintar. Aquí
+     * sólo se guarda, se marca cuál está puesto y se aplica al vuelo cuando
+     * se pulsa, para no tener que recargar.
+     */
+    (function () {
+        var CLAVE = 'fabos-tema';
+        var grupo = document.querySelector('.tema');
+
+        if (!grupo) return;
+
+        function guardado() {
+            try { return localStorage.getItem(CLAVE) || 'system'; } catch (e) { return 'system'; }
+        }
+
+        function poner(cual) {
+            if (cual === 'system') {
+                delete document.documentElement.dataset.theme;
+            } else {
+                document.documentElement.dataset.theme = cual;
+            }
+
+            grupo.querySelectorAll('button').forEach(function (b) {
+                b.setAttribute('aria-pressed', b.dataset.tema === cual ? 'true' : 'false');
+            });
+        }
+
+        poner(guardado());
+
+        grupo.addEventListener('click', function (e) {
+            var boton = e.target.closest('button[data-tema]');
+
+            if (!boton) return;
+
+            try { localStorage.setItem(CLAVE, boton.dataset.tema); } catch (err) {}
+
+            poner(boton.dataset.tema);
         });
     })();
 </script>

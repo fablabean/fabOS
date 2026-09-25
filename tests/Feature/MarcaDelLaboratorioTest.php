@@ -355,8 +355,8 @@ class MarcaDelLaboratorioTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('class="compacta clara"><img src="' . $oscura, false)
-            ->assertSee('class="larga clara"><img src="' . $oscura, false);
+            ->assertSee('class="compacta fija"><img src="' . $oscura, false)
+            ->assertSee('class="larga fija"><img src="' . $oscura, false);
     }
 
     /** Y sin ninguna variante oscura, la clara: es lo que había. */
@@ -402,8 +402,8 @@ class MarcaDelLaboratorioTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('class="larga clara"><img src="' . $oscura, false)
-            ->assertDontSee('class="larga clara"><img src="' . $clara, false)
+            ->assertSee('class="larga fija"><img src="' . $oscura, false)
+            ->assertDontSee('class="larga fija"><img src="' . $clara, false)
             // Y no se manda la otra pareja: con el color fijo no hay nada que
             // decidir en el navegador.
             ->assertDontSee('class="larga oscura"', false);

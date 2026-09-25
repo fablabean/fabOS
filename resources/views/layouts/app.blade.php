@@ -6,18 +6,30 @@
     <title>@yield('title', config('fabos.lab.name'))</title>
     @include('partials.iconos')
     {{-- Estilos en línea a propósito: el arranque no depende de compilar assets. --}}
+    @include('partials.tema')
     <style>
         :root{
             --ground:#E8E8E2; --surface:#F6F6F2; --ink:#191A16; --ink-soft:#3D4038;
             --muted:#6E7066; --rule:#C7C7BD; --accent:#0D6E63; --link:#0D6E63;
             --ok:#0D6E63; --warn:#A45A17; --bad:#9B2C2C;
+            --marca-clara:flex; --marca-oscura:none;
         }
+        /* Tres estados —claro, oscuro, el del sistema—, como en el panel.
+           El `:not` es la pieza que hace falta: sin él, elegir «claro» no
+           serviría de nada en un equipo con el sistema en oscuro. */
         @media (prefers-color-scheme:dark){
-            :root{
+            :root:not([data-theme="light"]){
                 --ground:#131511; --surface:#1B1E19; --ink:#E9EAE2; --ink-soft:#C6C8BC;
                 --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8; --link:#5CC9B8;
                 --ok:#5CC9B8; --warn:#DFA163; --bad:#E08585;
+                --marca-clara:none; --marca-oscura:flex;
             }
+        }
+        :root[data-theme="dark"]{
+            --ground:#131511; --surface:#1B1E19; --ink:#E9EAE2; --ink-soft:#C6C8BC;
+            --muted:#93968A; --rule:#2F342B; --accent:#5CC9B8; --link:#5CC9B8;
+            --ok:#5CC9B8; --warn:#DFA163; --bad:#E08585;
+            --marca-clara:none; --marca-oscura:flex;
         }
         /* Los enlaces del texto: sin esto salian con el azul de serie del
            navegador, que sobre el fondo oscuro casi no se lee. */

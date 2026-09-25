@@ -96,25 +96,31 @@
                 max-width:min(52vw,22rem);color:var(--accent);flex:none;
             }
 
-            /* Nada se ve por defecto y cada caso enciende el suyo: con cuatro
-               combinaciones, encender es más corto de leer que apagar las
-               otras tres, y sobre todo no deja ninguna sin cubrir. */
+            /* Nada se ve por defecto y cada caso enciende el suyo.
+               Claro u oscuro no se decide aquí: lo dicen `--marca-clara` y
+               `--marca-oscura`, que la plantilla pone según el tema. Así
+               este bloque sólo se ocupa del ancho, y la elección manual de
+               tema —que puede contradecir al sistema— se resuelve una vez y
+               en un solo sitio en vez de repetirse en cada regla. */
             .marca-fabos span{display:none}
-            .marca-fabos .larga.clara{display:flex}
+            .marca-fabos .larga.clara{display:var(--marca-clara,flex)}
+            .marca-fabos .larga.oscura{display:var(--marca-oscura,none)}
+
+            /* Y la pareja «fija», que es la que se manda cuando el color de la
+               barra ya decidió el fondo: esa sale pase lo que pase con el
+               tema. Sin una clase propia heredaría `--marca-clara`, y en un
+               equipo con el sistema en oscuro la marca desaparecería de una
+               barra que el laboratorio puso clara a mano. */
+            .marca-fabos .larga.fija{display:flex}
 
             /* Bajo esta anchura la larga ya no cabe. */
             @media (max-width:640px){
-                .marca-fabos .larga.clara{display:none}
-                .marca-fabos .compacta.clara{display:flex}
-            }
-            @media (prefers-color-scheme:dark){
-                .marca-fabos .larga.clara{display:none}
-                .marca-fabos .larga.oscura{display:flex}
-            }
-            @media (prefers-color-scheme:dark) and (max-width:640px){
-                .marca-fabos .larga.oscura{display:none}
-                .marca-fabos .compacta.clara{display:none}
-                .marca-fabos .compacta.oscura{display:flex}
+                .marca-fabos .larga.clara,
+                .marca-fabos .larga.oscura,
+                .marca-fabos .larga.fija{display:none}
+                .marca-fabos .compacta.clara{display:var(--marca-clara,flex)}
+                .marca-fabos .compacta.oscura{display:var(--marca-oscura,none)}
+                .marca-fabos .compacta.fija{display:flex}
             }
         </style>
     @endonce
@@ -129,9 +135,11 @@
         };
     @endphp
 
+    @php $cual = $dobleModo ? 'clara' : 'fija'; @endphp
+
     <span class="marca-fabos" style="--marca-alto:{{ $alto }}px">
-        {!! $hueco($larga, 'larga clara') !!}
-        {!! $hueco($compacta, 'compacta clara') !!}
+        {!! $hueco($larga, 'larga ' . $cual) !!}
+        {!! $hueco($compacta, 'compacta ' . $cual) !!}
         @if ($dobleModo)
             {!! $hueco($largaOscura, 'larga oscura') !!}
             {!! $hueco($compactaOscura, 'compacta oscura') !!}
