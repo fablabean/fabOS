@@ -95,7 +95,11 @@
                         <div class="pie">
                             <b>{{ $pieza['nombre'] }}</b>
                             <span>{{ $pieza['nota'] }}</span>
-                            <a class="baja" href="{{ $pieza['url'] }}" download>Descargar</a>
+                            {{-- Con nombre: el archivo se guardó con un
+                                 identificador al azar, que está bien en el
+                                 disco y no dice nada en la carpeta de
+                                 descargas de otra persona. --}}
+                            <a class="baja" href="{{ $pieza['url'] }}" download="{{ $pieza['archivo'] }}">Descargar</a>
                             <small>{{ $pieza['archivo'] }} · {{ $pieza['peso'] }}</small>
                         </div>
                     </div>

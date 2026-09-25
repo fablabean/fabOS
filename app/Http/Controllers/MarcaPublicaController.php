@@ -48,12 +48,21 @@ class MarcaPublicaController extends Controller
         $marca = $this->laMarca();
         $disco = Storage::disk('public');
 
+        /*
+         * Dentro del zip, cada pieza con su nombre en palabras.
+         *
+         * Las casillas principales guardan el archivo con un identificador al
+         * azar, que en el disco está bien y en una carpeta descargada no: quien
+         * abre el zip se encuentra «01M3CZ8GEDMA8WMCHEXPPYYMBS.svg» y no sabe
+         * cuál de las cuatro es. Las variaciones ya vienen con nombre propio y
+         * se quedan como están.
+         */
         $piezas = collect($marca['versiones'])
-            ->pluck('ruta')
-            ->merge(collect($marca['variaciones'])->pluck('ruta'))
-            ->filter()
-            ->unique()
-            ->values();
+            ->mapWithKeys(fn (array $v) => [$this->comoSeLlamaFuera($v) => $v['ruta']])
+            ->merge(collect($marca['variaciones'])->mapWithKeys(
+                fn (array $v) => [$v['archivo'] => $v['ruta']]
+            ))
+            ->filter();
 
         $nombre = \Illuminate\Support\Str::slug((string) config('fabos.lab.name')) . '-marca.zip';
 
@@ -62,9 +71,9 @@ class MarcaPublicaController extends Controller
             $zip = new \ZipArchive();
             $zip->open($temporal, \ZipArchive::OVERWRITE);
 
-            foreach ($piezas as $ruta) {
+            foreach ($piezas as $comoSeLlama => $ruta) {
                 if ($disco->exists($ruta)) {
-                    $zip->addFromString(basename($ruta), $disco->get($ruta));
+                    $zip->addFromString($comoSeLlama, $disco->get($ruta));
                 }
             }
 
@@ -107,7 +116,7 @@ class MarcaPublicaController extends Controller
             ->map(fn (array $v) => $v + [
                 'url'  => $disco->url($v['ruta']),
                 'peso' => $this->enTexto($disco->size($v['ruta'])),
-                'archivo' => basename($v['ruta']),
+                'archivo' => $this->comoSeLlamaFuera($v),
             ])
             ->values()
             ->all();
@@ -123,6 +132,25 @@ class MarcaPublicaController extends Controller
             ->all();
 
         return ['versiones' => $versiones, 'variaciones' => $variaciones];
+    }
+
+    /**
+     * Cómo se llama el archivo cuando sale de aquí.
+     *
+     * «fablab-ean-horizontal-sobre-oscuro.svg» en vez del identificador con el
+     * que se guardó. El identificador es correcto dentro del disco —evita que
+     * dos subidas se pisen— y es inservible en la carpeta de descargas de otra
+     * persona, que es donde va a acabar.
+     *
+     * @param  array<string,mixed>  $version
+     */
+    private function comoSeLlamaFuera(array $version): string
+    {
+        $extension = strtolower(pathinfo((string) $version['ruta'], PATHINFO_EXTENSION));
+
+        return \Illuminate\Support\Str::slug(
+            config('fabos.lab.name') . ' ' . $version['nombre']
+        ) . '.' . $extension;
     }
 
     private function enTexto(int $bytes): string

@@ -119,10 +119,23 @@ class MarcaPublicaTest extends TestCase
 
         sort($dentro);
 
-        $this->assertSame(
-            ['compacta.png', 'larga-oscura.png', 'larga.png', 'logo-vertical.svg'],
-            $dentro,
-        );
+        /*
+         * Con nombre en palabras, no con el identificador del disco.
+         *
+         * El identificador es correcto dentro del disco —evita que dos subidas
+         * se pisen— e inservible en la carpeta de descargas de otra persona,
+         * que es donde va a acabar: cuatro archivos llamados «01M3CZ8GED…svg»
+         * y ninguna forma de saber cuál es cuál. Las variaciones ya traen
+         * nombre propio y se quedan como están.
+         */
+        $marca = \Illuminate\Support\Str::slug((string) config('fabos.lab.name'));
+
+        $this->assertSame([
+            "{$marca}-compacta.png",
+            "{$marca}-horizontal-sobre-oscuro.png",
+            "{$marca}-horizontal.png",
+            'logo-vertical.svg',
+        ], $dentro);
     }
 
     /** Sin marca subida la página se abre igual, y lo dice. */
