@@ -112,21 +112,46 @@ class RepartoDeProyectosTest extends TestCase
 
     // ------------------------------------------------------------- el área
 
-    public function test_el_de_vr_va_a_quien_lleva_vr(): void
+    /**
+     * Quien lleva VR recibe los de VR, y sólo los de VR.
+     *
+     * Las dos listas son independientes, y no lo eran al principio. El turno
+     * general lo llevan unos y VR lo lleva otro equipo: si para recibir los de
+     * VR hubiera que estar además en el turno general, ese equipo acabaría
+     * recibiendo también todo lo corriente. Responder por un área es un
+     * encargo, no un turno.
+     */
+    public function test_el_de_vr_va_a_quien_lleva_vr_y_nada_mas(): void
     {
         $vr = Area::create(['slug' => 'vr', 'name' => 'VR']);
 
         $michael = $this->delEquipo('Michael');
-        $jhonatan = $this->delEquipo('Jhonatan');
-        $jhonatan->responsibleAreas()->attach($vr->id);
+        $juanPablo = $this->delEquipo('Juan Pablo', enElTurno: false);
+        $juanPablo->responsibleAreas()->attach($vr->id);
 
-        // Aunque Jhonatan vaya más cargado: el área manda sobre la carga.
-        $this->proyectoDe($jhonatan);
-        $this->proyectoDe($jhonatan);
+        // Aunque vaya más cargado que nadie: en su área manda el encargo.
+        $this->proyectoDe($juanPablo);
+        $this->proyectoDe($juanPablo);
 
-        $this->assertTrue($this->reparto()->aQuienLeToca($vr->id)->is($jhonatan));
-        // Y lo que no es de VR se reparte por carga, como siempre.
+        $this->assertTrue($this->reparto()->aQuienLeToca($vr->id)->is($juanPablo));
+
+        // Y lo que no es de VR ni lo roza: va al turno general.
         $this->assertTrue($this->reparto()->aQuienLeToca()->is($michael));
+    }
+
+    /** Entre los del área, otra vez por carga: dos llevan VR y se reparten. */
+    public function test_entre_los_del_area_manda_la_carga(): void
+    {
+        $vr = Area::create(['slug' => 'vr', 'name' => 'VR']);
+
+        $juanPablo = $this->delEquipo('Juan Pablo', enElTurno: false);
+        $camilo = $this->delEquipo('Camilo', enElTurno: false);
+        $juanPablo->responsibleAreas()->attach($vr->id);
+        $camilo->responsibleAreas()->attach($vr->id);
+
+        $this->proyectoDe($juanPablo);
+
+        $this->assertTrue($this->reparto()->aQuienLeToca($vr->id)->is($camilo));
     }
 
     /** Un área sin nadie asignado no deja el proyecto sin repartir. */
@@ -162,9 +187,9 @@ class RepartoDeProyectosTest extends TestCase
         $vr = Area::create(['slug' => 'vr', 'name' => 'VR']);
         UserCategory::create(['slug' => 'invitado', 'name' => 'Invitado']);
 
-        $michael = $this->delEquipo('Michael');
-        $jhonatan = $this->delEquipo('Jhonatan');
-        $jhonatan->responsibleAreas()->attach($vr->id);
+        $this->delEquipo('Michael');
+        $juanPablo = $this->delEquipo('Juan Pablo', enElTurno: false);
+        $juanPablo->responsibleAreas()->attach($vr->id);
 
         $proyecto = app(ProjectService::class)->solicitarDesdeLaWeb([
             'nombre'  => 'Quien pide',
@@ -174,7 +199,7 @@ class RepartoDeProyectosTest extends TestCase
             'area_id' => $vr->id,
         ]);
 
-        $this->assertSame($jhonatan->id, $proyecto->lead_id);
+        $this->assertSame($juanPablo->id, $proyecto->lead_id);
         $this->assertSame($vr->id, $proyecto->area_id);
     }
 

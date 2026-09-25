@@ -47,7 +47,13 @@ class SolicitudDeProyectoController extends Controller
             'categorias' => self::categoriasParaElegir(),
             // Con qué tiene que ver, para que el proyecto le llegue al equipo
             // del área. Opcional: quien pide no siempre lo sabe.
-            'areas' => \App\Models\Area::orderBy('name')->get(['slug', 'name']),
+            //
+            // Sin «General», que en este desplegable no significa nada: dice
+            // lo mismo que «no estoy seguro» y, al ser un área como las demás,
+            // desviaría el proyecto a quien responda por ella en vez de
+            // dejarlo en el turno, que es donde debe caer lo que no se sabe.
+            'areas' => \App\Models\Area::where('slug', '<>', 'general')
+                ->orderBy('name')->get(['slug', 'name']),
         ]);
     }
 
@@ -99,7 +105,9 @@ class SolicitudDeProyectoController extends Controller
             // proyecto no siempre sabe con qué máquina se hace —para eso pide
             // el proyecto—, y exigirlo sería pedirle que acierte antes de
             // preguntar. Cuando lo sabe, decide a qué equipo le llega.
-            'area'         => ['nullable', Rule::exists('areas', 'slug')],
+            'area'         => ['nullable', Rule::exists('areas', 'slug')->where(
+                fn ($q) => $q->where('slug', '<>', 'general')
+            )],
 
             'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
             'soportes.*'   => [

@@ -97,7 +97,7 @@ class UserForm
                             ->relationship('responsibleAreas', 'name')
                             ->multiple()
                             ->preload()
-                            ->helperText('Puede certificar en ellas, y los proyectos que llegan de esas áreas se le reparten a quien responde por ellas.'),
+                            ->helperText('Puede certificar en ellas, y los proyectos que llegan de esas áreas se reparten entre quienes responden por ellas. Es independiente del turno general: quien lleva un área recibe los de su área sin entrar por eso en el reparto de todo lo demás.'),
 
                         /*
                          * El turno de los proyectos (§11). Va en la persona y
@@ -106,7 +106,7 @@ class UserForm
                          */
                         Toggle::make('recibe_proyectos')
                             ->label('Recibe proyectos')
-                            ->helperText('Entra en el turno: los proyectos que llegan por el sitio se reparten entre quienes lo tengan puesto, y le toca a quien menos proyectos abiertos tenga. Se puede cambiar el responsable a mano en cualquier momento.'),
+                            ->helperText('Entra en el turno general: lo que llega sin área, o de un área sin responsables, se reparte entre quienes lo tengan puesto, y le toca a quien menos proyectos abiertos tenga. Lo de un área con responsables va a ellos y no pasa por aquí. Se puede cambiar el responsable a mano en cualquier momento.'),
                     ]),
             ]);
     }

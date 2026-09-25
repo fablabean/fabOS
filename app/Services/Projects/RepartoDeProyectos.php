@@ -25,7 +25,9 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * Y si el proyecto trae área con responsables, se reparte entre ellos: el de
  * VR va a quien lleva VR. El turno general es para lo que no tiene área o para
- * las áreas sin nadie asignado.
+ * las áreas sin nadie asignado. Son dos listas independientes —responder por
+ * un área es un encargo, no un turno—: quien lleva VR recibe los de VR sin
+ * entrar por eso en el reparto de todo lo demás.
  *
  * Propone, no impone: lo que decide se puede cambiar en la ficha, y cambiarlo
  * no le hace nada al turno —el siguiente se calcula con lo que haya entonces—.
@@ -42,44 +44,49 @@ class RepartoDeProyectos
      */
     public function aQuienLeToca(?int $areaId = null): ?User
     {
-        $turno = $this->enElTurno();
+        $candidatos = $this->losDelArea($areaId);
 
-        if ($turno->isEmpty()) {
-            return null;
+        if ($candidatos->isEmpty()) {
+            $candidatos = $this->elTurnoGeneral();
         }
 
-        return $this->elMenosCargado($this->delArea($turno, $areaId) ?: $turno);
+        return $candidatos->isEmpty() ? null : $this->elMenosCargado($candidatos);
     }
 
-    /** Quién está en el turno: activo y con el interruptor puesto. */
-    private function enElTurno(): Collection
+    /**
+     * Quienes responden por el área, estén o no en el turno general.
+     *
+     * Las dos cosas son independientes a propósito, y no lo eran al principio.
+     * El turno general lo llevan unos y VR lo lleva otro equipo: si para
+     * recibir los de VR hubiera que estar además en el turno general, ese
+     * equipo acabaría recibiendo también todo lo corriente, que es justo lo
+     * que no se quiere. Responder por un área es un encargo, no un turno.
+     *
+     * Vacío cuando el proyecto no trae área o cuando el área no tiene a nadie,
+     * y entonces manda el turno general: un área huérfana no puede dejar el
+     * proyecto sin repartir.
+     *
+     * @return Collection<int,User>
+     */
+    private function losDelArea(?int $areaId): Collection
+    {
+        if ($areaId === null) {
+            return new Collection();
+        }
+
+        return User::query()
+            ->where('status', 'activo')
+            ->whereHas('responsibleAreas', fn ($q) => $q->whereKey($areaId))
+            ->get();
+    }
+
+    /** El turno de lo que no tiene área: activo y con el interruptor puesto. */
+    private function elTurnoGeneral(): Collection
     {
         return User::query()
             ->where('recibe_proyectos', true)
             ->where('status', 'activo')
-            ->with('responsibleAreas:id')
             ->get();
-    }
-
-    /**
-     * Los del turno que responden por esta área, si hay alguno.
-     *
-     * Devuelve vacío cuando el proyecto no trae área o cuando el área no tiene
-     * a nadie en el turno, y entonces manda el turno general. Un área sin
-     * responsables no debe dejar el proyecto sin repartir.
-     *
-     * @return list<User>
-     */
-    private function delArea(Collection $turno, ?int $areaId): array
-    {
-        if ($areaId === null) {
-            return [];
-        }
-
-        return $turno
-            ->filter(fn (User $u) => $u->responsibleAreas->contains('id', $areaId))
-            ->values()
-            ->all();
     }
 
     /**
