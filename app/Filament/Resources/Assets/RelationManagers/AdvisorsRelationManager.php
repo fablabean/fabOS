@@ -27,6 +27,19 @@ class AdvisorsRelationManager extends RelationManager
 {
     protected static string $relationship = 'advisors';
 
+    /**
+     * Cómo se llama esto visto desde la persona.
+     *
+     * Hay que decírselo. Para no ofrecer a quien ya está declarado, el listado
+     * pregunta por la relación contraria, y el nombre lo adivina del modelo
+     * dueño: de `Asset` saca `assets()`, que en `User` no existe —la nuestra se
+     * llama `assetAdvisories()`, porque una persona no «tiene equipos», asesora
+     * sobre ellos—. Sin esto, buscar un nombre en «Declarar asesor» revienta
+     * con «Call to undefined method User::assets()» y en pantalla sólo se ve
+     * «no se encontraron coincidencias»: parece que la persona no existe.
+     */
+    protected static ?string $inverseRelationship = 'assetAdvisories';
+
     protected static ?string $title = 'Quién asesora';
 
     public function form(Schema $schema): Schema
