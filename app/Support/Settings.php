@@ -284,6 +284,19 @@ final class Settings
     public const MARCA_LOGO_LARGO = 'marca.logo_largo_path';
 
     /**
+     * Y el icono de la pestana, que pide lo suyo (§3).
+     *
+     * La compacta servia de apano, pero un favicon no es un logo pequeno: se
+     * ve a dieciseis pixeles, donde un trazo fino desaparece y dos colores
+     * parecidos se funden en uno. Lo que ahi funciona suele ser otro dibujo
+     * —una letra, una figura— y no la marca encogida.
+     *
+     * Sin nada aqui vale la compacta, y sin compacta la larga: es mejor un
+     * icono apretado que ninguno.
+     */
+    public const MARCA_FAVICON = 'marca.favicon_path';
+
+    /**
      * El alto de la marca en la barra, en pixeles.
      *
      * El ancho sale solo, de la proporcion de la imagen. Al reves no funciona:
@@ -323,6 +336,12 @@ final class Settings
     public static function logoLargo(): ?string
     {
         return self::rutaSubida(self::MARCA_LOGO_LARGO);
+    }
+
+    /** La ruta del icono de la pestana. Nula si no hay. */
+    public static function favicon(): ?string
+    {
+        return self::rutaSubida(self::MARCA_FAVICON);
     }
 
     private static function rutaSubida(string $clave): ?string
@@ -432,15 +451,17 @@ final class Settings
      * tiene por qué cumplir—. Esconder aquí un respaldo único haría que el
      * caso por defecto empeorara sin que se viera dónde.
      *
-     * Manda la compacta, al reves que en el PDF: una pestana es un cuadrado de
-     * dieciseis pixeles y una marca horizontal ahi no se lee, se ve como una
-     * raya. Sin compacta vale la larga, que es mejor que nada.
+     * Manda el archivo que se subio para esto, si lo hay: a dieciseis pixeles
+     * un trazo fino desaparece, y lo que funciona ahi suele ser otro dibujo y
+     * no la marca encogida. Sin el vale la compacta, y sin compacta la larga
+     * —al reves que en el PDF, donde manda la larga—, porque un icono
+     * apretado es mejor que ninguno.
      *
      * @return array{url:string,tipo:string,svg:bool}|null
      */
     public static function logoParaLaWeb(): ?array
     {
-        $ruta = self::logo() ?? self::logoLargo();
+        $ruta = self::favicon() ?? self::logo() ?? self::logoLargo();
 
         return $ruta
             ? self::conSuTipo(\Illuminate\Support\Facades\Storage::disk('public')->url($ruta), $ruta)

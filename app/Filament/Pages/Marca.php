@@ -62,6 +62,7 @@ class Marca extends Page
         $this->form->fill([
             'logo'       => Settings::logo(),
             'logo_largo' => Settings::logoLargo(),
+            'favicon'    => Settings::favicon(),
             'alto'       => Settings::altoDeLaMarca(),
             'con_texto'  => Settings::marcaConTexto(),
             'barra_color' => Settings::colorDeLaBarra()['fondo'] ?? null,
@@ -95,6 +96,17 @@ class Marca extends Page
                         Toggle::make('con_texto')
                             ->label('Escribir el nombre al lado del logo')
                             ->helperText('Apágalo si tu versión larga ya lleva el nombre dentro: si no, queda escrito dos veces en la misma barra.'),
+                    ]),
+
+                Section::make('El icono de la pestaña')
+                    ->description('Un favicon no es un logo pequeño. Se ve a dieciséis píxeles, donde un trazo fino desaparece y dos colores parecidos se funden en uno: lo que funciona ahí suele ser otro dibujo —una letra, una figura— y no la marca encogida.')
+                    ->schema([
+                        self::casilla('favicon', 'Icono')
+                            // Sin ->image(): un .ico es el formato clásico para
+                            // esto y no pasa por el validador de imágenes.
+                            ->image(false)
+                            ->acceptedFileTypes(['image/png', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon'])
+                            ->helperText('PNG cuadrado de 512 px, SVG o ICO. Sin nada aquí se usa la versión compacta, y sin compacta la larga: es mejor un icono apretado que ninguno.'),
                     ]),
 
                 Section::make('La barra del menú')
@@ -132,8 +144,27 @@ class Marca extends Page
     {
         $estado = $this->form->getState();
 
-        $this->guardarArchivo(Settings::MARCA_LOGO, Settings::logo(), $estado['logo'] ?? null);
-        $this->guardarArchivo(Settings::MARCA_LOGO_LARGO, Settings::logoLargo(), $estado['logo_largo'] ?? null);
+        $antes = array_filter([Settings::logoLargo(), Settings::logo(), Settings::favicon()]);
+
+        $ahora = [
+            Settings::MARCA_LOGO_LARGO => trim((string) ($estado['logo_largo'] ?? '')),
+            Settings::MARCA_LOGO       => trim((string) ($estado['logo'] ?? '')),
+            Settings::MARCA_FAVICON    => trim((string) ($estado['favicon'] ?? '')),
+        ];
+
+        foreach ($ahora as $clave => $ruta) {
+            Setting::put($clave, $ruta, 'comunicaciones');
+        }
+
+        // Los que ya no usa ninguna casilla se van del disco: un disco lleno
+        // de logos que nadie usa se vuelve imposible de limpiar sin adivinar
+        // cuál es cuál. Comparado contra las tres a la vez, y no de una en
+        // una, porque el mismo archivo en dos casillas es legítimo —una marca
+        // que sirve para las dos cosas— y borrarlo al guardar la otra dejaría
+        // las dos rotas.
+        foreach (array_diff($antes, array_filter($ahora)) as $huerfano) {
+            Storage::disk('public')->delete($huerfano);
+        }
 
         Setting::put(Settings::MARCA_ALTO, (int) ($estado['alto'] ?? Settings::ALTO_POR_DEFECTO), 'comunicaciones');
         Setting::put(Settings::MARCA_CON_TEXTO, (bool) ($estado['con_texto'] ?? true), 'comunicaciones');
@@ -142,29 +173,6 @@ class Marca extends Page
         Notification::make()->success()->title('Guardado')
             ->body($this->queSeUsaAhora())
             ->send();
-    }
-
-    /**
-     * Guarda una ruta y borra la que reemplaza.
-     *
-     * El archivo viejo se va: un disco lleno de logos que ya nadie usa se
-     * vuelve imposible de limpiar sin adivinar cuál es cuál. Pero sólo si de
-     * verdad lo reemplaza y no lo comparte: subir el mismo archivo en las dos
-     * casillas es legítimo —una marca que sirve para las dos cosas— y borrarlo
-     * al guardar la otra dejaría las dos rotas.
-     */
-    private function guardarArchivo(string $clave, ?string $anterior, mixed $nuevoValor): void
-    {
-        $nuevo = trim((string) ($nuevoValor ?? ''));
-        $enUso = array_filter([
-            $clave === Settings::MARCA_LOGO ? Settings::logoLargo() : Settings::logo(),
-        ]);
-
-        if ($anterior && $anterior !== $nuevo && ! in_array($anterior, $enUso, true)) {
-            Storage::disk('public')->delete($anterior);
-        }
-
-        Setting::put($clave, $nuevo, 'comunicaciones');
     }
 
     private function queSeUsaAhora(): string

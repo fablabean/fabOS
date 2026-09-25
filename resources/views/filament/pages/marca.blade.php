@@ -23,8 +23,8 @@
             <li><strong>Larga</strong> · la cabecera de la propuesta en PDF, el acuerdo de
                 servicio y el de alianza: una cabecera es ancha y baja, que es su forma.</li>
             <li><strong>Compacta</strong> · la barra en el móvil, por debajo de 640 píxeles.</li>
-            <li><strong>Compacta</strong> · el icono de la pestaña del navegador, en el sitio
-                y en el panel.</li>
+            <li><strong>Icono</strong> · la pestaña del navegador, en el sitio y en el panel.
+                Sin icono propio se usa la compacta, y sin compacta la larga.</li>
         </ul>
 
         <p class="text-sm mt-3">

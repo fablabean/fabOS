@@ -300,6 +300,76 @@ class MarcaDelLaboratorioTest extends TestCase
         $this->assertFalse(Settings::marcaConTexto());
     }
 
+    // ----------------------------------------------------- el icono de la pestaña
+
+    /**
+     * El icono tiene su propio archivo, y manda sobre los otros dos.
+     *
+     * Un favicon no es un logo pequeño: se ve a dieciséis píxeles, donde un
+     * trazo fino desaparece y dos colores parecidos se funden en uno. Lo que
+     * funciona ahí suele ser otro dibujo, no la marca encogida.
+     */
+    public function test_el_icono_propio_manda_sobre_las_dos_versiones(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/compacta.png', 'compacta');
+        Storage::disk('public')->put('marca/icono.png', 'icono');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_FAVICON, 'marca/icono.png', 'comunicaciones');
+
+        $this->assertStringContainsString('marca/icono.png', Settings::logoParaLaWeb()['url']);
+
+        // Y no se cuela en la barra ni en el PDF, que no son su sitio.
+        $this->assertStringContainsString(base64_encode('larga'), (string) Settings::logoParaPdf());
+        $this->get('/')->assertOk()->assertDontSee('class="larga"><img src="' . Storage::disk('public')->url('marca/icono.png'), false);
+    }
+
+    /** Sin icono propio, la compacta; sin compacta, la larga. */
+    public function test_el_icono_cae_a_la_compacta_y_luego_a_la_larga(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/compacta.png', 'compacta');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.png', 'comunicaciones');
+
+        $this->assertStringContainsString('marca/compacta.png', Settings::logoParaLaWeb()['url']);
+
+        Setting::put(Settings::MARCA_LOGO, '', 'comunicaciones');
+
+        $this->assertStringContainsString('marca/larga.png', Settings::logoParaLaWeb()['url']);
+    }
+
+    /**
+     * Un archivo que deja de usarse se va; uno que sigue en otra casilla, no.
+     *
+     * El disco se limpia comparando contra las tres casillas a la vez y no de
+     * una en una: el mismo archivo en dos sitios es legítimo, y borrarlo al
+     * guardar la otra dejaría las dos rotas.
+     */
+    public function test_el_disco_se_limpia_sin_llevarse_lo_compartido(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/compartido.svg', '<svg/>');
+        Storage::disk('public')->put('marca/sobra.svg', '<svg/>');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compartido.svg', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/compartido.svg', 'comunicaciones');
+        Setting::put(Settings::MARCA_FAVICON, 'marca/sobra.svg', 'comunicaciones');
+
+        $this->admin();
+
+        Livewire::test(Marca::class)
+            ->set('datos.favicon', null)
+            ->call('save');
+
+        // El compartido sigue en dos casillas: se queda.
+        Storage::disk('public')->assertExists('marca/compartido.svg');
+        // El que se quitó no lo usa nadie: se va.
+        Storage::disk('public')->assertMissing('marca/sobra.svg');
+    }
+
     // ------------------------------------------------------ el color de la barra
 
     /**
