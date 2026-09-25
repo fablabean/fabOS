@@ -824,11 +824,27 @@ class Project extends Model
         };
     }
 
+    /** Estados que sacan a un proyecto de la mesa de quien lo lleva. */
+    public const ESTADOS_CERRADOS = ['cerrado', 'perdido', 'descartado'];
+
     public function estaCerrado(): bool
     {
         // Cerrado por etapa o por estado: cambiar el estado a «cerrado» en la
         // ficha cierra tanto como pasar la etapa a «cierre».
-        return $this->stage === 'cierre' || in_array($this->status, ['cerrado', 'perdido', 'descartado'], true);
+        return $this->stage === 'cierre' || in_array($this->status, self::ESTADOS_CERRADOS, true);
+    }
+
+    /**
+     * Los que siguen encima de la mesa, que es lo que mide la carga (§11).
+     *
+     * Lo mismo que `estaCerrado()` pero en consulta, para poder contar sin
+     * traerse los proyectos. Un proyecto en pausa cuenta: está parado, no
+     * muerto, y vuelve a la mesa de la misma persona.
+     */
+    public function scopeVivos(Builder $query): Builder
+    {
+        return $query->where('stage', '!=', 'cierre')
+            ->whereNotIn('status', self::ESTADOS_CERRADOS);
     }
 
     /** Quién pide, tenga cuenta o no. */

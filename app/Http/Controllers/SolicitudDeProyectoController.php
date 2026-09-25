@@ -45,6 +45,9 @@ class SolicitudDeProyectoController extends Controller
             // cuenta nace con esa categoria. «Invitado» no es una opcion: es
             // lo que queda cuando nadie eligio.
             'categorias' => self::categoriasParaElegir(),
+            // Con qué tiene que ver, para que el proyecto le llegue al equipo
+            // del área. Opcional: quien pide no siempre lo sabe.
+            'areas' => \App\Models\Area::orderBy('name')->get(['slug', 'name']),
         ]);
     }
 
@@ -92,6 +95,12 @@ class SolicitudDeProyectoController extends Controller
             'cliente'      => ['nullable', Rule::in(array_keys(Project::CLIENTES))],
             'para_cuando'  => ['nullable', 'date', 'after:today'],
 
+            // Con qué tiene que ver. Opcional a propósito: quien pide un
+            // proyecto no siempre sabe con qué máquina se hace —para eso pide
+            // el proyecto—, y exigirlo sería pedirle que acierte antes de
+            // preguntar. Cuando lo sabe, decide a qué equipo le llega.
+            'area'         => ['nullable', Rule::exists('areas', 'slug')],
+
             'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
             'soportes.*'   => [
                 'file',
@@ -129,6 +138,12 @@ class SolicitudDeProyectoController extends Controller
         }
 
         $datos['cliente'] ??= 'externo';
+
+        // El área llega por slug —es lo que se ve en el formulario— y el
+        // proyecto la guarda por id.
+        $datos['area_id'] = filled($datos['area'] ?? null)
+            ? \App\Models\Area::where('slug', $datos['area'])->value('id')
+            : null;
 
         // Un encargo de un área de la propia institución no se paga: se mueve
         // por la venta interna, un circuito de cuatro manos -formulario, líder

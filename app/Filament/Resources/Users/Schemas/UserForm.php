@@ -82,6 +82,31 @@ class UserForm
                                 fn ($record) => \App\Support\Roles::etiqueta($record->name)
                             )
                             ->helperText('Sin rol, la persona usa el sistema pero no entra al backoffice. Qué ve cada rol se decide en Configuración → Roles y accesos.'),
+
+                        /*
+                         * De qué áreas responde. Se veía en la ficha pero no se
+                         * podía poner desde ninguna parte: las tres filas que
+                         * había entraron sembradas, y quien quería añadir una
+                         * no tenía dónde.
+                         *
+                         * Decide dos cosas: en qué áreas puede certificar y a
+                         * quién le llegan los proyectos de esa área.
+                         */
+                        Select::make('responsibleAreas')
+                            ->label('Responsable de las áreas')
+                            ->relationship('responsibleAreas', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->helperText('Puede certificar en ellas, y los proyectos que llegan de esas áreas se le reparten a quien responde por ellas.'),
+
+                        /*
+                         * El turno de los proyectos (§11). Va en la persona y
+                         * no en el rol: hay administradores que no llevan
+                         * proyectos y practicantes que sí.
+                         */
+                        Toggle::make('recibe_proyectos')
+                            ->label('Recibe proyectos')
+                            ->helperText('Entra en el turno: los proyectos que llegan por el sitio se reparten entre quienes lo tengan puesto, y le toca a quien menos proyectos abiertos tenga. Se puede cambiar el responsable a mano en cualquier momento.'),
                     ]),
             ]);
     }

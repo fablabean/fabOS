@@ -89,6 +89,26 @@
             </span>
         </label>
 
+        {{-- Con qué tiene que ver (§11). Opcional a propósito: quien pide un
+             proyecto no siempre sabe con qué máquina se hace —para eso lo
+             pide—, y exigirlo sería pedirle que acierte antes de preguntar.
+             Cuando lo sabe, decide a qué equipo le llega. --}}
+        <label>
+            ¿Con qué tiene que ver?
+            <select name="area">
+                <option value="">No estoy seguro</option>
+                @foreach ($areas as $area)
+                    <option value="{{ $area->slug }}" @selected(old('area') === $area->slug)>
+                        {{ $area->name }}
+                    </option>
+                @endforeach
+            </select>
+            <span class="foot">
+                Opcional. Si lo sabes, le llega antes a quien lleva esa área; si no, lo
+                miramos nosotros.
+            </span>
+        </label>
+
         @if ($tramite)
             {{-- A quien ya entró no se le pregunta: su categoría lo dice, y
                  preguntárselo sería dejar que se equivoque en una respuesta que

@@ -19,7 +19,7 @@ use Spatie\Permission\Traits\HasRoles;
     'name', 'email', 'password', 'user_category_id', 'document_number',
     'phone', 'status', 'external_id', 'identity_verified_at',
     'identity_verified_via', 'category_confirmed', 'locale', 'email_verified_at',
-    'carnet_subject', 'carnet_linked_at',
+    'carnet_subject', 'carnet_linked_at', 'recibe_proyectos',
 ])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements FilamentUser, \Filament\Models\Contracts\HasAvatar
@@ -215,6 +215,7 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
             // tranquilizar a quien pego su calendario.
             'external_calendar_synced_at' => 'datetime',
             'category_confirmed'   => 'boolean',
+            'recibe_proyectos'     => 'boolean',
             'password'             => 'hashed',
         ];
     }

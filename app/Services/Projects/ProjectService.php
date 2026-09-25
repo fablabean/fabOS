@@ -29,7 +29,10 @@ use Illuminate\Support\Facades\URL;
  */
 class ProjectService
 {
-    public function __construct(private \App\Services\Notifications\NotificationService $avisos) {}
+    public function __construct(
+        private \App\Services\Notifications\NotificationService $avisos,
+        private RepartoDeProyectos $reparto,
+    ) {}
 
     /**
      * La evidencia propia de cada etapa.
@@ -268,7 +271,11 @@ class ProjectService
      * Y el proyecto queda en **idea**: es una solicitud, no un compromiso. Lo
      * que sigue —mirar si cabe, cotizarlo, mandar propuesta— lo decide alguien.
      *
-     * @param  array{nombre:string,correo:string,telefono?:?string,organizacion?:?string,titulo:string,resumen:string,entregables?:?string,para_cuando?:?string}  $datos
+     * El responsable, en cambio, sí se decide aquí: el turno lo reparte por
+     * carga viva y, si la persona dijo con qué tiene que ver, entre quienes
+     * responden por esa área. Cambiarlo en la ficha sigue siendo de una línea.
+     *
+     * @param  array{nombre:string,correo:string,telefono?:?string,organizacion?:?string,titulo:string,resumen:string,entregables?:?string,para_cuando?:?string,area_id?:?int}  $datos
      */
     public function solicitarDesdeLaWeb(array $datos): Project
     {
@@ -295,11 +302,18 @@ class ProjectService
                 ]);
             }
 
+            // A quién le toca, por carga viva y por área (§11). Antes nacía sin
+            // nadie y se asignaba a mano después: de ciento tres proyectos,
+            // cincuenta y dos acabaron en la misma persona.
+            $area = $datos['area_id'] ?? null;
+
             $proyecto = Project::create([
                 'name'            => trim($datos['titulo']),
                 'stage'           => 'idea',
                 'status'          => 'activo',
                 'source'          => 'formulario',
+                'area_id'         => $area,
+                'lead_id'         => $this->reparto->aQuienLeToca($area)?->id,
                 'client_kind'     => $datos['cliente'] ?? 'externo',
                 'summary'         => $datos['resumen'],
                 'organization'    => $datos['organizacion'] ?? null,
