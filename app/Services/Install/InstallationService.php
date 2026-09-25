@@ -47,7 +47,9 @@ class InstallationService
             [
                 'paso' => '1', 'titulo' => 'Identidad del laboratorio',
                 'detalle' => 'Nombre, institución y ciudad. Es lo que aparece en la portada y en todo lo que sale impreso.',
-                'listo' => ! in_array(config('fabos.lab.name'), ['Ean Fablab', 'Fablab Ean'], true) || app()->environment('local'),
+                // Las grafías que ha tenido el nombre de fábrica: mientras sea
+                // una de ellas, nadie ha puesto la suya todavía.
+                'listo' => ! in_array(config('fabos.lab.name'), ['Ean Fablab', 'Fablab Ean', 'FABLAB EAN'], true) || app()->environment('local'),
                 'cuantos' => 0, 'url' => null, 'obligatorio' => true,
             ],
             [

@@ -108,7 +108,7 @@
         {{-- El nombre al lado es opcional: una marca larga ya lo lleva dentro,
              y repetirlo la deja escrita dos veces en la misma barra. --}}
         @if (\App\Support\Settings::marcaConTexto())
-            <span class="palabra">{{ config('fabos.lab.name') }}</span>
+            <span class="palabra"><x-nombre-lab/></span>
         @endif
     </a>
     <nav>
@@ -120,7 +120,7 @@
 
 <footer>
     <div class="in">
-        <strong style="color:var(--ink)">{{ config('fabos.lab.name') }}</strong>
+        <strong style="color:var(--ink)"><x-nombre-lab/></strong>
         <span>{{ config('fabos.lab.institution') }} · {{ config('fabos.lab.city') }}</span>
         @if (config('fabos.lab.network'))
             <span>Parte de la red {{ config('fabos.lab.network') }}</span>

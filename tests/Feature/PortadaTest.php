@@ -230,9 +230,17 @@ class PortadaTest extends TestCase
         ] as $vista) {
             $fuente = file_get_contents(base_path($vista));
 
-            // La marca es el nombre del laboratorio, en UN solo elemento.
+            /*
+             * La marca es UN solo hijo del contenedor flex.
+             *
+             * Dentro ya no va el nombre a pelo sino el componente, que lo
+             * parte en fino y negra como lo dibuja el logo. Eso no revive el
+             * fallo —los dos tramos van envueltos y con `nowrap`, así que el
+             * gap del flex no llega a verlos—, pero sólo mientras sigan
+             * envueltos: lo que esta prueba cuida es la envoltura.
+             */
             $this->assertStringContainsString(
-                '<span class="palabra">{{ config(\'fabos.lab.name\') }}</span>',
+                '<span class="palabra"><x-nombre-lab/></span>',
                 $fuente,
                 "{$vista} deja la marca suelta dentro de un contenedor flex, y el gap la separa.",
             );

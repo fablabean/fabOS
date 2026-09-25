@@ -10,8 +10,11 @@ return [
     | especifico de la EAN va incrustado en el codigo: vive aqui.
     */
     'lab' => [
-        'name' => env('LAB_NAME', 'Fablab Ean'),
-        'short_name' => env('LAB_SHORT_NAME', 'Fablab Ean'),
+        // En versales porque así está dibujado el logo: el nombre escrito y la
+        // marca contando cosas distintas en la misma pantalla es lo que hace
+        // que una marca se vea descuidada sin que nadie sepa señalar por qué.
+        'name' => env('LAB_NAME', 'FABLAB EAN'),
+        'short_name' => env('LAB_SHORT_NAME', 'FABLAB EAN'),
 
         // A quien pertenece y donde queda. Aparecen en la portada, en el pie y
         // en los documentos que salen del sistema. Otro laboratorio de la red

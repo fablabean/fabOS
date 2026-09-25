@@ -41,9 +41,12 @@ class MarcaPublicaTest extends TestCase
         $this->conMarca();
         $this->assertGuest();
 
+        // El nombre va partido en dos tramos —fino y negra, como el logo—, así
+        // que no se compara contra la cadena entera.
         $this->get(route('marca.publica'))
             ->assertOk()
-            ->assertSee('El logo de ' . config('fabos.lab.name'));
+            ->assertSee('El logo de')
+            ->assertSee('class="nombre-lab"', false);
     }
 
     /**

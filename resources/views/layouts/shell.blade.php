@@ -89,7 +89,7 @@
     <main class="card">
         <p class="brand"><x-logo/>
             @if (\App\Support\Settings::marcaConTexto())
-                <span class="palabra">{{ config('fabos.lab.name') }}</span>
+                <span class="palabra"><x-nombre-lab/></span>
             @endif
         </p>
         <p class="powered">powered by fab<em>OS</em></p>

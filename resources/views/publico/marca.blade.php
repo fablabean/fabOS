@@ -59,7 +59,7 @@
 <main>
     <section style="padding-bottom:1.4rem">
         <p class="rotulo">Marca</p>
-        <h1>El logo de {{ config('fabos.lab.name') }}</h1>
+        <h1>El logo de <x-nombre-lab/></h1>
         <p class="lead">
             Si vas a poner nuestro logo en un afiche, una nota o tu sitio, bájalo de aquí.
             Esta página sale de la misma marca que usa el laboratorio, así que siempre está
