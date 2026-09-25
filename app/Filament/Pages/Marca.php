@@ -130,16 +130,22 @@ class Marca extends Page
                             ->hiddenLabel()
                             ->disk('public')
                             ->visibility('public')
-                            ->directory('marca/variaciones')
+                            ->directory(self::CARPETA_VARIACIONES)
                             ->multiple()
                             ->reorderable()
                             ->downloadable()
                             ->openable()
-                            // Con su nombre: en un archivador, «logo-vertical-
-                            // blanco.svg» es la mitad de la información, y una
-                            // ristra de identificadores al azar no se puede
-                            // mirar y elegir.
-                            ->preserveFilenames()
+                            // Con su nombre, pero pasado por el molinillo. En
+                            // un archivador «logo-vertical-blanco.svg» es la
+                            // mitad de la información y una ristra de
+                            // identificadores al azar no se puede mirar y
+                            // elegir; pero el nombre tal cual viene del
+                            // programa de diseño trae espacios —«Mesa de
+                            // trabajo 11 copia 2.svg»— y con ellos el
+                            // componente no consigue leer el nombre desde la
+                            // dirección: lo enseña como «undefined» y el botón
+                            // de quitar se queda sin saber a qué apunta.
+                            ->getUploadedFileNameForStorageUsing(self::nombreLimpio(...))
                             ->panelLayout('grid')
                             ->imagePreviewHeight('90')
                             ->maxSize(8192)
@@ -182,6 +188,41 @@ class Marca extends Page
             ->maxSize(4096)
             ->downloadable()
             ->openable();
+    }
+
+    /** La carpeta del archivador. */
+    public const CARPETA_VARIACIONES = 'marca/variaciones';
+
+    /**
+     * El nombre del archivo, legible y sin sorpresas.
+     *
+     * Espacios, acentos y mayúsculas fuera: lo que sale del programa de diseño
+     * —«Mesa de trabajo 11 copia 2.svg»— se lee mal en una dirección web y
+     * rompe el componente, que enseña «undefined» y deja el archivo sin poder
+     * quitar. Slug conserva las palabras, que es lo que hace útil al
+     * archivador; sólo cambia lo que estorba.
+     *
+     * Y si ya hay uno así, se numera en vez de pisarlo. Dos versiones
+     * distintas con el mismo nombre es lo normal cuando cada una viene de una
+     * carpeta, y perder la primera al subir la segunda no se ve hasta que
+     * alguien la busca.
+     */
+    public static function nombreLimpio(\Illuminate\Http\UploadedFile $archivo): string
+    {
+        $extension = strtolower($archivo->getClientOriginalExtension() ?: 'svg');
+        $base = \Illuminate\Support\Str::slug(
+            pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME)
+        ) ?: 'variacion';
+
+        $disco = Storage::disk('public');
+        $nombre = $base . '.' . $extension;
+        $vuelta = 2;
+
+        while ($disco->exists(self::CARPETA_VARIACIONES . '/' . $nombre)) {
+            $nombre = $base . '-' . $vuelta++ . '.' . $extension;
+        }
+
+        return $nombre;
     }
 
     public function save(): void

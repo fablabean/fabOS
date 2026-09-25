@@ -582,6 +582,51 @@ class MarcaDelLaboratorioTest extends TestCase
         $this->assertCount(1, Settings::variaciones());
     }
 
+    /**
+     * El nombre del archivo se limpia al subirlo.
+     *
+     * El fallo, tal cual salió: el archivador conserva el nombre original, y
+     * el que sale del programa de diseño trae espacios —«Mesa de trabajo 11
+     * copia 2.svg»—. Con ellos el componente no consigue leer el nombre desde
+     * la dirección, lo enseña como «undefined» y el botón de quitar se queda
+     * sin saber a qué apunta: dos archivos subidos y ninguna forma de
+     * borrarlos.
+     */
+    public function test_el_nombre_de_la_variacion_se_limpia(): void
+    {
+        Storage::fake('public');
+
+        $nombre = Marca::nombreLimpio(
+            UploadedFile::fake()->create('Mesa de trabajo 11 copia 2.svg', 1)
+        );
+
+        $this->assertSame('mesa-de-trabajo-11-copia-2.svg', $nombre);
+        // Conserva las palabras: es lo que hace útil al archivador.
+        $this->assertStringContainsString('trabajo', $nombre);
+    }
+
+    /** Dos con el mismo nombre se numeran en vez de pisarse. */
+    public function test_dos_variaciones_con_el_mismo_nombre_no_se_pisan(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put(Marca::CARPETA_VARIACIONES . '/logo-vertical.svg', '<svg/>');
+
+        $this->assertSame(
+            'logo-vertical-2.svg',
+            Marca::nombreLimpio(UploadedFile::fake()->create('Logo Vertical.svg', 1)),
+        );
+    }
+
+    /** Y un nombre que se queda en nada no deja el archivo sin nombre. */
+    public function test_un_nombre_imposible_no_deja_el_archivo_sin_nombre(): void
+    {
+        Storage::fake('public');
+
+        $this->assertSame('variacion.svg', Marca::nombreLimpio(
+            UploadedFile::fake()->create('···.svg', 1)
+        ));
+    }
+
     /** Y quitar una variante sí borra su archivo: para eso se quita. */
     public function test_quitar_una_variacion_borra_su_archivo(): void
     {
