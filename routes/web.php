@@ -44,6 +44,16 @@ Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
 Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');
 
 /*
+ * La marca, para pasarla por un enlace (§3).
+ *
+ * Publica y sin enlace secreto: un logo se publica en cuanto sale en la
+ * portada, y una descarga detras de una contraseña acaba en alguien mandando
+ * una captura de pantalla, que es lo que esto viene a evitar.
+ */
+Route::get('/marca', [\App\Http\Controllers\MarcaPublicaController::class, 'show'])->name('marca.publica');
+Route::get('/marca/descargar', [\App\Http\Controllers\MarcaPublicaController::class, 'zip'])->name('marca.publica.zip');
+
+/*
  * Las paginas que se escriben en el panel (§3).
  *
  * Bajo `/p/` y no en la raiz: en la raiz, el slug seria un comodin compitiendo

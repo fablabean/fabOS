@@ -125,6 +125,10 @@
         @if (config('fabos.lab.network'))
             <span>Parte de la red {{ config('fabos.lab.network') }}</span>
         @endif
+        {{-- En el pie y no en el menú: lo busca quien va a usar el logo, que
+             es un visitante cada muchos, y el menú ya lleva siete entradas
+             para lo que viene a hacer todo el mundo. --}}
+        <a href="{{ route('marca.publica') }}">La marca</a>
         <span style="margin-left:auto">powered by <strong style="color:var(--accent)">fabOS</strong></span>
     </div>
 </footer>

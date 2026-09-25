@@ -7,6 +7,29 @@
         </div>
     </form>
 
+    {{-- El enlace que se pasa por fuera. Quien diseña un afiche, el
+         periodista, la empresa que nos pone en su web: todos piden el logo por
+         mensaje, y lo que se les mandaba era la versión que tuviera a mano
+         quien contestó. --}}
+    <x-filament::section>
+        <x-slot name="heading">La página para compartir</x-slot>
+        <x-slot name="description">
+            Todo esto, en una página pública que se pasa por un enlace. Sale de lo que hay
+            aquí arriba, así que está al día sola.
+        </x-slot>
+
+        <p class="text-sm">
+            <a href="{{ route('marca.publica') }}" target="_blank" rel="noopener"
+               class="font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                {{ route('marca.publica') }}
+            </a>
+        </p>
+        <p class="text-sm mt-2">
+            Lleva cada versión con su descarga y un botón de bajarlo todo en un archivo.
+            También está en el pie del sitio, como «La marca».
+        </p>
+    </x-filament::section>
+
     <x-filament::section>
         <x-slot name="heading">Dónde sale</x-slot>
         <x-slot name="description">
