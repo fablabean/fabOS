@@ -10,23 +10,27 @@
     <x-filament::section>
         <x-slot name="heading">Dónde sale</x-slot>
         <x-slot name="description">
-            El mismo archivo en todas partes, para que la marca no se abra en versiones.
+            Cada versión donde le sienta la forma. Con una sola subida, esa vale para todo.
         </x-slot>
 
-        @php $logo = \App\Support\Settings::logo(); @endphp
+        @php
+            $logo = \App\Support\Settings::logo();
+            $largo = \App\Support\Settings::logoLargo();
+        @endphp
 
         <ul class="text-sm space-y-1">
-            <li>· La barra de arriba, en todas las páginas del sitio y del panel.</li>
-            <li>· El icono de la pestaña del navegador, en el sitio y en el panel.</li>
-            <li>· La propuesta en PDF que se le manda a quien encarga un trabajo.</li>
-            <li>· El acuerdo de servicio y el acuerdo de alianza.</li>
+            <li><strong>Larga</strong> · la barra del sitio y del panel en pantalla de trabajo.</li>
+            <li><strong>Larga</strong> · la cabecera de la propuesta en PDF, el acuerdo de
+                servicio y el de alianza: una cabecera es ancha y baja, que es su forma.</li>
+            <li><strong>Compacta</strong> · la barra en el móvil, por debajo de 640 píxeles.</li>
+            <li><strong>Compacta</strong> · el icono de la pestaña del navegador, en el sitio
+                y en el panel.</li>
         </ul>
 
         <p class="text-sm mt-3">
-            @if ($logo)
-                Ahora mismo se usa el logo subido.
-                <strong>Los PDF ya generados no cambian</strong>: llevan el que había el día
-                que se hicieron, que es lo correcto para un documento que alguien firmó.
+            @if ($largo || $logo)
+                <strong>Los PDF ya generados no cambian</strong>: llevan el logo que había el
+                día que se hicieron, que es lo correcto para un documento que alguien firmó.
             @else
                 Ahora mismo se usa el que viene con el sistema
                 (<code>{{ config('fabos.lab.logo') }}</code>).

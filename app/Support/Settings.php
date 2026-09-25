@@ -269,12 +269,68 @@ final class Settings
      */
     public const MARCA_LOGO = 'marca.logo_path';
 
-    /** La ruta del logo subido, en el disco publico. Nula si no hay. */
+    /**
+     * Y la version larga, para donde hay sitio (§3).
+     *
+     * Una marca suele venir en dos: la horizontal, con el nombre dentro, y la
+     * compacta, que es el simbolo solo. Con una sola casilla habia que elegir,
+     * y la elegida quedaba mal en la mitad de los sitios: la larga aplastada
+     * en el cuadrado del movil, o la compacta perdida en una cabecera ancha.
+     *
+     * La larga manda donde cabe —la barra en pantalla de trabajo, la cabecera
+     * de un PDF— y la compacta en el movil y en la pestana del navegador, que
+     * es un cuadrado de dieciseis pixeles.
+     */
+    public const MARCA_LOGO_LARGO = 'marca.logo_largo_path';
+
+    /**
+     * El alto de la marca en la barra, en pixeles.
+     *
+     * El ancho sale solo, de la proporcion de la imagen. Al reves no funciona:
+     * una marca horizontal y una cuadrada no comparten ancho, y fijarlo
+     * aplastaba una de las dos. Lo que se quiere igualar entre todas es el
+     * alto, que es lo que hace que la barra se vea pareja.
+     */
+    public const MARCA_ALTO = 'marca.alto';
+
+    /** Si el nombre del laboratorio acompana al logo, o el logo va solo. */
+    public const MARCA_CON_TEXTO = 'marca.con_texto';
+
+    /** Alto por defecto: lo que venia fijo en las plantillas (2,4 rem). */
+    public const ALTO_POR_DEFECTO = 38;
+
+    /** La ruta del logo compacto subido, en el disco publico. Nula si no hay. */
     public static function logo(): ?string
     {
-        $ruta = trim((string) Setting::get(self::MARCA_LOGO, ''));
+        return self::rutaSubida(self::MARCA_LOGO);
+    }
+
+    /** La ruta de la version larga. Nula si no hay. */
+    public static function logoLargo(): ?string
+    {
+        return self::rutaSubida(self::MARCA_LOGO_LARGO);
+    }
+
+    private static function rutaSubida(string $clave): ?string
+    {
+        $ruta = trim((string) Setting::get($clave, ''));
 
         return $ruta !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($ruta) ? $ruta : null;
+    }
+
+    /** El alto de la marca en la barra, en pixeles. */
+    public static function altoDeLaMarca(): int
+    {
+        $alto = (int) Setting::get(self::MARCA_ALTO, self::ALTO_POR_DEFECTO);
+
+        // Entre algo que se vea y algo que no rompa la barra.
+        return max(16, min(120, $alto ?: self::ALTO_POR_DEFECTO));
+    }
+
+    /** Si el nombre acompana al logo. Por defecto si: es lo que habia. */
+    public static function marcaConTexto(): bool
+    {
+        return (bool) Setting::get(self::MARCA_CON_TEXTO, true);
     }
 
     /**
@@ -284,13 +340,16 @@ final class Settings
      * sesion y sin red, y un logo por su direccion saldria roto justo en el
      * documento que va a leer quien decide.
      *
-     * Vale el subido; si no hay, el del archivo de configuracion.
+     * Manda la version larga, y es donde mas se nota: la cabecera de un
+     * documento es ancha y baja, que es exactamente la forma de una marca
+     * horizontal. Sin larga vale la compacta, y sin ninguna la del archivo de
+     * configuracion.
      */
     public static function logoParaPdf(): ?string
     {
         $disco = \Illuminate\Support\Facades\Storage::disk('public');
 
-        if ($ruta = self::logo()) {
+        if ($ruta = self::logoLargo() ?? self::logo()) {
             return self::comoDataUri($disco->get($ruta), $disco->mimeType($ruta) ?: null, $ruta);
         }
 
@@ -319,15 +378,34 @@ final class Settings
      * tiene por qué cumplir—. Esconder aquí un respaldo único haría que el
      * caso por defecto empeorara sin que se viera dónde.
      *
+     * Manda la compacta, al reves que en el PDF: una pestana es un cuadrado de
+     * dieciseis pixeles y una marca horizontal ahi no se lee, se ve como una
+     * raya. Sin compacta vale la larga, que es mejor que nada.
+     *
      * @return array{url:string,tipo:string,svg:bool}|null
      */
     public static function logoParaLaWeb(): ?array
     {
-        $ruta = self::logo();
+        $ruta = self::logo() ?? self::logoLargo();
 
         return $ruta
             ? self::conSuTipo(\Illuminate\Support\Facades\Storage::disk('public')->url($ruta), $ruta)
             : null;
+    }
+
+    /**
+     * Las dos versiones para la barra, con su tipo y su direccion.
+     *
+     * @return array{larga:?array{url:string,tipo:string,svg:bool},compacta:?array{url:string,tipo:string,svg:bool}}
+     */
+    public static function marcaParaLaBarra(): array
+    {
+        $disco = \Illuminate\Support\Facades\Storage::disk('public');
+
+        return [
+            'larga' => ($l = self::logoLargo()) ? self::conSuTipo($disco->url($l), $l) : null,
+            'compacta' => ($c = self::logo()) ? self::conSuTipo($disco->url($c), $c) : null,
+        ];
     }
 
     /**

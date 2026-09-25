@@ -152,7 +152,11 @@
 </head>
 <body>
     <header class="top">
-        <a class="brand" href="{{ route('home') }}"><x-logo/> <span class="palabra">{{ config('fabos.lab.name') }}</span></a>
+        <a class="brand" href="{{ route('home') }}"><x-logo/>
+            @if (\App\Support\Settings::marcaConTexto())
+                <span class="palabra">{{ config('fabos.lab.name') }}</span>
+            @endif
+        </a>
         <nav>
             @include('partials.menu')
         </nav>

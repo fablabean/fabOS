@@ -89,7 +89,11 @@
 <div class="nav">
     <a class="marca-sitio" href="{{ route('publico.home') }}">
         <x-logo/>
-        <span class="palabra">{{ config('fabos.lab.name') }}</span>
+        {{-- El nombre al lado es opcional: una marca larga ya lo lleva dentro,
+             y repetirlo la deja escrita dos veces en la misma barra. --}}
+        @if (\App\Support\Settings::marcaConTexto())
+            <span class="palabra">{{ config('fabos.lab.name') }}</span>
+        @endif
     </a>
     <nav>
         @include('partials.menu')

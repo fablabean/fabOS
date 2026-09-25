@@ -184,6 +184,122 @@ class MarcaDelLaboratorioTest extends TestCase
         $this->assertStringContainsString('marca/ean.svg', (string) $panel->getFavicon());
     }
 
+    // ------------------------------------------------------- las dos versiones
+
+    /**
+     * Cada versión donde le sienta la forma.
+     *
+     * Una marca suele venir en dos: la horizontal, con el nombre dentro, y la
+     * compacta, que es el símbolo solo. Con una sola casilla había que elegir,
+     * y la elegida quedaba mal en la mitad de los sitios: la larga aplastada
+     * en el cuadrado del móvil, o la compacta perdida en una cabecera ancha.
+     */
+    public function test_la_larga_manda_en_el_pdf_y_la_compacta_en_la_pestana(): void
+    {
+        // En PNG a propósito: un SVG se inserta en línea y su ruta no llega al
+        // HTML, así que no se podría comprobar que cada hueco lleva la suya.
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'larga');
+        Storage::disk('public')->put('marca/compacta.png', 'compacta');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+
+        // La pestaña es un cuadrado de dieciséis píxeles: la compacta.
+        $this->assertStringContainsString('marca/compacta.png', Settings::logoParaLaWeb()['url']);
+
+        // La cabecera de un documento es ancha y baja: la larga.
+        $this->assertStringContainsString(base64_encode('larga'), (string) Settings::logoParaPdf());
+
+        // Y la barra lleva las dos, para que el CSS elija según el ancho.
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('marca/larga.png', false)
+            ->assertSee('marca/compacta.png', false);
+    }
+
+    /** Con una sola subida, esa vale para todo: media marca es peor. */
+    public function test_con_una_sola_version_esa_sale_en_todas_partes(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'png');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+
+        $this->assertStringContainsString('marca/larga.png', Settings::logoParaLaWeb()['url']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('marca/larga.png', false)
+            ->assertDontSee('img/fablabean.png', false);
+    }
+
+    /**
+     * El alto se manda y el ancho sale solo.
+     *
+     * Al revés no funciona: una marca horizontal y una cuadrada no comparten
+     * ancho, y fijarlo aplastaba una de las dos.
+     */
+    public function test_el_alto_se_manda_y_el_ancho_sale_solo(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/larga.png', 'png');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/larga.png', 'comunicaciones');
+        Setting::put(Settings::MARCA_ALTO, 54, 'comunicaciones');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('--marca-alto:54px', false)
+            ->assertSee('height:var(--marca-alto)', false)
+            ->assertSee('width:auto', false);
+    }
+
+    /** Un alto absurdo no rompe la barra: se recorta a lo razonable. */
+    public function test_un_alto_absurdo_se_recorta(): void
+    {
+        Setting::put(Settings::MARCA_ALTO, 4000, 'comunicaciones');
+        $this->assertSame(120, Settings::altoDeLaMarca());
+
+        Setting::put(Settings::MARCA_ALTO, 0, 'comunicaciones');
+        $this->assertSame(Settings::ALTO_POR_DEFECTO, Settings::altoDeLaMarca());
+    }
+
+    /** El nombre al lado es opcional: una marca larga ya lo lleva dentro. */
+    public function test_el_nombre_al_lado_se_puede_apagar(): void
+    {
+        $this->get('/')->assertOk()->assertSee(config('fabos.lab.name'), false);
+
+        Setting::put(Settings::MARCA_CON_TEXTO, false, 'comunicaciones');
+
+        $this->get('/')->assertOk()->assertDontSee('class="palabra"', false);
+    }
+
+    /**
+     * El mismo archivo en las dos casillas no se borra solo.
+     *
+     * Subir uno que sirve para las dos cosas es legítimo, y borrarlo al
+     * guardar la otra casilla dejaría las dos rotas.
+     */
+    public function test_el_archivo_compartido_no_se_borra(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/unico.svg', '<svg/>');
+        Setting::put(Settings::MARCA_LOGO, 'marca/unico.svg', 'comunicaciones');
+        Setting::put(Settings::MARCA_LOGO_LARGO, 'marca/unico.svg', 'comunicaciones');
+
+        $this->admin();
+
+        // Las dos casillas se llenan solas al montar, con lo que hay guardado:
+        // pasarles una cadena a mano no es como le llega el estado a un
+        // FileUpload y la comprobación no valdría.
+        Livewire::test(Marca::class)
+            ->set('datos.alto', 40)
+            ->set('datos.con_texto', false)
+            ->call('save');
+
+        Storage::disk('public')->assertExists('marca/unico.svg');
+        $this->assertSame(40, Settings::altoDeLaMarca());
+        $this->assertFalse(Settings::marcaConTexto());
+    }
+
     /**
      * Y el PDF de la propuesta sigue saliendo con el logo dentro.
      *
