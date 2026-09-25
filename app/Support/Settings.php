@@ -302,6 +302,62 @@ final class Settings
             : null;
     }
 
+    /**
+     * El logo como dirección web, para la barra del panel y para el icono del
+     * navegador (§3).
+     *
+     * El logo subido salía en el sitio público y en los PDF, pero no en el
+     * favicon ni en el panel: esos dos tenían su propio camino —un archivo
+     * fijo en `public/`— y se quedaron con la marca vieja. El resultado es el
+     * peor de los dos mundos: la marca nueva arriba y la vieja en la pestaña,
+     * en la misma pantalla.
+     *
+     * Solo el subido, y nulo si no hay: el respaldo lo pone cada sitio, que no
+     * es el mismo. La barra del panel cae al logo del archivo de
+     * configuración, y la pestaña a los iconos de `public/img`, que están
+     * hechos a la medida que pide un favicon —cosa que un logo cualquiera no
+     * tiene por qué cumplir—. Esconder aquí un respaldo único haría que el
+     * caso por defecto empeorara sin que se viera dónde.
+     *
+     * @return array{url:string,tipo:string,svg:bool}|null
+     */
+    public static function logoParaLaWeb(): ?array
+    {
+        $ruta = self::logo();
+
+        return $ruta
+            ? self::conSuTipo(\Illuminate\Support\Facades\Storage::disk('public')->url($ruta), $ruta)
+            : null;
+    }
+
+    /**
+     * El tipo sale de la extensión y no del disco.
+     *
+     * Un SVG suele llegar del disco como «text/plain», y un `<link rel=icon>`
+     * con ese tipo el navegador lo descarta sin decir nada: la pestaña se
+     * queda con el icono de antes y parece que no se guardó.
+     *
+     * @return array{url:string,tipo:string,svg:bool}
+     */
+    private static function conSuTipo(string $url, string $ruta): array
+    {
+        $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+
+        return [
+            'url'  => $url,
+            'tipo' => match ($extension) {
+                'svg'  => 'image/svg+xml',
+                'png'  => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'gif'  => 'image/gif',
+                'webp' => 'image/webp',
+                'ico'  => 'image/x-icon',
+                default => 'image/png',
+            },
+            'svg' => $extension === 'svg',
+        ];
+    }
+
     private static function comoDataUri(string $contenido, ?string $tipo, string $ruta): ?string
     {
         // Por la extension cuando el disco no sabe decirlo: un SVG suele

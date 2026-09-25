@@ -131,6 +131,60 @@ class MarcaDelLaboratorioTest extends TestCase
     }
 
     /**
+     * Y el icono de la pestaña, que iba por su cuenta.
+     *
+     * El fallo, tal cual salió: el logo subido se veía en la barra del sitio y
+     * en los PDF, pero el favicon apuntaba siempre a los archivos de
+     * `public/img`. Quien cambiaba la marca la veía cambiada arriba y seguía
+     * viendo la vieja en la pestaña, en la misma pantalla.
+     */
+    public function test_el_icono_de_la_pestana_tambien_es_el_subido(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/ean.svg', '<svg/>');
+        Setting::put(Settings::MARCA_LOGO, 'marca/ean.svg', 'comunicaciones');
+
+        $this->get('/')
+            ->assertOk()
+            // Con su tipo: un SVG anunciado como «text/plain» el navegador lo
+            // descarta sin decir nada y la pestaña se queda como estaba.
+            ->assertSee('type="image/svg+xml"', false)
+            ->assertSee('marca/ean.svg', false)
+            // Y el de antes ya no está compitiendo por el mismo sitio.
+            ->assertDontSee('img/favicon-32.png', false);
+    }
+
+    /** Sin nada subido, los iconos de siempre: no se queda sin icono. */
+    public function test_sin_logo_subido_siguen_los_iconos_de_siempre(): void
+    {
+        Storage::fake('public');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('img/favicon-32.png', false)
+            ->assertSee('favicon.ico', false);
+    }
+
+    /** El panel es el mismo caso: tenía su propio camino al archivo fijo. */
+    public function test_el_panel_usa_el_logo_subido(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/ean.svg', '<svg/>');
+        Setting::put(Settings::MARCA_LOGO, 'marca/ean.svg', 'comunicaciones');
+
+        $marca = Settings::logoParaLaWeb();
+
+        $this->assertStringContainsString('marca/ean.svg', $marca['url']);
+        $this->assertSame('image/svg+xml', $marca['tipo']);
+        $this->assertTrue($marca['svg']);
+
+        $panel = \Filament\Facades\Filament::getPanel('admin');
+
+        $this->assertStringContainsString('marca/ean.svg', (string) $panel->getBrandLogo());
+        $this->assertStringContainsString('marca/ean.svg', (string) $panel->getFavicon());
+    }
+
+    /**
      * Y el PDF de la propuesta sigue saliendo con el logo dentro.
      *
      * Es la comprobación que importa de verdad: una imagen incrustada que el

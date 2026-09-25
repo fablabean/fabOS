@@ -10,13 +10,14 @@
     <x-filament::section>
         <x-slot name="heading">Dónde sale</x-slot>
         <x-slot name="description">
-            El mismo archivo en los tres sitios, para que la marca no se abra en versiones.
+            El mismo archivo en todas partes, para que la marca no se abra en versiones.
         </x-slot>
 
         @php $logo = \App\Support\Settings::logo(); @endphp
 
         <ul class="text-sm space-y-1">
             <li>· La barra de arriba, en todas las páginas del sitio y del panel.</li>
+            <li>· El icono de la pestaña del navegador, en el sitio y en el panel.</li>
             <li>· La propuesta en PDF que se le manda a quien encarga un trabajo.</li>
             <li>· El acuerdo de servicio y el acuerdo de alianza.</li>
         </ul>

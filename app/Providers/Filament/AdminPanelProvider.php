@@ -30,12 +30,17 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             // El panel lleva el nombre del laboratorio, y su logo si lo hay.
+            //
+            // El mismo que el sitio público: leía el archivo fijo del
+            // repositorio y se quedaba con la marca vieja mientras la barra de
+            // fuera ya enseñaba la nueva. Se sube en Comunicaciones → Marca.
             ->brandName(fn () => (string) config('fabos.lab.name'))
-            ->brandLogo(fn () => config('fabos.lab.logo') && is_file(public_path(config('fabos.lab.logo')))
-                ? asset(config('fabos.lab.logo'))
-                : null)
+            ->brandLogo(fn () => \App\Support\Settings::logoParaLaWeb()['url']
+                ?? (config('fabos.lab.logo') && is_file(public_path(config('fabos.lab.logo')))
+                    ? asset(config('fabos.lab.logo'))
+                    : null))
             ->brandLogoHeight('2.2rem')
-            ->favicon(fn () => asset('img/favicon-32.png'))
+            ->favicon(fn () => \App\Support\Settings::logoParaLaWeb()['url'] ?? asset('img/favicon-32.png'))
             ->path('admin')
             // El ingreso es el del sitio, sin contraseñas. El formulario de
             // Filament pedía una que nadie tiene; ahora /admin/login manda a
