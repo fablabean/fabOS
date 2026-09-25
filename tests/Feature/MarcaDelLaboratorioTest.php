@@ -516,6 +516,87 @@ class MarcaDelLaboratorioTest extends TestCase
         Storage::disk('public')->assertMissing('marca/sobra.svg');
     }
 
+    // ------------------------------------------------------------ variaciones
+
+    /**
+     * El archivador: se guardan y se bajan, y no salen en ninguna parte.
+     *
+     * La versión vertical, la de una tinta, la que pide el patrocinador:
+     * existen, hacen falta cada pocas semanas y vivían en el correo de quien
+     * las hizo. Aquí sólo se guardan; el día que una tenga que salir, se sube
+     * a la casilla que le toque.
+     */
+    public function test_las_variaciones_se_guardan_y_no_salen_en_el_sitio(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/variaciones/vertical.svg', '<svg/>');
+        Storage::disk('public')->put('marca/variaciones/una-tinta.svg', '<svg/>');
+        Setting::put(Settings::MARCA_VARIACIONES, [
+            'marca/variaciones/vertical.svg',
+            'marca/variaciones/una-tinta.svg',
+        ], 'comunicaciones');
+
+        $this->assertCount(2, Settings::variaciones());
+
+        // Y el sitio no las conoce: ni en la barra, ni en la pestaña.
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('vertical.svg', false)
+            ->assertDontSee('una-tinta.svg', false);
+    }
+
+    /** Una variante cuyo archivo desapareció no se enseña rota. */
+    public function test_una_variacion_que_ya_no_esta_se_ignora(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/variaciones/vertical.svg', '<svg/>');
+        Setting::put(Settings::MARCA_VARIACIONES, [
+            'marca/variaciones/vertical.svg',
+            'marca/variaciones/borrada.svg',
+        ], 'comunicaciones');
+
+        $this->assertSame(['marca/variaciones/vertical.svg'], Settings::variaciones());
+    }
+
+    /**
+     * Guardar no se lleva las variantes por delante.
+     *
+     * Es el riesgo de limpiar el disco por descarte: las variantes no salen en
+     * ninguna página, así que a la hora de decidir qué sobra parecen justo lo
+     * que sobra. Guardarlas es para lo que están.
+     */
+    public function test_guardar_no_borra_las_variaciones(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/compacta.svg', '<svg/>');
+        Storage::disk('public')->put('marca/variaciones/vertical.svg', '<svg/>');
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.svg', 'comunicaciones');
+        Setting::put(Settings::MARCA_VARIACIONES, ['marca/variaciones/vertical.svg'], 'comunicaciones');
+
+        $this->admin();
+
+        Livewire::test(Marca::class)->set('datos.alto', 42)->call('save');
+
+        Storage::disk('public')->assertExists('marca/variaciones/vertical.svg');
+        Storage::disk('public')->assertExists('marca/compacta.svg');
+        $this->assertCount(1, Settings::variaciones());
+    }
+
+    /** Y quitar una variante sí borra su archivo: para eso se quita. */
+    public function test_quitar_una_variacion_borra_su_archivo(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('marca/variaciones/sobra.svg', '<svg/>');
+        Setting::put(Settings::MARCA_VARIACIONES, ['marca/variaciones/sobra.svg'], 'comunicaciones');
+
+        $this->admin();
+
+        Livewire::test(Marca::class)->set('datos.variaciones', [])->call('save');
+
+        Storage::disk('public')->assertMissing('marca/variaciones/sobra.svg');
+        $this->assertSame([], Settings::variaciones());
+    }
+
     // ------------------------------------------------------ el color de la barra
 
     /**

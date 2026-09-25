@@ -67,6 +67,7 @@ class Marca extends Page
             'favicon'    => Settings::favicon(),
             'alto'       => Settings::altoDeLaMarca(),
             'con_texto'  => Settings::marcaConTexto(),
+            'variaciones' => Settings::variaciones(),
             'barra_color' => Settings::colorDeLaBarra()['fondo'] ?? null,
         ]);
     }
@@ -121,6 +122,30 @@ class Marca extends Page
                             ->helperText('PNG cuadrado de 512 px, SVG o ICO. Sin nada aquí se usa la versión compacta, y sin compacta la larga: es mejor un icono apretado que ninguno.'),
                     ]),
 
+                Section::make('Variaciones')
+                    ->description('El archivador: la versión vertical, la de una tinta, la que pide el patrocinador en fondo blanco. No se usan en ninguna parte del sitio —aquí sólo se guardan y se bajan—, pero dejan de vivir en el correo de quien las hizo. El día que una tenga que salir, se sube a la casilla que le toque.')
+                    ->schema([
+                        FileUpload::make('variaciones')
+                            ->label('Archivos')
+                            ->hiddenLabel()
+                            ->disk('public')
+                            ->visibility('public')
+                            ->directory('marca/variaciones')
+                            ->multiple()
+                            ->reorderable()
+                            ->downloadable()
+                            ->openable()
+                            // Con su nombre: en un archivador, «logo-vertical-
+                            // blanco.svg» es la mitad de la información, y una
+                            // ristra de identificadores al azar no se puede
+                            // mirar y elegir.
+                            ->preserveFilenames()
+                            ->panelLayout('grid')
+                            ->imagePreviewHeight('90')
+                            ->maxSize(8192)
+                            ->helperText('Cualquier formato de imagen, o el manual de marca en PDF. Se pueden reordenar arrastrando, y se conservan con el nombre del archivo tal como venga.'),
+                    ]),
+
                 Section::make('La barra del menú')
                     ->description('Una marca no es sólo el logo: es el logo sobre algo. Con la barra fija en el color del tema, un logo claro no se puede usar porque desaparece.')
                     ->schema([
@@ -132,12 +157,17 @@ class Marca extends Page
     }
 
     /**
-     * Las dos casillas son iguales salvo el rótulo y la ayuda.
+     * Las casillas son iguales salvo el rótulo y la ayuda.
      *
      * Disco publico EXPLICITO: lo ve quien entra sin haber iniciado sesion.
      * Y PNG, JPG o SVG y nada mas: son los tres que el generador de PDF sabe
      * pintar. Un WEBP se veria bien en la web y dejaria el documento en
      * blanco.
+     *
+     * Se pueden bajar y abrir. Esta pagina acaba siendo donde vive la marca
+     * —es el unico sitio donde estan todas las versiones juntas y al dia— y
+     * sin descarga, recuperar el archivo que uno mismo subio hace un mes
+     * obligaba a buscarlo en el correo de quien lo mando.
      */
     private static function casilla(string $campo, string $rotulo): FileUpload
     {
@@ -149,18 +179,20 @@ class Marca extends Page
             ->image()
             ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml'])
             ->imagePreviewHeight('90')
-            ->maxSize(4096);
+            ->maxSize(4096)
+            ->downloadable()
+            ->openable();
     }
 
     public function save(): void
     {
         $estado = $this->form->getState();
 
-        $antes = array_filter([
+        $antes = array_filter(array_merge([
             Settings::logoLargo(), Settings::logo(),
             Settings::logoLargoOscuro(), Settings::logoOscuro(),
             Settings::favicon(),
-        ]);
+        ], Settings::variaciones()));
 
         $ahora = [
             Settings::MARCA_LOGO_LARGO => trim((string) ($estado['logo_largo'] ?? '')),
@@ -174,13 +206,25 @@ class Marca extends Page
             Setting::put($clave, $ruta, 'comunicaciones');
         }
 
-        // Los que ya no usa ninguna casilla se van del disco: un disco lleno
-        // de logos que nadie usa se vuelve imposible de limpiar sin adivinar
-        // cuál es cuál. Comparado contra las tres a la vez, y no de una en
-        // una, porque el mismo archivo en dos casillas es legítimo —una marca
-        // que sirve para las dos cosas— y borrarlo al guardar la otra dejaría
-        // las dos rotas.
-        foreach (array_diff($antes, array_filter($ahora)) as $huerfano) {
+        // Las variantes llegan con clave propia —Filament las indexa por un
+        // identificador—, y lo que se guarda es la lista de rutas a secas.
+        $variaciones = array_values(array_filter(array_map(
+            fn ($ruta) => trim((string) $ruta),
+            (array) ($estado['variaciones'] ?? []),
+        )));
+
+        Setting::put(Settings::MARCA_VARIACIONES, $variaciones, 'comunicaciones');
+
+        // Lo que ya no usa nadie se va del disco: un disco lleno de logos que
+        // nadie usa se vuelve imposible de limpiar sin adivinar cuál es cuál.
+        // Comparado contra TODAS las casillas a la vez, y no de una en una,
+        // porque el mismo archivo en dos sitios es legítimo —una marca que
+        // sirve para las dos cosas— y borrarlo al guardar la otra dejaría las
+        // dos rotas. Las variantes cuentan como en uso aunque no salgan en
+        // ninguna página: guardarlas es exactamente para lo que están.
+        $enUso = array_filter(array_merge(array_values($ahora), $variaciones));
+
+        foreach (array_diff($antes, $enUso) as $huerfano) {
             Storage::disk('public')->delete($huerfano);
         }
 

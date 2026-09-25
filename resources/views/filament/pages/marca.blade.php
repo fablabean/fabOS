@@ -32,6 +32,8 @@
 
         <p class="text-sm mt-3">
             En los PDF sale siempre la versión clara: el papel es blanco.
+            Las <strong>variaciones</strong> no salen en ninguna parte: están para guardarlas
+            y bajarlas.
         </p>
 
         <p class="text-sm mt-3">

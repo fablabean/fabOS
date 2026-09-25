@@ -324,6 +324,22 @@ final class Settings
     public const MARCA_CON_TEXTO = 'marca.con_texto';
 
     /**
+     * Variantes de la marca que el sistema no usa (§3).
+     *
+     * El archivador. La version vertical, la de una tinta, la que pide el
+     * patrocinador en fondo blanco, el manual en PDF: existen, hacen falta
+     * cada pocas semanas y hasta ahora vivian en el correo de quien las hizo.
+     * Cuando alguien las necesita, las pide; cuando quien las tenia se va, se
+     * pierden.
+     *
+     * No se usan en ninguna parte a proposito. Aqui solo se guardan y se
+     * bajan: el dia que una de estas tenga que salir en el sitio, se sube a la
+     * casilla que le toque. Mezclarlo —una lista donde ademas se elige cual
+     * sale— convertiria el archivador en otro sitio donde equivocarse.
+     */
+    public const MARCA_VARIACIONES = 'marca.variaciones';
+
+    /**
      * El color de la barra del menu (§3).
      *
      * Una marca no es solo el logo: es el logo sobre algo. Con la barra fija
@@ -356,6 +372,22 @@ final class Settings
     public static function favicon(): ?string
     {
         return self::rutaSubida(self::MARCA_FAVICON);
+    }
+
+    /**
+     * Las variantes guardadas, sin las que ya no estan en el disco.
+     *
+     * @return list<string>
+     */
+    public static function variaciones(): array
+    {
+        $disco = \Illuminate\Support\Facades\Storage::disk('public');
+        $guardadas = Setting::get(self::MARCA_VARIACIONES, []);
+
+        return array_values(array_filter(
+            is_array($guardadas) ? $guardadas : [],
+            fn ($ruta) => is_string($ruta) && $ruta !== '' && $disco->exists($ruta),
+        ));
     }
 
     /** Las dos versiones para fondo oscuro. Nulas si no hay. */
