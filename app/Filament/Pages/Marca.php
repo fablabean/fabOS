@@ -6,6 +6,7 @@ use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Setting;
 use App\Support\Settings;
 use BackedEnum;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -63,6 +64,7 @@ class Marca extends Page
             'logo_largo' => Settings::logoLargo(),
             'alto'       => Settings::altoDeLaMarca(),
             'con_texto'  => Settings::marcaConTexto(),
+            'barra_color' => Settings::colorDeLaBarra()['fondo'] ?? null,
         ]);
     }
 
@@ -93,6 +95,14 @@ class Marca extends Page
                         Toggle::make('con_texto')
                             ->label('Escribir el nombre al lado del logo')
                             ->helperText('Apágalo si tu versión larga ya lleva el nombre dentro: si no, queda escrito dos veces en la misma barra.'),
+                    ]),
+
+                Section::make('La barra del menú')
+                    ->description('Una marca no es sólo el logo: es el logo sobre algo. Con la barra fija en el color del tema, un logo claro no se puede usar porque desaparece.')
+                    ->schema([
+                        ColorPicker::make('barra_color')
+                            ->label('Color de fondo')
+                            ->helperText('Sólo el fondo: lo que se escribe encima —el nombre, los enlaces, el botón de menú del móvil— se calcula a partir de él, claro sobre oscuro y oscuro sobre claro. Déjalo vacío para que mande el tema, que es lo único que sabe responder al modo oscuro del sistema.'),
                     ]),
             ]);
     }
@@ -127,6 +137,7 @@ class Marca extends Page
 
         Setting::put(Settings::MARCA_ALTO, (int) ($estado['alto'] ?? Settings::ALTO_POR_DEFECTO), 'comunicaciones');
         Setting::put(Settings::MARCA_CON_TEXTO, (bool) ($estado['con_texto'] ?? true), 'comunicaciones');
+        Setting::put(Settings::MARCA_BARRA, trim((string) ($estado['barra_color'] ?? '')), 'comunicaciones');
 
         Notification::make()->success()->title('Guardado')
             ->body($this->queSeUsaAhora())

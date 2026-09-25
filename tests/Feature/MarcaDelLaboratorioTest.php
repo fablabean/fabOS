@@ -300,6 +300,70 @@ class MarcaDelLaboratorioTest extends TestCase
         $this->assertFalse(Settings::marcaConTexto());
     }
 
+    // ------------------------------------------------------ el color de la barra
+
+    /**
+     * Se elige el fondo y el texto sale de él.
+     *
+     * Es lo que evita el fallo clásico: un fondo oscuro elegido con gusto y,
+     * encima, los enlaces grises de siempre, ilegibles. La barra quedaría de
+     * adorno y nadie podría usarla.
+     */
+    public function test_sobre_un_fondo_oscuro_se_escribe_en_claro(): void
+    {
+        Setting::put(Settings::MARCA_BARRA, '#171A15', 'comunicaciones');
+
+        $this->assertTrue(Settings::colorDeLaBarra()['oscuro']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('--barra-fondo:#171A15', false)
+            ->assertSee('--barra-ink:#F5F6F0', false);
+    }
+
+    public function test_sobre_un_fondo_claro_se_escribe_en_oscuro(): void
+    {
+        Setting::put(Settings::MARCA_BARRA, '#F6F6F2', 'comunicaciones');
+
+        $this->assertFalse(Settings::colorDeLaBarra()['oscuro']);
+
+        $this->get('/')->assertOk()->assertSee('--barra-ink:#191A16', false);
+    }
+
+    /**
+     * El peso de cada canal no es el mismo.
+     *
+     * Un promedio simple da por claro un azul intenso —#0000FF— y encima se
+     * escribiría en negro, que no se lee. La luminancia de la WCAG pesa el
+     * verde mucho y el azul casi nada, que es como lo ve el ojo.
+     */
+    public function test_un_azul_intenso_cuenta_como_oscuro(): void
+    {
+        Setting::put(Settings::MARCA_BARRA, '#0000FF', 'comunicaciones');
+        $this->assertTrue(Settings::colorDeLaBarra()['oscuro']);
+
+        // Y un amarillo, que tiene el mismo promedio, no.
+        Setting::put(Settings::MARCA_BARRA, '#FFFF00', 'comunicaciones');
+        $this->assertFalse(Settings::colorDeLaBarra()['oscuro']);
+    }
+
+    /** Sin color elegido no se pinta nada: manda el tema, como hasta ahora. */
+    public function test_sin_color_elegido_manda_el_tema(): void
+    {
+        $this->assertNull(Settings::colorDeLaBarra());
+
+        $this->get('/')->assertOk()->assertDontSee('--barra-fondo', false);
+    }
+
+    /** Y un valor que no es un color se ignora en vez de romper la barra. */
+    public function test_un_color_invalido_se_ignora(): void
+    {
+        foreach (['azul', '#FFF', 'rgb(0,0,0)', '#GGGGGG', ''] as $basura) {
+            Setting::put(Settings::MARCA_BARRA, $basura, 'comunicaciones');
+            $this->assertNull(Settings::colorDeLaBarra(), "«{$basura}» no debería pasar");
+        }
+    }
+
     /**
      * Y el PDF de la propuesta sigue saliendo con el logo dentro.
      *

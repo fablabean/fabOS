@@ -83,6 +83,9 @@
         footer .in{max-width:70rem;margin:0 auto;display:flex;gap:1.4rem;flex-wrap:wrap;align-items:center}
         @yield('styles')
     </style>
+    {{-- Después del bloque de arriba a propósito: con la misma especificidad,
+         manda lo último, y el color elegido a mano debe ganarle al del tema. --}}
+    @include('partials.color-de-la-barra')
 </head>
 <body>
 

@@ -296,6 +296,20 @@ final class Settings
     /** Si el nombre del laboratorio acompana al logo, o el logo va solo. */
     public const MARCA_CON_TEXTO = 'marca.con_texto';
 
+    /**
+     * El color de la barra del menu (§3).
+     *
+     * Una marca no es solo el logo: es el logo sobre algo. Con la barra fija
+     * en el crema del tema, un logo blanco no se podia usar —desaparecia— y
+     * quien tiene la marca quedaba atado a las versiones oscuras.
+     *
+     * Se elige el fondo y nada mas. El color del texto sale de el, que es lo
+     * que evita el fallo clasico: fondo oscuro elegido con gusto y enlaces
+     * grises ilegibles encima, con la barra convertida en un adorno que nadie
+     * puede usar.
+     */
+    public const MARCA_BARRA = 'marca.barra_color';
+
     /** Alto por defecto: lo que venia fijo en las plantillas (2,4 rem). */
     public const ALTO_POR_DEFECTO = 38;
 
@@ -331,6 +345,46 @@ final class Settings
     public static function marcaConTexto(): bool
     {
         return (bool) Setting::get(self::MARCA_CON_TEXTO, true);
+    }
+
+    /**
+     * El color de la barra, con lo que hay que escribir encima.
+     *
+     * Nulo cuando no se ha elegido ninguno: entonces manda el tema, que es lo
+     * que habia y lo unico que sabe responder al modo oscuro del sistema.
+     *
+     * @return array{fondo:string,oscuro:bool}|null
+     */
+    public static function colorDeLaBarra(): ?array
+    {
+        $color = strtoupper(trim((string) Setting::get(self::MARCA_BARRA, '')));
+
+        if (! preg_match('/^#[0-9A-F]{6}$/', $color)) {
+            return null;
+        }
+
+        return ['fondo' => $color, 'oscuro' => self::esOscuro($color)];
+    }
+
+    /**
+     * Si sobre este color hay que escribir en claro.
+     *
+     * Luminancia relativa segun WCAG: el ojo no pesa igual los tres canales
+     * —el verde mucho, el azul casi nada—, y un promedio simple da por claro
+     * un azul intenso sobre el que no se lee nada en negro. El umbral 0,45
+     * esta algo por debajo del medio a proposito: en la duda, texto claro, que
+     * aguanta mejor los tonos medios.
+     */
+    private static function esOscuro(string $hex): bool
+    {
+        [$r, $g, $b] = array_map(
+            fn (string $par) => hexdec($par) / 255,
+            str_split(substr($hex, 1), 2),
+        );
+
+        $lineal = fn (float $c) => $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+
+        return (0.2126 * $lineal($r) + 0.7152 * $lineal($g) + 0.0722 * $lineal($b)) < 0.45;
     }
 
     /**

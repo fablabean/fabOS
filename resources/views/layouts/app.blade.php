@@ -149,6 +149,9 @@
             img{max-width:100%;height:auto}
         }
     </style>
+    {{-- Después del bloque de arriba a propósito: con la misma especificidad,
+         manda lo último, y el color elegido a mano debe ganarle al del tema. --}}
+    @include('partials.color-de-la-barra')
 </head>
 <body>
     <header class="top">
