@@ -147,7 +147,10 @@ class Project extends Model
         'ganado'     => 'Ganado',
         'perdido'    => 'Perdido',
         'descartado' => 'Descartado',
-        'cerrado'    => 'Cerrado',
+        // Se llama «archivado» y no «cerrado»: la etapa de cierre ya se llama
+        // «Cerrado», y dos cosas distintas con el mismo nombre en la misma
+        // ficha hacen dudar de cuál se está tocando. La clave no cambia.
+        'cerrado'    => 'Archivado',
     ];
 
     public function estaEnPausa(): bool
