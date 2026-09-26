@@ -158,7 +158,14 @@ class DashboardService
                     'titulo'  => 'Reservas esperando visto bueno',
                     'detalle' => 'No bloquean el equipo hasta que se aprueben.',
                     'cuantos' => $solicitudes,
-                    'url'     => '/admin/reservations',
+                    // Filtrada a lo que cuenta: las solicitadas de todos, sin
+                    // «Las mías», que la lista trae puesto.
+                    'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('index', [
+                        'filters' => [
+                            'status' => ['values' => ['solicitada']],
+                            'mias'   => ['isActive' => false],
+                        ],
+                    ]),
                     'tono'    => 'info',
                 ]);
             }

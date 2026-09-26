@@ -102,7 +102,9 @@ class FiltroSoloEquiposTest extends TestCase
     /** @return list<int> */
     private function idsVisibles(array $filtros = []): array
     {
-        $prueba = Livewire::test(ListReservations::class);
+        $prueba = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias');
 
         foreach ($filtros as $nombre => $valor) {
             $prueba->set('tableFilters.' . $nombre . '.isActive', $valor);

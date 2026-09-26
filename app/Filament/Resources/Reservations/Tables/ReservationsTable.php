@@ -136,6 +136,22 @@ class ReservationsTable
                     ->visible(fn () => Reservation::whereNotNull('material_note')->exists()),
             ])
             ->filters([
+                /*
+                 * Las mías, de entrada: las que atiendo —por las mismas tres
+                 * vías que cuentan las tarjetas de carga— y las que reservé.
+                 *
+                 * Es lo que cada quien tiene que preparar. Viene puesto y se
+                 * quita con un clic para ver el laboratorio entero; lo que
+                 * pregunta por otra persona o por todo el día —las tarjetas,
+                 * «Reservas de hoy»— lo apaga solo.
+                 */
+                Filter::make('mias')
+                    ->label('Las mías')
+                    ->default()
+                    ->query(fn (Builder $query) => $query->where(fn (Builder $q) => $q
+                        ->where('user_id', auth()->id())
+                        ->orWhereIn('id', Reservation::atendidaPor((int) auth()->id())->select('id')))),
+
                 SelectFilter::make('status')->label('Estado')->options(Reservation::ESTADOS)->multiple(),
 
                 Filter::make('proximas')

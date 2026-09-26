@@ -335,9 +335,13 @@ class CargaDelEquipoTest extends TestCase
 
         $this->entraComoAdmin();
 
-        $this->get($enlace)
-            ->assertOk()
-            ->assertSee('Prusa MK4')
-            ->assertDontSee('Fresadora de Zulema');
+        $html = $this->get($enlace)->assertOk()->getContent();
+
+        // En la tabla: la semana del laboratorio, encima, enseña la de todos,
+        // y ahí la fresadora de Zulema sí tiene que salir.
+        $tabla = substr($html, strpos($html, 'fi-ta-table') ?: 0);
+
+        $this->assertStringContainsString('Prusa MK4', $tabla);
+        $this->assertStringNotContainsString('Fresadora de Zulema', $tabla);
     }
 }

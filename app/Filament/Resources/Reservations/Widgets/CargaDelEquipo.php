@@ -102,7 +102,12 @@ class CargaDelEquipo extends Widget
                 // propiedad en la URL con ese nombre. Con el otro, Livewire
                 // ni la mira y el enlace no filtra nada.
                 'enlace'    => ReservationResource::getUrl('index', [
-                    'filters' => ['atiende' => ['value' => $persona->id]],
+                    // Y sin «Las mías», que viene puesto: la tarjeta es de
+                    // otra persona.
+                    'filters' => [
+                        'atiende' => ['value' => $persona->id],
+                        'mias'    => ['isActive' => false],
+                    ],
                 ]),
             ];
         })

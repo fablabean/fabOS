@@ -429,6 +429,8 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $otra = $this->delEquipo('Otra del equipo', User::ROL_CONSULTOR);
 
         Livewire::test(\App\Filament\Resources\Reservations\Pages\ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionVisible(\Filament\Actions\Testing\TestAction::make('reasignar')->table($r))
             ->callAction(\Filament\Actions\Testing\TestAction::make('reasignar')->table($r), ['a' => $otra->id])
             ->assertHasNoActionErrors();

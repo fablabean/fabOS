@@ -96,6 +96,8 @@ class ReservasDeHoyTest extends TestCase
         $this->entraComoAdmin();
 
         $visibles = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->set('tableFilters.hoy.isActive', true)
             ->instance()->getTableRecords()->pluck('id')->all();
 
@@ -114,6 +116,8 @@ class ReservasDeHoyTest extends TestCase
         $this->entraComoAdmin();
 
         $visibles = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->set('tableFilters.hoy.isActive', true)
             ->instance()->getTableRecords()->pluck('id')->all();
 
@@ -131,6 +135,8 @@ class ReservasDeHoyTest extends TestCase
         $this->entraComoAdmin();
 
         $visibles = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->set('tableFilters.hoy.isActive', true)
             ->instance()->getTableRecords()->pluck('id')->all();
 
@@ -146,6 +152,40 @@ class ReservasDeHoyTest extends TestCase
         $this->assertTrue(Reservation::deHoy()->whereKey($estaNoche->id)->exists());
     }
 
+    // ------------------------------------------------------------ las mías
+
+    /** De entrada, lo que atiendo y lo que reservé; lo de los demás no. */
+    public function test_la_lista_arranca_con_las_mias(): void
+    {
+        $this->entraComoAdmin();
+        $yo = auth()->user();
+
+        $laAtiendo = $this->reserva($this->persona('Ana'), '2026-08-25 09:00', '2026-08-25 10:00');
+        $laAtiendo->update(['supervisor_id' => $yo->id]);
+        $laReserve = $this->reserva($yo, '2026-08-26 09:00', '2026-08-26 10:00');
+        $ajena = $this->reserva($this->persona('Juan'), '2026-08-25 15:00', '2026-08-25 17:00');
+
+        Livewire::test(ListReservations::class)
+            ->assertCanSeeTableRecords([$laAtiendo, $laReserve])
+            ->assertCanNotSeeTableRecords([$ajena])
+            ->removeTableFilter('mias')
+            ->assertCanSeeTableRecords([$laAtiendo, $laReserve, $ajena]);
+    }
+
+    /** «Reservas de hoy» es del laboratorio: no se queda en las mías. */
+    public function test_el_boton_de_hoy_apaga_las_mias(): void
+    {
+        $ajena = $this->reserva($this->persona('Juan'), '2026-08-25 15:00', '2026-08-25 17:00');
+
+        $this->entraComoAdmin();
+
+        $visibles = Livewire::test(ListReservations::class)
+            ->callAction(TestAction::make('hoy'))
+            ->instance()->getTableRecords()->pluck('id')->all();
+
+        $this->assertContains($ajena->id, $visibles);
+    }
+
     // -------------------------------------------------------------- el botón
 
     public function test_el_boton_deja_puesto_el_filtro_de_hoy(): void
@@ -157,6 +197,8 @@ class ReservasDeHoyTest extends TestCase
         $this->entraComoAdmin();
 
         $prueba = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->callAction(TestAction::make('hoy'))
             ->assertHasNoActionErrors();
 
@@ -176,6 +218,8 @@ class ReservasDeHoyTest extends TestCase
         $this->entraComoAdmin();
 
         $prueba = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->set('tableFilters.solo_equipos.isActive', true)
             ->callAction(TestAction::make('hoy'));
 

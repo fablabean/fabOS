@@ -150,6 +150,8 @@ class CalendarioTest extends TestCase
             ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         \Livewire\Livewire::test(\App\Filament\Resources\Reservations\Pages\ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionVisible(\Filament\Actions\Testing\TestAction::make('calendario')->table($r))
             ->assertActionHasUrl(
                 \Filament\Actions\Testing\TestAction::make('calendario')->table($r),

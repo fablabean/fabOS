@@ -120,6 +120,8 @@ class ReservasAnidadasEnLaListaTest extends TestCase
         $this->entraComoAdmin();
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             // Primero la sala, y la herramienta pegada debajo.
             ->assertCanSeeTableRecords([$madre, $hija], inOrder: true)
             ->assertSee('↳ Fuente voltaje 1')
@@ -139,6 +141,8 @@ class ReservasAnidadasEnLaListaTest extends TestCase
         $this->entraComoAdmin();
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertSee('espacio')
             ->assertDontSee('acompañamiento');
     }
@@ -159,7 +163,9 @@ class ReservasAnidadasEnLaListaTest extends TestCase
 
         $this->entraComoAdmin();
 
-        $html = Livewire::test(ListReservations::class)->html();
+        $html = Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')->html();
 
         // Se cuenta en la tabla: la semana del laboratorio, encima, también
         // nombra a quien reserva, y eso no es repetirlo en la lista.
@@ -188,6 +194,8 @@ class ReservasAnidadasEnLaListaTest extends TestCase
         $this->entraComoAdmin();
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertSee('Lab electrónica')
             ->assertDontSee('↳');
     }

@@ -279,6 +279,8 @@ class BandejaTest extends TestCase
         $this->entra($this->persona(User::ROL_ADMINISTRADOR));
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionVisible(TestAction::make('solicitudes'))
             ->assertSee('Solicitudes por decidir');
     }
@@ -289,6 +291,8 @@ class BandejaTest extends TestCase
         $this->entra($this->persona(User::ROL_CONSULTOR));
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionHidden(TestAction::make('solicitudes'));
     }
 
@@ -308,6 +312,8 @@ class BandejaTest extends TestCase
         $this->entra($this->persona(User::ROL_ADMINISTRADOR));
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionVisible(TestAction::make('decidir')->table($solicitud))
             ->assertActionDoesNotExist(TestAction::make('aprobar')->table($solicitud))
             ->assertActionDoesNotExist(TestAction::make('rechazar')->table($solicitud));
@@ -325,6 +331,8 @@ class BandejaTest extends TestCase
         $this->entra($this->persona(User::ROL_ADMINISTRADOR));
 
         Livewire::test(ListReservations::class)
+            // Estas pruebas miran la lista de todo el laboratorio.
+            ->removeTableFilter('mias')
             ->assertActionHidden(TestAction::make('decidir')->table($solicitud));
     }
 

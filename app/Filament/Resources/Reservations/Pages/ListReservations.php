@@ -54,6 +54,9 @@ class ListReservations extends ListRecords
                 ->action(function () {
                     $this->resetTableFiltersForm();
                     $this->tableFilters['hoy']['isActive'] = true;
+                    // Limpiar devuelve «Las mías», que viene por defecto; la
+                    // pregunta es qué hay hoy en el laboratorio, de todos.
+                    $this->tableFilters['mias']['isActive'] = false;
                     $this->resetPage();
                 }),
 
