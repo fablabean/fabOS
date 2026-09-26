@@ -763,7 +763,8 @@
         .sem-tabla thead th span { font-size:.95rem; color:var(--ink); letter-spacing:0; }
         .sem-tabla thead th.hoy, .sem-tabla thead th.hoy span { color:var(--accent); font-weight:700; }
         .sem-tabla thead th:first-child, .sem-tabla tbody th { width:9rem; }
-        .sem-tabla tbody th { font-size:.82rem; text-align:left; font-weight:600; }
+        .sem-tabla tbody th { font-size:.82rem; text-align:left; font-weight:600; font-family:inherit;
+                             text-transform:none; letter-spacing:0; color:var(--ink); }
         .sem-tabla td { background:var(--ground); border-radius:3px; }
         .sem-tabla td.hoy { outline:2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
         .sem-f { font-size:.7rem; line-height:1.25; padding:.2rem .35rem; margin-bottom:.25rem; border-radius:3px;
