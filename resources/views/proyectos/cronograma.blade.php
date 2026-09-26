@@ -46,15 +46,39 @@
 @endphp
 
 @section('content')
-    <a class="volver" href="/admin/projects">← Volver a proyectos</a>
+    @if ($delEquipo)
+        <a class="volver" href="/admin/projects">← Volver a proyectos</a>
 
-    <h1 style="margin-top:.6rem">Cronograma de proyectos</h1>
-    <p class="help">
-        El Gantt de un proyecto responde «¿vamos a tiempo?». Este responde la otra
-        pregunta, la que decide si se acepta el siguiente encargo:
-        <strong>¿qué se nos junta?</strong> Vistos por separado todos parecen holgados.
-    </p>
+        <h1 style="margin-top:.6rem">Cronograma de proyectos</h1>
+        <p class="help">
+            El Gantt de un proyecto responde «¿vamos a tiempo?». Este responde la otra
+            pregunta, la que decide si se acepta el siguiente encargo:
+            <strong>¿qué se nos junta?</strong> Vistos por separado todos parecen holgados.
+        </p>
+    @else
+        {{-- Quien no es del equipo llega desde su menú y ve lo suyo: sus
+             reservas de la semana y los proyectos en los que está. --}}
+        <a class="volver" href="{{ route('home') }}">← Mi cuenta</a>
 
+        <h1 style="margin-top:.6rem">Mi cronograma</h1>
+        <p class="help">
+            Tus reservas de la semana, con quién te atiende en cada una, y los proyectos
+            en los que estás, en el tiempo.
+        </p>
+    @endif
+
+    {{-- Arriba la semana: es lo que se consulta a diario —qué está ocupado y
+         quién responde—; el Gantt de abajo se mira al planear el trimestre. --}}
+    <h2>{{ $delEquipo ? 'Semana del laboratorio' : 'Mi semana' }}</h2>
+    <div class="panel">
+        @include('partials.semana-del-laboratorio', [
+            's'         => $semana,
+            'base'      => route('proyectos.cronograma'),
+            'conservar' => ['todos' => $todos ? 1 : null],
+        ])
+    </div>
+
+    <h2>Proyectos en el tiempo</h2>
     <div class="panel">
         <p class="help" style="margin:0">
             {{ $conFechas->count() }} {{ $conFechas->count() === 1 ? 'proyecto' : 'proyectos' }} con fechas
@@ -104,7 +128,7 @@
 
                     <div class="fila">
                         <div class="etiqueta">
-                            <a href="{{ route('proyectos.tablero', $p) }}">{{ $p->name }}</a>
+                            @can('view', $p)<a href="{{ route('proyectos.tablero', $p) }}">{{ $p->name }}</a>@else {{ $p->name }} @endcan
                             <div class="quien">
                                 {{ $p->code }} · {{ Project::ETAPAS[$p->stage] ?? $p->stage }}
                                 @if ($p->lead) · {{ $p->lead->name }} @endif
@@ -147,7 +171,7 @@
                 @foreach ($sinFechas as $p)
                     <tr>
                         <td class="quien">{{ $p->code }}</td>
-                        <td><a href="{{ route('proyectos.tablero', $p) }}">{{ $p->name }}</a></td>
+                        <td>@can('view', $p)<a href="{{ route('proyectos.tablero', $p) }}">{{ $p->name }}</a>@else {{ $p->name }} @endcan</td>
                         <td>{{ Project::ETAPAS[$p->stage] ?? $p->stage }}</td>
                         <td>{{ $p->lead?->name ?? 'sin asignar' }}</td>
                     </tr>

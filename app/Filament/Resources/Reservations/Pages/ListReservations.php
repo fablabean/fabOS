@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Reservations\Pages;
 use App\Filament\Pages\Bandeja;
 use App\Filament\Resources\Reservations\ReservationResource;
 use App\Filament\Resources\Reservations\Widgets\CargaDelEquipo;
+use App\Filament\Widgets\SemanaDelLaboratorio;
 use App\Models\Reservation;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -25,6 +26,8 @@ class ListReservations extends ListRecords
     {
         return [
             CargaDelEquipo::class,
+            // Y en el calendario: la carga dice cuánto, la semana dice cuándo.
+            SemanaDelLaboratorio::class,
         ];
     }
 

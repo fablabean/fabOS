@@ -9,6 +9,7 @@ use App\Models\Space;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
@@ -28,6 +29,58 @@ class OcupacionSemanal
     private const SIN_OCUPAR = ['rechazada', 'cancelada'];
 
     /**
+     * La semana tal como la pide una pantalla: el día que se quiere ver, los
+     * filtros y la vista, ya resueltos.
+     *
+     * Vive aquí para que el cronograma y el backoffice no lean los filtros cada
+     * uno a su manera.
+     *
+     * El equipo del laboratorio ve la semana de todos. Cualquier otra persona
+     * ve la suya: lo que reservó, lo que atiende y lo de sus proyectos. La
+     * agenda del laboratorio lleva nombres de otros usuarios y para qué
+     * vinieron, y eso no es suyo.
+     *
+     * @return array<string,mixed>
+     */
+    public function paraVer(?string $dia, ?int $espacio, bool $solo, ?string $vista, ?User $quien): array
+    {
+        $tz = config('fabos.lab.timezone');
+
+        try {
+            $cuando = filled($dia) ? Carbon::parse($dia, $tz) : now($tz);
+        } catch (\Throwable) {
+            $cuando = now($tz);
+        }
+
+        $delEquipo = $quien?->hasAnyRole(User::rolesDelEquipo()) ?? false;
+
+        return $this->semana(
+            $cuando,
+            espacio: $espacio ?: null,
+            soloDelProyecto: $solo,
+            conQuienReserva: $delEquipo,
+            soloDe: $delEquipo ? null : $quien,
+        ) + [
+            'todoElLaboratorio' => $delEquipo,
+            'espacio' => $espacio ?: null,
+            'solo'    => $solo,
+            'vista'   => $vista === 'espacios' ? 'espacios' : 'horas',
+        ];
+    }
+
+    /** Lo mismo, leído de la dirección de una página normal. */
+    public function deLaPeticion(Request $request): array
+    {
+        return $this->paraVer(
+            $request->query('semana'),
+            $request->integer('espacio') ?: null,
+            $request->boolean('solo'),
+            $request->query('vista'),
+            $request->user(),
+        );
+    }
+
+    /**
      * @return array{
      *   desde:Carbon, hasta:Carbon, dias:list<Carbon>, horaDesde:int, horaHasta:int,
      *   bloques:array<string,list<array<string,mixed>>>, espacios:Collection<int,Space>,
@@ -39,6 +92,7 @@ class OcupacionSemanal
         ?int $espacio = null,
         bool $soloDelProyecto = false,
         bool $conQuienReserva = true,
+        ?User $soloDe = null,
     ): array {
         $tz = config('fabos.lab.timezone');
 
@@ -62,7 +116,16 @@ class OcupacionSemanal
             // la tarde en Bogotá ya es el día siguiente en UTC.
             ->where('starts_at', '<', $hasta->copy()->utc())
             ->where('ends_at', '>', $desde->copy()->utc())
-            ->when($soloDelProyecto && $resaltar, fn ($q) => $q->where('project_id', $resaltar->id))
+            // Solo lo de proyectos: el de uno, si se pidió uno; si no, el de todos.
+            ->when($soloDelProyecto, fn ($q) => $resaltar
+                ? $q->where('project_id', $resaltar->id)
+                : $q->whereNotNull('project_id'))
+            ->when($soloDe, fn ($q) => $q->where(fn ($suyas) => $suyas
+                ->where('user_id', $soloDe->id)
+                ->orWhereIn('id', Reservation::atendidaPor($soloDe->id)->select('id'))
+                ->orWhereIn('project_id', Project::query()
+                    ->where(fn ($p) => $p->deAlguien($soloDe)->orWhere('requested_by', $soloDe->id))
+                    ->select('id'))))
             ->when($espacio, fn ($q) => $q->where(fn ($q) => $q
                 ->where(fn ($s) => $s->where('reservable_type', Space::class)->where('reservable_id', $espacio))
                 ->orWhere(fn ($a) => $a->where('reservable_type', Asset::class)
@@ -128,7 +191,10 @@ class OcupacionSemanal
     /** @return array<string,mixed> */
     private function bloque(Reservation $r, int $minA, int $minB, ?Project $resaltar, bool $conQuienReserva): array
     {
-        $delProyecto = $resaltar && (int) $r->project_id === $resaltar->id;
+        // Con un proyecto delante se resalta lo suyo; sin él, lo de cualquiera.
+        $delProyecto = $resaltar
+            ? (int) $r->project_id === $resaltar->id
+            : $r->project_id !== null;
 
         return [
             'id'         => $r->id,
@@ -140,7 +206,7 @@ class OcupacionSemanal
             'espacio'    => $this->espacio($r),
             'responsables' => $this->responsables($r),
             'reserva'    => $conQuienReserva || $delProyecto ? $r->user?->name : null,
-            'para'       => $this->para($r, $delProyecto),
+            'para'       => $this->para($r, $resaltar !== null && $delProyecto),
             'estado'     => $r->status,
             'estadoTxt'  => Reservation::ESTADOS[$r->status] ?? $r->status,
             'tipo'       => $r->esProduccion() ? 'produccion' : $r->tipoDeRecurso(),
@@ -206,14 +272,18 @@ class OcupacionSemanal
         return $nombres->filter()->unique()->values()->all();
     }
 
-    private function para(Reservation $r, bool $delProyecto): ?string
+    /**
+     * Para qué es. Del proyecto que se está mirando basta la tarea; de otro,
+     * el código delante, que es como se nombra un proyecto en el laboratorio.
+     */
+    private function para(Reservation $r, bool $esElQueSeMira): ?string
     {
-        if ($r->task) {
-            return $r->task->title;
+        if ($r->project && ! $esElQueSeMira) {
+            return $r->project->code . ($r->task ? ' · ' . $r->task->title : '');
         }
 
-        if ($r->project && ! $delProyecto) {
-            return $r->project->code;
+        if ($r->task) {
+            return $r->task->title;
         }
 
         return $r->purpose ? \Illuminate\Support\Str::limit($r->purpose, 60) : null;

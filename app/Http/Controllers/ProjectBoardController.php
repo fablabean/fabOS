@@ -50,39 +50,13 @@ class ProjectBoardController extends Controller
             'siguiente'  => $this->proyectos->siguienteEtapa($project),
             'costeo'     => $this->costeo->costear($project),
             'evidencias' => $this->proyectos->evidencias($project),
-            'semana'     => $this->semana($request, $project),
         ]);
     }
 
-    /**
-     * La semana del laboratorio, con lo del proyecto resaltado.
-     *
-     * De todos y no solo del proyecto, porque la pregunta es «¿cuándo podemos
-     * meternos?», y eso lo contesta lo que ya está ocupado por los demás.
-     * Quién reservó lo ajeno lo ve solo el equipo del laboratorio: al tablero
-     * también entran miembros de fuera, y el nombre de otro usuario no es suyo.
-     */
-    private function semana(Request $request, Project $project): array
+    /** Quien puede mirar un proyecto: su equipo, o quien tiene la seccion. */
+    private function puedeVer(?User $quien, Project $proyecto): bool
     {
-        try {
-            $dia = $request->filled('semana')
-                ? \Illuminate\Support\Carbon::parse($request->string('semana'), config('fabos.lab.timezone'))
-                : now(config('fabos.lab.timezone'));
-        } catch (\Throwable) {
-            $dia = now(config('fabos.lab.timezone'));
-        }
-
-        return $this->ocupacion->semana(
-            $dia,
-            resaltar: $project,
-            espacio: $request->integer('espacio') ?: null,
-            soloDelProyecto: $request->boolean('solo'),
-            conQuienReserva: $request->user()->hasAnyRole(User::rolesDelEquipo()),
-        ) + [
-            'espacio' => $request->integer('espacio') ?: null,
-            'solo'    => $request->boolean('solo'),
-            'vista'   => $request->query('vista') === 'espacios' ? 'espacios' : 'horas',
-        ];
+        return $quien?->can('view', $proyecto) ?? false;
     }
 
     /**
@@ -92,16 +66,15 @@ class ProjectBoardController extends Controller
      * otra pregunta, la que decide si se acepta el siguiente encargo: «¿qué se
      * nos junta en marzo?». Sin verlos superpuestos, cada proyecto parece
      * holgado por separado y el laboratorio se compromete de más.
+     *
+     * Lo abre cualquiera con cuenta, desde su menú, y cada quien ve lo suyo:
+     * quien coordina, el laboratorio entero; los demás, sus proyectos —los que
+     * lleva, en los que trabaja y los que pidió— y sus reservas. Saber qué
+     * semana tiene uno encima no debería depender de preguntarlo por WhatsApp.
      */
-    /** Quien puede mirar un proyecto: su equipo, o quien tiene la seccion. */
-    private function puedeVer(?User $quien, Project $proyecto): bool
-    {
-        return $quien?->can('view', $proyecto) ?? false;
-    }
-
     public function cronogramaGeneral(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(User::rolesDelEquipo()), 403);
+        $quien = $request->user();
 
         $todos = $request->boolean('todos');
 
@@ -111,8 +84,10 @@ class ProjectBoardController extends Controller
             // laboratorio: el cronograma general es un mapa de la carga de
             // trabajo, y esa es una conversacion de quien coordina.
             ->when(
-                ! $request->user()->puedeVerLaSeccion('project'),
-                fn ($query) => $query->deAlguien($request->user()),
+                ! $quien->puedeVerLaSeccion('project'),
+                fn ($query) => $query->where(fn ($suyos) => $suyos
+                    ->deAlguien($quien)
+                    ->orWhere('requested_by', $quien->id)),
             )
             // Lo pausado tambien: sigue vivo, y verlo parado al lado de lo que
             // avanza es justo lo que recuerda que hay que volver a el.
@@ -131,6 +106,8 @@ class ProjectBoardController extends Controller
             'desde'      => $conFechas->min(fn (Project $p) => $p->starts_on ?? $p->due_on),
             'hasta'      => $conFechas->max(fn (Project $p) => $p->due_on ?? $p->starts_on),
             'todos'      => $todos,
+            'semana'     => $this->ocupacion->deLaPeticion($request),
+            'delEquipo'  => $quien->hasAnyRole(User::rolesDelEquipo()),
         ]);
     }
 

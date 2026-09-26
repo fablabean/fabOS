@@ -161,6 +161,10 @@ class ReservasAnidadasEnLaListaTest extends TestCase
 
         $html = Livewire::test(ListReservations::class)->html();
 
+        // Se cuenta en la tabla: la semana del laboratorio, encima, también
+        // nombra a quien reserva, y eso no es repetirlo en la lista.
+        $html = substr($html, strpos($html, 'fi-ta-table') ?: 0);
+
         // La hora sale una sola vez, la de la madre; el nombre de quien
         // reserva, tambien.
         $this->assertSame(1, substr_count($html, '24/08/2026 10:00'), 'la franja se escribe una vez');

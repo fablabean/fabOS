@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Projects\Pages;
 
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Filament\Resources\Projects\Widgets\EmbudoDeProyectos;
+use App\Filament\Widgets\SemanaDelLaboratorio;
 use App\Models\Project;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -73,6 +74,9 @@ class ListProjects extends ListRecords
     {
         return [
             EmbudoDeProyectos::class,
+            // Cómo queda la semana de todos: es la que dice si cabe lo que se
+            // está por aceptar.
+            SemanaDelLaboratorio::class,
         ];
     }
 }

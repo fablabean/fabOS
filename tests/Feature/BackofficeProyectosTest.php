@@ -672,11 +672,17 @@ class BackofficeProyectosTest extends TestCase
             ->assertSee('<main class="">', false);
     }
 
-    public function test_el_cronograma_general_es_solo_del_backoffice(): void
+    /**
+     * El cronograma ya no es solo del backoffice: quien no es del equipo lo
+     * abre desde su menú y ve el suyo, sin el camino de vuelta al panel.
+     */
+    public function test_quien_no_es_del_equipo_ve_su_propio_cronograma(): void
     {
         $this->actingAs($this->conRol())
             ->get(route('proyectos.cronograma'))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee('Mi cronograma')
+            ->assertDontSee('Volver a proyectos');
     }
 
     /** Se arrastra como en un tablero de verdad, y los botones se quedan. */

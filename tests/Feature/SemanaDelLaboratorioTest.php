@@ -99,7 +99,8 @@ class SemanaDelLaboratorioTest extends TestCase
         $this->assertSame(['Ana Torres'], $martes['10:00–12:00']['responsables']);
     }
 
-    public function test_el_tablero_muestra_la_semana_con_sus_responsables(): void
+    /** En el cronograma general, y ya no en el tablero de cada proyecto. */
+    public function test_el_cronograma_muestra_la_semana_con_sus_responsables(): void
     {
         $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
         $ana = $this->persona('Ana Torres');
@@ -110,20 +111,93 @@ class SemanaDelLaboratorioTest extends TestCase
         $this->reserva($admin, '14:00', '15:00', ['status' => 'cancelada', 'purpose' => 'Se cayó']);
 
         $this->actingAs($admin)
-            ->get(route('proyectos.tablero', $p) . '?semana=2026-09-30')
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30')
             ->assertOk()
             ->assertSee('Semana del laboratorio')
             ->assertSee('28/09 – 04/10/2026')
             ->assertSee('Sala de corte')
             ->assertSee('Ana Torres')
+            ->assertSee($p->code)
             ->assertSee('10:00–12:00')
             ->assertDontSee('14:00–15:00');
 
         // Por espacios: la sala es la fila, y en la celda va quién responde.
         $this->actingAs($admin)
-            ->get(route('proyectos.tablero', $p) . '?semana=2026-09-30&vista=espacios')
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=espacios')
             ->assertOk()
             ->assertSee('sem-tabla', false)
             ->assertSeeInOrder(['Sala de corte', '10:00–12:00', 'Ana Torres']);
+
+        $this->actingAs($admin)
+            ->get(route('proyectos.tablero', $p))
+            ->assertOk()
+            ->assertDontSee('Semana del laboratorio');
+    }
+
+    /** En el backoffice se cambia de semana y de vista sin recargar. */
+    public function test_el_widget_del_backoffice_navega_la_semana(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Torres');
+        $this->reserva($admin, '10:00', '12:00', ['supervisor_id' => $ana->id]);
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
+            ->call('irA', '2026-09-29')
+            ->assertSee('28/09 – 04/10/2026')
+            ->assertSee('Ana Torres')
+            ->call('irA', '2026-10-06')
+            ->assertDontSee('Ana Torres')
+            ->call('irA', '2026-09-29')
+            ->set('vista', 'espacios')
+            ->assertSee('sem-tabla', false)
+            ->set('solo', true)
+            ->assertDontSee('Ana Torres');
+    }
+
+    /**
+     * Quien no es del equipo también abre el cronograma, desde su menú, y ve
+     * lo suyo: su reserva y quién lo atiende, no la del vecino.
+     */
+    public function test_un_usuario_ve_su_cronograma_y_nada_mas(): void
+    {
+        $juan = $this->persona('Juan Estudiante');
+        $ana = $this->persona('Ana Torres');
+        $lead = $this->persona('Líder', User::ROL_ADMINISTRADOR);
+
+        $this->reserva($juan, '10:00', '12:00', ['supervisor_id' => $ana->id]);
+        $computo = Space::create(['slug' => 'computo', 'name' => 'Sala de cómputo', 'type' => 'fisico', 'is_reservable' => true]);
+        $this->reserva($this->persona('Vecina Ajena'), '10:00', '12:00', ['reservable_id' => $computo->id, 'purpose' => 'Lo de la vecina']);
+
+        $suyo = $this->proyecto($lead);
+        $suyo->forceFill(['requested_by' => $juan->id, 'starts_on' => '2026-09-01', 'due_on' => '2026-10-30', 'status' => 'activo'])->save();
+        $ajeno = app(ProjectService::class)->registrarIdea(['name' => 'Proyecto de otros', 'source' => 'whatsapp', 'lead_id' => $lead->id]);
+        $ajeno->forceFill(['starts_on' => '2026-09-01', 'due_on' => '2026-10-30', 'status' => 'activo'])->save();
+
+        $this->actingAs($juan)
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-29')
+            ->assertOk()
+            ->assertSee('Mi cronograma')
+            ->assertSee('Mi semana')
+            ->assertSee('Ana Torres')
+            // Los espacios se pueden elegir en el filtro; lo que no sale es
+            // la reserva de otra persona.
+            ->assertDontSee('Vecina Ajena')
+            ->assertDontSee('Lo de la vecina')
+            ->assertSee('Trofeos del torneo')
+            ->assertDontSee('Proyecto de otros')
+            ->assertDontSee('/admin/projects', false)
+            // Lo pidió, pero no está en el equipo: el tablero no es suyo.
+            ->assertDontSee(route('proyectos.tablero', $suyo), false)
+            // Y el enlace, en su menú.
+            ->assertSee('Mi cronograma</a>', false);
+    }
+
+    public function test_el_widget_no_se_le_muestra_a_quien_no_es_del_equipo(): void
+    {
+        $this->actingAs($this->persona('Estudiante'));
+
+        $this->assertFalse(\App\Filament\Widgets\SemanaDelLaboratorio::canView());
     }
 }
