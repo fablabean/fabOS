@@ -332,6 +332,69 @@ class ControlManualDeLaGuiaTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    /**
+     * Volver a «acertó» retira el ejemplo.
+     *
+     * El interruptor tiene dos posiciones y se puede volver: si al hacerlo se
+     * dejara la corrección puesta, la guía seguiría aprendiendo de algo que
+     * ya se dijo que estaba mal, y no habría forma de deshacerlo desde la
+     * pantalla.
+     */
+    public function test_volver_atras_retira_el_ejemplo(): void
+    {
+        $this->admin();
+        $fila = $this->consulta('Tengo el archivo listo', 'asesoria');
+        $fila->update(['acerto' => false, 'camino_corregido' => 'proyecto', 'nota' => 'Tenía el archivo.']);
+
+        Livewire::test(PantallaDeLaGuia::class)->call('acerto', $fila->id);
+
+        $fila->refresh();
+
+        $this->assertTrue($fila->acerto);
+        $this->assertNull($fila->camino_corregido);
+        $this->assertTrue(\App\Models\ConsultaDeGuia::loCorregido()->isEmpty());
+    }
+
+    // ------------------------------------------------ ver las de más atrás
+
+    /**
+     * Se guardan todas, no sólo las 25 últimas.
+     *
+     * Y es lo que da valor a la lista: lo que dice qué curso falta o qué
+     * máquina nadie encuentra no está en lo de esta semana, está en el
+     * montón.
+     */
+    public function test_se_pueden_buscar_las_viejas(): void
+    {
+        $this->admin();
+
+        foreach (range(1, 30) as $i) {
+            $this->consulta("Consulta número {$i}", 'asesoria');
+        }
+
+        $this->consulta('Quiero una cesta de mimbre', 'asesoria');
+
+        // Fuera de las 25 últimas por antigüedad, pero se encuentra buscando.
+        Livewire::test(PantallaDeLaGuia::class)
+            ->set('busca', 'mimbre')
+            ->assertSee('Quiero una cesta de mimbre')
+            ->assertDontSee('Consulta número 30');
+    }
+
+    /** Y se pueden aislar las que nadie ha mirado, que son la cola de trabajo. */
+    public function test_se_filtran_las_que_faltan_por_revisar(): void
+    {
+        $this->admin();
+
+        $this->consulta('Sin mirar todavía', 'asesoria');
+        $this->consulta('Ya revisada', 'asesoria')->update(['acerto' => true]);
+
+        Livewire::test(PantallaDeLaGuia::class)
+            ->set('veredicto', 'sin')
+            ->assertSee('Sin mirar todavía')
+            ->assertDontSee('Ya revisada');
+    }
+
     // ------------------------------------------------------------- la pantalla
 
     public function test_se_administra_desde_el_panel(): void

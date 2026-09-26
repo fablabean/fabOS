@@ -38,8 +38,45 @@ class GuiaDeReservas extends Page
 
     protected static ?int $navigationSort = 7;
 
+    use \Livewire\WithPagination;
+
     /** @var array<string,mixed> */
     public array $datos = [];
+
+    /**
+     * Se guardan todas desde el primer día; sólo se veían las 25 últimas.
+     *
+     * Y eso es justo lo contrario de para qué sirve la lista: lo que dice qué
+     * curso falta o qué máquina nadie encuentra no está en lo de esta semana,
+     * está en el montón. Ahora se pagina y se filtra.
+     */
+    public string $busca = '';
+
+    /** «Sin revisar» de entrada: es la cola de trabajo, no el archivo. */
+    public string $veredicto = '';
+
+    public function updatedBusca(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedVeredicto(): void
+    {
+        $this->resetPage();
+    }
+
+    /** @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int,ConsultaDeGuia> */
+    public function lasConsultas(): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return ConsultaDeGuia::query()
+            ->with('user')
+            ->when($this->busca !== '', fn ($q) => $q->where('texto', 'ilike', '%' . $this->busca . '%'))
+            ->when($this->veredicto === 'sin', fn ($q) => $q->whereNull('acerto'))
+            ->when($this->veredicto === 'bien', fn ($q) => $q->where('acerto', true))
+            ->when($this->veredicto === 'mal', fn ($q) => $q->where('acerto', false))
+            ->latest('id')
+            ->paginate(25);
+    }
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
@@ -140,17 +177,27 @@ class GuiaDeReservas extends Page
     {
         $fila = ConsultaDeGuia::find($consulta);
 
-        if (! $fila || $fila->acerto !== null) {
+        if (! $fila || $fila->acerto === true) {
             return;
         }
 
+        $seDesdice = $fila->acerto === false;
+
         $fila->update([
             'acerto'       => true,
-            'revisada_por' => auth()->id(),
-            'revisada_el'  => now(),
+            // Volver a «acertó» retira el ejemplo: si se dejara la corrección
+            // puesta, la guía seguiría aprendiendo de algo que ya se dijo que
+            // estaba mal, y no habría forma de deshacerlo desde la pantalla.
+            'camino_corregido' => null,
+            'nota'             => null,
+            'revisada_por'     => auth()->id(),
+            'revisada_el'      => now(),
         ]);
 
-        Notification::make()->success()->title('Anotado')->send();
+        Notification::make()->success()
+            ->title($seDesdice ? 'Corrección retirada' : 'Anotado')
+            ->body($seDesdice ? 'Ya no se le enseña como ejemplo.' : null)
+            ->send();
     }
 
     /**
@@ -164,9 +211,16 @@ class GuiaDeReservas extends Page
     public function corregirAction(): Action
     {
         return Action::make('corregir')
-            ->label('Corregir')
+            // La otra posición del interruptor, no un botón aparte: por eso
+            // el rótulo dice el estado —«No acertó»— y no la acción.
+            ->label('No acertó')
+            ->link()
             ->size('xs')
             ->color('danger')
+            ->extraAttributes([
+                'style' => 'padding:.2rem .6rem;font-size:.75rem;line-height:1.4;border-radius:0;text-decoration:none',
+            ])
+            ->tooltip('No acertó: decir con qué debió contestar')
             ->modalHeading('¿Con qué debió contestar?')
             ->modalDescription('Esto se le enseña a la guía: vuelve a sus instrucciones como ejemplo, y a partir de ahí clasifica casos parecidos así.')
             ->modalSubmitActionLabel('Corregir y enseñar')
