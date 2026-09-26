@@ -258,6 +258,73 @@ final class Settings
         return trim((string) Setting::get(self::GUIA_TEXTO, ''));
     }
 
+    /**
+     * Reglas de la casa para la guía (§10).
+     *
+     * Lo que la IA no puede saber leyendo el catálogo: que aquí una impresión
+     * de clase no es un encargo, que tal máquina está de baja, que en examenes
+     * no se presta el taller. Se añade a sus instrucciones.
+     *
+     * Texto libre y no una lista de casillas a proposito: lo que hay que
+     * corregir aparece leyendo lo que la gente pregunta, y cada correccion es
+     * distinta de la anterior. Una pantalla de casillas solo sabe arreglar lo
+     * que ya se previo.
+     */
+    public const GUIA_INSTRUCCIONES = 'reservas.guia_instrucciones';
+
+    /**
+     * Lo que SIEMPRE se dice al recomendar cada camino (§10).
+     *
+     * Aparte de las instrucciones, y por un motivo: una instruccion la sigue
+     * el modelo cuando le parece, y hay avisos que no pueden depender de eso.
+     * «Reservar la sala de la laser no da derecho a usar la laser» tiene que
+     * salir las cinco veces de cada cinco, no las cuatro que el modelo se
+     * acuerde. Estos se pegan a la respuesta despues, sin pasar por la IA.
+     */
+    public const GUIA_ADVERTENCIAS = 'reservas.guia_advertencias';
+
+    /**
+     * Con lo que nacen, que es lo que hoy hace falta advertir.
+     *
+     * @var array<string,string>
+     */
+    public const ADVERTENCIAS_POR_DEFECTO = [
+        'proyecto' => 'Para fabricar necesitamos los archivos listos para producción '
+            . '—el modelo 3D, el vector de corte—. Si todavía no los tienes, pide primero '
+            . 'una asesoría y los preparamos contigo.',
+        'espacio' => 'Reservar un espacio es reservar el espacio: estar en la sala de una '
+            . 'máquina no da derecho a usarla. Para operarla necesitas su certifab, y para '
+            . 'conseguirlo, una asesoría.',
+    ];
+
+    public static function instruccionesDeLaGuia(): string
+    {
+        return trim((string) Setting::get(self::GUIA_INSTRUCCIONES, ''));
+    }
+
+    /** @return array<string,string> */
+    public static function advertenciasDeLaGuia(): array
+    {
+        $guardadas = Setting::get(self::GUIA_ADVERTENCIAS);
+
+        // Nulo es «nunca se ha tocado»: valen las de fábrica. Un arreglo
+        // vacío es «se quitaron todas», que es una decisión y se respeta.
+        if (! is_array($guardadas)) {
+            return self::ADVERTENCIAS_POR_DEFECTO;
+        }
+
+        return array_filter(array_map(
+            fn ($texto) => trim((string) $texto),
+            $guardadas,
+        ));
+    }
+
+    /** La advertencia de un camino, si la tiene. */
+    public static function advertenciaDelCamino(string $camino): ?string
+    {
+        return self::advertenciasDeLaGuia()[$camino] ?? null;
+    }
+
     /*
      * El logo del laboratorio (§3).
      *

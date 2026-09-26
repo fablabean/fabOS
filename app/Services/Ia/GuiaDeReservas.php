@@ -63,14 +63,21 @@ final class GuiaDeReservas
             return null;
         }
 
-        // La misma pregunta, la misma respuesta: no se paga dos veces y no
-        // cambia de opinión entre un intento y el siguiente.
-        $enMemoria = 'ia:guia:' . md5(mb_strtolower($texto));
+        /*
+         * La misma pregunta, la misma respuesta: no se paga dos veces y no
+         * cambia de opinión entre un intento y el siguiente.
+         *
+         * Las reglas de la casa entran en la clave. Sin eso, cambiarlas en el
+         * panel no se notaría durante un día entero en todo lo ya preguntado
+         * —justo lo que uno corre a comprobar después de corregirlas— y
+         * parecería que la corrección no sirvió.
+         */
+        $enMemoria = 'ia:guia:' . md5(mb_strtolower($texto) . '|' . \App\Support\Settings::instruccionesDeLaGuia());
 
         if ($guardada = Cache::get($enMemoria)) {
             $this->anotarConsulta($texto, $guardada, deMemoria: true);
 
-            return $guardada;
+            return $this->conLaAdvertencia($guardada);
         }
 
         if ($this->quedanHoy() < 1) {
@@ -88,7 +95,29 @@ final class GuiaDeReservas
 
         $this->anotarConsulta($texto, $respuesta, deMemoria: false);
 
-        return $respuesta;
+        return $this->conLaAdvertencia($respuesta);
+    }
+
+    /**
+     * Lo que siempre se dice al recomendar este camino (§10).
+     *
+     * Se pega aquí y no se le pide al modelo, y la diferencia importa: una
+     * instrucción la sigue cuando le parece, y «reservar la sala de la láser
+     * no da derecho a usar la láser» tiene que salir las cinco veces de cada
+     * cinco. Lo que la IA decide es el camino; lo que se advierte de cada
+     * camino lo decide el laboratorio.
+     *
+     * Y va después de la memoria a propósito: corregir una advertencia surte
+     * efecto de inmediato, también en lo ya contestado.
+     *
+     * @param  array{camino:string,titulo:?string,url:?string,porque:string}  $respuesta
+     * @return array{camino:string,titulo:?string,url:?string,porque:string,advertencia:?string}
+     */
+    private function conLaAdvertencia(array $respuesta): array
+    {
+        return $respuesta + [
+            'advertencia' => \App\Support\Settings::advertenciaDelCamino($respuesta['camino']),
+        ];
     }
 
     /**
@@ -271,6 +300,41 @@ final class GuiaDeReservas
 
     private function instrucciones(): string
     {
+        return $this->instruccionesBase() . $this->reglasDeLaCasa();
+    }
+
+    /**
+     * Lo que la coordinación añade desde el panel (§10).
+     *
+     * Al final y con su encabezado, para que gane sobre lo genérico de
+     * arriba sin tener que reescribirlo: lo que hay que corregir se descubre
+     * leyendo lo que la gente pregunta —«impresión 3D para un proyecto» no es
+     * un encargo—, y esas correcciones no caben en una lista prevista de
+     * antemano.
+     *
+     * Después de las reglas de seguridad a propósito. Esto lo escribe quien
+     * administra el laboratorio, no quien llega de fuera, pero el orden deja
+     * claro que no es un sitio para levantar el blindaje del texto ajeno.
+     */
+    private function reglasDeLaCasa(): string
+    {
+        $suyas = \App\Support\Settings::instruccionesDeLaGuia();
+
+        if ($suyas === '') {
+            return '';
+        }
+
+        return "\n\n"
+            . "REGLAS DE ESTE LABORATORIO\n"
+            . "--------------------------\n"
+            . "Las escribió la coordinación y mandan sobre lo de arriba cuando se\n"
+            . "contradigan. Siguen sin permitirte salir del esquema ni responder otra\n"
+            . "cosa que un camino y su porqué.\n\n"
+            . $suyas;
+    }
+
+    private function instruccionesBase(): string
+    {
         $lab = config('fabos.lab.name');
 
         return <<<TXT
@@ -296,6 +360,12 @@ final class GuiaDeReservas
           Para: «necesito 20 letreros en acrílico», «que me fabriquen esta pieza»,
           «quiero que me ayuden a construir un dron», «necesito un prototipo para mi
           empresa», cualquier cosa donde la persona quiere el resultado, no operar.
+          EXIGE DOS COSAS A LA VEZ: que quiera el resultado y no operar, y que se
+          entienda que YA TIENE qué fabricar —los archivos, el diseño, el plano— o al
+          menos un encargo definido con cantidad y material. Nombrar una máquina y un
+          fin («impresión 3D para un proyecto», «corte láser para mi tesis») NO es un
+          encargo: no dice quién opera ni si hay algo que producir, y quien lo escribe
+          casi siempre está empezando. Eso es asesoria.
 
         autonomia — «Hago mi pieza»: la persona reserva una máquina y la opera SOLA.
           Exige tener el certifab de esa máquina (haber sido habilitada). Se cobra el
@@ -310,6 +380,10 @@ final class GuiaDeReservas
           herramientas que se van a usar.
           Para: «necesito el taller para una clase de 15 personas», «una sala para
           reunirnos», «un recorrido para mi curso».
+          ES EL ESPACIO Y NADA MÁS. Reservar la sala donde está una máquina no da
+          derecho a usar esa máquina: para operarla hace falta su certifab, y eso es
+          autonomia o asesoria. Si lo que la persona quiere es la MÁQUINA y menciona el
+          sitio de paso, no es este camino.
 
         herramientas — Pedir prestadas herramientas sueltas (taladro, cautín, gafas de
           realidad virtual, multímetro) para usarlas donde la persona esté, sin reservar

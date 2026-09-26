@@ -22,6 +22,13 @@
     .guia .cual{margin:0 0 .4rem;font-size:1.25rem;font-weight:700}
     .guia .cual a{text-decoration:none}
     .guia .porque{margin:0}
+    /* La advertencia: destacada sin ser una alarma. Lo que dice no es un
+       error de quien pregunta, es algo que más vale saber antes de venir. */
+    .guia .ojo{
+        margin:.7rem 0 0;padding:.6rem .8rem;border-radius:6px;font-size:.92rem;
+        background:color-mix(in srgb,var(--ink) 7%,transparent);
+        border-left:3px solid color-mix(in srgb,var(--accent) 55%,transparent);
+    }
     .guia .pie{margin:.6rem 0 0;font-size:.8rem;color:var(--muted)}
 </style>
         <section class="guia" id="guia">
@@ -53,6 +60,15 @@
                         <p class="cual"><a href="{{ $guia['url'] }}">{{ $guia['titulo'] }} →</a></p>
                     @endif
                     <p class="porque">{{ $guia['porque'] }}</p>
+                    {{-- Lo que siempre se dice de este camino. No lo escribe la
+                         IA: lo pone el laboratorio en Comunicaciones → Guía de
+                         reservas, y por eso sale siempre y no cuando el modelo
+                         se acuerda. Es donde van los malentendidos que cuestan
+                         un viaje —«reservé la sala de la láser» no es «puedo
+                         usar la láser»—. --}}
+                    @if (filled($guia['advertencia'] ?? null))
+                        <p class="ojo">{{ $guia['advertencia'] }}</p>
+                    @endif
                     <p class="pie">Es una orientación; las tarjetas de arriba dicen qué hace cada camino. No es un chat: aquí solo se responde por dónde ir.</p>
                 </div>
             @endif
