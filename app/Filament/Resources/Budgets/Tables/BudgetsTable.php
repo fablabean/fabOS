@@ -92,7 +92,7 @@ class BudgetsTable
                     ->icon('heroicon-o-clipboard-document-list')
                     ->color('gray')
                     ->visible(fn (Budget $r) => ! $r->esDeVenta())
-                    ->url(fn (Budget $r) => '/admin/purchase-requests?tableFilters[budget_id][value]=' . $r->id),
+                    ->url(fn (Budget $r) => '/admin/purchase-requests?filters[budget_id][value]=' . $r->id),
 
                 Action::make('pedir')
                     ->label('Nueva solicitud')

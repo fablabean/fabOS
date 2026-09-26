@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Widgets;
 
+use App\Filament\Resources\Projects\ProjectResource;
 use App\Models\Project;
 use Filament\Widgets\Widget;
 
@@ -46,7 +47,7 @@ class EmbudoDeProyectos extends Widget
     /** El listado filtrado a alianzas, que es a donde llevan sus tarjetas. */
     public function enlaceDeAlianzas(): string
     {
-        return '/admin/projects?tableFilters[modality][value]=alianza';
+        return $this->listado(['modality' => ['value' => 'alianza']]);
     }
 
     public function ano(): int
@@ -67,13 +68,30 @@ class EmbudoDeProyectos extends Widget
         // La de pausa no es una etapa: lo pausado esta repartido por todas, y
         // filtrar por una sola escondería el resto.
         if ($tarjeta['pausa'] ?? false) {
-            return '/admin/projects?tableFilters[status][value]=pausado';
+            return $this->listado(['status' => ['value' => 'pausado']]);
         }
 
-        $filtros = ['tableFilters[stage][value]=' . $tarjeta['etapa']];
+        return $this->listado([
+            'stage'  => ['value' => $tarjeta['etapa']],
+            'status' => ['value' => $tarjeta['cerrada'] ? 'cerrado' : 'activo'],
+        ]);
+    }
 
-        $filtros[] = 'tableFilters[status][value]=' . ($tarjeta['cerrada'] ? 'cerrado' : 'activo');
-
-        return '/admin/projects?' . implode('&', $filtros);
+    /**
+     * La dirección del listado con esos filtros puestos.
+     *
+     * Filament lee los filtros de `?filters[...]`: el nombre de la propiedad
+     * (`tableFilters`) no le dice nada en la dirección, y la tarjeta abría el
+     * listado sin filtrar. Por eso se arma con su propio generador y no a mano.
+     *
+     * «Míos y sin responsable» se apaga siempre: el embudo cuenta los de todo
+     * el laboratorio, y la tabla tiene que enseñar los mismos que la tarjeta
+     * dice que hay.
+     */
+    private function listado(array $filtros): string
+    {
+        return ProjectResource::getUrl('index', [
+            'filters' => $filtros + ['mios' => ['isActive' => false]],
+        ]);
     }
 }

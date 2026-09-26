@@ -261,6 +261,35 @@ class EmbudoDeProyectosTest extends TestCase
             ->assertSee('$3.000.000')
             // Cada tarjeta abre el listado ya filtrado: un resumen que solo
             // informa obliga a repetir a mano el filtro que uno acaba de leer.
-            ->assertSee('tableFilters[stage][value]=propuesta', false);
+            ->assertSee('filters%5Bstage%5D%5Bvalue%5D=propuesta', false);
+    }
+
+    /**
+     * Y el enlace filtra de verdad.
+     *
+     * Comprobar que el texto del enlace está en la página no bastaba: decía
+     * `tableFilters[...]`, que Filament no lee de la dirección, y la tarjeta
+     * abría el listado entero sin que ninguna prueba lo notara.
+     */
+    public function test_la_tarjeta_abre_el_listado_filtrado_por_su_etapa(): void
+    {
+        $yo = User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $yo->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+        $otra = User::create(['name' => 'Otra', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+
+        $propuesta = $this->proyecto(['stage' => 'propuesta', 'lead_id' => $otra->id]);
+        $idea = $this->proyecto(['stage' => 'idea']);
+
+        $this->actingAs($yo);
+
+        $enlace = (new \App\Filament\Resources\Projects\Widgets\EmbudoDeProyectos())
+            ->enlaceDe(['etapa' => 'propuesta', 'cerrada' => false]);
+        parse_str((string) parse_url($enlace, PHP_URL_QUERY), $consulta);
+
+        \Livewire\Livewire::withQueryParams($consulta)
+            ->test(\App\Filament\Resources\Projects\Pages\ListProjects::class)
+            // La de otra persona también: el embudo cuenta el laboratorio entero.
+            ->assertCanSeeTableRecords([$propuesta])
+            ->assertCanNotSeeTableRecords([$idea]);
     }
 }
