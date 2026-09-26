@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
@@ -25,6 +26,10 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
+    /** Cómo se llama un registro cuando se le nombra suelto: en la
+     *  búsqueda de arriba, en un desplegable, en un gestor de relación. */
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static ?string $modelLabel = 'Persona';
 
     protected static ?string $pluralModelLabel = 'Personas';
@@ -34,6 +39,35 @@ class UserResource extends Resource
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
         return 'Personas';
+    }
+
+    /**
+     * Buscar a alguien desde cualquier pantalla (§5).
+     *
+     * También por documento y correo: en el mostrador se pregunta «¿a nombre
+     * de quién?» y lo que se tiene a mano es la cédula del carnet, no cómo
+     * quedó escrito el nombre. Y los nombres se escriben de muchas maneras
+     * —con tilde, sin tilde, con dos apellidos o con uno—, así que buscar sólo
+     * por nombre falla justo cuando hay alguien esperando.
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'email', 'document_number'];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return array_filter([
+            'Categoría' => $record->category?->name,
+            'Correo'    => $record->email,
+            'Estado'    => $record->status === 'activo' ? null : ucfirst((string) $record->status),
+        ]);
+    }
+
+    /** Con la categoría ya traída: si no, es una consulta por resultado. */
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('category');
     }
 
     public static function form(Schema $schema): Schema

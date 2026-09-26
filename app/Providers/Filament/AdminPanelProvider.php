@@ -41,6 +41,19 @@ class AdminPanelProvider extends PanelProvider
                     : null))
             ->brandLogoHeight('2.2rem')
             ->favicon(fn () => \App\Support\Settings::logoParaLaWeb()['url'] ?? asset('img/favicon-32.png'))
+            /*
+             * El buscador de arriba busca en el contenido: personas,
+             * proyectos, equipos, insumos. El del menú lateral sigue siendo
+             * para llegar a una sección, que es otra cosa —«¿dónde está
+             * tarifas?» no se responde igual que «¿dónde está Michael?»— y
+             * por eso son dos y no uno.
+             *
+             * Con atajo, que es como se usa en cuanto se descubre: se busca a
+             * mitad de otra tarea y volver al ratón para eso cuesta más que
+             * la búsqueda.
+             */
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchDebounce('400ms')
             ->path('admin')
             // El ingreso es el del sitio, sin contraseñas. El formulario de
             // Filament pedía una que nadie tiene; ahora /admin/login manda a

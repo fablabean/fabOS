@@ -11,6 +11,7 @@ use App\Filament\Resources\Projects\Schemas\ProjectForm;
 use App\Filament\Resources\Projects\Tables\ProjectsTable;
 use App\Models\Project;
 use BackedEnum;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Schema;
@@ -81,6 +82,41 @@ class ProjectResource extends Resource
      * mundo. Las reglas del equipo viven en ProjectPolicy, que suma a la
      * matriz en vez de reemplazarla.
      */
+
+    /**
+     * Buscar un proyecto desde cualquier pantalla (§11).
+     *
+     * Por código antes que por nombre: «PRY-2026-0108» es lo que se dice por
+     * teléfono y lo que aparece en el asunto de un correo, mientras que el
+     * nombre se recuerda a medias —«el de los trofeos», «lo del museo»—. Y por
+     * quién lo pidió, que muchas veces es lo único que se tiene: llega la
+     * llamada de una empresa y hay que dar con lo suyo sin saber cómo se tituló.
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['code', 'name', 'contact_name', 'organization'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->code . ' · ' . $record->name;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return array_filter([
+            'Etapa'       => Project::ETAPAS[$record->stage] ?? $record->stage,
+            'Estado'      => Project::ESTADOS[$record->status] ?? $record->status,
+            'Quién pide'  => $record->quienPide(),
+            'Responsable' => $record->lead?->name,
+        ]);
+    }
+
+    /** Con el responsable ya traído: si no, es una consulta por resultado. */
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with('lead');
+    }
 
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
