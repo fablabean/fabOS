@@ -73,10 +73,12 @@ class ListProjects extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            EmbudoDeProyectos::class,
             // Cómo queda la semana de todos: es la que dice si cabe lo que se
-            // está por aceptar.
+            // está por aceptar. Va primero porque no toca la tabla.
             SemanaDelLaboratorio::class,
+            // El embudo, justo encima de la tabla: sus tarjetas la filtran, y
+            // lo que actúa sobre algo se pone al lado de ese algo.
+            EmbudoDeProyectos::class,
         ];
     }
 }
