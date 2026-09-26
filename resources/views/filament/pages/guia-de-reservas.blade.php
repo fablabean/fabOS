@@ -148,7 +148,21 @@
                 .acerto-sw[data-estado="no"]{background:var(--danger-500,#ef4444)}
                 .acerto-sw[data-estado="no"] .bolita{left:.175rem}
                 .acerto-sw[data-estado="no"] .texto{right:.7rem}
-                .acerto-sw:focus-visible{outline:2px solid var(--primary-500,#0d6e63);outline-offset:2px}
+
+                /* Los dos lados se pulsan, y cada uno lleva a su estado.
+
+                   Con un solo punto de pulsación había que adivinar qué hacía:
+                   desde «sin revisar» sólo se podía abrir la corrección, así
+                   que decir «sí acertó» no tenía por dónde. Un interruptor
+                   donde cada lado es el estado al que va se lee sin
+                   instrucciones: se pulsa el lado que uno quiere. */
+                .acerto-sw .mitad{
+                    position:absolute;top:0;height:100%;width:50%;
+                    padding:0;margin:0;border:0;background:transparent;cursor:pointer;
+                }
+                .acerto-sw .mitad.izq{left:0;border-radius:999px 0 0 999px}
+                .acerto-sw .mitad.der{right:0;border-radius:0 999px 999px 0}
+                .acerto-sw .mitad:focus-visible{outline:2px solid var(--primary-500,#0d6e63);outline-offset:2px}
             </style>
 
             {{-- Buscar y filtrar. Se guardan todas desde el primer día y sólo
@@ -250,32 +264,36 @@
                                         $estado = $c->acerto === null ? 'sin' : ($mal ? 'no' : 'si');
                                     @endphp
 
-                                    {{-- Un solo interruptor, y lo que hace al
-                                         pulsarlo depende de dónde esté.
+                                    {{-- Cada lado lleva a su estado: el
+                                         izquierdo a «no acertó», el derecho a
+                                         «acertó». Con un solo punto de
+                                         pulsación había que adivinar qué hacía
+                                         —y desde «sin revisar» no había manera
+                                         de decir que sí acertó, porque el
+                                         único clic abría la corrección—.
 
-                                         Apagarlo abre el modal en vez de
-                                         cambiar el estado a secas: un «esto
+                                         El lado del «no» abre el modal en vez
+                                         de cambiar el estado a secas: un «esto
                                          está mal» sin el «debió ser esto» no
                                          le sirve de nada a la guía, y lo que
                                          vuelve como ejemplo es el camino
-                                         correcto. Encenderlo sí es directo. --}}
-                                    <button type="button"
-                                            class="acerto-sw"
-                                            data-estado="{{ $estado }}"
-                                            role="switch"
-                                            aria-checked="{{ $mal ? 'false' : 'true' }}"
-                                            aria-label="¿Acertó?"
-                                            wire:loading.attr="disabled"
-                                            @if ($mal)
-                                                wire:click="acerto({{ $c->id }})"
-                                                title="Retirar la corrección: dejar de enseñársela"
-                                            @else
-                                                wire:click="mountAction('corregir', { consulta: {{ $c->id }} })"
-                                                title="{{ $c->acerto === null ? 'Nadie la ha revisado. Púlsalo si no acertó.' : 'Acertó. Púlsalo si te desdices.' }}"
-                                            @endif>
+                                         correcto. El del «sí» es directo. --}}
+                                    <span class="acerto-sw" data-estado="{{ $estado }}">
                                         <span class="texto">{{ $mal ? 'NO' : 'SÍ' }}</span>
                                         <span class="bolita"></span>
-                                    </button>
+
+                                        <button type="button" class="mitad izq"
+                                                wire:click="mountAction('corregir', { consulta: {{ $c->id }} })"
+                                                wire:loading.attr="disabled"
+                                                aria-label="No acertó: decir con qué debió contestar"
+                                                title="No acertó: decir con qué debió contestar"></button>
+
+                                        <button type="button" class="mitad der"
+                                                wire:click="acerto({{ $c->id }})"
+                                                wire:loading.attr="disabled"
+                                                aria-label="Acertó"
+                                                title="{{ $mal ? 'Retirar la corrección: dejar de enseñársela' : 'Acertó' }}"></button>
+                                    </span>
 
                                     @if ($c->acerto === null)
                                         <span class="text-gray-400" style="display:block;font-size:.66rem;margin-top:.2rem">sin revisar</span>
@@ -292,6 +310,11 @@
             @endif
 
             <p class="text-sm mt-3 text-gray-500">
+                En «¿Acertó?» se pulsa el lado al que quieres llevarlo: el <strong>derecho</strong>
+                si la respuesta estuvo bien, el <strong>izquierdo</strong> si no —y ahí se dice con
+                qué debió contestar—. Mientras nadie lo toque, la fila queda «sin revisar».
+            </p>
+            <p class="text-sm mt-2 text-gray-500">
                 «Repetida» es una pregunta que ya se había hecho igual: se contestó de la
                 memoria y no costó una llamada a la API. Quien escribe sin haber entrado
                 queda sin identificar, y así se queda.
