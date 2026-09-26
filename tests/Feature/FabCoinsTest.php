@@ -267,34 +267,6 @@ class FabCoinsTest extends TestCase
         $this->assertSame(0, $this->libro()->cuentaDeSistema(LedgerAccount::GARANTIAS)->saldoMenor());
     }
 
-    public function test_la_dotacion_del_mes_se_puede_repetir_sin_miedo(): void
-    {
-        $u = $this->persona();
-        $u->category->update(['allowance_minor' => 50000]);
-
-        $this->artisan('fabos:dotar', ['--periodo' => '2026-08'])->assertSuccessful();
-        $this->artisan('fabos:dotar', ['--periodo' => '2026-08'])->assertSuccessful();
-
-        // Correrlo dos veces —planificador nervioso, reintento manual— no debe
-        // duplicar el saldo de nadie.
-        $this->assertSame(50000, $this->libro()->saldoDe($u));
-
-        // Otro periodo sí es otra dotación.
-        $this->artisan('fabos:dotar', ['--periodo' => '2026-09'])->assertSuccessful();
-        $this->assertSame(100000, $this->libro()->saldoDe($u));
-    }
-
-    public function test_la_dotacion_no_alcanza_a_quien_esta_inactivo(): void
-    {
-        $u = $this->persona();
-        $u->category->update(['allowance_minor' => 50000]);
-        $u->update(['status' => 'inactivo']);
-
-        $this->artisan('fabos:dotar', ['--periodo' => '2026-08'])->assertSuccessful();
-
-        $this->assertSame(0, $this->libro()->saldoDe($u));
-    }
-
     public function test_todo_el_ciclo_deja_el_libro_cuadrado(): void
     {
         $cobros = $this->cobros();

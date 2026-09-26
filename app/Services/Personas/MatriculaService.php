@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * Tres cosas pasan a la vez, y por eso van en una transacción: si no tenía
  * cuenta, nace —con el correo que dejó, idealmente el corporativo, que es por
  * el que después se filtra—; recibe la subcategoría del programa, que decide
- * su tarifa, su dotación y con cuánto arranca; y queda la matrícula, que es
+ * su tarifa y con cuánto arranca; y queda la matrícula, que es
  * la que explica todo lo anterior.
  *
  * La bienvenida no se abona aquí: la abona el propio cambio de categoría,

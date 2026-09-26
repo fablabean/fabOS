@@ -14,7 +14,7 @@ class UserCategoryForm
     {
         return $schema
             ->components([
-                CampoDeDinero::selector(['allowance_minor', 'welcome_minor']),
+                CampoDeDinero::selector(['welcome_minor']),
                 Section::make('Identificación')
                     ->columns(2)
                     ->schema([
@@ -23,7 +23,7 @@ class UserCategoryForm
                         TextInput::make('position')->label('Orden')->numeric()->default(0),
                         Toggle::make('is_institutional')
                             ->label('Pertenece a la Universidad')
-                            ->helperText('Define quién recibe la dotación institucional.'),
+                            ->helperText('Informativo: separa a la comunidad de la Universidad de quien viene de fuera.'),
                     ]),
 
                 Section::make('Qué implica esta categoría')
@@ -36,19 +36,6 @@ class UserCategoryForm
                             ->step('0.01')
                             ->default(1)
                             ->helperText('0,5 = mitad de precio · 2 = doble.'),
-
-                        /*
-                         * En la moneda de trabajo, no en unidades menores.
-                         *
-                         * Pedia el numero crudo de la base -«100 = 1 FabCoin»-
-                         * y lo explicaba en la ayuda, que es tanto como pedir
-                         * que se haga la cuenta a mano cada vez. Un cero de mas
-                         * aqui es una dotacion diez veces mayor para todo el
-                         * mundo, y no da ningun error.
-                         */
-                        CampoDeDinero::make('allowance_minor')
-                            ->label('Dotación periódica')
-                            ->helperText('Lo que recibe cada periodo quien esté en esta categoría.'),
 
                         Toggle::make('can_reserve')
                             ->label('Puede reservar')

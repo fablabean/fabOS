@@ -138,7 +138,7 @@ class ReadinessService
      * El planificador: lo que más se olvida.
      *
      * fabOS depende de él para liberar reservas sin llegada, generar
-     * preventivas, recordar reservas y abonar la dotación. Si nadie lo arranca,
+     * preventivas, recordar reservas y abonar el beneficio semanal. Si nadie lo arranca,
      * todo eso simplemente no ocurre —y no hay ningún error que lo delate—.
      */
     private function planificador(): array
@@ -175,7 +175,7 @@ class ReadinessService
 
         return $this->aviso('No hay rastro del planificador',
             'De él dependen liberar reservas sin llegada, generar preventivas, recordar reservas y '
-            . 'abonar la dotación. Si nadie lo arranca, nada de eso ocurre y no hay error que lo delate.',
+            . 'abonar el beneficio semanal. Si nadie lo arranca, nada de eso ocurre y no hay error que lo delate.',
             '* * * * * cd /ruta && php artisan schedule:run >> /dev/null 2>&1');
     }
 

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class UserCategory extends Model
 {
     protected $fillable = [
-        'slug', 'name', 'position', 'rate_factor', 'allowance_minor',
+        'slug', 'name', 'position', 'rate_factor',
         'max_hours_per_week', 'max_days_ahead', 'can_reserve', 'is_institutional',
         'client_kind', 'welcome_minor', 'weekly_benefit',
     ];

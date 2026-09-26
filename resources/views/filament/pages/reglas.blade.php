@@ -301,13 +301,14 @@
             <x-slot name="heading">8 · Categorías de usuario y moneda</x-slot>
 
             <table>
-                <thead><tr><th>Categoría</th><th>Factor</th><th>Dotación</th><th>Reserva</th><th>Anticipación</th></tr></thead>
+                <thead><tr><th>Categoría</th><th>Factor</th><th>Bienvenida</th><th>Beneficio semanal</th><th>Reserva</th><th>Anticipación</th></tr></thead>
                 <tbody>
                 @foreach ($categorias as $c)
                     <tr>
                         <td>{{ $c->name }}</td>
                         <td>{{ rtrim(rtrim(number_format($c->rate_factor, 2), '0'), '.') }}×</td>
-                        <td>{{ number_format($c->allowance_minor / $moneda['minor_units'], 0) }} {{ $moneda['code'] }}</td>
+                        <td>{{ $c->welcome_minor ? number_format($c->welcome_minor / $moneda['minor_units'], 0) . ' ' . $moneda['code'] : '—' }}</td>
+                        <td>{{ $c->weekly_benefit ? 'sí' : 'no' }}</td>
                         <td>{{ $c->can_reserve ? 'sí' : 'no' }}</td>
                         <td>{{ $c->max_days_ahead }} días</td>
                     </tr>
@@ -1081,10 +1082,7 @@
                     puestos según lo acordado, pero no verificados contra la norma.</li>
                 <li><span class="pendiente">Tarifa ancla:</span> cuántos {{ $moneda['name'] }}s vale una
                     hora de láser. Hoy está supuesta en {{ $ancla ? $enFbc($ancla->price_minor) : '—' }}
-                    {{ $moneda['code'] }} y de ahí se derivan las demás tarifas y la dotación.</li>
-                <li><span class="pendiente">Dotación por categoría:</span> cuántos
-                    {{ $moneda['name'] }}s recibe cada tipo de persona y cada cuánto. Sin eso, el
-                    cobro no puede encenderse: la gente quedaría sin saldo.</li>
+                    {{ $moneda['code'] }} y de ahí se derivan las demás tarifas.</li>
                 <li><span class="pendiente">Ausencias:</span> hoy no se penaliza no presentarse; se
                     devuelve todo. Penalizar es una decisión de política, no un valor por defecto.</li>
                 <li><span class="pendiente">Presupuesto {{ now()->year }}:</span> cargar el monto

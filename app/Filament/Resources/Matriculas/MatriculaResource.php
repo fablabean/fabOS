@@ -34,7 +34,7 @@ use Filament\Tables\Table;
  * Es la puerta por la que un bootcamp, un curso o un diplomado entran al
  * laboratorio: quién, en qué programa, hasta cuándo. Al matricular nace la
  * cuenta si no existía, la persona recibe la subcategoría del programa —que
- * decide tarifa, dotación y con cuánto saldo arranca— y queda escrito quién
+ * decide tarifa y con cuánto saldo arranca— y queda escrito quién
  * la anotó. Es una sección propia para poder abrírsela a Educación Continua
  * sin darle el resto de Personas.
  */
@@ -107,7 +107,7 @@ class MatriculaResource extends Resource
                             ->mapWithKeys(fn (UserCategory $c) => [$c->id => $c->name . ' · nace con '
                                 . number_format($c->welcome_minor / config('fabos.currency.minor_units'), 0) . ' ' . config('fabos.currency.code')]))
                         ->required()
-                        ->helperText('Es la subcategoría de estudiante que recibe: decide su tarifa, su dotación y con cuánto saldo arranca. Las cifras se editan en Personas → Categorías.'),
+                        ->helperText('Es la subcategoría de estudiante que recibe: decide su tarifa y con cuánto saldo arranca. Las cifras se editan en Personas → Categorías.'),
 
                     TextInput::make('program_name')
                         ->label('Nombre del programa')

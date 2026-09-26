@@ -131,9 +131,9 @@ class ContenidoTable
                  *
                  * No lo puede pulsar cualquiera que entre a esta pantalla:
                  * esto EMITE moneda, y la galería la abre Comunicaciones
-                 * entera. Se pide la misma llave que emitir la dotación, que
-                 * por defecto es del superadmin y se abre a quien haga falta
-                 * desde *Roles y accesos*, sin desplegar.
+                 * entera. Se pide la llave del beneficio semanal, que es la
+                 * pantalla desde la que se emite moneda, y se abre a quien
+                 * haga falta desde *Roles y accesos*, sin desplegar.
                  */
                 Action::make('reconocer')
                     ->label('Reconocer')
@@ -141,7 +141,7 @@ class ContenidoTable
                     ->color('success')
                     ->visible(fn (Contenido $r) => $r->sePuedeReconocer()
                         && BancoDeContenido::reconocimientoPorDefecto() > 0
-                        && (auth()->user()?->puedeEnLaSeccion('ver', 'dotacion') ?? false))
+                        && (auth()->user()?->puedeEnLaSeccion('ver', 'beneficio-semanal') ?? false))
                     ->modalHeading('Reconocer este aporte')
                     ->modalDescription(fn (Contenido $r) => 'Se le abonan FabCoins a '
                         .($r->user?->name ?? 'quien lo subió')

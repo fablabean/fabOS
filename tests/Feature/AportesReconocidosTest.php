@@ -185,9 +185,9 @@ class AportesReconocidosTest extends TestCase
      * El botón de reconocer no es de quien mira la galería.
      *
      * Esto EMITE moneda, y el banco lo abre Comunicaciones entera —es la única
-     * pantalla del panel a la que entran—. Se pide la misma llave que emitir la
-     * dotación, que por defecto es del superadmin y se abre desde *Roles y
-     * accesos* a quien el laboratorio decida, sin desplegar.
+     * pantalla del panel a la que entran—. Se pide la llave del beneficio
+     * semanal, desde donde se emite moneda, y se abre desde *Roles y accesos*
+     * a quien el laboratorio decida, sin desplegar.
      */
     public function test_reconocer_pide_la_llave_de_emitir_moneda(): void
     {

@@ -51,7 +51,7 @@
 
     <p class="foot">
         Si eres de la Universidad, usa tu correo institucional: así quedas
-        vinculado con tu categoría y tu dotación de {{ config('fabos.currency.name') }}s.
+        vinculado con tu categoría y tu saldo de {{ config('fabos.currency.name') }}s.
     </p>
 
     <style>

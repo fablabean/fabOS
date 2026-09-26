@@ -296,7 +296,7 @@ class ApplicationsRelationManager extends RelationManager
             ->modalSubmitActionLabel('Crear la cuenta')
             // La categoría sugerida sale del correo, no de una casilla:
             // estudiante si es de la Universidad, externo si viene de fuera. Es
-            // lo que decide su tarifa y su dotación, y se puede cambiar aquí.
+            // lo que decide su tarifa y su bienvenida, y se puede cambiar aquí.
             ->fillForm(fn (InternshipApplication $record) => [
                 'roles' => [User::ROL_PRACTICANTE],
                 'user_category_id' => UserCategory::where('slug', $record->esInterno() ? 'estudiante' : 'externo')->value('id'),

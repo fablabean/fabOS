@@ -163,7 +163,7 @@ class ConvocatoriaDePractica
      * Con qué categoría nace.
      *
      * **Estudiante** si viene de la propia Universidad, **externo** si viene de
-     * fuera: es lo que decide su tarifa, su dotación y cuánta antelación tiene
+     * fuera: es lo que decide su tarifa, su bienvenida y cuánta antelación tiene
      * para reservar, y sale del correo, no de una casilla.
      */
     private function categoriaPorDefecto(InternshipApplication $postulacion): ?int

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Es lo que explica por qué una persona tiene la categoría que tiene: «está
  * en el bootcamp de IoT hasta noviembre». La categoría decide su tarifa, su
- * dotación y con cuánto saldo nace; la matrícula dice quién lo anotó y hasta
+ * beneficio y con cuánto saldo nace; la matrícula dice quién lo anotó y hasta
  * cuándo vale.
  */
 class Matricula extends Model

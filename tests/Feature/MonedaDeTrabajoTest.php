@@ -142,19 +142,19 @@ class MonedaDeTrabajoTest extends TestCase
     }
 
     /**
-     * La dotación se escribe como dinero, no en unidades menores.
+     * La bienvenida se escribe como dinero, no en unidades menores.
      *
      * Pedía el número crudo de la base —«100 = 1 FabCoin»— y lo explicaba en
      * la ayuda, que es tanto como pedir que se haga la cuenta a mano cada vez.
-     * Un cero de más ahí es una dotación diez veces mayor para todo el mundo.
+     * Un cero de más ahí es una bienvenida diez veces mayor para todo el mundo.
      */
-    public function test_la_dotacion_ya_no_se_escribe_en_unidades_menores(): void
+    public function test_la_bienvenida_no_se_escribe_en_unidades_menores(): void
     {
         $this->admin();
 
         $categoria = UserCategory::create([
             'slug' => 'c-' . uniqid(), 'name' => 'Estudiante',
-            'can_reserve' => true, 'allowance_minor' => 5_000, 'welcome_minor' => 800,
+            'can_reserve' => true, 'welcome_minor' => 800,
         ]);
 
         $pantalla = Livewire::test(
@@ -162,7 +162,6 @@ class MonedaDeTrabajoTest extends TestCase
             ['record' => $categoria->getRouteKey()],
         );
 
-        $this->assertEquals(50, $pantalla->get('data.allowance_minor'));
         $this->assertEquals(8, $pantalla->get('data.welcome_minor'));
     }
 

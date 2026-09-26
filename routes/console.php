@@ -27,9 +27,9 @@ Schedule::call(fn () => app(App\Services\Booking\WaitlistService::class)->vencer
 
 /*
  * El beneficio semanal de FabCoins (§12): cada lunes a primera hora, a quien
- * tiene correo aliado se le completa el saldo hasta el tope. A diferencia de
- * la dotacion mensual de abajo, esto SI se programa: no crea saldo a
- * discrecion sino que aplica una regla escrita —el tope y los dominios se
+ * tiene correo aliado se le completa el saldo hasta el tope. Se programa
+ * porque no crea saldo a discrecion sino que aplica una regla escrita —el
+ * tope y los dominios se
  * administran en Finanzas → Beneficio semanal, y ahi mismo se apaga—. Cada
  * asiento dice la semana y la regla, y correrlo dos veces no abona dos veces.
  */
@@ -43,17 +43,9 @@ Schedule::command('fabos:beneficio-semanal')
 Schedule::command('fabos:respaldar')->dailyAt('03:00');
 
 /*
- * La dotación NO se programa: emitir moneda es un acto del laboratorio (§12).
- *
- * Estaba puesta el día 1 de cada mes, y funcionaba: el 1 de septiembre a la una
- * de la mañana aparecieron tres mil cien FabCoins repartidos entre seis
- * personas, sin que nadie lo hubiera decidido ese mes y sin nombre en el
- * asiento. Un movimiento que crea dinero y no dice quién lo creó es el que
- * nadie puede explicar después.
- *
- * Se emite desde «Finanzas → Dotación», con quién y cuándo escritos. El comando
- * `fabos:dotar` sigue existiendo para la consola, con `--simular` para ver a
- * quién le tocaría sin escribir nada.
+ * La dotación mensual por categoría ya no existe (§12). La reemplazaron el
+ * beneficio semanal de arriba —hasta 8 cada lunes, sin acumular— y el saldo
+ * de bienvenida de cada categoría. Los asientos que emitió siguen en el libro.
  */
 
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede

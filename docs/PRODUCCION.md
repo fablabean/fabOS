@@ -49,7 +49,7 @@ De él dependen:
 | `fabos:generar-preventivas` | 05:00 | El mantenimiento planificado nunca se convierte en órdenes |
 | `fabos:vencer-esperas` | 04:30 | La lista de espera acumula ventanas que ya pasaron |
 | `fabos:respaldar` | 03:00 | **No hay respaldos** |
-| `fabos:dotar` | día 1, 06:00 | Nadie recibe su dotación de FabCoins |
+| `fabos:beneficio-semanal` | lunes, 00:10 | Nadie recibe el beneficio semanal de FabCoins |
 
 **La cola.** Con `QUEUE_CONNECTION=sync`, quien pide un código de ingreso espera
 a que el servidor de correo responda: si ese servidor se demora, la pantalla se

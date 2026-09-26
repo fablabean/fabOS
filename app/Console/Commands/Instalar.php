@@ -99,26 +99,25 @@ class Instalar extends Command
     /**
      * Categorías genéricas.
      *
-     * Los factores y las dotaciones son un punto de partida: cada laboratorio
+     * Los factores son un punto de partida: cada laboratorio
      * decide qué subsidia y cuánto. Lo que no cambia es la distinción entre
      * quien pertenece a la institución y quien no.
      */
     private function categorias(): void
     {
         $categorias = [
-            ['estudiante',  'Estudiante',  0.5, 0, true,  true],
-            ['profesor',    'Profesor',    0.5, 0, true,  true],
-            ['colaborador', 'Colaborador', 0.0, 0, true,  true],
-            ['externo',     'Externo',     2.0, 0, false, false],
-            ['invitado',    'Invitado',    1.0, 0, false, false],
+            ['estudiante',  'Estudiante',  0.5, true,  true],
+            ['profesor',    'Profesor',    0.5, true,  true],
+            ['colaborador', 'Colaborador', 0.0, true,  true],
+            ['externo',     'Externo',     2.0, false, false],
+            ['invitado',    'Invitado',    1.0, false, false],
         ];
 
-        foreach ($categorias as $i => [$slug, $nombre, $factor, $dotacion, $institucional, $reserva]) {
+        foreach ($categorias as $i => [$slug, $nombre, $factor, $institucional, $reserva]) {
             UserCategory::firstOrCreate(['slug' => $slug], [
                 'name'             => $nombre,
                 'position'         => $i,
                 'rate_factor'      => $factor,
-                'allowance_minor'  => $dotacion,
                 'is_institutional' => $institucional,
                 'can_reserve'      => $reserva,
                 'max_days_ahead'   => $institucional ? 30 : 14,

@@ -276,7 +276,7 @@ crontab -e
 ```
 
 De ahí dependen liberar reservas sin llegada, los recordatorios, las órdenes
-preventivas, la dotación mensual y **los respaldos**.
+preventivas, el beneficio semanal y **los respaldos**.
 
 ## 7. Respaldos fuera del servidor
 

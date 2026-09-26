@@ -25,10 +25,6 @@ class UserCategoriesTable
                     ->badge()
                     ->color(fn ($state) => $state < 1 ? 'success' : ($state > 1 ? 'warning' : 'gray')),
 
-                TextColumn::make('allowance_minor')
-                    ->label('Dotación')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0) . ' ' . config('fabos.currency.code')),
-
                 TextColumn::make('users_count')->label('Personas')->counts('users')->badge()->color('gray'),
 
                 IconColumn::make('can_reserve')->label('Puede reservar')->boolean(),

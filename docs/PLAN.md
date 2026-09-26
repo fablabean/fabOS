@@ -186,8 +186,10 @@ decisión tuya
 - [x] Horas incluidas a la semana con certifab: un número más de la tarifa
       (8 h en FDM), cupo por semana y no por reserva, gratis del todo si cubre
       el trabajo; lo que pasa se cobra con la tarifa de siempre
-- [x] Dotación institucional (`fabos:dotar`, mensual e idempotente),
-      bonificación por colaboración y recargas, todas desde Finanzas
+- [x] Beneficio semanal (`fabos:beneficio-semanal`: cada lunes completa hasta
+      8, sin acumular, a correos aliados), saldo de bienvenida por categoría,
+      bonificación por colaboración y recargas, todas desde Finanzas. La
+      dotación mensual por categoría se retiró en 2026-09
 - [x] Cobro de material real: se declara al cerrar desde el QR del equipo, sale
       del inventario y se suma a la liquidación con su precio congelado
 - [x] Lo que viene en lámina lleva sus medidas: al cerrar una producción —y

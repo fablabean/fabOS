@@ -53,7 +53,7 @@ class UserForm
                             ->label('Categoría')
                             ->relationship('category', 'name')
                             ->preload()
-                            ->helperText('Determina tarifas, cupos y dotación.'),
+                            ->helperText('Determina tarifas, cupos, saldo de bienvenida y beneficio semanal.'),
 
                         Toggle::make('category_confirmed')
                             ->label('Categoría confirmada')
