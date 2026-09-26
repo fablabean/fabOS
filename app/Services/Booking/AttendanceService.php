@@ -89,7 +89,13 @@ class AttendanceService
             );
         }
 
-        if ($ahora->greaterThan($cierra)) {
+        // Un espacio o una herramienta se pueden validar mientras dure la
+        // franja: llegar tarde no los libera (ver sinControlDeLlegada).
+        if ($this->sinControlDeLlegada($reserva)) {
+            if ($ahora->greaterThan($reserva->ends_at)) {
+                throw new BookingException('Esta reserva ya terminó.');
+            }
+        } elseif ($ahora->greaterThan($cierra)) {
             // Se marca la ausencia en el momento de descubrirla, no en un proceso
             // nocturno: así el equipo queda libre de inmediato.
             $this->marcarNoShow($reserva);
@@ -141,19 +147,67 @@ class AttendanceService
     }
 
     /**
-     * Una sala sin nada tomado dentro.
+     * Un espacio o una herramienta: lo que no se libera por no marcar llegada.
      *
-     * No se valida al llegar porque no hay nada que escanear: el QR lo tienen
-     * los equipos, no las paredes. Lo que se tomó dentro sí lo tiene, y por eso
-     * una sala CON herramientas se sigue mirando: una herramienta apartada que
-     * nadie usó es una herramienta perdida.
+     * La ausencia se pensó para las máquinas: una impresora apartada por
+     * alguien que no vino es una impresora que otro podía usar, y liberarla a
+     * los veinte minutos tiene sentido. En un espacio o una herramienta no:
+     * una sala no tiene QR que escanear, y la herramienta se toma de la
+     * estantería sin pasar por el sistema. En septiembre de 2026 el barrido
+     * había dado por no presentadas 66 reservas de espacios y 107 de
+     * herramientas —contra 5 de máquinas—, y soltado lo que la gente estaba
+     * usando.
+     *
+     * Así que se dan por hechas: siguen activas durante su franja y al
+     * terminar se cierran, con una nota de que nadie marcó llegada ni salida.
+     * Lo que va dentro de una sala sigue a la sala.
      */
-    private function esSalaSinHerramientas(Reservation $reserva): bool
+    private function sinControlDeLlegada(Reservation $reserva): bool
     {
-        return $reserva->reservable_type === Space::class
-            && ! Reservation::where('parent_reservation_id', $reserva->id)
-                ->where('reservable_type', Asset::class)
-                ->exists();
+        if ($reserva->reservable_type === Space::class) {
+            return true;
+        }
+
+        if ($reserva->reservable_type === Asset::class && $reserva->reservable?->esHerramienta()) {
+            return true;
+        }
+
+        return $reserva->madre?->reservable_type === Space::class;
+    }
+
+    public const SIN_LLEGADA = 'Sin registro de llegada ni de salida: se da por hecha.';
+
+    public const SIN_SALIDA = 'Sin registro de salida: se cerró al terminar su hora.';
+
+    /**
+     * Los espacios y herramientas en curso cuya hora ya pasó y nadie cerró.
+     *
+     * Se cierran a la hora en que terminaban, que es lo único que se sabe, y
+     * se liquidan con esa hora: una herramienta que nadie devolvió en el
+     * sistema no queda «en curso» para siempre.
+     */
+    public function cerrarSinSalida(?Carbon $ahora = null): int
+    {
+        $abiertas = Reservation::query()
+            ->with(['reservable', 'madre'])
+            ->where('status', 'en_curso')
+            ->where('is_production', false)
+            ->whereNotIn('mode', ['asesoria', 'practica'])
+            ->where('ends_at', '<=', ($ahora ?? now())->copy()->utc())
+            ->get()
+            ->filter(fn (Reservation $r) => $this->sinControlDeLlegada($r));
+
+        foreach ($abiertas as $reserva) {
+            $reserva->update([
+                'status'         => 'completada',
+                'checked_out_at' => $reserva->ends_at,
+                'status_reason'  => self::SIN_SALIDA,
+            ]);
+
+            $this->liquidar($reserva->refresh());
+        }
+
+        return $abiertas->count();
     }
 
     /**
@@ -306,7 +360,13 @@ class AttendanceService
 
         $limite = ($hasta ?? now())->copy()->subMinutes(config('fabos.checkin.tolerancia'));
 
+        $this->cerrarSinSalida($hasta);
+
+        // Y las solicitudes que nadie decidió antes de su hora.
+        app(ApprovalService::class)->vencerSolicitudes($hasta);
+
         $pendientes = Reservation::query()
+            ->with(['reservable', 'madre'])
             ->where('status', 'confirmada')
             ->whereNull('checked_in_at')
             // Una produccion no se presenta: es el laboratorio corriendo su
@@ -326,19 +386,16 @@ class AttendanceService
             ->get();
 
         /*
-         * Una sala sola no se da por no presentada.
-         *
-         * No tiene QR: nadie puede validar que llegó, y marcarla era castigar
-         * por algo que no se podía hacer. Se deja correr, y cuando su hora
-         * pasa se cierra sin mancha para quien la pidió. Con herramientas
-         * dentro es otra cosa: eso sí quedó apartado y sin usar.
+         * Espacios y herramientas no se dan por no presentados: se dejan
+         * correr, y cuando su hora pasa se cierran como hechos, con la nota.
+         * Ver sinControlDeLlegada().
          */
-        [$salas, $ausencias] = $pendientes->partition(fn (Reservation $r) => $this->esSalaSinHerramientas($r));
+        [$sinControl, $ausencias] = $pendientes->partition(fn (Reservation $r) => $this->sinControlDeLlegada($r));
 
-        $salas->filter(fn (Reservation $r) => $r->ends_at->isPast())
+        $sinControl->filter(fn (Reservation $r) => $r->ends_at->lte($hasta ?? now()))
             ->each(fn (Reservation $r) => $r->update([
                 'status'        => 'completada',
-                'status_reason' => 'La sala se reservó y su hora pasó. Una sala no se valida al llegar: no hay QR que escanear.',
+                'status_reason' => self::SIN_LLEGADA,
             ]));
 
         $ausencias->each(fn (Reservation $r) => $this->marcarNoShow($r));

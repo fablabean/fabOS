@@ -223,6 +223,30 @@ class ApprovalService
         return $solicitud->refresh();
     }
 
+    public const VENCIDA = 'Venció sin respuesta: la franja pasó antes de que alguien la decidiera.';
+
+    /**
+     * Las solicitudes cuya franja terminó sin que nadie las decidiera.
+     *
+     * Ya no se pueden aprobar —la hora pasó— y se quedaban «solicitadas»
+     * para siempre: en septiembre de 2026 había 39, la más vieja de tres
+     * semanas, y el tablero las contaba como esperando visto bueno. Se
+     * marcan rechazadas con el motivo escrito.
+     *
+     * Sin correo, a propósito: avisar «rechazada» cuando la franja ya pasó
+     * —a veces semanas— no le sirve a nadie para nada, y parece un error.
+     */
+    public function vencerSolicitudes(?\Illuminate\Support\Carbon $ahora = null): int
+    {
+        return Reservation::query()
+            ->where('status', 'solicitada')
+            ->where('ends_at', '<=', ($ahora ?? now())->copy()->utc())
+            ->update([
+                'status'        => 'rechazada',
+                'status_reason' => self::VENCIDA,
+            ]);
+    }
+
     /** Las solicitudes que esperan decisión, primero las más próximas. */
     public function bandeja(): \Illuminate\Support\Collection
     {

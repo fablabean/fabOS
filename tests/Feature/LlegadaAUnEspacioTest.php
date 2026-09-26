@@ -10,6 +10,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Models\UserCategory;
 use App\Models\WorkSchedule;
+use App\Services\Booking\ApprovalService;
 use App\Services\Booking\AttendanceService;
 use App\Services\Booking\EspacioBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,14 +160,16 @@ class LlegadaAUnEspacioTest extends TestCase
         $this->asistencia()->liberarAusencias();
 
         $this->assertSame('completada', $sala->fresh()->status);
-        $this->assertStringContainsString('no se valida al llegar', $sala->fresh()->status_reason);
+        $this->assertSame(\App\Services\Booking\AttendanceService::SIN_LLEGADA, $sala->fresh()->status_reason);
     }
 
     /**
-     * Con herramientas dentro sí se mira: una herramienta apartada que nadie
-     * usó es una herramienta perdida para quien la necesitaba.
+     * Con herramientas dentro, igual: ni la sala ni lo tomado se liberan por
+     * no marcar llegada. Antes sí se liberaban, y en producción eso soltó
+     * 66 reservas de espacios y 107 de herramientas que la gente estaba
+     * usando. Al pasar su hora se cierran como hechas, con la nota.
      */
-    public function test_una_sala_con_herramientas_si_se_marca(): void
+    public function test_una_sala_con_herramientas_tampoco_se_libera(): void
     {
         $sala = $this->reservar([$this->multimetro->id]);
         $herramienta = Reservation::where('parent_reservation_id', $sala->id)->firstOrFail();
@@ -174,8 +177,69 @@ class LlegadaAUnEspacioTest extends TestCase
         $this->travelTo(Carbon::parse('2026-08-24 11:00', config('fabos.lab.timezone')));
         $this->asistencia()->liberarAusencias();
 
-        $this->assertSame('no_show', $sala->fresh()->status);
-        $this->assertSame('no_show', $herramienta->fresh()->status);
+        $this->assertSame('confirmada', $sala->fresh()->status);
+        $this->assertSame('confirmada', $herramienta->fresh()->status);
+
+        $this->travelTo(Carbon::parse('2026-08-24 12:30', config('fabos.lab.timezone')));
+        $this->asistencia()->liberarAusencias();
+
+        $this->assertSame('completada', $sala->fresh()->status);
+        $this->assertSame('completada', $herramienta->fresh()->status);
+        $this->assertSame(\App\Services\Booking\AttendanceService::SIN_LLEGADA, $herramienta->fresh()->status_reason);
+    }
+
+    /** Llegó y nadie marcó la salida: se cierra a su hora, con la nota. */
+    public function test_la_que_llego_y_no_salio_se_cierra_a_su_hora(): void
+    {
+        $sala = $this->reservar([$this->multimetro->id]);
+        $herramienta = Reservation::where('parent_reservation_id', $sala->id)->firstOrFail();
+
+        $this->travelTo(Carbon::parse('2026-08-24 10:05', config('fabos.lab.timezone')));
+        $this->asistencia()->checkIn($herramienta->fresh());
+
+        $this->travelTo(Carbon::parse('2026-08-24 12:30', config('fabos.lab.timezone')));
+        $this->asistencia()->liberarAusencias();
+
+        $this->assertSame('completada', $herramienta->fresh()->status);
+        $this->assertSame(\App\Services\Booking\AttendanceService::SIN_SALIDA, $herramienta->fresh()->status_reason);
+        $this->assertTrue($herramienta->fresh()->checked_out_at->equalTo($herramienta->ends_at));
+    }
+
+    /** Escanear la herramienta tarde no la libera: se registra la llegada. */
+    public function test_llegar_tarde_a_una_herramienta_no_la_libera(): void
+    {
+        $sala = $this->reservar([$this->multimetro->id]);
+        $herramienta = Reservation::where('parent_reservation_id', $sala->id)->firstOrFail();
+
+        $this->travelTo(Carbon::parse('2026-08-24 11:00', config('fabos.lab.timezone')));
+        $this->asistencia()->checkIn($herramienta->fresh());
+
+        $this->assertSame('en_curso', $herramienta->fresh()->status);
+    }
+
+    /** Una solicitud que nadie decidió antes de su hora se vence, sin correo. */
+    public function test_la_solicitud_que_nadie_decidio_se_vence(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $solicitud = Reservation::create([
+            'reservable_type' => \App\Models\Space::class, 'reservable_id' => $this->sala->id,
+            'user_id' => $this->alguien()->id, 'mode' => 'solo_solicitud', 'status' => 'solicitada',
+            'starts_at' => Carbon::parse('2026-08-24 14:00', config('fabos.lab.timezone')),
+            'ends_at'   => Carbon::parse('2026-08-24 16:00', config('fabos.lab.timezone')),
+        ]);
+
+        // Todavía se puede decidir: no se toca.
+        $this->travelTo(Carbon::parse('2026-08-24 15:00', config('fabos.lab.timezone')));
+        $this->asistencia()->liberarAusencias();
+        $this->assertSame('solicitada', $solicitud->fresh()->status);
+
+        $this->travelTo(Carbon::parse('2026-08-24 16:30', config('fabos.lab.timezone')));
+        $this->asistencia()->liberarAusencias();
+
+        $this->assertSame('rechazada', $solicitud->fresh()->status);
+        $this->assertSame(ApprovalService::VENCIDA, $solicitud->fresh()->status_reason);
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
     }
 
     // ------------------------------------------------------ volver a Reservas
