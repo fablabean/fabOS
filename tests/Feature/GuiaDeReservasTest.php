@@ -312,8 +312,10 @@ class GuiaDeReservasTest extends TestCase
 
         $this->get('/reservas')->assertOk()->assertSee('Escribe qué necesitas');
 
+        // Con el ancla: la respuesta nace a media página y sin ella el
+        // navegador devuelve arriba del todo, donde no se ve nada nuevo.
         $this->post(route('publico.reservas.guia'), ['necesidad' => 'Necesito 20 letreros en acrílico para mi empresa'])
-            ->assertRedirect(route('publico.reservas'))
+            ->assertRedirect(route('publico.reservas') . '#guia')
             ->assertSessionHas('guia');
 
         $this->get('/reservas')
@@ -357,7 +359,7 @@ class GuiaDeReservasTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Escribe qué necesitas');
 
         $this->post(route('publico.reservas.guia'), ['necesidad' => 'Nunca he usado la láser y quiero cortar algo'])
-            ->assertRedirect(route('publico.reservas'));
+            ->assertRedirect(route('publico.reservas') . '#guia');
     }
 
     public function test_el_banner_solo_sale_con_imagen(): void

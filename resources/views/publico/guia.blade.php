@@ -30,6 +30,29 @@
         border-left:3px solid color-mix(in srgb,var(--accent) 55%,transparent);
     }
     .guia .pie{margin:.6rem 0 0;font-size:.8rem;color:var(--muted)}
+
+    /* Al volver con la respuesta se salta aquí. La barra de arriba es fija,
+       así que sin este margen el título de la caja queda debajo de ella. */
+    .guia{scroll-margin-top:5rem}
+
+    /* El botón mientras piensa.
+       Una consulta a la IA tarda unos segundos, y un botón que no cambia
+       parece un botón que no funcionó: se vuelve a pulsar, y la segunda
+       pulsación cuesta otra llamada. */
+    .guia .decirme{display:inline-flex;align-items:center;gap:.5rem}
+    .guia .decirme .aro{
+        display:none;width:.85rem;height:.85rem;flex:none;border-radius:50%;
+        border:2px solid color-mix(in srgb,var(--surface) 45%,transparent);
+        border-top-color:var(--surface);animation:guia-gira .7s linear infinite;
+    }
+    .guia .decirme[aria-busy="true"]{opacity:.85;cursor:progress}
+    .guia .decirme[aria-busy="true"] .aro{display:block}
+    @keyframes guia-gira{to{transform:rotate(360deg)}}
+    /* Quien pidió menos movimiento no ve girar nada, pero sigue viendo que
+       el botón cambió: el texto y el punto se quedan quietos. */
+    @media (prefers-reduced-motion:reduce){
+        .guia .decirme .aro{animation:none}
+    }
 </style>
         <section class="guia" id="guia">
             <form method="POST" action="{{ route('publico.reservas.guia') }}">
@@ -42,7 +65,10 @@
                     <input id="necesidad" name="necesidad" type="text" required minlength="8" maxlength="600"
                            placeholder="Quiero hacer un trofeo en acrílico pero nunca he usado la láser"
                            value="{{ old('necesidad') }}" autocomplete="off">
-                    <button type="submit" class="btn">Decirme</button>
+                    {{-- El texto va envuelto: al pasar a «Pensando…» se cambia
+                         solo eso y el aro sigue donde está, sin reconstruir el
+                         botón ni hacerlo saltar de ancho. --}}
+                    <button type="submit" class="btn decirme"><span class="aro" aria-hidden="true"></span><span class="que-dice">Decirme</span></button>
                 </div>
                 @error('necesidad') <p class="error">{{ $message }}</p> @enderror
                 {{-- Discreto: aquí la casilla de Cloudflare era más grande que
@@ -50,6 +76,50 @@
                      aparece solo si hay algo que resolver. --}}
                 <x-captcha accion="publico.reservas.guia" :discreto="true"/>
             </form>
+
+            <script>
+                /*
+                 * El botón, mientras piensa.
+                 *
+                 * La consulta tarda unos segundos y un botón que no cambia
+                 * parece un botón que no funcionó: se vuelve a pulsar, y la
+                 * segunda pulsación cuesta otra llamada a la API.
+                 *
+                 * `aria-busy` y no `disabled`: un botón deshabilitado se cae
+                 * del orden de tabulación y quien navega con teclado o lector
+                 * de pantalla pierde el sitio justo cuando está esperando. Lo
+                 * que impide el segundo envío es la bandera de aquí abajo.
+                 */
+                (function () {
+                    var form = document.currentScript.previousElementSibling;
+                    var boton = form.querySelector('.decirme');
+
+                    if (!boton) return;
+
+                    var enviando = false;
+
+                    form.addEventListener('submit', function (e) {
+                        if (enviando) { e.preventDefault(); return; }
+                        if (!form.checkValidity()) return;
+
+                        enviando = true;
+                        boton.setAttribute('aria-busy', 'true');
+                        boton.querySelector('.que-dice').textContent = 'Pensando…';
+                    });
+
+                    /*
+                     * Y al volver con el botón del navegador, como estaba.
+                     * La página se restaura de la memoria tal cual se dejó
+                     * —«Pensando…» incluido— y quedaría un botón que no
+                     * responde y dice que está trabajando.
+                     */
+                    window.addEventListener('pageshow', function () {
+                        enviando = false;
+                        boton.removeAttribute('aria-busy');
+                        boton.querySelector('.que-dice').textContent = 'Decirme';
+                    });
+                })();
+            </script>
 
             @if ($guia)
                 <div class="respuesta {{ $guia['camino'] === 'ninguno' ? 'nada' : '' }}">
@@ -69,7 +139,7 @@
                     @if (filled($guia['advertencia'] ?? null))
                         <p class="ojo">{{ $guia['advertencia'] }}</p>
                     @endif
-                    <p class="pie">Es una orientación; las tarjetas de arriba dicen qué hace cada camino. No es un chat: aquí solo se responde por dónde ir.</p>
+                    <p class="pie">Es una orientación; las tarjetas de abajo dicen qué hace cada camino. No es un chat: aquí solo se responde por dónde ir.</p>
                 </div>
             @endif
         </section>

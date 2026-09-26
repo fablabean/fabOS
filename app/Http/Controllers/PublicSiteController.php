@@ -275,15 +275,25 @@ class PublicSiteController extends Controller
         $guia = app(\App\Services\Ia\GuiaDeReservas::class);
         $respuesta = $guia->recomendar($datos['necesidad']);
 
+        /*
+         * De vuelta a la guía y no al principio de la página.
+         *
+         * La respuesta nace a media página y el navegador, tras el envío,
+         * devuelve a quien preguntó arriba del todo: escribe, pulsa, la
+         * página parpadea y vuelve a verse igual. La respuesta estaba ahí,
+         * pero más abajo de lo que se ve.
+         */
+        $laGuia = route('publico.reservas') . '#guia';
+
         if ($respuesta === null) {
-            return redirect()->route('publico.reservas')->withInput()->withErrors([
+            return redirect()->to($laGuia)->withInput()->withErrors([
                 'necesidad' => $guia->disponible() && $guia->quedanHoy() > 0
-                    ? 'No pudimos leerlo ahora. Prueba otra vez, o elige un camino de los de arriba.'
-                    : 'La guía no está disponible ahora. Elige un camino de los de arriba: cada tarjeta dice para qué sirve.',
+                    ? 'No pudimos leerlo ahora. Prueba otra vez, o elige un camino de los de abajo.'
+                    : 'La guía no está disponible ahora. Elige un camino de los de abajo: cada tarjeta dice para qué sirve.',
             ]);
         }
 
-        return redirect()->route('publico.reservas')->withInput()->with('guia', $respuesta);
+        return redirect()->to($laGuia)->withInput()->with('guia', $respuesta);
     }
 
     public function equipo(Asset $asset)
