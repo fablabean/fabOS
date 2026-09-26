@@ -42,28 +42,30 @@ class ControlManualDeLaGuiaTest extends TestCase
 
         Cache::flush();
         config(['fabos.ia.activa' => true, 'fabos.ia.clave' => 'prueba', 'fabos.ia.max_por_dia' => 50]);
+
+        // Se registra UNA vez: volver a llamar a `Http::fake()` reinicia lo
+        // que lleva grabado, y entonces contar las llamadas deja de decir
+        // nada.
+        Http::fake(fn () => Http::response([
+            'stop_reason' => 'end_turn',
+            'content' => [['type' => 'text', 'text' => json_encode($this->loQueContesta)]],
+        ]));
     }
 
     /** Lo que va a contestar la API la próxima vez. */
     private array $loQueContesta = ['camino' => 'asesoria', 'porque' => 'Por esto y lo otro.'];
 
     /**
-     * Un solo doble, mutable.
+     * Cambia lo que va a contestar la API, sin tocar el doble.
      *
-     * `Http::fake()` acumula: llamarlo dos veces no reemplaza el primero, lo
-     * añade, y para una misma dirección gana el que se registró antes. Con un
-     * cierre que lee una propiedad, cambiar la respuesta a mitad de prueba sí
-     * surte efecto —que es justo lo que hace falta para comprobar que una
-     * regla nueva obliga a volver a preguntar—.
+     * El doble se registra una sola vez en `setUp`, con un cierre que lee
+     * esta propiedad: así cambiar la respuesta a mitad de prueba surte efecto
+     * —hace falta para comprobar que una corrección obliga a volver a
+     * preguntar— sin reiniciar lo que lleva grabado.
      */
     private function contesta(string $camino, string $porque = 'Por esto y lo otro.'): void
     {
         $this->loQueContesta = ['camino' => $camino, 'porque' => $porque];
-
-        Http::fake(fn () => Http::response([
-            'stop_reason' => 'end_turn',
-            'content' => [['type' => 'text', 'text' => json_encode($this->loQueContesta)]],
-        ]));
     }
 
     private function guia(): GuiaDeReservas
@@ -236,6 +238,98 @@ class ControlManualDeLaGuiaTest extends TestCase
             return str_contains($peticion['system'], 'tengo un diseño ya listo y quiero imprimirlo» → proyecto')
                 && str_contains($peticion['system'], 'impresión 3D para un proyecto», «corte láser para mi tesis» → asesoria');
         });
+    }
+
+    // ------------------------------------------------- corregir lo que falló
+
+    private function consulta(string $texto, string $camino): \App\Models\ConsultaDeGuia
+    {
+        return \App\Models\ConsultaDeGuia::create([
+            'texto' => $texto, 'camino' => $camino, 'porque' => 'Porque sí.', 'de_memoria' => false,
+        ]);
+    }
+
+    /** «Bien» saca la fila de pendientes y no le enseña nada al modelo. */
+    public function test_marcar_bien_no_le_ensena_nada(): void
+    {
+        $this->admin();
+        $fila = $this->consulta('Quiero aprender a usar la láser', 'asesoria');
+
+        Livewire::test(PantallaDeLaGuia::class)->call('acerto', $fila->id);
+
+        $this->assertTrue($fila->fresh()->acerto);
+        $this->assertTrue(\App\Models\ConsultaDeGuia::loCorregido()->isEmpty());
+    }
+
+    /**
+     * Corregir una la devuelve al mensaje como ejemplo.
+     *
+     * Es el cierre del círculo: la lista enseña dónde falla, y decir con qué
+     * debió contestar hace que el mismo error no se repita. Un ejemplo real
+     * corrige mejor que una regla escrita: la regla hay que acertar a
+     * redactarla, y el ejemplo es el caso.
+     */
+    public function test_lo_corregido_vuelve_como_ejemplo(): void
+    {
+        $this->admin();
+        $fila = $this->consulta('Tengo un diseño ya listo y quiero imprimirlo', 'asesoria');
+
+        Livewire::test(PantallaDeLaGuia::class)
+            ->callAction(
+                'corregir',
+                data: [
+                    'camino_corregido' => 'proyecto',
+                    'nota'             => 'Ya traía el archivo: no hacía falta acompañarlo.',
+                ],
+                arguments: ['consulta' => $fila->id],
+            )
+            ->assertHasNoActionErrors();
+
+        $fila->refresh();
+
+        $this->assertFalse($fila->acerto);
+        $this->assertSame('proyecto', $fila->camino_corregido);
+
+        $this->contesta('proyecto');
+        $this->guia()->recomendar('Otra cosa distinta');
+
+        Http::assertSent(function ($peticion) {
+            return str_contains($peticion['system'], 'CASOS YA CORREGIDOS')
+                && str_contains($peticion['system'], '«Tengo un diseño ya listo y quiero imprimirlo» → proyecto')
+                && str_contains($peticion['system'], 'no hacía falta acompañarlo');
+        });
+    }
+
+    /** Sin nada corregido no se le añade una sección vacía. */
+    public function test_sin_correcciones_no_se_le_anade_nada(): void
+    {
+        $this->contesta('asesoria');
+        $this->guia()->recomendar('Quiero aprender a usar la láser');
+
+        Http::assertSent(fn ($p) => ! str_contains($p['system'], 'CASOS YA CORREGIDOS'));
+    }
+
+    /**
+     * Y corregir invalida lo recordado.
+     *
+     * Sin esto, la corrección no se notaría en lo ya preguntado —justo lo que
+     * uno corre a comprobar— y parecería que no sirvió.
+     */
+    public function test_corregir_obliga_a_volver_a_preguntar(): void
+    {
+        $this->contesta('asesoria');
+        $this->guia()->recomendar('Tengo el archivo y quiero la pieza');
+        Http::assertSentCount(1);
+
+        $this->consulta('Otro caso cualquiera', 'asesoria')->update([
+            'acerto' => false, 'camino_corregido' => 'proyecto',
+        ]);
+
+        $this->contesta('proyecto');
+        $r = $this->guia()->recomendar('Tengo el archivo y quiero la pieza');
+
+        $this->assertSame('proyecto', $r['camino']);
+        Http::assertSentCount(2);
     }
 
     // ------------------------------------------------------------- la pantalla

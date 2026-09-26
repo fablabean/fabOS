@@ -3,10 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\ControlaSuAcceso;
+use App\Models\ConsultaDeGuia;
 use App\Models\Setting;
 use App\Support\Settings;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -123,6 +127,91 @@ class GuiaDeReservas extends Page
                             ->all()
                     ),
             ]);
+    }
+
+    /**
+     * «Bien»: un clic y ya (§10).
+     *
+     * No se le enseña a la guía —lo que acierta ya lo sabe hacer— pero sí
+     * saca la fila de la lista de pendientes. Sin este botón, revisar
+     * obligaría a corregir todo lo que se mira, y la lista no se revisaría.
+     */
+    public function acerto(int $consulta): void
+    {
+        $fila = ConsultaDeGuia::find($consulta);
+
+        if (! $fila || $fila->acerto !== null) {
+            return;
+        }
+
+        $fila->update([
+            'acerto'       => true,
+            'revisada_por' => auth()->id(),
+            'revisada_el'  => now(),
+        ]);
+
+        Notification::make()->success()->title('Anotado')->send();
+    }
+
+    /**
+     * «Mal»: con qué debió contestar (§10).
+     *
+     * Pide el camino correcto y no sólo un pulgar abajo, porque un «esto
+     * está mal» sin el «debió ser esto» no le sirve de nada al modelo. Lo
+     * corregido entra en sus instrucciones como ejemplo, que es la forma de
+     * que el mismo error no se repita la semana que viene.
+     */
+    public function corregirAction(): Action
+    {
+        return Action::make('corregir')
+            ->label('Corregir')
+            ->size('xs')
+            ->color('danger')
+            ->modalHeading('¿Con qué debió contestar?')
+            ->modalDescription('Esto se le enseña a la guía: vuelve a sus instrucciones como ejemplo, y a partir de ahí clasifica casos parecidos así.')
+            ->modalSubmitActionLabel('Corregir y enseñar')
+            ->schema(fn (Action $action): array => [
+                // Delante, para corregir mirando lo que la persona escribió y
+                // no de memoria: la fila queda tapada por el modal.
+                Placeholder::make('lo_escrito')
+                    ->label('Lo que escribieron')
+                    ->content(ConsultaDeGuia::find($action->getArguments()['consulta'] ?? 0)?->texto ?? ''),
+
+                Select::make('camino_corregido')
+                    ->label('Debió ser')
+                    ->options(collect(\App\Services\Ia\GuiaDeReservas::CAMINOS)
+                        ->map(fn (array $c) => $c['titulo'])
+                        ->put('ninguno', 'Ninguno: no iba del laboratorio')
+                        ->all())
+                    ->required()
+                    ->native(false),
+
+                Textarea::make('nota')
+                    ->label('Por qué, en una línea')
+                    ->rows(2)
+                    ->maxLength(200)
+                    ->placeholder('Ya traía el archivo listo: no hacía falta acompañarlo.')
+                    ->helperText('Opcional, y es lo que más enseña: el camino dice qué, y esto dice por qué.'),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $fila = ConsultaDeGuia::find($arguments['consulta']);
+
+                if (! $fila) {
+                    return;
+                }
+
+                $fila->update([
+                    'acerto'           => false,
+                    'camino_corregido' => $data['camino_corregido'],
+                    'nota'             => trim((string) ($data['nota'] ?? '')) ?: null,
+                    'revisada_por'     => auth()->id(),
+                    'revisada_el'      => now(),
+                ]);
+
+                Notification::make()->success()->title('Corregida')
+                    ->body('Ya está dentro de sus instrucciones. Lo recordado con la versión vieja deja de valer.')
+                    ->send();
+            });
     }
 
     public function save(): void

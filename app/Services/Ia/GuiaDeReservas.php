@@ -72,7 +72,7 @@ final class GuiaDeReservas
          * —justo lo que uno corre a comprobar después de corregirlas— y
          * parecería que la corrección no sirvió.
          */
-        $enMemoria = 'ia:guia:' . md5(mb_strtolower($texto) . '|' . \App\Support\Settings::instruccionesDeLaGuia());
+        $enMemoria = 'ia:guia:' . md5(mb_strtolower($texto) . '|' . $this->huellaDeLoQueSabe());
 
         if ($guardada = Cache::get($enMemoria)) {
             $this->anotarConsulta($texto, $guardada, deMemoria: true);
@@ -300,7 +300,71 @@ final class GuiaDeReservas
 
     private function instrucciones(): string
     {
-        return $this->instruccionesBase() . $this->reglasDeLaCasa();
+        return $this->instruccionesBase() . $this->reglasDeLaCasa() . $this->loQueYaSeCorrigio();
+    }
+
+    /**
+     * En qué estado está lo que la guía sabe, para la memoria.
+     *
+     * Corregir un caso o cambiar una regla tiene que notarse en el acto,
+     * también en lo ya preguntado: si no, se corrige, se prueba con la misma
+     * frase, sale lo de antes y parece que no sirvió. Entra en la clave, así
+     * que al cambiar algo lo recordado deja de valer solo.
+     *
+     * El recuento y el último id bastan como huella: una corrección nueva
+     * mueve uno de los dos. No se arma el texto entero para esto, que sería
+     * una consulta y un montón de letras en cada pregunta repetida.
+     */
+    private function huellaDeLoQueSabe(): string
+    {
+        try {
+            $corregidos = \App\Models\ConsultaDeGuia::query()->where('acerto', false);
+            $huella = $corregidos->count() . ':' . (int) $corregidos->max('id');
+        } catch (\Throwable) {
+            $huella = '-';
+        }
+
+        return \App\Support\Settings::instruccionesDeLaGuia() . '|' . $huella;
+    }
+
+    /**
+     * Los casos que alguien marcó como mal y corrigió (§10).
+     *
+     * Es el cierre del círculo. La lista de «Lo que nos preguntan» enseña
+     * dónde falla; marcar uno y decir con qué debió contestar lo devuelve
+     * aquí como ejemplo. Un ejemplo real corrige mejor que una regla escrita:
+     * la regla hay que acertar a redactarla, y el ejemplo es el caso.
+     *
+     * Después de las reglas: si una regla y un ejemplo se contradicen, manda
+     * el ejemplo, que es más concreto y más reciente.
+     */
+    private function loQueYaSeCorrigio(): string
+    {
+        try {
+            $casos = \App\Models\ConsultaDeGuia::loCorregido();
+        } catch (\Throwable) {
+            // La tabla puede no estar —una instalación a medio migrar— y esto
+            // es una ayuda, no un requisito: sin ella la guía sigue.
+            return '';
+        }
+
+        if ($casos->isEmpty()) {
+            return '';
+        }
+
+        $lineas = $casos->reverse()->map(function ($caso) {
+            $linea = '  «' . Str::limit(trim((string) $caso->texto), 160) . '» → ' . $caso->camino_corregido;
+
+            return filled($caso->nota) ? $linea . '  (' . Str::limit(trim($caso->nota), 120) . ')' : $linea;
+        })->implode("\n");
+
+        return "\n\n"
+            . "CASOS YA CORREGIDOS\n"
+            . "-------------------\n"
+            . "Esto se clasificó mal y alguien del laboratorio dijo con qué debía\n"
+            . "contestarse. Son la última palabra: si algo de arriba parece decir otra\n"
+            . "cosa, manda lo de aquí. Aplica el criterio, no la frase literal.\n\n"
+            . $lineas;
     }
 
     /**

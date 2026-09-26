@@ -83,41 +83,98 @@
                 $caminos = \App\Services\Ia\GuiaDeReservas::CAMINOS;
                 $ultimas = \App\Models\ConsultaDeGuia::with('user')->latest('id')->limit(25)->get();
                 $tz = config('fabos.lab.timezone');
+                $acierto = \App\Models\ConsultaDeGuia::comoVaAcertando();
             @endphp
 
-            <div class="flex flex-wrap gap-2 mb-4">
+            <div class="flex flex-wrap items-center gap-2 mb-4 text-sm">
                 @foreach ($porCamino as $camino => $veces)
-                    <span class="rounded-full px-3 py-1 text-sm bg-gray-100 dark:bg-gray-800">
+                    <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 bg-gray-100 dark:bg-white/10">
                         {{ $caminos[$camino]['titulo'] ?? 'Ninguno' }}
-                        <strong>{{ $veces }}</strong>
+                        <strong class="tabular-nums">{{ $veces }}</strong>
                     </span>
                 @endforeach
             </div>
 
+            {{-- Cómo va acertando, aparte del recuento por camino: son dos
+                 preguntas distintas —qué nos piden, y si le estamos dando la
+                 respuesta correcta— y en la misma fila se leían como una. --}}
+            @if ($acierto['bien'] + $acierto['mal'] > 0)
+                <p class="text-sm mb-4 text-gray-600 dark:text-gray-400">
+                    Revisadas:
+                    <strong class="text-success-600 dark:text-success-400">{{ $acierto['bien'] }}</strong> bien ·
+                    <strong class="text-danger-600 dark:text-danger-400">{{ $acierto['mal'] }}</strong> corregidas.
+                    Las corregidas ya le están enseñando: viajan dentro de sus instrucciones como ejemplo.
+                </p>
+            @endif
+
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="text-left text-gray-500">
-                            <th class="py-2 pr-3 font-medium">Cuándo</th>
-                            <th class="py-2 pr-3 font-medium">Lo que escribieron</th>
-                            <th class="py-2 pr-3 font-medium">Se le sugirió</th>
-                            <th class="py-2 font-medium">Quién</th>
+                        <tr class="text-left text-xs uppercase tracking-wide text-gray-500">
+                            <th class="py-2 pr-6 font-medium whitespace-nowrap">Cuándo</th>
+                            <th class="py-2 pr-6 font-medium">Lo que escribieron</th>
+                            <th class="py-2 pr-6 font-medium">Se le sugirió</th>
+                            <th class="py-2 pr-6 font-medium">Quién</th>
+                            <th class="py-2 font-medium text-right whitespace-nowrap">¿Acertó?</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($ultimas as $c)
-                            <tr class="border-t border-gray-200 dark:border-gray-700 align-top">
-                                <td class="py-2 pr-3 whitespace-nowrap text-gray-500">
+                            <tr @class([
+                                'align-top border-t border-gray-200 dark:border-white/10',
+                                'bg-danger-50/50 dark:bg-danger-500/5' => $c->acerto === false,
+                            ])>
+                                <td class="py-3 pr-6 whitespace-nowrap text-gray-500 tabular-nums">
                                     {{ $c->created_at?->timezone($tz)->format('d/m H:i') }}
                                 </td>
-                                <td class="py-2 pr-3">{{ $c->texto }}</td>
-                                <td class="py-2 pr-3 whitespace-nowrap">
-                                    {{ $c->caminoLegible() }}
+                                <td class="py-3 pr-6">{{ $c->texto }}</td>
+
+                                {{-- Sin `nowrap`: con él esta columna no podía
+                                     encogerse, se comía la de al lado y
+                                     «repetida» acababa pegado a «sin cuenta».
+                                     Y la etiqueta pasa a su propio renglón. --}}
+                                <td class="py-3 pr-6">
+                                    @if ($c->acerto === false && $c->camino_corregido)
+                                        <span class="line-through text-gray-400">{{ $c->caminoLegible() }}</span>
+                                        <span class="block font-medium text-success-700 dark:text-success-400">
+                                            → {{ $caminos[$c->camino_corregido]['titulo'] ?? 'Ninguno' }}
+                                        </span>
+                                        @if ($c->nota)
+                                            <span class="block text-xs text-gray-500 mt-0.5">{{ $c->nota }}</span>
+                                        @endif
+                                    @else
+                                        {{ $c->caminoLegible() }}
+                                    @endif
+
                                     @if ($c->de_memoria)
-                                        <span class="text-gray-400" title="Se contestó de la memoria: no costó una llamada a la API">·&nbsp;repetida</span>
+                                        <span class="mt-1 inline-block rounded px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-white/10 text-gray-500"
+                                              title="Se contestó de la memoria: no costó una llamada a la API">repetida</span>
                                     @endif
                                 </td>
-                                <td class="py-2 text-gray-500">{{ $c->user?->name ?? 'sin cuenta' }}</td>
+
+                                <td class="py-3 pr-6 text-gray-500">{{ $c->user?->name ?? 'sin cuenta' }}</td>
+
+                                {{-- El veredicto. «Bien» es un clic; «Corregir»
+                                     abre el modal, porque un «esto está mal»
+                                     sin el «debió ser esto» no le sirve de nada
+                                     a la guía: lo que vuelve como ejemplo es el
+                                     camino correcto. --}}
+                                <td class="py-3 text-right whitespace-nowrap">
+                                    @if ($c->acerto === true)
+                                        <span class="text-success-600 dark:text-success-400">Acertó</span>
+                                    @elseif ($c->acerto === false)
+                                        <span class="text-danger-600 dark:text-danger-400" title="Ya es un ejemplo dentro de sus instrucciones">Corregida</span>
+                                    @else
+                                        <span class="inline-flex gap-1 justify-end">
+                                            <x-filament::button size="xs" color="gray"
+                                                                wire:click="acerto({{ $c->id }})"
+                                                                wire:loading.attr="disabled">
+                                                Bien
+                                            </x-filament::button>
+                                            {{ ($this->corregirAction)(['consulta' => $c->id]) }}
+                                        </span>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -128,6 +185,10 @@
                 Las 25 últimas. «Repetida» es una pregunta que ya se había hecho igual: se
                 contestó de la memoria y no costó una llamada a la API. Quien escribe sin
                 haber entrado queda sin identificar, y así se queda.
+            </p>
+            <p class="text-sm mt-2 text-gray-500">
+                Corregir una no cambia lo que ya se le respondió a esa persona: cambia lo que
+                la guía contesta de aquí en adelante, y también lo que tenía recordado.
             </p>
         </x-filament::section>
     @endif
