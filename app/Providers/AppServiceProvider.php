@@ -71,6 +71,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         /*
+         * El menú del panel con lo decidido en Configuración → Menú. En boot
+         * y no en register: Filament registra el suyo en su propio register, y
+         * el que se registre después es el que se usa.
+         */
+        $this->app->scoped(
+            \Filament\Navigation\NavigationManager::class,
+            fn () => new \App\Filament\MenuConfigurable,
+        );
+
+        /*
          * Uno por peticion: calcula el arbol de ubicaciones entero de una vez
          * y lo guarda. Sin esto, cada fila de la lista lo recalcularia.
          */

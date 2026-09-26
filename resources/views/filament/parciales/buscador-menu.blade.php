@@ -17,6 +17,21 @@
     <kbd aria-hidden="true">/</kbd>
 </div>
 
+{{-- Plegar o desplegar todos los grupos de una vez. Filament recuerda qué
+     grupos tiene cerrados cada quien en su navegador; esto solo le pone la
+     lista entera, o la vacía. --}}
+<div class="fi-plegar-menu" x-data="{
+        grupos() {
+            return Array.from(document.querySelectorAll('.fi-sidebar-group[data-group-label]'))
+                .map((g) => g.dataset.groupLabel)
+                .filter((l) => l && ! l.startsWith('sub_navigation_'));
+        },
+    }">
+    <button type="button" x-on:click="$store.sidebar.collapsedGroups = grupos()">Plegar todo</button>
+    <span aria-hidden="true">·</span>
+    <button type="button" x-on:click="$store.sidebar.collapsedGroups = []">Desplegar todo</button>
+</div>
+
 <style>
     /* ---------- el buscador ---------- */
     .fi-buscador-menu{position:relative;margin:0 .25rem .6rem}
@@ -38,6 +53,13 @@
 
     /* Plegada la barra, el buscador no cabe: se esconde con ella. */
     .fi-sidebar:not(.fi-sidebar-open) .fi-buscador-menu{display:none}
+
+    /* ---------- plegar o desplegar todo ---------- */
+    .fi-plegar-menu{display:flex;gap:.4rem;align-items:center;justify-content:flex-end;
+        margin:-.3rem .35rem .5rem;font-size:.72rem;color:rgba(128,128,128,.9)}
+    .fi-plegar-menu button{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
+    .fi-plegar-menu button:hover{color:var(--primary-600);text-decoration:underline}
+    .fi-sidebar:not(.fi-sidebar-open) .fi-plegar-menu{display:none}
 
     /* ---------- menú más apretado ----------
        Filament deja aire de sobra entre líneas —piensa en menús de diez

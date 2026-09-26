@@ -115,30 +115,17 @@ class AdminPanelProvider extends PanelProvider
                     ->visible(fn () => auth()->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false),
             ])
             /*
-             * El orden de los grupos, escrito.
-             *
-             * Sin esto Filament los pone según el primer elemento que
-             * encuentra de cada uno, y Configuración —que se toca una vez al
-             * mes— quedaba arriba de Proyectos y Reservas, que se abren todo
-             * el día. Arriba lo diario; abajo lo que se consulta o se ajusta
-             * de vez en cuando. Un grupo nuevo que no esté aquí sale al final.
+             * El orden de los grupos, escrito: arriba lo diario, abajo lo que
+             * se ajusta de vez en cuando. Sin esto Filament los pone según el
+             * primer elemento que encuentra de cada uno. Es el de fábrica: se
+             * cambia desde Configuración → Menú (App\Support\MenuDelPanel).
              */
-            ->navigationGroups([
-                'Proyectos',
-                'Operación',
-                'Comunicaciones',
-                'Software y claves',
-                'Compras',
-                'Laboratorio',
-                'Formación',
-                'Finanzas',
-                'Tienda',
-                'Personas',
-                'Mantenimiento',
-                'Jornadas',
-                'Documentación',
-                'Configuración',
-            ])
+            ->navigationGroups(\App\Support\MenuDelPanel::GRUPOS_DE_FABRICA)
+            // Los colores que se eligieron para cada grupo del menú.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => ($css = \App\Support\MenuDelPanel::estilos()) ? '<style>' . $css . '</style>' : '',
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([
