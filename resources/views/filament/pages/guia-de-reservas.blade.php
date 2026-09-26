@@ -107,6 +107,50 @@
                 </p>
             @endif
 
+            {{-- El interruptor, a mano y no con una librería: son veinte
+                 líneas y traerse una dependencia para un botón que se pinta
+                 con dos divs es cargar con sus actualizaciones para siempre.
+
+                 Los colores salen de las variables del panel, así que sigue
+                 al tema claro y oscuro solo; los valores de respaldo son por
+                 si un día se renombran. Y el CSS va aquí y no en clases de
+                 Tailwind porque el panel usa la hoja ya compilada de
+                 Filament: una clase escrita a mano puede no existir en ella
+                 y no hacer nada, que es lo que pasó con el espaciado. --}}
+            <style>
+                .acerto-sw{
+                    position:relative;display:inline-block;width:4.4rem;height:1.55rem;
+                    padding:0;border:0;border-radius:999px;cursor:pointer;
+                    transition:background-color .16s ease, opacity .16s ease;
+                }
+                .acerto-sw .bolita{
+                    position:absolute;top:.175rem;width:1.2rem;height:1.2rem;border-radius:50%;
+                    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);
+                    transition:left .16s ease;
+                }
+                .acerto-sw .texto{
+                    position:absolute;top:0;line-height:1.55rem;color:#fff;
+                    font-size:.62rem;font-weight:800;letter-spacing:.08em;
+                }
+                /* Acertó: la bolita a la derecha, como en un interruptor que
+                   está puesto. */
+                .acerto-sw[data-estado="si"],
+                .acerto-sw[data-estado="sin"]{background:var(--success-500,#10b981)}
+                .acerto-sw[data-estado="si"] .bolita,
+                .acerto-sw[data-estado="sin"] .bolita{left:calc(100% - 1.375rem)}
+                .acerto-sw[data-estado="si"] .texto,
+                .acerto-sw[data-estado="sin"] .texto{left:.7rem}
+                /* Sin revisar: la misma posición, apagada. Nadie la ha mirado
+                   todavía y eso no es lo mismo que darla por buena. */
+                .acerto-sw[data-estado="sin"]{opacity:.45}
+                .acerto-sw[data-estado="sin"]:hover{opacity:.75}
+                /* No acertó. */
+                .acerto-sw[data-estado="no"]{background:var(--danger-500,#ef4444)}
+                .acerto-sw[data-estado="no"] .bolita{left:.175rem}
+                .acerto-sw[data-estado="no"] .texto{right:.7rem}
+                .acerto-sw:focus-visible{outline:2px solid var(--primary-500,#0d6e63);outline-offset:2px}
+            </style>
+
             {{-- Buscar y filtrar. Se guardan todas desde el primer día y sólo
                  se veían las 25 últimas, que es lo contrario de para qué
                  sirve esto: lo que dice qué curso falta o qué máquina nadie
@@ -201,37 +245,40 @@
                                      confirma. El filtro de arriba se apoya en
                                      esa diferencia. --}}
                                 <td style="padding:.55rem 0;text-align:right;white-space:nowrap">
-                                    @php $mal = $c->acerto === false; @endphp
+                                    @php
+                                        $mal = $c->acerto === false;
+                                        $estado = $c->acerto === null ? 'sin' : ($mal ? 'no' : 'si');
+                                    @endphp
 
-                                    <span role="group"
-                                          aria-label="¿Acertó?"
-                                          style="display:inline-flex;border-radius:999px;overflow:hidden;
-                                                 border:1px solid {{ $mal ? 'var(--danger-500)' : 'var(--gray-300)' }};
-                                                 opacity:{{ $c->acerto === null ? '.6' : '1' }}">
+                                    {{-- Un solo interruptor, y lo que hace al
+                                         pulsarlo depende de dónde esté.
 
-                                        <button type="button"
+                                         Apagarlo abre el modal en vez de
+                                         cambiar el estado a secas: un «esto
+                                         está mal» sin el «debió ser esto» no
+                                         le sirve de nada a la guía, y lo que
+                                         vuelve como ejemplo es el camino
+                                         correcto. Encenderlo sí es directo. --}}
+                                    <button type="button"
+                                            class="acerto-sw"
+                                            data-estado="{{ $estado }}"
+                                            role="switch"
+                                            aria-checked="{{ $mal ? 'false' : 'true' }}"
+                                            aria-label="¿Acertó?"
+                                            wire:loading.attr="disabled"
+                                            @if ($mal)
                                                 wire:click="acerto({{ $c->id }})"
-                                                wire:loading.attr="disabled"
-                                                aria-pressed="{{ $mal ? 'false' : 'true' }}"
-                                                title="{{ $c->acerto === true ? 'Confirmada como acertada' : 'Marcar que acertó' }}"
-                                                style="padding:.2rem .6rem;font-size:.75rem;line-height:1.4;border:0;cursor:pointer;
-                                                       background:{{ $mal ? 'transparent' : 'var(--success-600)' }};
-                                                       color:{{ $mal ? 'var(--gray-500)' : '#fff' }}">
-                                            Acertó
-                                        </button>
-
-                                        {{-- La otra posición abre el modal: un
-                                             «esto está mal» sin el «debió ser
-                                             esto» no le sirve de nada a la
-                                             guía, así que no es un simple
-                                             cambio de estado. --}}
-                                        <span style="display:inline-flex">
-                                            {{ ($this->corregirAction)(['consulta' => $c->id]) }}
-                                        </span>
-                                    </span>
+                                                title="Retirar la corrección: dejar de enseñársela"
+                                            @else
+                                                wire:click="mountAction('corregir', { consulta: {{ $c->id }} })"
+                                                title="{{ $c->acerto === null ? 'Nadie la ha revisado. Púlsalo si no acertó.' : 'Acertó. Púlsalo si te desdices.' }}"
+                                            @endif>
+                                        <span class="texto">{{ $mal ? 'NO' : 'SÍ' }}</span>
+                                        <span class="bolita"></span>
+                                    </button>
 
                                     @if ($c->acerto === null)
-                                        <span class="text-gray-400" style="display:block;font-size:.68rem;margin-top:.2rem">sin revisar</span>
+                                        <span class="text-gray-400" style="display:block;font-size:.66rem;margin-top:.2rem">sin revisar</span>
                                     @endif
                                 </td>
                             </tr>
