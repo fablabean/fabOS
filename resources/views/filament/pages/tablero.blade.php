@@ -76,7 +76,7 @@
                     <span>equipos en uso</span>
                 </div>
                 <div class="cifra">
-                    <b>{{ $ahora['equipos_total'] - $ahora['en_mantenimiento'] }}</b>
+                    <b>{{ $ahora['disponibles'] }}</b>
                     <span>de {{ $ahora['equipos_total'] }} disponibles</span>
                 </div>
                 <div class="cifra">

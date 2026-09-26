@@ -115,6 +115,74 @@ class TableroTest extends TestCase
         $this->assertSame(0, $ahora['en_mantenimiento']);
     }
 
+    /**
+     * Una sesión que terminó sin que nadie marcara la salida no está en uso.
+     *
+     * Así estaba en producción: seis reservas «en curso» del martes al
+     * jueves, dos de ellas salas, y el sábado el tablero decía seis equipos
+     * en uso y 100 de 101 disponibles.
+     */
+    public function test_lo_que_quedo_abierto_no_cuenta_como_en_uso(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+
+        Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id, 'user_id' => $u->id,
+            'mode' => 'directa', 'status' => 'en_curso',
+            'starts_at' => now()->subDays(3), 'ends_at' => now()->subDays(3)->addHours(2),
+        ]);
+
+        $ahora = $this->tablero()->ahora();
+
+        $this->assertSame(0, $ahora['en_uso']);
+        $this->assertSame($ahora['equipos_total'], $ahora['disponibles']);
+
+        $alerta = $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Reservas que quedaron abiertas');
+        $this->assertSame(1, $alerta['cuantos']);
+    }
+
+    /** Lo que está en uso ahora no se cuenta como disponible. */
+    public function test_lo_que_esta_en_uso_no_esta_disponible(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+
+        Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id, 'user_id' => $u->id,
+            'mode' => 'directa', 'status' => 'en_curso',
+            'starts_at' => now()->subHour(), 'ends_at' => now()->addHour(),
+        ]);
+
+        $ahora = $this->tablero()->ahora();
+
+        $this->assertSame(1, $ahora['en_uso']);
+        $this->assertSame($ahora['equipos_total'] - 1, $ahora['disponibles']);
+    }
+
+    /** Una solicitud cuya franja ya pasó no se puede aprobar: no espera nada. */
+    public function test_una_solicitud_vencida_no_espera_visto_bueno(): void
+    {
+        $u = $this->persona();
+        $equipo = $this->equipo();
+
+        Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id, 'user_id' => $u->id,
+            'mode' => 'con_aprobacion', 'status' => 'solicitada',
+            'starts_at' => now()->subDays(10), 'ends_at' => now()->subDays(10)->addHour(),
+        ]);
+
+        $this->assertNull($this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Reservas esperando visto bueno'));
+
+        Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $equipo->id, 'user_id' => $u->id,
+            'mode' => 'con_aprobacion', 'status' => 'solicitada',
+            'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHour(),
+        ]);
+
+        $this->assertSame(1, $this->tablero()->alertas($this->admin())->firstWhere('titulo', 'Reservas esperando visto bueno')['cuantos']);
+    }
+
     // -------------------------------------------------------------- alertas
 
     public function test_un_laboratorio_al_dia_no_inventa_alertas(): void

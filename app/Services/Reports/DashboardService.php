@@ -57,10 +57,43 @@ class DashboardService
             ])
             ->get();
 
+        /*
+         * Las máquinas ocupadas en este momento, no las reservas «en curso».
+         *
+         * Contaba toda reserva en ese estado, de cualquier fecha y de
+         * cualquier cosa: una sesión del martes en la que nadie marcó la
+         * salida seguía «en uso» el sábado, y las salas contaban como equipos.
+         * El tablero decía seis equipos en uso con el laboratorio cerrado.
+         *
+         * En uso es: alguien llegó y su franja no ha terminado, o el
+         * laboratorio está produciendo en ella ahora mismo. Cada máquina
+         * cuenta una vez.
+         */
+        $ahoraUtc = now();
+
+        $enUso = Reservation::query()
+            ->where('reservable_type', Asset::class)
+            ->where('ends_at', '>', $ahoraUtc)
+            ->where(fn ($q) => $q
+                ->where('status', 'en_curso')
+                ->orWhere(fn ($p) => $p
+                    ->where('is_production', true)
+                    ->where('status', 'confirmada')
+                    ->where('starts_at', '<=', $ahoraUtc)))
+            ->distinct()
+            ->pluck('reservable_id');
+
+        $reservables = Asset::where('is_reservable', true);
+
         return [
-            'equipos_total'    => Asset::where('is_reservable', true)->count(),
+            'equipos_total'    => (clone $reservables)->count(),
             'en_mantenimiento' => Asset::where('status', 'mantenimiento')->count(),
-            'en_uso'           => Reservation::where('status', 'en_curso')->count(),
+            'en_uso'           => $enUso->count(),
+            // Libres de verdad: ni en mantenimiento ni ocupados ahora.
+            'disponibles'      => (clone $reservables)
+                ->where('status', '!=', 'mantenimiento')
+                ->whereNotIn('id', $enUso)
+                ->count(),
             'reservas_hoy'     => $reservasHoy->count(),
             'pendientes_hoy'   => $reservasHoy->where('status', 'confirmada')->count(),
             'personas_hoy'     => $reservasHoy->pluck('user_id')->unique()->count(),
@@ -152,21 +185,54 @@ class DashboardService
         }
 
         if ($puede(\App\Filament\Resources\Reservations\ReservationResource::class)) {
-            $solicitudes = Reservation::where('status', 'solicitada')->count();
+            /*
+             * Solo las que todavía se pueden decidir, contadas como la
+             * Bandeja: la franja no ha terminado.
+             *
+             * Contaba toda solicitada, y en septiembre eran 39, todas de
+             * fechas pasadas —ya no se pueden aprobar— y 25 de ellas partes de
+             * otra (la herramienta pedida dentro de una sala). Un número que
+             * no se puede bajar haciendo lo que dice deja de mirarse.
+             */
+            $solicitudes = \App\Filament\Pages\Bandeja::pendientes();
             if ($solicitudes) {
                 $alertas->push([
                     'titulo'  => 'Reservas esperando visto bueno',
                     'detalle' => 'No bloquean el equipo hasta que se aprueben.',
                     'cuantos' => $solicitudes,
-                    // Filtrada a lo que cuenta: las solicitadas de todos, sin
-                    // «Las mías», que la lista trae puesto.
+                    // A donde se deciden; si no se puede abrir, la lista
+                    // filtrada, sin «Las mías», que la lista trae puesto.
+                    'url'     => \App\Filament\Pages\Bandeja::canAccess()
+                        ? \App\Filament\Pages\Bandeja::getUrl()
+                        : \App\Filament\Resources\Reservations\ReservationResource::getUrl('index', [
+                            'filters' => [
+                                'status'   => ['values' => ['solicitada']],
+                                'proximas' => ['isActive' => true],
+                                'mias'     => ['isActive' => false],
+                            ],
+                        ]),
+                    'tono'    => 'info',
+                ]);
+            }
+
+            /*
+             * Las que quedaron abiertas: alguien llegó, la franja terminó y
+             * nadie marcó la salida. Siguen «en curso» para siempre, y lo que
+             * se cobra por lo usado no se liquida hasta que se cierran.
+             */
+            $abiertas = Reservation::where('status', 'en_curso')->where('ends_at', '<', now())->count();
+            if ($abiertas) {
+                $alertas->push([
+                    'titulo'  => 'Reservas que quedaron abiertas',
+                    'detalle' => 'Terminó la franja y nadie marcó la salida. Hay que cerrarlas.',
+                    'cuantos' => $abiertas,
                     'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('index', [
                         'filters' => [
-                            'status' => ['values' => ['solicitada']],
+                            'status' => ['values' => ['en_curso']],
                             'mias'   => ['isActive' => false],
                         ],
                     ]),
-                    'tono'    => 'info',
+                    'tono'    => 'warning',
                 ]);
             }
         }
