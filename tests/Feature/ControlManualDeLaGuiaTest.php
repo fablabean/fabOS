@@ -198,6 +198,46 @@ class ControlManualDeLaGuiaTest extends TestCase
         $this->assertSame('asesoria', $r['camino']);
     }
 
+    // ---------------------------------------------------- lo que se le enseña
+
+    /**
+     * El certifab sólo existe en «Hago mi pieza».
+     *
+     * Salió una respuesta que mandaba a asesoría a alguien con el diseño
+     * listo, razonando que «no dices si tienes el certifab». Encargar una
+     * pieza no lo exige —reservar una sala tampoco, ni pedir prestada una
+     * herramienta—, así que eso le pone un requisito que no existe.
+     */
+    public function test_se_le_dice_que_el_certifab_es_solo_de_autonomia(): void
+    {
+        $this->contesta('asesoria');
+        $this->guia()->recomendar('Tengo un diseño ya listo y quiero imprimirlo');
+
+        Http::assertSent(function ($peticion) {
+            return str_contains($peticion['system'], 'EL CERTIFAB SOLO EXISTE EN autonomia')
+                && str_contains($peticion['system'], 'Mandar a hacer algo no lo exige');
+        });
+    }
+
+    /**
+     * Y que un diseño listo es un encargo, no una duda.
+     *
+     * La corrección anterior —«impresión 3D para un proyecto» no es un
+     * encargo— se pasó de frenada y empezó a mandar a asesoría también a
+     * quien ya tenía el archivo. Los dos casos van como ejemplo enfrentado,
+     * que es lo que distingue uno de otro.
+     */
+    public function test_se_le_ensenan_los_dos_casos_enfrentados(): void
+    {
+        $this->contesta('proyecto');
+        $this->guia()->recomendar('Tengo un diseño ya listo y quiero imprimirlo');
+
+        Http::assertSent(function ($peticion) {
+            return str_contains($peticion['system'], 'tengo un diseño ya listo y quiero imprimirlo» → proyecto')
+                && str_contains($peticion['system'], 'impresión 3D para un proyecto», «corte láser para mi tesis» → asesoria');
+        });
+    }
+
     // ------------------------------------------------------------- la pantalla
 
     public function test_se_administra_desde_el_panel(): void
