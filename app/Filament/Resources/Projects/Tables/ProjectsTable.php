@@ -196,6 +196,21 @@ class ProjectsTable
                     ->toggleable(),
             ])
             ->filters([
+                /*
+                 * Lo mío y lo que nadie ha tomado, de entrada.
+                 *
+                 * Es lo que cada quien tiene que mover: lo que lidera, y lo que
+                 * está sin dueño esperando que alguien lo recoja. El resto lo
+                 * lleva otra persona. Viene puesto y se quita con un clic,
+                 * para cuando hay que mirar el laboratorio entero.
+                 */
+                Filter::make('mios')
+                    ->label('Míos y sin responsable')
+                    ->default()
+                    ->query(fn ($query) => $query->where(fn ($q) => $q
+                        ->where('lead_id', auth()->id())
+                        ->orWhereNull('lead_id'))),
+
                 Filter::make('sin_responder')
                     ->label('Solicitudes de la web sin responder')
                     ->query(fn ($query) => $query

@@ -673,6 +673,28 @@ class BackofficeProyectosTest extends TestCase
     }
 
     /**
+     * De entrada, lo que uno lidera y lo que no tiene dueño; quitando el
+     * filtro, todo.
+     */
+    public function test_la_lista_arranca_con_lo_mio_y_lo_sin_responsable(): void
+    {
+        $yo = $this->conRol(User::ROL_ADMINISTRADOR);
+        $otra = $this->conRol(User::ROL_ADMINISTRADOR);
+
+        $mio = $this->proyecto($yo);
+        $huerfano = $this->proyecto();
+        $ajeno = $this->proyecto($otra);
+
+        $this->actingAs($yo);
+
+        Livewire::test(ListProjects::class)
+            ->assertCanSeeTableRecords([$mio, $huerfano])
+            ->assertCanNotSeeTableRecords([$ajeno])
+            ->removeTableFilter('mios')
+            ->assertCanSeeTableRecords([$mio, $huerfano, $ajeno]);
+    }
+
+    /**
      * El cronograma ya no es solo del backoffice: quien no es del equipo lo
      * abre desde su menú y ve el suyo, sin el camino de vuelta al panel.
      */
