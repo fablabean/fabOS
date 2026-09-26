@@ -114,6 +114,31 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(9)
                     ->visible(fn () => auth()->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false),
             ])
+            /*
+             * El orden de los grupos, escrito.
+             *
+             * Sin esto Filament los pone según el primer elemento que
+             * encuentra de cada uno, y Configuración —que se toca una vez al
+             * mes— quedaba arriba de Proyectos y Reservas, que se abren todo
+             * el día. Arriba lo diario; abajo lo que se consulta o se ajusta
+             * de vez en cuando. Un grupo nuevo que no esté aquí sale al final.
+             */
+            ->navigationGroups([
+                'Proyectos',
+                'Operación',
+                'Comunicaciones',
+                'Software y claves',
+                'Compras',
+                'Laboratorio',
+                'Formación',
+                'Finanzas',
+                'Tienda',
+                'Personas',
+                'Mantenimiento',
+                'Jornadas',
+                'Documentación',
+                'Configuración',
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([

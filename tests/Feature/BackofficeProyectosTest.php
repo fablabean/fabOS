@@ -694,6 +694,26 @@ class BackofficeProyectosTest extends TestCase
             ->assertCanSeeTableRecords([$mio, $huerfano, $ajeno]);
     }
 
+    /** En el menú, lo diario arriba y lo que se ajusta de vez en cuando abajo. */
+    public function test_el_menu_pone_proyectos_y_reservas_arriba(): void
+    {
+        $html = $this->entra($this->conRol(User::ROL_SUPERADMIN))->get('/admin/projects')->assertOk()->getContent();
+
+        $menu = substr($html, strpos($html, 'fi-sidebar-nav') ?: 0);
+
+        $this->assertSeeInOrderEn($menu, ['Proyectos', 'Operación', 'Comunicaciones', 'Documentación', 'Configuración']);
+    }
+
+    private function assertSeeInOrderEn(string $html, array $textos): void
+    {
+        $desde = 0;
+        foreach ($textos as $texto) {
+            $donde = strpos($html, $texto, $desde);
+            $this->assertNotFalse($donde, "«{$texto}» no está, o no va en ese orden");
+            $desde = $donde + strlen($texto);
+        }
+    }
+
     /**
      * El cronograma ya no es solo del backoffice: quien no es del equipo lo
      * abre desde su menú y ve el suyo, sin el camino de vuelta al panel.
