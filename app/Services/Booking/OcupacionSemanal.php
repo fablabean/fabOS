@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
 
 /**
@@ -45,7 +46,13 @@ class OcupacionSemanal
         $hasta = $desde->copy()->endOfWeek(Carbon::SUNDAY);
 
         $reservas = Reservation::query()
-            ->with(['reservable', 'user', 'supervisor', 'companions', 'project', 'task'])
+            ->with([
+                // La sala de cada equipo, de una vez: con setenta bloques en
+                // una semana, preguntarla bloque a bloque son setenta consultas.
+                'reservable' => fn (MorphTo $m) => $m->morphWith([Asset::class => ['space']]),
+                'advisoryAsset.space', 'advisoryArea',
+                'user', 'supervisor', 'companions', 'project', 'task',
+            ])
             // Las hijas —la herramienta tomada dentro de la sala, el bloque de
             // quien acompaña— son parte de la madre: dibujarlas aparte hace
             // que una actividad parezca dos.
@@ -129,6 +136,8 @@ class OcupacionSemanal
             'hasta'      => $minB,
             'hora'       => $this->reloj($minA) . '–' . $this->reloj($minB),
             'que'        => $this->queSeOcupa($r),
+            'recurso'    => $r->reservable instanceof Asset ? $r->reservable->name : null,
+            'espacio'    => $this->espacio($r),
             'responsables' => $this->responsables($r),
             'reserva'    => $conQuienReserva || $delProyecto ? $r->user?->name : null,
             'para'       => $this->para($r, $delProyecto),
@@ -149,13 +158,31 @@ class OcupacionSemanal
     {
         $nombre = $r->nombreDelRecurso();
 
-        if ($r->esBloqueDeProyecto() || $r->esAtencionPersonal()) {
-            return ($r->esBloqueDeProyecto() ? 'Tiempo de ' : 'Asesoría · ') . $nombre;
+        if ($r->esAtencionPersonal()) {
+            return $r->queAtiende();
+        }
+
+        if ($r->esBloqueDeProyecto()) {
+            return 'Tiempo de ' . $nombre;
         }
 
         $sala = $r->reservable instanceof Asset ? $r->reservable->space?->name : null;
 
         return $sala ? $nombre . ' · ' . $sala : $nombre;
+    }
+
+    /**
+     * Dónde pasa: la sala, la sala de la máquina, o la de la máquina sobre la
+     * que es la asesoría. El tiempo apartado de alguien no está en un sitio.
+     */
+    private function espacio(Reservation $r): string
+    {
+        return match (true) {
+            $r->reservable instanceof Space => $r->reservable->name,
+            $r->reservable instanceof Asset => $r->reservable->space?->name ?? 'Sin espacio',
+            $r->esAtencionPersonal()        => $r->advisoryAsset?->space?->name ?? 'Asesorías',
+            default                         => 'Tiempo del equipo',
+        };
     }
 
     /**

@@ -118,5 +118,12 @@ class SemanaDelLaboratorioTest extends TestCase
             ->assertSee('Ana Torres')
             ->assertSee('10:00–12:00')
             ->assertDontSee('14:00–15:00');
+
+        // Por espacios: la sala es la fila, y en la celda va quién responde.
+        $this->actingAs($admin)
+            ->get(route('proyectos.tablero', $p) . '?semana=2026-09-30&vista=espacios')
+            ->assertOk()
+            ->assertSee('sem-tabla', false)
+            ->assertSeeInOrder(['Sala de corte', '10:00–12:00', 'Ana Torres']);
     }
 }

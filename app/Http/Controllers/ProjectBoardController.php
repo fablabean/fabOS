@@ -81,6 +81,7 @@ class ProjectBoardController extends Controller
         ) + [
             'espacio' => $request->integer('espacio') ?: null,
             'solo'    => $request->boolean('solo'),
+            'vista'   => $request->query('vista') === 'espacios' ? 'espacios' : 'horas',
         ];
     }
 

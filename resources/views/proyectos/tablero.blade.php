@@ -463,13 +463,32 @@
     {{-- ---------------------------------------------------------- semana --}}
     @php
         $s = $semana;
-        $hPx = 2.8; // rem por hora
+        $hPx = 2.6; // rem por hora
         $alto = ($s['horaHasta'] - $s['horaDesde']) * $hPx;
-        $filtros = array_filter(['espacio' => $s['espacio'], 'solo' => $s['solo'] ? 1 : null]);
-        $irA = fn ($dia) => route('proyectos.tablero', $proyecto) . '?' . http_build_query(['semana' => $dia->toDateString()] + $filtros) . '#semana';
-        $hoy = now(config('fabos.lab.timezone'))->toDateString();
+        $filtros = array_filter([
+            'espacio' => $s['espacio'],
+            'solo'    => $s['solo'] ? 1 : null,
+            'vista'   => $s['vista'] === 'espacios' ? 'espacios' : null,
+        ]);
+        $url = fn (array $cambios) => route('proyectos.tablero', $proyecto) . '?'
+            . http_build_query(array_filter($cambios + $filtros + ['semana' => $s['desde']->toDateString()])) . '#semana';
+        $irA = fn ($dia) => $url(['semana' => $dia->toDateString()]);
+        $tz = config('fabos.lab.timezone');
+        $hoy = now($tz)->toDateString();
         $nombresDia = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
         $total = collect($s['bloques'])->flatten(1);
+
+        $clasesDe = fn (array $b) => collect([
+            $b['delProyecto'] ? 'nuestro' : '',
+            $b['estado'] === 'solicitada' ? 'pedida' : '',
+            in_array($b['estado'], ['completada', 'no_show']) ? 'pasada' : '',
+        ])->filter()->implode(' ');
+        $quienDe = fn (array $b) => $b['responsables'] ? implode(', ', $b['responsables']) : ($b['reserva'] ?? 'Sin responsable');
+        $tituloDe = fn (array $b) => $b['hora'] . ' · ' . $b['que']
+            . ($b['responsables'] ? "\nResponde: " . implode(', ', $b['responsables']) : '')
+            . ($b['reserva'] ? "\nReservó: " . $b['reserva'] : '')
+            . ($b['para'] ? "\nPara: " . $b['para'] : '')
+            . "\n" . $b['estadoTxt'];
     @endphp
 
     <h2 id="semana">Semana del laboratorio</h2>
@@ -478,17 +497,21 @@
         <div class="sem-barra">
             <div class="sem-nav">
                 <a href="{{ $irA($s['desde']->copy()->subWeek()) }}">← Anterior</a>
-                <strong>
-                    {{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}
-                </strong>
+                <strong>{{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}</strong>
                 <a href="{{ $irA($s['desde']->copy()->addWeek()) }}">Siguiente →</a>
-                @unless ($s['desde']->toDateString() === now(config('fabos.lab.timezone'))->startOfWeek()->toDateString())
-                    <a href="{{ $irA(now(config('fabos.lab.timezone'))) }}">Esta semana</a>
+                @unless ($s['desde']->toDateString() === now($tz)->startOfWeek()->toDateString())
+                    <a href="{{ $irA(now($tz)) }}">Esta semana</a>
                 @endunless
+            </div>
+
+            <div class="sem-vista" role="group" aria-label="Cómo ver la semana">
+                <a href="{{ $url(['vista' => null]) }}" class="{{ $s['vista'] === 'horas' ? 'activa' : '' }}">Por horas</a>
+                <a href="{{ $url(['vista' => 'espacios']) }}" class="{{ $s['vista'] === 'espacios' ? 'activa' : '' }}">Por espacios</a>
             </div>
 
             <form method="get" action="{{ route('proyectos.tablero', $proyecto) }}#semana" class="sem-filtro">
                 <input type="hidden" name="semana" value="{{ $s['desde']->toDateString() }}">
+                @if ($s['vista'] === 'espacios') <input type="hidden" name="vista" value="espacios"> @endif
                 <select name="espacio" onchange="this.form.submit()" aria-label="Espacio">
                     <option value="">Todos los espacios</option>
                     @foreach ($s['espacios'] as $esp)
@@ -503,62 +526,94 @@
             </form>
         </div>
 
-        <div class="sem-scroll">
-            <div class="sem" style="grid-template-columns:3rem repeat({{ count($s['dias']) }}, minmax(6.5rem,1fr))">
-                <div></div>
-                @foreach ($s['dias'] as $dia)
-                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
-                        {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
-                    </div>
-                @endforeach
-
-                <div class="sem-horas" style="height:{{ $alto }}rem">
-                    @for ($h = $s['horaDesde']; $h < $s['horaHasta']; $h++)
-                        <div style="top:{{ ($h - $s['horaDesde']) * $hPx }}rem">{{ sprintf('%02d', $h) }}:00</div>
-                    @endfor
-                </div>
-
-                @foreach ($s['dias'] as $dia)
-                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}"
-                         style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
-                        @foreach ($s['bloques'][$dia->toDateString()] ?? [] as $b)
-                            @php
-                                $top = ($b['desde'] / 60 - $s['horaDesde']) * $hPx;
-                                $altoB = max(1.1, ($b['hasta'] - $b['desde']) / 60 * $hPx);
-                                $ancho = 100 / $b['carriles'];
-                                $clases = collect([
-                                    'sem-b',
-                                    $b['delProyecto'] ? 'nuestro' : '',
-                                    $b['estado'] === 'solicitada' ? 'pedida' : '',
-                                    in_array($b['estado'], ['completada', 'no_show']) ? 'pasada' : '',
-                                    $b['tipo'] === 'produccion' ? 'prod' : '',
-                                ])->filter()->implode(' ');
-                                $titulo = $b['hora'] . ' · ' . $b['que']
-                                    . ($b['responsables'] ? "\nResponde: " . implode(', ', $b['responsables']) : '')
-                                    . ($b['reserva'] ? "\nReservó: " . $b['reserva'] : '')
-                                    . ($b['para'] ? "\nPara: " . $b['para'] : '')
-                                    . "\n" . $b['estadoTxt'];
-                            @endphp
-                            <div class="{{ $clases }}" title="{{ $titulo }}"
-                                 style="top:{{ $top }}rem;height:{{ $altoB }}rem;--alto:{{ $altoB }}rem;
-                                        left:calc({{ $b['carril'] * $ancho }}% + 1px);width:calc({{ $ancho }}% - 2px)">
-                                <div class="h">{{ $b['hora'] }}</div>
-                                <div class="q">{{ $b['que'] }}</div>
-                                <div class="r">
-                                    {{ $b['responsables'] ? implode(', ', $b['responsables']) : ($b['reserva'] ?? 'Sin responsable') }}
-                                </div>
-                                @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
-                            </div>
-                        @endforeach
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
         @if ($total->isEmpty())
-            <p class="help" style="margin:.8rem 0 0">
+            <p class="help" style="margin:0">
                 Nada reservado esta semana{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para este proyecto' : '' }}.
             </p>
+        @elseif ($s['vista'] === 'espacios')
+            {{-- Una fila por espacio: lo que se pregunta es «¿cuándo está libre
+                 la sala de corte?», y eso se lee de corrido en su fila. --}}
+            <div class="sem-scroll">
+                <table class="sem-tabla">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            @foreach ($s['dias'] as $dia)
+                                <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                                    {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                                </th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($total->pluck('espacio')->unique()->sort() as $espacio)
+                        <tr>
+                            <th scope="row">{{ $espacio }}</th>
+                            @foreach ($s['dias'] as $dia)
+                                <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                                    @foreach (collect($s['bloques'][$dia->toDateString()] ?? [])->where('espacio', $espacio)->sortBy('desde') as $b)
+                                        <div class="sem-f {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}">
+                                            <span class="h">{{ $b['hora'] }}</span>
+                                            {{-- La sala ya la dice la fila; se nombra lo que hay dentro. --}}
+                                            @if ($b['tipo'] !== 'espacio')
+                                                <span class="q">{{ $b['recurso'] ?? $b['que'] }}</span>
+                                            @endif
+                                            <span class="r">{{ $quienDe($b) }}</span>
+                                        </div>
+                                    @endforeach
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            @php
+                // Cada día se ensancha con lo que se le cruza: siete impresoras
+                // produciendo a la vez no caben en una columna de seis letras.
+                $columnas = collect($s['dias'])->map(function ($dia) use ($s) {
+                    $carriles = collect($s['bloques'][$dia->toDateString()] ?? [])->max('carriles') ?? 1;
+                    return 'minmax(' . max(6.5, $carriles * 5.2) . 'rem,' . $carriles . 'fr)';
+                })->implode(' ');
+            @endphp
+            <div class="sem-scroll">
+                <div class="sem" style="grid-template-columns:3rem {{ $columnas }}">
+                    <div></div>
+                    @foreach ($s['dias'] as $dia)
+                        <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                        </div>
+                    @endforeach
+
+                    <div class="sem-horas" style="height:{{ $alto }}rem">
+                        @for ($h = $s['horaDesde']; $h < $s['horaHasta']; $h++)
+                            <div style="top:{{ ($h - $s['horaDesde']) * $hPx }}rem">{{ sprintf('%02d', $h) }}:00</div>
+                        @endfor
+                    </div>
+
+                    @foreach ($s['dias'] as $dia)
+                        <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}"
+                             style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
+                            @foreach ($s['bloques'][$dia->toDateString()] ?? [] as $b)
+                                @php
+                                    $top = ($b['desde'] / 60 - $s['horaDesde']) * $hPx;
+                                    $altoB = max(1.1, ($b['hasta'] - $b['desde']) / 60 * $hPx);
+                                    $ancho = 100 / $b['carriles'];
+                                @endphp
+                                <div class="sem-b {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}"
+                                     style="top:{{ $top }}rem;height:{{ $altoB }}rem;--alto:{{ $altoB }}rem;
+                                            left:calc({{ $b['carril'] * $ancho }}% + 1px);width:calc({{ $ancho }}% - 2px)">
+                                    <div class="h">{{ $b['hora'] }}</div>
+                                    <div class="q">{{ $b['que'] }}</div>
+                                    <div class="r">{{ $quienDe($b) }}</div>
+                                    @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         @endif
 
         <div class="sem-ley">
@@ -568,8 +623,8 @@
             <span><i class="sem-m pasada"></i> Ya pasó</span>
         </div>
         <p class="foot" style="margin-top:.5rem">
-            Debajo del recurso va quién responde: quien asesora o acompaña; si nadie del equipo
-            está asignado, quien reservó. Pase el cursor por un bloque para ver el detalle.
+            Con cada franja va quién responde: quien asesora o acompaña; si nadie del equipo
+            está asignado, quien reservó. Pase el cursor por una franja para ver el detalle.
         </p>
     </div>
 
@@ -698,6 +753,31 @@
         .sem-barra { display:flex; flex-wrap:wrap; gap:.8rem 1.2rem; align-items:center;
                      justify-content:space-between; margin-bottom:1rem; }
         .sem-nav { display:flex; flex-wrap:wrap; gap:.4rem 1rem; align-items:center; font-size:.9rem; }
+        .sem-vista { display:inline-flex; border:1px solid var(--rule); border-radius:4px; overflow:hidden; font-size:.85rem; }
+        .sem-vista a { padding:.35rem .75rem; text-decoration:none; color:var(--ink-soft); }
+        .sem-vista a.activa { background:var(--accent); color:var(--surface); font-weight:600; }
+        .sem-tabla { width:100%; min-width:44rem; border-collapse:separate; border-spacing:2px; table-layout:fixed; }
+        .sem-tabla th, .sem-tabla td { vertical-align:top; padding:.3rem; border:0; }
+        .sem-tabla thead th { font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+                              font-family:ui-monospace,Consolas,monospace; font-weight:400; text-align:left; }
+        .sem-tabla thead th span { font-size:.95rem; color:var(--ink); letter-spacing:0; }
+        .sem-tabla thead th.hoy, .sem-tabla thead th.hoy span { color:var(--accent); font-weight:700; }
+        .sem-tabla thead th:first-child, .sem-tabla tbody th { width:9rem; }
+        .sem-tabla tbody th { font-size:.82rem; text-align:left; font-weight:600; }
+        .sem-tabla td { background:var(--ground); border-radius:3px; }
+        .sem-tabla td.hoy { outline:2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+        .sem-f { font-size:.7rem; line-height:1.25; padding:.2rem .35rem; margin-bottom:.25rem; border-radius:3px;
+                 background:color-mix(in srgb, var(--muted) 22%, var(--surface)); border-left:3px solid var(--muted); }
+        .sem-f span { display:block; }
+        .sem-f .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--ink-soft); }
+        .sem-f .q { font-weight:600; }
+        .sem-f .r { color:var(--ink-soft); }
+        .sem-f.nuestro { background:color-mix(in srgb, var(--accent) 26%, var(--surface)); border-left-color:var(--accent); }
+        .sem-f.pedida { background:repeating-linear-gradient(135deg, transparent 0 5px,
+                            color-mix(in srgb, var(--warn) 14%, transparent) 5px 10px), var(--surface);
+                        border-left:3px dashed var(--warn); }
+        .sem-f.nuestro.pedida { border-left-color:var(--accent); }
+        .sem-f.pasada { opacity:.5; }
         .sem-filtro { display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center; }
         .sem-filtro select { width:auto; min-width:12rem; padding:.4rem .6rem; font-size:.88rem; }
         .sem-check { display:flex; gap:.4rem; align-items:center; margin:0; font-family:inherit;
