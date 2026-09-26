@@ -51,7 +51,9 @@ class Project extends Model
         // sin cobrar—. Sin esta etapa, esos proyectos se contaban como en
         // marcha o desaparecian del embudo.
         'pago'      => 'Falta el pago',
-        'cierre'    => 'Cerrado',
+        // «Finalizado» y no «Cerrado»: el estado «cerrado» se llama
+        // «Archivado», y la etapa y el estado no deben sonar a lo mismo.
+        'cierre'    => 'Finalizado',
     ];
 
     /**
@@ -449,7 +451,7 @@ class Project extends Model
         }
 
         if ($this->stage === 'cierre' || $this->status === 'cerrado') {
-            return ['titulo' => 'Cerrado', 'detalle' => 'El trabajo se entregó.'];
+            return ['titulo' => 'Finalizado', 'detalle' => 'El trabajo se entregó.'];
         }
 
         if ($this->stage === 'pago') {
