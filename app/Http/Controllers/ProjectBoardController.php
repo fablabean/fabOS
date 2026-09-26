@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Evidencia;
 use App\Models\User;
+use App\Services\Booking\OcupacionSemanal;
 use App\Services\Projects\CostingService;
 use App\Services\Projects\ProjectException;
 use App\Services\Projects\ProjectService;
@@ -24,6 +25,7 @@ class ProjectBoardController extends Controller
     public function __construct(
         private ProjectService $proyectos,
         private CostingService $costeo,
+        private OcupacionSemanal $ocupacion,
     ) {}
 
     public function show(Request $request, Project $project)
@@ -48,7 +50,38 @@ class ProjectBoardController extends Controller
             'siguiente'  => $this->proyectos->siguienteEtapa($project),
             'costeo'     => $this->costeo->costear($project),
             'evidencias' => $this->proyectos->evidencias($project),
+            'semana'     => $this->semana($request, $project),
         ]);
+    }
+
+    /**
+     * La semana del laboratorio, con lo del proyecto resaltado.
+     *
+     * De todos y no solo del proyecto, porque la pregunta es «¿cuándo podemos
+     * meternos?», y eso lo contesta lo que ya está ocupado por los demás.
+     * Quién reservó lo ajeno lo ve solo el equipo del laboratorio: al tablero
+     * también entran miembros de fuera, y el nombre de otro usuario no es suyo.
+     */
+    private function semana(Request $request, Project $project): array
+    {
+        try {
+            $dia = $request->filled('semana')
+                ? \Illuminate\Support\Carbon::parse($request->string('semana'), config('fabos.lab.timezone'))
+                : now(config('fabos.lab.timezone'));
+        } catch (\Throwable) {
+            $dia = now(config('fabos.lab.timezone'));
+        }
+
+        return $this->ocupacion->semana(
+            $dia,
+            resaltar: $project,
+            espacio: $request->integer('espacio') ?: null,
+            soloDelProyecto: $request->boolean('solo'),
+            conQuienReserva: $request->user()->hasAnyRole(User::rolesDelEquipo()),
+        ) + [
+            'espacio' => $request->integer('espacio') ?: null,
+            'solo'    => $request->boolean('solo'),
+        ];
     }
 
     /**

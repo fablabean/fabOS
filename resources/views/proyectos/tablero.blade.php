@@ -460,6 +460,119 @@
         </div>
     @endif
 
+    {{-- ---------------------------------------------------------- semana --}}
+    @php
+        $s = $semana;
+        $hPx = 2.8; // rem por hora
+        $alto = ($s['horaHasta'] - $s['horaDesde']) * $hPx;
+        $filtros = array_filter(['espacio' => $s['espacio'], 'solo' => $s['solo'] ? 1 : null]);
+        $irA = fn ($dia) => route('proyectos.tablero', $proyecto) . '?' . http_build_query(['semana' => $dia->toDateString()] + $filtros) . '#semana';
+        $hoy = now(config('fabos.lab.timezone'))->toDateString();
+        $nombresDia = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+        $total = collect($s['bloques'])->flatten(1);
+    @endphp
+
+    <h2 id="semana">Semana del laboratorio</h2>
+
+    <div class="panel">
+        <div class="sem-barra">
+            <div class="sem-nav">
+                <a href="{{ $irA($s['desde']->copy()->subWeek()) }}">← Anterior</a>
+                <strong>
+                    {{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}
+                </strong>
+                <a href="{{ $irA($s['desde']->copy()->addWeek()) }}">Siguiente →</a>
+                @unless ($s['desde']->toDateString() === now(config('fabos.lab.timezone'))->startOfWeek()->toDateString())
+                    <a href="{{ $irA(now(config('fabos.lab.timezone'))) }}">Esta semana</a>
+                @endunless
+            </div>
+
+            <form method="get" action="{{ route('proyectos.tablero', $proyecto) }}#semana" class="sem-filtro">
+                <input type="hidden" name="semana" value="{{ $s['desde']->toDateString() }}">
+                <select name="espacio" onchange="this.form.submit()" aria-label="Espacio">
+                    <option value="">Todos los espacios</option>
+                    @foreach ($s['espacios'] as $esp)
+                        <option value="{{ $esp->id }}" @selected($s['espacio'] === $esp->id)>{{ $esp->name }}</option>
+                    @endforeach
+                </select>
+                <label class="sem-check">
+                    <input type="checkbox" name="solo" value="1" @checked($s['solo']) onchange="this.form.submit()">
+                    Solo este proyecto
+                </label>
+                <noscript><button class="secundario" style="margin:0">Ver</button></noscript>
+            </form>
+        </div>
+
+        <div class="sem-scroll">
+            <div class="sem" style="grid-template-columns:3rem repeat({{ count($s['dias']) }}, minmax(6.5rem,1fr))">
+                <div></div>
+                @foreach ($s['dias'] as $dia)
+                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                        {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                    </div>
+                @endforeach
+
+                <div class="sem-horas" style="height:{{ $alto }}rem">
+                    @for ($h = $s['horaDesde']; $h < $s['horaHasta']; $h++)
+                        <div style="top:{{ ($h - $s['horaDesde']) * $hPx }}rem">{{ sprintf('%02d', $h) }}:00</div>
+                    @endfor
+                </div>
+
+                @foreach ($s['dias'] as $dia)
+                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}"
+                         style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
+                        @foreach ($s['bloques'][$dia->toDateString()] ?? [] as $b)
+                            @php
+                                $top = ($b['desde'] / 60 - $s['horaDesde']) * $hPx;
+                                $altoB = max(1.1, ($b['hasta'] - $b['desde']) / 60 * $hPx);
+                                $ancho = 100 / $b['carriles'];
+                                $clases = collect([
+                                    'sem-b',
+                                    $b['delProyecto'] ? 'nuestro' : '',
+                                    $b['estado'] === 'solicitada' ? 'pedida' : '',
+                                    in_array($b['estado'], ['completada', 'no_show']) ? 'pasada' : '',
+                                    $b['tipo'] === 'produccion' ? 'prod' : '',
+                                ])->filter()->implode(' ');
+                                $titulo = $b['hora'] . ' · ' . $b['que']
+                                    . ($b['responsables'] ? "\nResponde: " . implode(', ', $b['responsables']) : '')
+                                    . ($b['reserva'] ? "\nReservó: " . $b['reserva'] : '')
+                                    . ($b['para'] ? "\nPara: " . $b['para'] : '')
+                                    . "\n" . $b['estadoTxt'];
+                            @endphp
+                            <div class="{{ $clases }}" title="{{ $titulo }}"
+                                 style="top:{{ $top }}rem;height:{{ $altoB }}rem;--alto:{{ $altoB }}rem;
+                                        left:calc({{ $b['carril'] * $ancho }}% + 1px);width:calc({{ $ancho }}% - 2px)">
+                                <div class="h">{{ $b['hora'] }}</div>
+                                <div class="q">{{ $b['que'] }}</div>
+                                <div class="r">
+                                    {{ $b['responsables'] ? implode(', ', $b['responsables']) : ($b['reserva'] ?? 'Sin responsable') }}
+                                </div>
+                                @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        @if ($total->isEmpty())
+            <p class="help" style="margin:.8rem 0 0">
+                Nada reservado esta semana{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para este proyecto' : '' }}.
+            </p>
+        @endif
+
+        <div class="sem-ley">
+            <span><i class="sem-m nuestro"></i> De este proyecto</span>
+            <span><i class="sem-m"></i> De otros</span>
+            <span><i class="sem-m pedida"></i> Solicitada, sin confirmar</span>
+            <span><i class="sem-m pasada"></i> Ya pasó</span>
+        </div>
+        <p class="foot" style="margin-top:.5rem">
+            Debajo del recurso va quién responde: quien asesora o acompaña; si nadie del equipo
+            está asignado, quien reservó. Pase el cursor por un bloque para ver el detalle.
+        </p>
+    </div>
+
     {{-- ------------------------------------------------------ documentos --}}
     @if ($proyecto->documents->isNotEmpty())
         <h2>Documentos</h2>
@@ -581,6 +694,50 @@
         .gantt-fila .pista { position:relative; height:1.5rem; background:var(--ground);
                              border-radius:3px; border:1px solid var(--rule); }
         .gantt-fila .barra { position:absolute; top:2px; bottom:2px; border-radius:3px; }
+
+        .sem-barra { display:flex; flex-wrap:wrap; gap:.8rem 1.2rem; align-items:center;
+                     justify-content:space-between; margin-bottom:1rem; }
+        .sem-nav { display:flex; flex-wrap:wrap; gap:.4rem 1rem; align-items:center; font-size:.9rem; }
+        .sem-filtro { display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center; }
+        .sem-filtro select { width:auto; min-width:12rem; padding:.4rem .6rem; font-size:.88rem; }
+        .sem-check { display:flex; gap:.4rem; align-items:center; margin:0; font-family:inherit;
+                     font-size:.85rem; letter-spacing:0; text-transform:none; color:var(--ink-soft); }
+        .sem-scroll { overflow-x:auto; }
+        .sem { display:grid; min-width:40rem; column-gap:2px; }
+        .sem-dia { font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+                   font-family:ui-monospace,Consolas,monospace; padding:0 0 .4rem .3rem; }
+        .sem-dia span { font-size:.95rem; color:var(--ink); letter-spacing:0; }
+        .sem-dia.hoy, .sem-dia.hoy span { color:var(--accent); font-weight:700; }
+        .sem-horas { position:relative; }
+        .sem-horas div { position:absolute; right:.4rem; transform:translateY(-.45rem);
+                         font-size:.66rem; color:var(--muted); font-family:ui-monospace,Consolas,monospace; }
+        .sem-col { position:relative; background:var(--ground); border-radius:3px;
+                   background-image:linear-gradient(to bottom, var(--rule) 1px, transparent 1px); }
+        .sem-col.hoy { outline:2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+        .sem-b { position:absolute; overflow:hidden; border-radius:3px; padding:.15rem .3rem;
+                 font-size:.68rem; line-height:1.2; cursor:default;
+                 background:color-mix(in srgb, var(--muted) 22%, var(--surface));
+                 border-left:3px solid var(--muted); color:var(--ink); }
+        .sem-b.nuestro { background:color-mix(in srgb, var(--accent) 26%, var(--surface));
+                         border-left-color:var(--accent); }
+        .sem-b.pedida { background:repeating-linear-gradient(135deg, transparent 0 5px,
+                            color-mix(in srgb, var(--warn) 14%, transparent) 5px 10px), var(--surface);
+                        border-left:3px dashed var(--warn); }
+        .sem-b.nuestro.pedida { border-left-color:var(--accent); }
+        .sem-b.pasada { opacity:.5; }
+        /* Al pasar por encima, el bloque crece hasta que se lea entero. */
+        .sem-b:hover { z-index:2; height:auto !important; min-height:var(--alto); box-shadow:0 2px 8px rgb(0 0 0 / .25); }
+        .sem-b .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--ink-soft); }
+        .sem-b .q { font-weight:600; }
+        .sem-b .r { color:var(--ink-soft); }
+        .sem-b .p { color:var(--muted); font-style:italic; }
+        .sem-ley { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; margin-top:.9rem; font-size:.8rem; color:var(--ink-soft); }
+        .sem-ley span { display:inline-flex; gap:.35rem; align-items:center; white-space:nowrap; }
+        .sem-m { display:inline-block; width:.9rem; height:.9rem; border-radius:2px; vertical-align:middle;
+                 background:color-mix(in srgb, var(--muted) 22%, var(--surface)); border-left:3px solid var(--muted); }
+        .sem-m.nuestro { background:color-mix(in srgb, var(--accent) 26%, var(--surface)); border-left-color:var(--accent); }
+        .sem-m.pedida { background:color-mix(in srgb, var(--warn) 14%, var(--surface)); border-left:3px dashed var(--warn); }
+        .sem-m.pasada { opacity:.5; }
     </style>
 
     <script>
