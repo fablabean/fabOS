@@ -267,6 +267,21 @@ class FabCoinsTest extends TestCase
         $this->assertSame(0, $this->libro()->cuentaDeSistema(LedgerAccount::GARANTIAS)->saldoMenor());
     }
 
+    /**
+     * La cuenta del libro se llama como la persona, también después de
+     * renombrarla, y renombrar no toca la cadena del libro.
+     */
+    public function test_la_cuenta_sigue_el_nombre_de_su_persona(): void
+    {
+        $u = $this->persona();
+        $this->cobros()->dotar($u, 10000, '2026-08');
+
+        $u->update(['name' => 'Fablab Master']);
+
+        $this->assertSame('Fablab Master', $this->libro()->cuentaDe($u)->fresh()->name);
+        $this->assertTrue($this->libro()->verificarCadena()['intacta']);
+    }
+
     public function test_todo_el_ciclo_deja_el_libro_cuadrado(): void
     {
         $cobros = $this->cobros();

@@ -391,6 +391,21 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
             if ($user->wasRecentlyCreated || $user->wasChanged('user_category_id') || $user->wasChanged('status')) {
                 app(\App\Services\Money\Bienvenida::class)->dar($user, auth()->user());
             }
+
+            /*
+             * La cuenta del libro se llama como la persona, siempre.
+             *
+             * Guardaba el nombre del día en que se abrió y no lo volvía a
+             * mirar: la cuenta de sistema con la que se instaló seguía
+             * diciendo «Erick Hansen» después de llamarse «Fablab Master», y
+             * en Cuentas aparecían dos Ericks con saldos distintos. El nombre
+             * no entra en el hash de ningún asiento: cambiarlo no toca la
+             * cadena del libro.
+             */
+            if ($user->wasChanged('name')) {
+                \App\Models\LedgerAccount::where('code', 'usuario:' . $user->id)
+                    ->update(['name' => $user->name]);
+            }
         });
     }
 }
