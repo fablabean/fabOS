@@ -14,8 +14,9 @@ class PreguntasFrecuentesTest extends TestCase
 
     private function sembrar(): void
     {
-        $migracion = require database_path('migrations/2026_09_26_150000_preguntas_frecuentes_de_fabos.php');
-        $migracion->up();
+        foreach (['2026_09_26_150000_preguntas_frecuentes_de_fabos', '2026_09_26_170000_mas_preguntas_frecuentes'] as $archivo) {
+            (require database_path("migrations/{$archivo}.php"))->up();
+        }
     }
 
     public function test_se_publican_respondidas_por_la_cuenta_del_laboratorio(): void
@@ -24,11 +25,12 @@ class PreguntasFrecuentesTest extends TestCase
 
         $this->sembrar();
 
-        $this->assertSame(11, Question::where('user_id', $lab->id)->where('status', 'respondida')->count());
-        $this->assertSame(11, Question::whereHas('respuestasPublicadas')->count());
+        $this->assertSame(31, Question::where('user_id', $lab->id)->where('status', 'respondida')->count());
+        $this->assertSame(31, Question::whereHas('respuestasPublicadas')->count());
 
         $this->get(route('preguntas.index'))->assertOk()->assertSee('¿Cómo reservo una máquina?');
         $this->get(route('preguntas.show', 'que-pasa-si-llego-tarde'))->assertOk()->assertSee('20 minutos');
+        $this->get(route('preguntas.show', 'como-reservo-un-recorrido'))->assertOk()->assertSee('grupos de 15');
     }
 
     public function test_correrla_dos_veces_no_duplica(): void
@@ -38,6 +40,6 @@ class PreguntasFrecuentesTest extends TestCase
         $this->sembrar();
         $this->sembrar();
 
-        $this->assertSame(11, Question::count());
+        $this->assertSame(31, Question::count());
     }
 }
