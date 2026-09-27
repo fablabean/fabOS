@@ -115,6 +115,26 @@ class CarpetaDeDriveTest extends TestCase
             ->assertSet('ruta', []);
     }
 
+    /** Con una llave de API: sin token, con la llave en la consulta, y cifrada. */
+    public function test_con_llave_de_api_lista_la_carpeta_publica(): void
+    {
+        $llave = 'AIza' . str_repeat('x', 35);
+
+        app(DriveDelLaboratorio::class)->configurar('https://drive.google.com/drive/folders/' . self::RAIZ, $llave);
+        $this->fingirDrive();
+
+        $drive = app(DriveDelLaboratorio::class);
+        $this->assertTrue($drive->conLlaveDeApi());
+        $this->assertStringNotContainsString($llave, (string) Setting::get(DriveDelLaboratorio::CREDENCIALES));
+
+        $this->assertCount(2, $drive->listar());
+
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'drive/v3/files')
+            && str_contains($r->url(), 'key=' . $llave)
+            && ! $r->hasHeader('Authorization'));
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'oauth2.googleapis.com'));
+    }
+
     public function test_sin_configurar_explica_los_pasos(): void
     {
         $this->entrarComoAdmin();

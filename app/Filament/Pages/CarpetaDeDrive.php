@@ -138,11 +138,19 @@ class CarpetaDeDrive extends Page
                         ->placeholder('https://drive.google.com/drive/folders/…')
                         ->default(fn () => $this->drive()->enlaceDeLaCarpeta())
                         ->required(),
+                    TextInput::make('llave_api')
+                        ->label('O una llave de API de Google')
+                        ->password()
+                        ->revealable()
+                        ->placeholder('AIza…')
+                        ->helperText('Con llave de API la carpeta tiene que estar compartida como «Cualquier persona con el enlace puede ver». Restríngela en Google Cloud a la API de Drive y a la IP del servidor.'),
                     FileUpload::make('llave')
                         ->label('Llave JSON de la cuenta de servicio')
-                        ->helperText(fn () => $this->drive()->correoDeLaCuenta()
-                            ? 'Ya hay una: ' . $this->drive()->correoDeLaCuenta() . '. Sube otra solo si quieres cambiarla.'
-                            : 'El archivo .json que descargas al crear la llave en Google Cloud.')
+                        ->helperText(fn () => match (true) {
+                            $this->drive()->conLlaveDeApi() => 'Ahora se entra con una llave de API. Sube un JSON solo si quieres pasar a una cuenta de servicio (carpeta privada).',
+                            (bool) $this->drive()->correoDeLaCuenta() => 'Ya hay una: ' . $this->drive()->correoDeLaCuenta() . '. Sube otra solo si quieres cambiarla.',
+                            default => 'El archivo .json de una cuenta de servicio, si la carpeta es privada. Déjalo vacío si usas llave de API.',
+                        })
                         ->acceptedFileTypes(['application/json', 'text/plain'])
                         ->disk('local')
                         ->directory('tmp-drive')
@@ -158,7 +166,7 @@ class CarpetaDeDrive extends Page
                     }
 
                     try {
-                        $this->drive()->configurar($data['enlace'], $llave);
+                        $this->drive()->configurar($data['enlace'], filled($data['llave_api'] ?? null) ? $data['llave_api'] : $llave);
                     } catch (\RuntimeException $e) {
                         Notification::make()->danger()->title('No se pudo guardar')->body($e->getMessage())->send();
 

@@ -57,6 +57,17 @@ class DriveDelLaboratorio
     }
 
     /**
+     * Si se entra con una llave de API y no con una cuenta de servicio.
+     *
+     * Una llave de API no es nadie: solo ve lo público. La carpeta tiene que
+     * estar compartida como «cualquier persona con el enlace puede ver».
+     */
+    public function conLlaveDeApi(): bool
+    {
+        return ($this->credenciales()['type'] ?? null) === 'api_key';
+    }
+
+    /**
      * Guarda la carpeta y, si llega, la llave de la cuenta de servicio.
      *
      * La llave va cifrada con la clave de la aplicación: es un secreto que
@@ -69,6 +80,16 @@ class DriveDelLaboratorio
     {
         if (! self::idDe($enlace)) {
             throw new RuntimeException('Ese enlace no es de una carpeta de Drive. Cópialo desde la barra del navegador, con la carpeta abierta.');
+        }
+
+        // Una llave de API de Google (AIza…), en vez del JSON de la cuenta.
+        if (filled($llaveJson) && str_starts_with(trim($llaveJson), 'AIza')) {
+            if (! preg_match('/^AIza[0-9A-Za-z_-]{35}$/', trim($llaveJson))) {
+                throw new RuntimeException('Esa llave de API no tiene la forma de una de Google (AIza… y 39 caracteres).');
+            }
+
+            Setting::put(self::CREDENCIALES, Crypt::encryptString(json_encode(['type' => 'api_key', 'key' => trim($llaveJson)])), 'contenido');
+            $llaveJson = null;
         }
 
         if (filled($llaveJson)) {
@@ -106,9 +127,13 @@ class DriveDelLaboratorio
             $pagina = null;
 
             do {
-                $respuesta = Http::withToken($this->token())
-                    ->timeout(20)
+                $peticion = $this->conLlaveDeApi()
+                    ? Http::timeout(20)
+                    : Http::withToken($this->token())->timeout(20);
+
+                $respuesta = $peticion
                     ->get('https://www.googleapis.com/drive/v3/files', array_filter([
+                        'key'       => $this->conLlaveDeApi() ? $this->credenciales()['key'] : null,
                         'q'         => "'{$carpeta}' in parents and trashed = false",
                         'fields'    => 'nextPageToken, files(id, name, mimeType, thumbnailLink, webViewLink, createdTime)',
                         'orderBy'   => 'folder, createdTime desc',
@@ -119,9 +144,15 @@ class DriveDelLaboratorio
                     ]));
 
                 if ($respuesta->failed()) {
-                    throw new RuntimeException($respuesta->status() === 404
-                        ? 'Drive no encuentra la carpeta: ¿está compartida con ' . $this->correoDeLaCuenta() . '?'
-                        : 'Drive no respondió bien (' . $respuesta->status() . '). Vuelve a intentar en un momento.');
+                    throw new RuntimeException(match (true) {
+                        $respuesta->status() === 404 && $this->conLlaveDeApi()
+                            => 'Drive no encuentra la carpeta: con una llave de API tiene que estar compartida como «Cualquier persona con el enlace puede ver».',
+                        $respuesta->status() === 404
+                            => 'Drive no encuentra la carpeta: ¿está compartida con ' . $this->correoDeLaCuenta() . '?',
+                        in_array($respuesta->status(), [400, 403], true) && $this->conLlaveDeApi()
+                            => 'Google no acepta la llave de API: revisa que tenga activa la API de Google Drive y que sus restricciones dejen entrar al servidor.',
+                        default => 'Drive no respondió bien (' . $respuesta->status() . '). Vuelve a intentar en un momento.',
+                    });
                 }
 
                 foreach ($respuesta->json('files', []) as $f) {
