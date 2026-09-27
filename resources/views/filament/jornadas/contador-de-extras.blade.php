@@ -5,7 +5,7 @@
         .extras table { width:100%; border-collapse:collapse; font-size:.88rem; }
         .extras th, .extras td { padding:.5rem .6rem; border-bottom:1px solid rgb(229 231 235); text-align:left; vertical-align:middle; }
         .extras th { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:rgb(107 114 128); font-weight:600; }
-        .extras td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        .extras th.n, .extras td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
         .extras .barra { height:.4rem; border-radius:999px; background:rgb(229 231 235); overflow:hidden; min-width:6rem; margin-top:.25rem; }
         .extras .barra span { display:block; height:100%; background:rgb(5 150 105); }
         .extras .barra.alta span { background:rgb(217 119 6); }
