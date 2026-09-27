@@ -168,7 +168,10 @@
                 <dt>Se puede llegar desde</dt>
                 <dd>{{ $checkin['antes'] }} minutos antes del inicio</dd>
                 <dt>Tolerancia de retraso</dt>
-                <dd>{{ $checkin['tolerancia'] }} minutos — pasados, la reserva se libera</dd>
+                <dd>{{ $checkin['tolerancia'] }} minutos — pasados, la reserva de una máquina se libera.
+                    Los espacios y las herramientas no: se dan por usados en su franja y se cierran
+                    al terminar, con la nota de que nadie marcó llegada. Una máquina en curso sin
+                    salida se cierra sola 24 h después de su hora y cobra la franja solicitada.</dd>
             </dl>
 
             <div class="porque">

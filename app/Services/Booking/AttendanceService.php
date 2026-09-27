@@ -163,7 +163,7 @@ class AttendanceService
      * terminar se cierran, con una nota de que nadie marcó llegada ni salida.
      * Lo que va dentro de una sala sigue a la sala.
      */
-    private function sinControlDeLlegada(Reservation $reserva): bool
+    public function sinControlDeLlegada(Reservation $reserva): bool
     {
         if ($reserva->reservable_type === Space::class) {
             return true;

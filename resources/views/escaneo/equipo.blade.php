@@ -69,9 +69,16 @@
                 @endif
             </p>
             <p class="help">
-                Registra tu llegada para empezar. Si no llegas dentro de
-                {{ config('fabos.checkin.tolerancia') }} minutos, la reserva se libera
-                para que el equipo no quede bloqueado.
+                {{-- Una herramienta o lo tomado en una sala no se libera por
+                     llegar tarde: decirle que sí sería asustar sin motivo. --}}
+                @if (app(\App\Services\Booking\AttendanceService::class)->sinControlDeLlegada($reserva))
+                    Registra tu llegada si quieres dejar constancia. No es obligatorio: la reserva
+                    vale por toda tu franja y se cierra sola al terminar.
+                @else
+                    Registra tu llegada para empezar. Si no llegas dentro de
+                    {{ config('fabos.checkin.tolerancia') }} minutos, la reserva se libera
+                    para que el equipo no quede bloqueado.
+                @endif
             </p>
             <form method="POST" action="{{ route('escaneo.checkin', $reserva) }}">
                 @csrf
