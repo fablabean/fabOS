@@ -113,6 +113,44 @@ class FondoDelBannerTest extends TestCase
      * cambiar a «Video» seguía escondiendo los MP4 (un video de WhatsApp de
      * 3 MB no aparecía). Ahora acepta ambos y el servidor comprueba el tipo.
      */
+    /**
+     * La imagen de carga sale sola del video, si no se subió ninguna; y si el
+     * video cambia, se rehace. Con un video de verdad, hecho con ffmpeg.
+     */
+    public function test_la_imagen_de_carga_sale_sola_del_video(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $disco = \Illuminate\Support\Facades\Storage::disk('public');
+        $disco->makeDirectory('banners');
+
+        $hacer = function (string $ruta, string $color) use ($disco) {
+            (new \Symfony\Component\Process\Process([
+                'ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', "color=c={$color}:s=320x180:d=2",
+                '-pix_fmt', 'yuv420p', $disco->path($ruta),
+            ]))->mustRun();
+        };
+
+        $hacer('banners/uno.mp4', 'red');
+
+        $l = Banner::create([
+            'titulo' => 'Con video', 'fondo_tipo' => 'video', 'fondo_path' => 'banners/uno.mp4',
+            'efecto' => 'ninguno', 'alineacion' => 'izquierda', 'velo' => 40,
+        ]);
+
+        $primero = $l->poster_path;
+        $this->assertTrue(\App\Services\Media\FotogramaDeVideo::esGenerado($primero));
+        $this->assertTrue($disco->exists($primero));
+
+        // Otro video: el fotograma generado se rehace.
+        $hacer('banners/dos.mp4', 'blue');
+        $l->update(['fondo_path' => 'banners/dos.mp4']);
+        $this->assertNotSame($primero, $l->fresh()->poster_path);
+
+        // Una imagen subida a mano no se toca.
+        $l->update(['poster_path' => 'banners/mia.jpg', 'fondo_path' => 'banners/uno.mp4']);
+        $this->assertSame('banners/mia.jpg', $l->fresh()->poster_path);
+    }
+
     public function test_el_fondo_acepta_un_mp4_y_exige_que_coincida_con_el_tipo(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');

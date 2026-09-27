@@ -51,6 +51,28 @@ class Banner extends Model
         ];
     }
 
+    /**
+     * La imagen de carga de un video, sacada del propio video si no se subió
+     * ninguna. Si el video cambia, el fotograma generado se rehace; una
+     * imagen subida a mano no se toca.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $lamina) {
+            if ($lamina->fondo_tipo !== 'video' || blank($lamina->fondo_path)) {
+                return;
+            }
+
+            $generado = \App\Services\Media\FotogramaDeVideo::esGenerado($lamina->poster_path);
+            $cambioElVideo = $lamina->isDirty('fondo_path');
+
+            if (blank($lamina->poster_path) || ($generado && $cambioElVideo)) {
+                $lamina->poster_path = app(\App\Services\Media\FotogramaDeVideo::class)
+                    ->extraer($lamina->fondo_path) ?? ($generado ? null : $lamina->poster_path);
+            }
+        });
+    }
+
     /** Como se pinta el fondo. */
     public const FONDOS = [
         'color'  => 'Color plano',

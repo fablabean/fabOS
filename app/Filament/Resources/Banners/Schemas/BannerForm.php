@@ -189,7 +189,7 @@ class BannerForm
                             ->directory('banners')
                             ->image()
                             ->maxSize(20480)
-                            ->helperText('Un fotograma del propio video. Es lo que ve quien tenga el ahorro de datos activado.')
+                            ->helperText('Opcional: si la dejas vacía, al guardar se saca sola un fotograma del propio video. Es lo que ve quien tenga el ahorro de datos activado. Solo imágenes: el video va en el campo de arriba.')
                             ->columnSpanFull()
                             // Igual que el fondo: se encoge antes de subirla.
                             ->imageResizeMode('contain')
