@@ -179,6 +179,8 @@ class LlegadaAUnEspacioTest extends TestCase
 
         $this->assertSame('confirmada', $sala->fresh()->status);
         $this->assertSame('confirmada', $herramienta->fresh()->status);
+        // Y sin el aviso de «reserva liberada»: salían por cientos.
+        $this->assertSame(0, \App\Models\NotificationLog::where('key', 'reserva.no_show')->count());
 
         $this->travelTo(Carbon::parse('2026-08-24 12:30', config('fabos.lab.timezone')));
         $this->asistencia()->liberarAusencias();

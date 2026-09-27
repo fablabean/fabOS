@@ -224,7 +224,9 @@ class DashboardService
             if ($abiertas) {
                 $alertas->push([
                     'titulo'  => 'Reservas que quedaron abiertas',
-                    'detalle' => 'Terminó la franja y nadie marcó la salida. Hay que cerrarlas.',
+                    'detalle' => 'Nadie marcó la salida. Se cierran solas y cobran lo reservado '
+                        . \App\Services\Booking\AttendanceService::HORAS_PARA_CERRAR_MAQUINA
+                        . ' h después; ciérralas antes a mano si no corresponde cobrarlo entero.',
                     'cuantos' => $abiertas,
                     'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('index', [
                         'filters' => [

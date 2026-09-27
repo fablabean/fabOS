@@ -403,6 +403,49 @@ class ReservationsTable
                         Notification::make()->success()->title('Llegada anotada a la hora reservada')->send();
                     }),
 
+                /*
+                 * Cerrar a mano lo que quedó en curso: con la hora real de
+                 * salida, y cobrando o no. Si nadie la cierra, una máquina se
+                 * cierra sola un día después de su hora y cobra lo reservado
+                 * entero; esto es para cuando eso no corresponde.
+                 */
+                Action::make('cerrar')
+                    ->label('Cerrar')
+                    ->iconButton()
+                    ->tooltip('Cerrar: anotar la salida')
+                    ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                    ->color('warning')
+                    ->visible(fn (Reservation $r) => $r->status === 'en_curso')
+                    ->modalHeading('Cerrar la reserva')
+                    ->modalDescription('Se anota la salida a la hora que digas. Cobrando, se liquida el tiempo hasta esa hora; sin cobro, lo retenido vuelve entero.')
+                    ->schema([
+                        DateTimePicker::make('salida')
+                            ->label('Hora de salida')
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone'))
+                            ->default(fn (Reservation $record) => $record->ends_at->isPast() ? $record->ends_at : now())
+                            ->required(),
+                        \Filament\Forms\Components\Toggle::make('cobrar')
+                            ->label('Cobrar el tiempo usado')
+                            ->default(true),
+                    ])
+                    ->action(function (Reservation $record, array $data) {
+                        try {
+                            app(\App\Services\Booking\AttendanceService::class)->cerrarAMano(
+                                $record,
+                                \Illuminate\Support\Carbon::parse($data['salida'])->utc(),
+                                (bool) $data['cobrar'],
+                                auth()->user(),
+                            );
+                        } catch (\App\Services\Booking\BookingException $e) {
+                            Notification::make()->danger()->title('No se pudo cerrar')->body($e->getMessage())->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()->title($data['cobrar'] ? 'Cerrada y liquidada' : 'Cerrada sin cobro')->send();
+                    }),
+
                 Action::make('levantar')
                     ->label('Levantar la reserva')
                     ->iconButton()

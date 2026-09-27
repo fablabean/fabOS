@@ -192,6 +192,51 @@ class AttendanceTest extends TestCase
         $this->assertSame(1, Reservation::where('status', 'no_show')->count());
     }
 
+    /**
+     * Una máquina en curso que nadie cerró espera un día y se cierra sola,
+     * a la hora en que terminaba, con la nota.
+     */
+    public function test_la_maquina_sin_salida_se_cierra_al_dia_siguiente(): void
+    {
+        $r = $this->reserva($this->usuario(), $this->activo(), -60, 'en_curso');
+        $r->update(['checked_in_at' => $r->starts_at->copy()->addMinutes(30)]);
+
+        // Terminó hace un rato: todavía se puede cerrar a mano.
+        $this->travel(2)->hours();
+        $this->servicio()->liberarAusencias();
+        $this->assertSame('en_curso', $r->fresh()->status);
+
+        $this->travel(AttendanceService::HORAS_PARA_CERRAR_MAQUINA)->hours();
+        $this->servicio()->liberarAusencias();
+
+        $this->assertSame('completada', $r->fresh()->status);
+        $this->assertSame(AttendanceService::SIN_SALIDA, $r->fresh()->status_reason);
+        $this->assertTrue($r->fresh()->checked_out_at->equalTo($r->fresh()->ends_at));
+    }
+
+    /** A mano: con la hora real, y sin cobro si así se decide. */
+    public function test_se_cierra_a_mano_sin_cobro(): void
+    {
+        $r = $this->reserva($this->usuario(), $this->activo(), -60, 'en_curso');
+        $r->update(['checked_in_at' => $r->starts_at]);
+        $quien = $this->usuario();
+
+        $this->servicio()->cerrarAMano($r->fresh(), now()->subMinutes(10), cobrar: false, quien: $quien);
+
+        $this->assertSame('completada', $r->fresh()->status);
+        $this->assertSame(0, (int) $r->fresh()->actual_cost_minor);
+        $this->assertStringContainsString('sin cobro', $r->fresh()->status_reason);
+        $this->assertStringContainsString($quien->name, $r->fresh()->status_reason);
+    }
+
+    public function test_no_se_cierra_a_mano_con_salida_en_el_futuro(): void
+    {
+        $r = $this->reserva($this->usuario(), $this->activo(), -60, 'en_curso');
+
+        $this->expectException(BookingException::class);
+        $this->servicio()->cerrarAMano($r, now()->addHour(), cobrar: true, quien: $this->usuario());
+    }
+
     public function test_encuentra_la_reserva_al_escanear_el_equipo(): void
     {
         $u = $this->usuario();

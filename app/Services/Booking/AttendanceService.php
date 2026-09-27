@@ -15,6 +15,7 @@ use App\Services\Money\PricingService;
 use App\Services\Money\QuoteService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Llegada y salida de una reserva (§10).
@@ -179,35 +180,115 @@ class AttendanceService
 
     public const SIN_SALIDA = 'Sin registro de salida: se cerró al terminar su hora.';
 
+    /** Horas que se espera a que alguien cierre a mano una máquina antes de cerrarla sola. */
+    public const HORAS_PARA_CERRAR_MAQUINA = 24;
+
     /**
-     * Los espacios y herramientas en curso cuya hora ya pasó y nadie cerró.
+     * Las reservas en curso cuya hora ya pasó y nadie cerró.
      *
      * Se cierran a la hora en que terminaban, que es lo único que se sabe, y
-     * se liquidan con esa hora: una herramienta que nadie devolvió en el
-     * sistema no queda «en curso» para siempre.
+     * se liquidan con esa hora: quien no marcó la salida paga lo reservado.
+     * Un espacio o una herramienta, en cuanto termina su hora. Una máquina,
+     * un día después: ese día es para que alguien la cierre a mano desde el
+     * panel con la hora real, o sin cobro, si no corresponde cobrarla entera.
+     *
+     * Si cobrar falla —no le alcanza el saldo—, esa se queda abierta y a la
+     * vista en el tablero; las demás se cierran igual.
      */
     public function cerrarSinSalida(?Carbon $ahora = null): int
     {
+        $ahora = ($ahora ?? now())->copy();
+
         $abiertas = Reservation::query()
             ->with(['reservable', 'madre'])
             ->where('status', 'en_curso')
             ->where('is_production', false)
             ->whereNotIn('mode', ['asesoria', 'practica'])
-            ->where('ends_at', '<=', ($ahora ?? now())->copy()->utc())
+            ->where('ends_at', '<=', $ahora->copy()->utc())
             ->get()
-            ->filter(fn (Reservation $r) => $this->sinControlDeLlegada($r));
+            ->filter(fn (Reservation $r) => $this->sinControlDeLlegada($r)
+                || $r->ends_at->lte($ahora->copy()->subHours(self::HORAS_PARA_CERRAR_MAQUINA)));
+
+        $cerradas = 0;
 
         foreach ($abiertas as $reserva) {
-            $reserva->update([
-                'status'         => 'completada',
-                'checked_out_at' => $reserva->ends_at,
-                'status_reason'  => self::SIN_SALIDA,
-            ]);
+            try {
+                DB::transaction(function () use ($reserva) {
+                    $reserva->update([
+                        'status'         => 'completada',
+                        'checked_out_at' => $reserva->ends_at,
+                        'status_reason'  => self::SIN_SALIDA,
+                    ]);
 
-            $this->liquidar($reserva->refresh());
+                    $this->cerrarLasHijas($reserva, $reserva->ends_at);
+
+                    // Se cobra lo que se solicitó —de la hora de inicio a la
+                    // de fin reservadas—, no las horas que tardó en cerrarse
+                    // ni solo desde que llegó.
+                    $this->liquidar(
+                        $reserva->refresh(),
+                        (int) $reserva->starts_at->diffInMinutes($reserva->ends_at),
+                    );
+                });
+
+                $cerradas++;
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
-        return $abiertas->count();
+        return $cerradas;
+    }
+
+    /**
+     * Cerrar a mano, desde el panel: con la hora real de salida, y cobrando o
+     * no. Es la salida para lo que el cierre automático cobraría entero.
+     *
+     * @throws BookingException
+     */
+    public function cerrarAMano(Reservation $reserva, Carbon $salida, bool $cobrar, User $quien): Reservation
+    {
+        if ($reserva->status !== 'en_curso') {
+            throw new BookingException('Solo se cierra a mano lo que está en curso.');
+        }
+
+        $desde = $reserva->checked_in_at ?? $reserva->starts_at;
+
+        if ($salida->lt($desde)) {
+            throw new BookingException('La salida no puede ser antes de la llegada.');
+        }
+
+        if ($salida->gt(now())) {
+            throw new BookingException('La salida no puede ser en el futuro.');
+        }
+
+        DB::transaction(function () use ($reserva, $salida, $cobrar, $quien) {
+            $reserva->update([
+                'status'         => 'completada',
+                'checked_out_at' => $salida,
+                'status_reason'  => 'Cerrada a mano por ' . $quien->name . ($cobrar ? '' : ', sin cobro'),
+            ]);
+
+            $this->cerrarLasHijas($reserva, $salida);
+
+            if ($cobrar) {
+                $this->liquidar($reserva->refresh());
+            } else {
+                // Sin cobro: lo retenido vuelve entero.
+                $reserva->update(['actual_cost_minor' => 0]);
+                $this->cobros->liquidar($reserva->refresh(), 0);
+            }
+        });
+
+        return $reserva->refresh();
+    }
+
+    /** Lo que cuelga de una reserva se cierra con ella: el acompañamiento, lo tomado dentro. */
+    private function cerrarLasHijas(Reservation $reserva, Carbon $cuando): void
+    {
+        Reservation::where('parent_reservation_id', $reserva->id)
+            ->whereIn('status', ['confirmada', 'en_curso'])
+            ->update(['status' => 'completada', 'checked_out_at' => $cuando]);
     }
 
     /**
@@ -454,13 +535,13 @@ class AttendanceService
      * aplicando, porque el equipo se alistó igual. Al tiempo se le suma el
      * material declarado, que va a costo y sin el factor de la categoría.
      */
-    private function liquidar(Reservation $reserva): void
+    private function liquidar(Reservation $reserva, ?int $minutos = null): void
     {
         if ($reserva->reservable_type !== Asset::class) {
             return;   // el bloque del acompañante no se cobra aparte
         }
 
-        $minutos = $this->minutosReales($reserva) ?? 0;
+        $minutos ??= $this->minutosReales($reserva) ?? 0;
         $equipo = Asset::find($reserva->reservable_id);
 
         $consumo = $equipo
