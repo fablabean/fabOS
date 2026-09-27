@@ -11,7 +11,12 @@ use Illuminate\Support\Str;
 /** Una duda del laboratorio, y su historia (§20). */
 class Question extends Model
 {
-    protected $fillable = ['user_id', 'title', 'slug', 'body', 'area_id', 'asset_id', 'status'];
+    protected $fillable = ['user_id', 'title', 'slug', 'body', 'area_id', 'asset_id', 'status', 'frecuente'];
+
+    protected function casts(): array
+    {
+        return ['frecuente' => 'boolean'];
+    }
 
     public const ESTADOS = [
         'abierta'    => 'Sin responder',

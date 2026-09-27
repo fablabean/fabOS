@@ -42,6 +42,12 @@ class Area extends Model
         return $this->hasMany(RiskFamily::class);
     }
 
+    /** Lo que se ha preguntado sobre esta área (§10). */
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
+
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);

@@ -36,10 +36,14 @@ class PreguntaController extends Controller
                 ->when($request->filled('area'), fn ($q) => $q->where('area_id', $request->integer('area')))
                 ->when($request->query('estado') === 'sin_responder',
                     fn ($q) => $q->where('status', 'abierta'))
+                ->when($request->query('tema') === 'frecuentes',
+                    fn ($q) => $q->where('frecuente', true))
                 ->paginate(20)
                 ->withQueryString(),
             'busqueda' => $busqueda,
-            'areas'    => Area::orderBy('name')->get(),
+            // Solo las áreas que tienen preguntas: un filtro que siempre sale
+            // vacío hace creer que el buscador está roto.
+            'areas'    => Area::whereHas('questions')->orderBy('name')->get(),
         ]);
     }
 
