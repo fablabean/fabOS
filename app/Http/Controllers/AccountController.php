@@ -55,6 +55,15 @@ class AccountController extends Controller
                 ->whereNot('status', 'retirado')
                 ->latest('id')
                 ->get(),
+            // Las preinscripciones vivas —las que no se volvieron inscripción—,
+            // por cuenta o por correo: quien se preinscribió sin entrar también
+            // es esta persona.
+            'preinscripciones' => \App\Models\Preenrollment::with('edition.course')
+                ->whereIn('status', ['preinscrito', 'confirmado'])
+                ->where(fn ($q) => $q->where('user_id', $user->id)
+                    ->orWhereRaw('lower(email) = ?', [mb_strtolower($user->email)]))
+                ->latest('id')
+                ->get(),
             // Solo lo prescindible: lo esencial no se ofrece porque no se puede
             // silenciar, y mostrarlo apagable sería mentir.
             'avisos'    => NotificationTemplate::where('is_active', true)

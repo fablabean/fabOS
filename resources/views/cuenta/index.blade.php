@@ -314,12 +314,43 @@
 
     <section class="bloque ancho" data-bloque="cursos">
     {{-- ---------------------------------------------------- cursos --}}
-    @if ($cursos->isNotEmpty())
+    @if ($cursos->isNotEmpty() || $preinscripciones->isNotEmpty())
         <h2><x-icono nombre="formacion"/>Mi formación</h2>
         <div class="panel">
             <table>
                 <thead><tr><th>Curso</th><th>Cohorte</th><th>Estado</th><th>Certificado</th></tr></thead>
                 <tbody>
+                {{-- Lo preinscrito primero: todavía no es un cupo, y lo que
+                     falta es que se abra la cohorte, o completar los datos. --}}
+                @foreach ($preinscripciones as $pre)
+                    @php
+                        $cursoPre = $pre->edition?->course;
+                        $faltanDatos = blank($pre->city) || blank($pre->motivation) || blank($pre->funding);
+                    @endphp
+                    <tr>
+                        <td>
+                            <strong>{{ $cursoPre?->name }}</strong>
+                            @if ($cursoPre?->level)<div class="quien">nivel {{ $cursoPre->level }}</div>@endif
+                        </td>
+                        <td>
+                            {{ $pre->edition?->starts_on?->format('d/m/Y') }}
+                            <div class="quien">{{ $pre->edition?->code }}</div>
+                        </td>
+                        <td>
+                            <span class="pill warn">{{ \App\Models\Preenrollment::ESTADOS[$pre->status] ?? $pre->status }}</span>
+                            <div class="quien" style="margin-top:.3rem">
+                                Todavía no es un cupo: te avisamos cuando se abran las inscripciones.
+                            </div>
+                            @if ($faltanDatos && $cursoPre)
+                                <div class="quien">
+                                    <a href="{{ route('preinscripcion', $cursoPre) }}"><strong>Faltan tus datos: completa tu preinscripción →</strong></a>
+                                </div>
+                            @endif
+                        </td>
+                        <td>—</td>
+                    </tr>
+                @endforeach
+
                 @foreach ($cursos as $inscripcion)
                     <tr>
                         <td>

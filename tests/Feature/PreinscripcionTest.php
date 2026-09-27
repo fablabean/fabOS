@@ -73,6 +73,28 @@ class PreinscripcionTest extends TestCase
         ], $datos), $origen);
     }
 
+    /**
+     * En Mi formación sale lo preinscrito, y si le faltan datos —se pasó de
+     * una inscripción hecha por error—, el enlace para completarlos.
+     */
+    public function test_mi_formacion_muestra_la_preinscripcion_y_pide_completar_datos(): void
+    {
+        $cohorte = $this->cohorte();
+        $u = \App\Models\User::create(['name' => 'Nicolás', 'email' => 'nico@universidadean.edu.co', 'status' => 'activo']);
+
+        \App\Models\Preenrollment::create([
+            'course_edition_id' => $cohorte->id, 'name' => 'Nicolás', 'email' => $u->email,
+            'user_id' => $u->id, 'source' => 'web', 'status' => 'preinscrito',
+        ]);
+
+        $this->actingAs($u)->get(route('home'))
+            ->assertOk()
+            ->assertSee('Mi formación')
+            ->assertSee('Preinscrito')
+            ->assertSee('Todavía no es un cupo')
+            ->assertSee('completa tu preinscripción');
+    }
+
     private function formulario(array $datos = []): array
     {
         return array_merge([
