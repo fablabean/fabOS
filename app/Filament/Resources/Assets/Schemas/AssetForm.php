@@ -137,12 +137,30 @@ class AssetForm
 
                             ->visible(fn ($get) => $get('kind') === 'herramienta'),
 
-Select::make('status')
+/*
+                         * «En mantenimiento» no se elige a mano: se llega
+                         * abriendo una orden de trabajo, que es la que dice
+                         * qué pasó y la que lo devuelve a operativo al
+                         * cerrarse. Elegido aquí, el equipo quedaba detenido
+                         * sin orden —la fuente de voltaje del 10/09—, y en
+                         * Órdenes de trabajo no había nada que atender.
+                         */
+                        Select::make('status')
                             ->label('Estado')
                             ->options(Asset::ESTADOS)
+                            ->disableOptionWhen(fn (string $value) => $value === 'mantenimiento')
                             ->default('operativo')
                             ->required()
-                            ->helperText('Un estado distinto de operativo bloquea la agenda.'),
+                            // Mientras una orden lo tenga detenido, lo devuelve la orden.
+                            ->disabled(fn (?Asset $record) => $record?->status === 'mantenimiento'
+                                && $record->workOrders()->where('stops_equipment', true)
+                                    ->whereIn('status', \App\Models\WorkOrder::ABIERTAS)->exists())
+                            ->dehydrated(fn (?Asset $record) => $record?->status !== 'mantenimiento'
+                                || ! $record->workOrders()->where('stops_equipment', true)
+                                    ->whereIn('status', \App\Models\WorkOrder::ABIERTAS)->exists())
+                            ->helperText(fn (?Asset $record) => $record?->status === 'mantenimiento'
+                                ? 'En mantenimiento por una orden de trabajo: vuelve a operativo al cerrarla.'
+                                : 'Un estado distinto de operativo bloquea la agenda. Para mandarlo a mantenimiento, crea una orden de trabajo (botón arriba).'),
 
                         /*
                          * Solo los muebles de la sala elegida.

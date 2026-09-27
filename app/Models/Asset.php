@@ -167,6 +167,12 @@ class Asset extends Model
     }
 
     /** El espacio donde se usa; distinto del mueble donde se guarda (§7). */
+    /** Sus órdenes de trabajo: las que lo detienen y lo devuelven (§8). */
+    public function workOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(WorkOrder::class);
+    }
+
     public function space(): BelongsTo
     {
         return $this->belongsTo(Space::class);

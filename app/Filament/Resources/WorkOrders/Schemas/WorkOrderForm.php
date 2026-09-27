@@ -33,6 +33,8 @@ class WorkOrderForm
                             ->label('Equipo')
                             ->relationship('asset', 'name')
                             ->searchable()
+                            // Desde la ficha del equipo llega ya elegido.
+                            ->default(fn () => request()->integer('equipo') ?: null)
                             ->required(),
 
                         Select::make('kind')
