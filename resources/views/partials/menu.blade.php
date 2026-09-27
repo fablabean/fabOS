@@ -19,7 +19,18 @@
 </button>
 
 <div class="menu-enlaces" id="menu-enlaces">
-    <a href="{{ route('publico.reservas') }}">Reservas</a>
+    {{-- Reservas, resaltada: es lo que más se viene a hacer al sitio. Con el
+         mismo ícono que tiene en el menú del panel, y si allí se cambia desde
+         Configuración → Menú, aquí también. --}}
+    @php
+        $iconoReservas = \App\Support\MenuDelPanel::opciones()['Reservas']['icono'] ?? null;
+        $iconoReservas = \App\Support\MenuDelPanel::esIcono($iconoReservas) ? $iconoReservas : 'heroicon-o-calendar-days';
+        $enReservas = request()->routeIs('publico.reservas', 'reservas.*', 'espacios.*', 'asesoria.*');
+    @endphp
+    <a href="{{ route('publico.reservas') }}" @class(['menu-reservas', 'activa' => $enReservas])>
+        {{ svg($iconoReservas, 'menu-reservas-icono', ['aria-hidden' => 'true']) }}
+        Reservas
+    </a>
     <a href="{{ route('formacion') }}">Formación</a>
     <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
     <a href="{{ route('alianzas.index') }}">Alianzas</a>
@@ -126,6 +137,17 @@
 
 <style>
     .menu-enlaces{display:flex;gap:1rem;align-items:center}
+    /* Reservas, resaltada: pastilla con el color del sitio; llena cuando se
+       está en la sección. */
+    .menu-enlaces a.menu-reservas{
+        display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .8rem;border-radius:999px;
+        border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);
+        background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);font-weight:600;
+        text-decoration:none;
+    }
+    .menu-enlaces a.menu-reservas:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+    .menu-enlaces a.menu-reservas.activa{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+    .menu-reservas-icono{width:1.05rem;height:1.05rem;flex:none}
     .menu-boton{display:none}
     .menu-enlaces .salir{display:inline;margin:0}
     .menu-enlaces .salir button{margin:0;padding:.3rem .7rem;font-size:.8rem}
@@ -234,6 +256,7 @@
         .menu-enlaces > *{padding:.7rem 0;border-bottom:1px solid var(--rule)}
         .menu-enlaces > *:last-child{border-bottom:none}
         .menu-enlaces .btn{text-align:center;margin-top:.6rem;padding:.7rem}
+        .menu-enlaces a.menu-reservas{align-self:flex-start;margin:.5rem 0;padding:.45rem .9rem;border-bottom:1px solid var(--accent)}
 
         /* En el teléfono no hay desplegable: el bloque de la persona va
            abierto dentro del menú, con su nombre al lado del círculo. El

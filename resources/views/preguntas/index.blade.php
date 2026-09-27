@@ -76,7 +76,9 @@
     <style>
         .envoltura { max-width: 52rem; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
         .buscador { display: flex; gap: .5rem; margin: 1.4rem 0 1rem; }
-        .buscador input { flex: 1; padding: .6rem .8rem; border: 1px solid var(--rule); border-radius: .5rem;
+        /* min-width:0: sin esto la caja no se encoge y en el teléfono empuja
+           el botón y la página entera fuera de la pantalla. */
+        .buscador input { flex: 1; min-width: 0; padding: .6rem .8rem; border: 1px solid var(--rule); border-radius: .5rem;
                           background: var(--surface); color: var(--ink); font: inherit; }
         .buscador .btn { margin: 0; white-space: nowrap; }
         .filtros { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font-size: .85rem; margin-bottom: 1.6rem; }
