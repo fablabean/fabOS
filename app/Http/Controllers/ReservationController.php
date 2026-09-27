@@ -33,36 +33,6 @@ class ReservationController extends Controller
         private WaitlistService $espera,
     ) {}
 
-    /** Catálogo con el semáforo de cada equipo para quien mira. */
-    public function index(Request $request)
-    {
-        $user = $request->user();
-
-        // Una sola consulta de certifabs para todo el catálogo, y las relaciones
-        // por adelantado: sin esto serían cientos de consultas.
-        $this->eligibility->precargar($user);
-
-        $equipos = Asset::query()
-            ->with(['area', 'riskFamily', 'dependencies'])
-            // Contar los asesores aqui y no por tarjeta: sin esto seria una
-            // consulta por equipo solo para decidir si se pinta un boton.
-            ->withCount('advisors')
-            ->where('is_reservable', true)
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Asset $a) => [
-                'activo'    => $a,
-                'veredicto' => $this->eligibility->evaluar($user, $a),
-            ])
-            ->groupBy(fn ($fila) => $fila['activo']->area?->name ?? 'Sin área');
-
-        return view('reservas.index', [
-            'porArea'  => $equipos,
-            'misReservas' => $this->misReservas($request),
-            'franjaHoy'   => $this->coverage->franjaAtendida(Carbon::now(config('fabos.lab.timezone'))),
-        ]);
-    }
-
     /** Ficha del equipo y formulario, si corresponde. */
     public function show(Request $request, Asset $asset)
     {
@@ -167,7 +137,8 @@ class ReservationController extends Controller
             $mensaje .= ' Te acompaña ' . $reserva->supervisor->name . '.';
         }
 
-        return redirect()->route('reservas.index')->with('status', $mensaje);
+        // A Mi cuenta: ahí están las próximas reservas, con su «Cancelar».
+        return redirect()->route('home')->with('status', $mensaje);
     }
 
     /**
@@ -212,20 +183,4 @@ class ReservationController extends Controller
         return back()->with('status', 'Reserva cancelada.');
     }
 
-    private function misReservas(Request $request)
-    {
-        return Reservation::query()
-            ->where('user_id', $request->user()->id)
-            ->where('reservable_type', Asset::class)
-            ->whereIn('status', ['solicitada', 'confirmada', 'en_curso'])
-            ->where('ends_at', '>=', now())
-            ->orderBy('starts_at')
-            ->with('supervisor')
-            ->get()
-            ->map(function (Reservation $r) {
-                $r->setRelation('reservable', Asset::find($r->reservable_id));
-
-                return $r;
-            });
-    }
 }

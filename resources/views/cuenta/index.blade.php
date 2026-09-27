@@ -167,7 +167,7 @@
     @if ($reservas->isEmpty())
         <div class="panel">
             <p class="ayuda" style="margin:0"><x-icono nombre="reservas"/>No tienes reservas próximas.</p>
-            <a href="{{ route('reservas.index') }}"><button type="button">Reservar un equipo</button></a>
+            <a href="{{ route('publico.reservas') }}"><button type="button">Reservar un equipo</button></a>
         </div>
     @else
         <div class="panel">
@@ -251,7 +251,7 @@
                 Cada equipo pide un certifab. Entra al catálogo, elige el que te interesa
                 y ahí verás qué necesitas para habilitarte.
             </p>
-            <a href="{{ route('reservas.index') }}"><button type="button">Ver el catálogo</button></a>
+            <a href="{{ route('publico.reservas', ['modo' => 'autonomia']) }}"><button type="button">Ver los equipos</button></a>
         </div>
     @else
         <div class="panel">

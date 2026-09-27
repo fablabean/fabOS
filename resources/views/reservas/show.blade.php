@@ -13,7 +13,34 @@
 @endphp
 
 @section('content')
-    <a class="volver" href="{{ route('reservas.index') }}">← Volver al catálogo</a>
+    {{-- La miga de pan del camino por el que se llegó, como en Reservas. Si
+         se entra directo, la del camino que le corresponde al equipo. --}}
+    @php
+        $modoMiga = in_array(request('modo'), ['autonomia', 'herramientas'], true)
+            ? request('modo')
+            : ($activo->esHerramienta() ? 'herramientas' : 'autonomia');
+        $areaMiga = $modoMiga === 'autonomia' ? (request('area') ?: $activo->area?->slug) : null;
+        $nombreMiga = ['autonomia' => 'Hago mi pieza', 'herramientas' => 'Herramientas'][$modoMiga];
+        $areaNombre = $areaMiga ? (\App\Models\Area::where('slug', $areaMiga)->value('name') ?? $activo->area?->name) : null;
+    @endphp
+    <nav class="migas" aria-label="Dónde estás">
+        <a href="{{ route('publico.reservas') }}">Reservas</a>
+        <span aria-hidden="true">›</span>
+        <a href="{{ route('publico.reservas', ['modo' => $modoMiga]) }}">{{ $nombreMiga }}</a>
+        @if ($areaNombre)
+            <span aria-hidden="true">›</span>
+            <a href="{{ route('publico.reservas', ['modo' => $modoMiga, 'area' => $areaMiga]) }}">{{ $areaNombre }}</a>
+        @endif
+        <span aria-hidden="true">›</span>
+        <strong>{{ $activo->name }}</strong>
+    </nav>
+    <style>
+        .migas{display:flex;flex-wrap:wrap;gap:.4rem;align-items:baseline;font-size:.82rem;color:var(--muted);
+               margin:0 0 .6rem;font-family:ui-monospace,Consolas,monospace;letter-spacing:.04em;text-transform:uppercase}
+        .migas a{color:var(--muted);text-decoration:none}
+        .migas a:hover{color:var(--accent)}
+        .migas strong{color:var(--ink-soft);font-weight:600}
+    </style>
 
     <h1 style="margin-top:.6rem">{{ $activo->name }}</h1>
     <p class="help">

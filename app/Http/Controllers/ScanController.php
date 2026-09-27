@@ -124,7 +124,7 @@ class ScanController extends Controller
         $minutos = $this->asistencia->minutosReales($reservation);
         $costo = $reservation->actual_cost_minor;
 
-        return redirect()->route('reservas.index')->with(
+        return redirect()->route('home')->with(
             'status',
             'Equipo liberado. Uso registrado: ' . $minutos . ' minutos'
             . ($costo ? ' · ' . number_format($costo / config('fabos.currency.minor_units'), 2, ',', '.')

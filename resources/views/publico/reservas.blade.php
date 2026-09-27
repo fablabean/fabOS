@@ -622,7 +622,7 @@
                         <a class="equipo"
                            href="{{ match (true) {
                                 $modo === 'asesoria' && $e->advisors_count > 0 => route('asesoria.show', $e),
-                                $modo === 'autonomia', $modo === 'herramientas' => route('reservas.show', $e),
+                                $modo === 'autonomia', $modo === 'herramientas' => route('reservas.show', array_filter(['asset' => $e, 'modo' => $modo, 'area' => $area ?: null])),
                                 default => route('publico.equipo', $e),
                            } }}">
                             @if ($e->photoUrl())

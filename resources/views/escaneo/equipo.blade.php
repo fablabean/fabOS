@@ -157,5 +157,5 @@
         </form>
     </div>
 
-    <p><a class="volver" href="{{ route('reservas.index') }}">← Ver todo el catálogo</a></p>
+    <p><a class="volver" href="{{ route('publico.reservas') }}">← Ir a Reservas</a></p>
 @endsection

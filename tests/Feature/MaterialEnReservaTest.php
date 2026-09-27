@@ -258,7 +258,7 @@ class MaterialEnReservaTest extends TestCase
             ->post(route('escaneo.checkout', $reserva), [
                 'material_note' => 'Media lija de grano 220 y una boquilla de 0.4',
             ])
-            ->assertRedirect(route('reservas.index'));
+            ->assertRedirect(route('home'));
 
         $this->assertSame(
             'Media lija de grano 220 y una boquilla de 0.4',
@@ -275,7 +275,7 @@ class MaterialEnReservaTest extends TestCase
 
         $this->actingAs($u)
             ->post(route('escaneo.checkout', $reserva), ['material_note' => '   '])
-            ->assertRedirect(route('reservas.index'));
+            ->assertRedirect(route('home'));
 
         $this->assertNull($reserva->fresh()->material_note);
     }

@@ -373,7 +373,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/segundo-factor', [TwoFactorController::class, 'comprobar'])->name('dosfactores.comprobar');
 
     // Reservas (§10)
-    Route::get('/reservar', [ReservationController::class, 'index'])->name('reservas.index');
+    // El catálogo viejo ya no existe: Reservas, en el sitio, es por donde se
+    // entra a reservar. La dirección se queda para los enlaces guardados.
+    Route::redirect('/reservar', '/reservas')->name('reservas.index');
     // Varias herramientas de una vez. Antes que /reservar/{asset}, o
     // «herramientas» se leeria como el id de un equipo.
     Route::get('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'create'])->name('reservas.herramientas');

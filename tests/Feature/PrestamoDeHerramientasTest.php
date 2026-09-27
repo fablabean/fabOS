@@ -256,7 +256,7 @@ class PrestamoDeHerramientasTest extends TestCase
                 'fecha' => $this->desde()->toDateString(), 'inicio' => '10:00', 'duracion' => 120,
                 'proposito' => 'Maqueta',
             ])
-            ->assertRedirect(route('reservas.index'))
+            ->assertRedirect(route('home'))
             ->assertSessionHas('status', fn ($m) => str_contains($m, '2 herramientas reservadas'));
 
         $this->assertSame(2, Reservation::where('user_id', $u->id)->count());

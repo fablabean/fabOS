@@ -542,21 +542,27 @@ class AsesoriasTest extends TestCase
             ->assertSee('Pedir asesoría', false);
     }
 
-    /** Y en el catalogo, el enlace esta en todas las tarjetas con asesor. */
-    public function test_el_catalogo_ofrece_asesoria_en_los_equipos_con_asesor(): void
-    {
-        $this->asesora($this->colaborador('Ana'));
+    // ------------------------------------------------- la ficha de reserva
 
+    /**
+     * El catálogo viejo ya no existe: /reservar lleva a Reservas, y la ficha
+     * del equipo lleva la miga de pan del camino por el que se llegó.
+     */
+    public function test_la_ficha_lleva_la_miga_y_el_catalogo_viejo_redirige(): void
+    {
         $quien = $this->alguien();
         $this->certificar($quien);
 
+        $this->actingAs($quien)->get('/reservar')->assertRedirect('/reservas');
+
         $this->actingAs($quien)
-            ->get(route('reservas.index'))
+            ->get(route('reservas.show', ['asset' => $this->equipo, 'modo' => 'autonomia', 'area' => $this->equipo->area->slug]))
             ->assertOk()
-            ->assertSee('Pedir asesoría sobre Cortadora láser', false);
+            ->assertSee('Hago mi pieza')
+            ->assertSee($this->equipo->area->name)
+            ->assertDontSee('Volver al catálogo');
     }
 
-    // ------------------------------------------------- la ficha de reserva
 
     /**
      * 90 minutos se mostraba como «1 hora» —intdiv a secas— y la lista de

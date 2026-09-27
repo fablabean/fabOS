@@ -87,7 +87,7 @@ class PrestamoDeHerramientasController extends Controller
                 . ' para el ' . $desde->translatedFormat('d/m/Y \a \l\a\s H:i') . '.'
             : 'Solicitud enviada. Las ' . $cuantas . ' herramientas quedan pendientes del visto bueno del responsable.';
 
-        return redirect()->route('reservas.index')->with('status', $mensaje);
+        return redirect()->route('home')->with('status', $mensaje);
     }
 
     /**
