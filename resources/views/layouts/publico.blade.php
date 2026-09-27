@@ -64,8 +64,12 @@
         .btn{
             display:inline-block;background:var(--accent);color:var(--surface);text-decoration:none;
             padding:.55rem 1.1rem;border-radius:4px;font-weight:600;font-size:.92rem;border:0;cursor:pointer;
+            font-family:inherit;
         }
         .btn:hover{filter:brightness(1.08)}
+        /* La acción menor, al lado de la principal sin competir con ella. */
+        .btn.secundario{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+        .btn.secundario:hover{filter:none;background:color-mix(in srgb,var(--accent) 10%,transparent)}
         /* El selector de la barra (.nav nav a) pesa más que .btn y le ganaba el
            color: por eso el botón salía con el texto del menú en vez del suyo.
            Se fija aquí, con la misma especificidad, para los dos temas. */

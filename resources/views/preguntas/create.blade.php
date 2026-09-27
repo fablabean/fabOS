@@ -76,7 +76,7 @@
             </div>
         </div>
 
-        <button type="submit">Publicar la pregunta</button>
+        <button type="submit" class="btn">Publicar la pregunta</button>
     </form>
 
     <style>

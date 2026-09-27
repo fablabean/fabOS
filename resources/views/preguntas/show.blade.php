@@ -64,7 +64,7 @@
                     <form method="POST" action="{{ route('preguntas.sugerir', $pregunta) }}"
                           style="margin-bottom:1rem">
                         @csrf
-                        <button type="submit" class="secundario">Sugerir un borrador con IA</button>
+                        <button type="submit" class="btn secundario">Sugerir un borrador con IA</button>
                         <span class="foot" style="margin-left:.6rem">
                             Quedan {{ $ia->quedanHoy() }} sugerencias hoy. Lo redacta una máquina;
                             lo publicas tú.
@@ -83,7 +83,7 @@
 
                     @error('body') <p class="msg error">{{ $message }}</p> @enderror
 
-                    <button type="submit">Publicar respuesta</button>
+                    <button type="submit" class="btn" style="margin-top:.8rem">Publicar respuesta</button>
                 </form>
             </div>
         @endif
