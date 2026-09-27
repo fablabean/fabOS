@@ -23,11 +23,10 @@
 
         <p class="filtros">
             <a href="{{ route('preguntas.index') }}" @class(['activo' => ! request('estado') && ! request('area') && ! request('tema')])>Todas</a>
-            {{-- Las de cómo funciona el laboratorio no son de ningún área. --}}
-            <a href="{{ route('preguntas.index', ['tema' => 'frecuentes']) }}"
-               @class(['activo' => request('tema') === 'frecuentes'])>Cómo funciona</a>
             <a href="{{ route('preguntas.index', ['estado' => 'sin_responder']) }}"
                @class(['activo' => request('estado') === 'sin_responder'])>Sin responder</a>
+            {{-- Un filtro por área, y solo las que tienen preguntas: las de cómo
+                 funciona el laboratorio están en General. --}}
             @foreach ($areas as $a)
                 <a href="{{ route('preguntas.index', ['area' => $a->id]) }}"
                    @class(['activo' => request('area') == $a->id])>{{ $a->name }}</a>
