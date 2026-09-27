@@ -108,10 +108,35 @@ class BannerForm
                             ->disk('public')
                             ->visibility('public')
                             ->directory('banners')
-                            ->acceptedFileTypes(fn ($get) => $get('fondo_tipo') === 'video'
-                                ? ['video/mp4', 'video/webm']
-                                : ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
-                            ->maxSize(fn ($get) => $get('fondo_tipo') === 'video' ? 25600 : 20480)
+                            /*
+                             * Acepta siempre imágenes Y videos.
+                             *
+                             * La lista dependía del tipo elegido, pero el
+                             * componente de subida la lee una sola vez, al
+                             * abrir la página: si la lámina se abrió como foto
+                             * y se cambió a video, el selector de archivos
+                             * seguía escondiendo los MP4 —solo salían con «ver
+                             * todos los archivos»— y el que se colaba era
+                             * rechazado. Que el archivo sea del tipo elegido lo
+                             * comprueba la regla de abajo, en el servidor.
+                             */
+                            ->acceptedFileTypes(['video/mp4', 'video/webm', 'image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                            ->maxSize(25600)
+                            ->rule(fn ($get) => function (string $atributo, $valor, \Closure $falla) use ($get) {
+                                if (! $valor instanceof \Illuminate\Http\UploadedFile) {
+                                    return;   // el que ya estaba guardado
+                                }
+
+                                $esVideo = str_starts_with((string) $valor->getMimeType(), 'video/');
+
+                                if ($get('fondo_tipo') === 'video' && ! $esVideo) {
+                                    $falla('Elegiste «Video»: sube un MP4 o WebM, no una imagen.');
+                                } elseif ($get('fondo_tipo') === 'imagen' && $esVideo) {
+                                    $falla('Elegiste «Foto o ilustración»: sube una imagen, no un video.');
+                                } elseif (! $esVideo && $valor->getSize() > 20480 * 1024) {
+                                    $falla('La imagen pesa más de 20 MB.');
+                                }
+                            })
                             ->helperText(fn ($get) => $get('fondo_tipo') === 'video'
                                 ? 'MP4 o WebM, sin sonido y de 8 a 15 segundos. Va en bucle detrás del texto: cuanto más pese, más tarda en aparecer en un teléfono, y más fácil es que la subida se caiga por el camino. Por debajo de 10 MB va sobrado.'
                                 : 'Apaisada. Se encoge en tu propio navegador antes de subirla, así que da igual que venga del teléfono con sus ocho megas. Se recorta según la pantalla: lo importante, al centro.')

@@ -105,4 +105,35 @@ class FondoDelBannerTest extends TestCase
         $this->assertSame(100, $l->velo);
         $this->assertSame('desenfoque', $l->filtro);
     }
+
+    /**
+     * Un MP4 se sube aunque la lámina se abriera como foto.
+     *
+     * El selector leía los formatos una sola vez al abrir la página, y al
+     * cambiar a «Video» seguía escondiendo los MP4 (un video de WhatsApp de
+     * 3 MB no aparecía). Ahora acepta ambos y el servidor comprueba el tipo.
+     */
+    public function test_el_fondo_acepta_un_mp4_y_exige_que_coincida_con_el_tipo(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $this->entra($this->admin());
+
+        Livewire::test(CreateBanner::class)
+            ->fillForm([
+                'titulo' => 'Con video', 'fondo_tipo' => 'video', 'efecto' => 'ninguno', 'alineacion' => 'izquierda',
+                'fondo_path' => \Illuminate\Http\UploadedFile::fake()->create('whatsapp.mp4', 3068, 'video/mp4'),
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertStringEndsWith('.mp4', (string) Banner::where('titulo', 'Con video')->value('fondo_path'));
+
+        Livewire::test(CreateBanner::class)
+            ->fillForm([
+                'titulo' => 'Video que es foto', 'fondo_tipo' => 'video', 'efecto' => 'ninguno', 'alineacion' => 'izquierda',
+                'fondo_path' => \Illuminate\Http\UploadedFile::fake()->image('foto.jpg'),
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['fondo_path']);
+    }
 }
