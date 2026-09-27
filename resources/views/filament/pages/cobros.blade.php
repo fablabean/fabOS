@@ -116,7 +116,7 @@
             <x-slot name="description">
                 Prestar un multímetro o un taladro no ocupa una máquina ni gasta nada, y
                 cobrarlo solo desanima a pedirlo. Esto lo pone en cero sin tener que tarifar
-                una por una las {{ \App\Models\Asset::where('kind', 'herramienta')->where('is_reservable', true)->count() }}
+                una por una las {{ \App\Models\Asset::whereIn('kind', \App\Models\Asset::DE_PRESTAMO)->where('is_reservable', true)->count() }}
                 herramientas que se prestan.
             </x-slot>
 

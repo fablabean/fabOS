@@ -135,7 +135,7 @@ class AssetForm
 
                             ->helperText('Apagado, la herramienta solo se toma dentro de su espacio. Prestarla a otra sala deja sin ella a quien trabaja allí, y nadie se entera hasta que la busca.')
 
-                            ->visible(fn ($get) => $get('kind') === 'herramienta'),
+                            ->visible(fn ($get) => in_array($get('kind'), Asset::DE_PRESTAMO, true)),
 
 /*
                          * «En mantenimiento» no se elige a mano: se llega
@@ -229,7 +229,7 @@ class AssetForm
                             ])
                             ->placeholder('Lo que diga la regla')
                             ->visible(fn ($get) => $get('is_reservable'))
-                            ->helperText(fn ($get) => $get('kind') === 'herramienta'
+                            ->helperText(fn ($get) => in_array($get('kind'), Asset::DE_PRESTAMO, true)
                                 ? 'Por la regla, una herramienta no lo exige (se cambia en Finanzas → Cobros). Ponlo en «sí» para lo que se presta pero no se le entrega a cualquiera.'
                                 : 'Por la regla, una máquina lo exige siempre.'),
 

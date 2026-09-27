@@ -105,7 +105,7 @@ class PrestamoDeHerramientasController extends Controller
         return Asset::query()
             ->with('area', 'riskFamily', 'space')
             ->whereIn('id', $ids)
-            ->where('kind', 'herramienta')
+            ->whereIn('kind', \App\Models\Asset::DE_PRESTAMO)
             ->where('is_reservable', true)
             ->get()
             ->sortBy(fn (Asset $a) => array_search($a->id, $ids, true))

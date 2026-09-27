@@ -4,8 +4,11 @@ namespace App\Filament\Resources\Assets\Pages;
 
 use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\Assets\Widgets\AreasDelCatalogo;
+use App\Models\Asset;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListAssets extends ListRecords
 {
@@ -23,6 +26,33 @@ class ListAssets extends ListRecords
         return [
             AreasDelCatalogo::class,
         ];
+    }
+
+    /**
+     * Pestañas por tipo, con cuántos hay de cada uno.
+     *
+     * Activos fijos, herramientas y computadores se administran distinto —los
+     * fijos llevan plan preventivo; las herramientas y los computadores se
+     * prestan—, y saber cuántos hay de cada uno era contar a mano.
+     */
+    public function getTabs(): array
+    {
+        $cuantos = Asset::query()->selectRaw('kind, count(*) as n')->groupBy('kind')->pluck('n', 'kind');
+
+        $pestanas = ['todos' => Tab::make('Todos')->badge($cuantos->sum())];
+
+        foreach (Asset::TIPOS as $tipo => $nombre) {
+            $pestanas[$tipo] = Tab::make(match ($tipo) {
+                'fijo'        => 'Activos fijos',
+                'herramienta' => 'Herramientas',
+                'computador'  => 'Computadores',
+                default       => $nombre,
+            })
+                ->badge($cuantos[$tipo] ?? 0)
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('kind', $tipo));
+        }
+
+        return $pestanas;
     }
 
     protected function getHeaderActions(): array

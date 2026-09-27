@@ -66,9 +66,9 @@ class PrestamoDeHerramientas extends Page
     /** Lo que se presta hoy: para ver el tope con el taller delante. */
     public function getHerramientasProperty(): array
     {
-        $todas = Asset::where('kind', 'herramienta')->count();
-        $prestables = Asset::where('kind', 'herramienta')->where('is_reservable', true)->count();
-        $portatiles = Asset::where('kind', 'herramienta')->where('is_reservable', true)->where('puede_salir', true)->count();
+        $todas = Asset::whereIn('kind', Asset::DE_PRESTAMO)->count();
+        $prestables = Asset::whereIn('kind', Asset::DE_PRESTAMO)->where('is_reservable', true)->count();
+        $portatiles = Asset::whereIn('kind', Asset::DE_PRESTAMO)->where('is_reservable', true)->where('puede_salir', true)->count();
 
         return ['todas' => $todas, 'prestables' => $prestables, 'portatiles' => $portatiles];
     }

@@ -179,9 +179,11 @@ class MaintenanceService
             ->latest('closed_at')
             ->first();
 
-        // Nunca se le ha hecho: toca ya.
+        // Nunca se le ha hecho: toca ya, o el día de la primera revisión si
+        // el plan la tiene. Sin esa fecha, una pauta de cuarenta equipos abría
+        // cuarenta órdenes la mañana siguiente.
         if (! $ultima?->closed_at) {
-            return true;
+            return ! $plan->starts_on || $plan->starts_on->startOfDay()->lessThanOrEqualTo($limite);
         }
 
         if ($plan->every_days) {

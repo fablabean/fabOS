@@ -102,7 +102,7 @@ class Space extends Model
     public function herramientasDisponibles(): \Illuminate\Database\Eloquent\Builder
     {
         return Asset::query()
-            ->where('kind', 'herramienta')
+            ->whereIn('kind', Asset::DE_PRESTAMO)
             ->where('is_reservable', true)
             ->where('status', 'operativo')
             ->where(fn ($q) => $q->where('space_id', $this->id)->orWhere('puede_salir', true));

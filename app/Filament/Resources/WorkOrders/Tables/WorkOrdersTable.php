@@ -93,16 +93,33 @@ class WorkOrdersTable
                     ->label('Cerrar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->schema([
+                    ->schema(fn (WorkOrder $record) => array_filter([
+                        // La lista de chequeo del plan, si la trae: se marca
+                        // lo que se hizo y queda guardado con la orden.
+                        ($puntos = \App\Models\MaintenancePlan::puntosDe($record->checklist_snapshot))
+                            ? \Filament\Forms\Components\CheckboxList::make('hechos')
+                                ->label('Lista de chequeo')
+                                ->options(array_combine($puntos, $puntos))
+                                ->bulkToggleable()
+                            : null,
                         Textarea::make('work_done')
                             ->label('Qué se hizo')
                             ->required()
                             ->rows(3),
-                    ])
+                    ]))
                     ->modalDescription('Si la orden tenía paro, el equipo vuelve a estar disponible al cerrarla.')
                     ->visible(fn (WorkOrder $record) => in_array($record->status, WorkOrder::ABIERTAS, true))
-                    ->action(fn (WorkOrder $record, array $data) => app(MaintenanceService::class)
-                        ->cerrar($record, $data['work_done'])),
+                    ->action(function (WorkOrder $record, array $data) {
+                        $puntos = \App\Models\MaintenancePlan::puntosDe($record->checklist_snapshot);
+                        $hechos = $data['hechos'] ?? [];
+
+                        app(MaintenanceService::class)->cerrar(
+                            $record,
+                            $data['work_done'],
+                            // Cada punto con sí o no: lo que no se marcó también se guarda.
+                            $puntos ? collect($puntos)->mapWithKeys(fn ($p) => [$p => in_array($p, $hechos, true)])->all() : null,
+                        );
+                    }),
 
                 EditAction::make(),
             ])

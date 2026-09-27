@@ -129,7 +129,7 @@ class CreateReservation extends CreateRecord
                         ->label('Qué herramientas')
                         ->multiple()
                         ->options(fn () => Asset::with('area')
-                            ->where('kind', 'herramienta')
+                            ->whereIn('kind', \App\Models\Asset::DE_PRESTAMO)
                             ->where('is_reservable', true)
                             ->orderBy('name')
                             ->get()

@@ -209,7 +209,12 @@ class MenuDelPanel
      */
     public static function estilos(): string
     {
-        $reglas = [];
+        // La opción abierta, en negro (o en blanco con fondo oscuro) y no en
+        // el ámbar de Filament; si su grupo tiene color, en el de su grupo.
+        $reglas = [
+            '.fi-sidebar .fi-sidebar-item.fi-active .fi-sidebar-item-label{color:#111827}',
+            '.dark .fi-sidebar .fi-sidebar-item.fi-active .fi-sidebar-item-label{color:#f9fafb}',
+        ];
 
         foreach (self::grupos() as $grupo) {
             $color = self::COLORES[$grupo['color'] ?? ''] ?? null;
@@ -222,6 +227,8 @@ class MenuDelPanel
 
             $reglas[] = "{$sel} .fi-sidebar-group-label,{$sel} .fi-sidebar-item-icon{color:{$color[1]}}";
             $reglas[] = ".dark {$sel} .fi-sidebar-group-label,.dark {$sel} .fi-sidebar-item-icon{color:{$color[2]}}";
+            $reglas[] = ".fi-sidebar {$sel} .fi-sidebar-item.fi-active .fi-sidebar-item-label{color:{$color[1]}}";
+            $reglas[] = ".dark .fi-sidebar {$sel} .fi-sidebar-item.fi-active .fi-sidebar-item-label{color:{$color[2]}}";
         }
 
         return implode("\n", $reglas);

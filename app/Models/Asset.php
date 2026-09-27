@@ -83,6 +83,16 @@ class Asset extends Model
         'computador'  => 'Computador',
     ];
 
+    /**
+     * Lo que se presta: herramientas y computadores.
+     *
+     * Un computador de la sala de cómputo se toma como una herramienta —se
+     * marca dentro de la sala, no pide certifab, no se libera por llegar
+     * tarde—, pero no es una: se lista y se cuenta aparte. Todo lo que pregunta
+     * «¿se presta?» mira esta lista, no el tipo.
+     */
+    public const DE_PRESTAMO = ['herramienta', 'computador'];
+
     /** Un estado distinto de operativo bloquea la agenda (§8). */
     /** Cómo se toma este recurso (§10). El modo puede exigir más que la
      *  autonomía de la persona, nunca menos. */
@@ -181,7 +191,7 @@ class Asset extends Model
     /** Herramienta o kit: se toma dentro de un espacio, no se reserva suelta. */
     public function esHerramienta(): bool
     {
-        return $this->kind === 'herramienta';
+        return in_array($this->kind, self::DE_PRESTAMO, true);
     }
 
     /**
