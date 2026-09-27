@@ -61,13 +61,14 @@
                 {{-- El borrador se pide, no llega solo: se gasta unicamente en las
                      preguntas que alguien va a responder de verdad. --}}
                 @if ($borradores->isEmpty() && $ia->disponible())
+                    {{-- Botón y nota lado a lado: la nota se acomoda en su propio
+                         bloque en vez de partirse debajo del botón. --}}
                     <form method="POST" action="{{ route('preguntas.sugerir', $pregunta) }}"
-                          style="margin-bottom:1rem">
+                          style="display:flex;align-items:center;gap:.5rem 1rem;flex-wrap:wrap;margin-bottom:1rem">
                         @csrf
-                        <button type="submit" class="btn secundario">Sugerir un borrador con IA</button>
-                        <span class="foot" style="margin-left:.6rem">
-                            Quedan {{ $ia->quedanHoy() }} sugerencias hoy. Lo redacta una máquina;
-                            lo publicas tú.
+                        <button type="submit" class="btn secundario" style="flex:none">Sugerir un borrador con IA</button>
+                        <span class="foot" style="flex:1 1 16rem;font-size:.85rem;color:var(--muted)">
+                            Quedan {{ $ia->quedanHoy() }} sugerencias hoy. Lo redacta una máquina; lo publicas tú.
                         </span>
                     </form>
                 @endif
