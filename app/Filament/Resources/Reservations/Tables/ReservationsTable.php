@@ -101,12 +101,7 @@ class ReservationsTable
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn ($state) => Reservation::ESTADOS[$state] ?? $state)
-                    ->color(fn ($state) => match ($state) {
-                        'confirmada', 'completada' => 'success',
-                        'en_curso'                 => 'info',
-                        'solicitada'               => 'warning',
-                        default                    => 'danger',
-                    })
+                    ->color(fn ($state) => Reservation::colorDeEstado($state))
                     ->sortable(),
 
                 TextColumn::make('checked_in_at')

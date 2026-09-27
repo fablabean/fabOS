@@ -408,8 +408,11 @@ return [
     | legislación laboral colombiana ha cambiado varias veces.
     */
     'overtime' => [
+        'max_dia_minutos' => (int) env('EXTRAS_MAX_DIA', 2 * 60),
         'max_semana_minutos' => (int) env('EXTRAS_MAX_SEMANA', 12 * 60),
+        // Por periodo de corte, no por mes calendario: del 16 al 15.
         'max_mes_minutos' => (int) env('EXTRAS_MAX_MES', 48 * 60),
+        'dia_de_corte' => (int) env('EXTRAS_DIA_DE_CORTE', 15),
     ],
 
     /*

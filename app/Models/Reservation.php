@@ -63,6 +63,29 @@ class Reservation extends Model
         'practica'       => 'Evaluación práctica',
     ];
 
+    /**
+     * El color de cada estado, en un solo sitio para todas las tablas.
+     *
+     * Confirmada y completada iban del mismo verde, y en una lista no se
+     * distinguía lo que va a pasar de lo que ya pasó. Ahora cada color dice
+     * en qué punto está: ámbar espera decisión, azul está agendada, verde
+     * está pasando, gris terminó, rojo no ocurrió.
+     */
+    public const COLORES = [
+        'solicitada' => 'warning',
+        'confirmada' => 'info',
+        'en_curso'   => 'success',
+        'completada' => 'gray',
+        'rechazada'  => 'danger',
+        'cancelada'  => 'danger',
+        'no_show'    => 'danger',
+    ];
+
+    public static function colorDeEstado(?string $estado): string
+    {
+        return self::COLORES[$estado] ?? 'gray';
+    }
+
     /** Estados en los que la reserva ocupa el recurso de verdad. */
     public const BLOQUEANTES = ['confirmada', 'en_curso'];
 

@@ -10,6 +10,14 @@ class ListShiftAssignments extends ListRecords
 {
     protected static string $resource = ShiftAssignmentResource::class;
 
+    /** El contador del periodo de corte, encima de la lista. */
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            \App\Filament\Resources\ShiftAssignments\Widgets\ContadorDeExtras::class,
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

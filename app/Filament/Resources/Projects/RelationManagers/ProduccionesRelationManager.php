@@ -112,12 +112,7 @@ class ProduccionesRelationManager extends RelationManager
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => Reservation::ESTADOS[$state] ?? $state)
-                    ->color(fn (string $state) => match ($state) {
-                        'completada' => 'success',
-                        'en_curso'   => 'info',
-                        'cancelada'  => 'danger',
-                        default      => 'gray',
-                    }),
+                    ->color(fn (string $state) => Reservation::colorDeEstado($state)),
             ])
             ->headerActions([
                 CreateAction::make()

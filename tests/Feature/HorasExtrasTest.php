@@ -46,15 +46,27 @@ class HorasExtrasTest extends TestCase
         return [$d, $d->copy()->addHours($horas)];
     }
 
+    /** Dos horas cada día, desde una fecha, tantos días como se pida. */
+    private function dosHorasDiarias(User $u, string $desde, int $dias): void
+    {
+        $tz = config('fabos.lab.timezone');
+
+        for ($i = 0; $i < $dias; $i++) {
+            $d = Carbon::parse($desde . ' 08:00', $tz)->addDays($i);
+            $this->turnos()->programar($u, $d, $d->copy()->addHours(2), 'Turno ' . $i);
+        }
+    }
+
     public function test_acumula_las_horas_programadas(): void
     {
         $u = $this->persona();
-        [$d, $h] = $this->franja(4);
+        [$d, $h] = $this->franja(2);
 
         $this->turnos()->programar($u, $d, $h, 'Acompañamiento');
 
-        $this->assertSame(240, $this->extras()->minutosSemana($u, $d));
-        $this->assertSame(12 * 60 - 240, $this->extras()->disponibleSemana($u, $d));
+        $this->assertSame(120, $this->extras()->minutosSemana($u, $d));
+        $this->assertSame(120, $this->extras()->minutosDia($u, $d));
+        $this->assertSame(12 * 60 - 120, $this->extras()->disponibleSemana($u, $d));
     }
 
     public function test_lo_compensado_con_tiempo_no_consume_el_tope(): void
@@ -67,69 +79,114 @@ class HorasExtrasTest extends TestCase
         $this->assertSame(0, $this->extras()->minutosSemana($u, $d));
     }
 
+    /** Dos horas extras al día, como máximo (Ley 50 de 1990, art. 22). */
+    public function test_impide_pasarse_del_tope_diario(): void
+    {
+        $u = $this->persona();
+        [$d, $h] = $this->franja(2);
+        $this->turnos()->programar($u, $d, $h, 'Mañana');
+
+        $this->expectException(BookingException::class);
+        $this->expectExceptionMessageMatches('/ese día/');
+
+        // Por la tarde del mismo día: ya no cabe.
+        $this->turnos()->programar($u, $d->copy()->addHours(6), $d->copy()->addHours(7), 'Tarde');
+    }
+
+    public function test_una_jornada_de_mas_de_dos_horas_no_cuenta_como_extra(): void
+    {
+        $u = $this->persona();
+        [$d, $h] = $this->franja(4);
+
+        $this->expectException(BookingException::class);
+        $this->turnos()->programar($u, $d, $h, 'Sábado entero');
+    }
+
     public function test_impide_pasarse_del_tope_semanal(): void
     {
         $u = $this->persona();
 
-        // 10 horas ya programadas esa semana.
-        [$d1, $h1] = $this->franja(10, -1);
-        $this->turnos()->programar($u, $d1, $h1, 'Curso');
-
-        // Pedir 4 más deja 14: por encima de las 12 permitidas.
-        [$d2, $h2] = $this->franja(4);
+        // Lunes 31 de agosto a sábado 5 de septiembre: 6 × 2 h = 12 h.
+        $this->dosHorasDiarias($u, '2026-08-31', 6);
 
         $this->expectException(BookingException::class);
-        $this->expectExceptionMessageMatches('/extras disponibles esta semana/');
+        $this->expectExceptionMessageMatches('/extras disponibles esta semana|agotó su tope de horas extras esta semana/');
 
-        $this->turnos()->programar($u, $d2, $h2, 'Acompañamiento');
+        // El domingo es de la misma semana.
+        [$d, $h] = $this->franja(2, 1);
+        $this->turnos()->programar($u, $d, $h, 'Domingo');
     }
 
     public function test_deja_programar_justo_hasta_el_tope(): void
     {
         $u = $this->persona();
 
-        [$d1, $h1] = $this->franja(8, -1);
-        $this->turnos()->programar($u, $d1, $h1, 'Curso');
+        $this->dosHorasDiarias($u, '2026-08-31', 5);
 
-        [$d2, $h2] = $this->franja(4);
-        $jornada = $this->turnos()->programar($u, $d2, $h2, 'Acompañamiento');
+        [$d, $h] = $this->franja(2);
+        $jornada = $this->turnos()->programar($u, $d, $h, 'Acompañamiento');
 
         $this->assertNotNull($jornada->id);
-        $this->assertSame(0, $this->extras()->disponibleSemana($u, $d2), 'queda en el límite exacto');
+        $this->assertSame(0, $this->extras()->disponibleSemana($u, $d), 'queda en el límite exacto');
     }
 
-    public function test_el_tope_mensual_manda_aunque_la_semana_lo_permita(): void
+    /** El periodo va del 16 al 15: el 15 cierra un corte y el 16 abre otro. */
+    public function test_el_periodo_corta_el_15(): void
+    {
+        $tz = config('fabos.lab.timezone');
+
+        [$d, $h] = OvertimeService::periodoDe(Carbon::parse('2026-09-15 22:00', $tz));
+        $this->assertSame('2026-08-16', $d->toDateString());
+        $this->assertSame('2026-09-15', $h->toDateString());
+
+        [$d, $h] = OvertimeService::periodoDe(Carbon::parse('2026-09-16 00:30', $tz));
+        $this->assertSame('2026-09-16', $d->toDateString());
+        $this->assertSame('2026-10-15', $h->toDateString());
+
+        // Enero: del 16 de diciembre al 15 de enero, cruzando el año.
+        [$d, $h] = OvertimeService::periodoDe(Carbon::parse('2027-01-10', $tz));
+        $this->assertSame('2026-12-16', $d->toDateString());
+        $this->assertSame('2027-01-15', $h->toDateString());
+    }
+
+    public function test_el_tope_del_periodo_manda_aunque_la_semana_lo_permita(): void
     {
         $u = $this->persona();
         $tz = config('fabos.lab.timezone');
 
-        // 48 horas repartidas en cuatro semanas del mismo mes.
-        foreach ([1, 8, 15, 22] as $i => $dia) {
-            $d = Carbon::parse("2026-09-{$dia} 08:00", $tz);
-            $this->turnos()->programar($u, $d, $d->copy()->addHours(12), 'Turno ' . $i);
+        // 48 horas en el corte del 16 de agosto al 15 de septiembre: cuatro
+        // semanas de lunes a sábado, dos horas diarias.
+        foreach (['2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07'] as $lunes) {
+            $this->dosHorasDiarias($u, $lunes, 6);
         }
 
         $this->assertSame(0, $this->extras()->disponibleMes($u, Carbon::parse('2026-09-10', $tz)));
 
-        // La semana del 29 está libre, pero el mes ya no da.
-        $d = Carbon::parse('2026-09-29 08:00', $tz);
+        // El lunes 14 abre semana nueva, pero sigue en el mismo corte.
+        $d = Carbon::parse('2026-09-14 08:00', $tz);
 
-        $this->expectException(BookingException::class);
-        $this->expectExceptionMessageMatches('/este mes/');
+        try {
+            $this->turnos()->programar($u, $d, $d->copy()->addHours(2), 'Otro');
+            $this->fail('Tenía que rechazarse: el corte ya está lleno.');
+        } catch (BookingException $e) {
+            $this->assertMatchesRegularExpression('/corte del 16\/08 al 15\/09/', $e->getMessage());
+        }
 
-        $this->turnos()->programar($u, $d, $d->copy()->addHours(2), 'Otro');
+        // El 16 empieza otro corte: ahí sí cabe.
+        $d = Carbon::parse('2026-09-16 08:00', $tz);
+        $this->assertNotNull($this->turnos()->programar($u, $d, $d->copy()->addHours(2), 'Nuevo corte')->id);
     }
 
     public function test_no_permite_dos_jornadas_cruzadas(): void
     {
         $u = $this->persona();
-        [$d, $h] = $this->franja(4);
+        [$d, $h] = $this->franja(1);
         $this->turnos()->programar($u, $d, $h, 'Acompañamiento');
 
         $this->expectException(BookingException::class);
         $this->expectExceptionMessageMatches('/se cruza/');
 
-        $this->turnos()->programar($u, $d->copy()->addHour(), $h->copy()->addHour(), 'Otra cosa');
+        $this->turnos()->programar($u, $d->copy()->addMinutes(30), $h->copy()->addMinutes(30), 'Otra cosa');
     }
 
     public function test_ordena_los_candidatos_por_quien_menos_extras_lleva(): void
@@ -137,10 +194,9 @@ class HorasExtrasTest extends TestCase
         $cargado = $this->persona();
         $libre   = $this->persona();
 
-        [$d1, $h1] = $this->franja(10, -1);
-        $this->turnos()->programar($cargado, $d1, $h1, 'Curso');
+        $this->dosHorasDiarias($cargado, '2026-08-31', 6);
 
-        [$d, $h] = $this->franja(4);
+        [$d, $h] = $this->franja(2, 1);
         $orden = $this->extras()->ordenarPorCarga(collect([$cargado, $libre]), $d, $h);
 
         // Primero el que menos lleva: así no siempre cae en la misma persona.
@@ -152,10 +208,42 @@ class HorasExtrasTest extends TestCase
         $this->assertNotNull($orden->last()['motivo']);
     }
 
+    public function test_el_resumen_del_periodo_cuenta_por_persona(): void
+    {
+        $u = $this->persona();
+        $tz = config('fabos.lab.timezone');
+
+        $this->dosHorasDiarias($u, '2026-09-07', 3);
+
+        $fila = $this->extras()->resumen(collect([$u]), Carbon::parse('2026-09-09 18:00', $tz))->first();
+
+        $this->assertSame(360, $fila['periodo']);
+        $this->assertSame(360, $fila['semana']);
+        $this->assertSame(120, $fila['hoy']);
+        $this->assertSame(48 * 60 - 360, $fila['disponible']);
+        $this->assertSame(0, $fila['dias_excedidos']);
+    }
+
+    /** El contador se dibuja encima de las jornadas, con el corte y las horas. */
+    public function test_el_contador_se_ve_con_el_corte(): void
+    {
+        $u = $this->persona();
+        $tz = config('fabos.lab.timezone');
+        $this->travelTo(Carbon::parse('2026-09-09 18:00', $tz));
+        $this->dosHorasDiarias($u, '2026-09-07', 3);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\ShiftAssignments\Widgets\ContadorDeExtras::class)
+            ->assertSee('corte del 16/08 al 15/09/2026')
+            ->assertSee($u->name)
+            ->assertSee('6 h')
+            ->call('irA', '2026-09-20')
+            ->assertSee('corte del 16/09 al 15/10/2026');
+    }
+
     public function test_registra_la_aceptacion_y_el_conflicto(): void
     {
         $u = $this->persona();
-        [$d, $h] = $this->franja(3);
+        [$d, $h] = $this->franja(2);
         $j = $this->turnos()->programar($u, $d, $h, 'Acompañamiento');
 
         $this->assertNotNull($this->turnos()->aceptar($j)->accepted_at);

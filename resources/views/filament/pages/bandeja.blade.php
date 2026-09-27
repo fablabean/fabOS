@@ -104,7 +104,7 @@
                                         — ocupado: {{ \Illuminate\Support\Str::after($c['ocupado'], $c['nombre'] . ' ') }}
                                     @else
                                         — {{ $c['en_jornada'] ? 'en jornada' : 'habría que abrirle el día' }}
-                                        · {{ $c['extras_mes'] }} de {{ $topeMes }} h extras este mes
+                                        · {{ $c['extras_mes'] }} de {{ $topeMes }} h extras en el corte
                                     @endif
                                 </option>
                             @endforeach

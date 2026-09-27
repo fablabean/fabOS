@@ -197,10 +197,13 @@
             <x-slot name="heading">6 · Jornadas y horas extras</x-slot>
 
             <dl>
+                <dt>Tope diario</dt>
+                <dd>{{ intdiv($extras['max_dia_minutos'], 60) }} horas extras</dd>
                 <dt>Tope semanal</dt>
-                <dd>{{ intdiv($extras['max_semana_minutos'], 60) }} horas extras</dd>
-                <dt>Tope mensual</dt>
-                <dd>{{ intdiv($extras['max_mes_minutos'], 60) }} horas extras</dd>
+                <dd>{{ intdiv($extras['max_semana_minutos'], 60) }} horas extras, de lunes a domingo</dd>
+                <dt>Tope del periodo</dt>
+                <dd>{{ intdiv($extras['max_mes_minutos'], 60) }} horas extras, del 16 de un mes al
+                    {{ $extras['dia_de_corte'] }} del siguiente (el corte de nómina)</dd>
                 <dt>Zona horaria</dt>
                 <dd>{{ $lab['timezone'] }} — se guarda en UTC y se muestra en hora local</dd>
             </dl>
