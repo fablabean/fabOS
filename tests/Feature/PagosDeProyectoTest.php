@@ -243,4 +243,46 @@ class PagosDeProyectoTest extends TestCase
         $this->get('/admin/pagos')->assertOk()->assertSee('Anticipo')->assertSee($p->code);
         $this->get(route('pagos.qr'))->assertOk();
     }
+
+    /** El reporte del mes: quién pagó, su documento, qué hizo y cuánto. */
+    public function test_el_reporte_del_mes_lista_lo_cobrado_por_qr_y_se_baja(): void
+    {
+        $p = $this->proyecto();
+        $servicio = app(PagosDeProyecto::class);
+
+        $validado = $servicio->pedir($p, 1_250_000, 'Anticipo', null, $p->lead);
+        $servicio->enviarComprobante($validado, UploadedFile::fake()->image('a.jpg'), 'Marcela Ruiz Gómez', '52.123.456');
+        $servicio->validar($validado->fresh(), $p->lead);
+
+        $enviado = $servicio->pedir($p, 800_000, 'Saldo', null, $p->lead);
+        $servicio->enviarComprobante($enviado, UploadedFile::fake()->image('b.jpg'), 'Andrés Pérez', '80.999.111');
+
+        // Pedido sin comprobante: todavía no es una venta.
+        $servicio->pedir($p, 99_000, 'Extra', null, $p->lead);
+
+        // Y uno del mes pasado, que no entra en este.
+        $viejo = $servicio->pedir($p, 70_000, 'Viejo', null, $p->lead);
+        $servicio->enviarComprobante($viejo, UploadedFile::fake()->image('c.jpg'), 'Otra Persona', '1');
+        $viejo->forceFill(['submitted_at' => now()->subMonthNoOverflow()->startOfMonth()->addDays(3)])->save();
+
+        $this->get('/admin/reporte-de-pagos-qr')->assertOk()
+            ->assertSee('Marcela Ruiz Gómez')->assertSee('52.123.456')
+            ->assertSee('Andrés Pérez')->assertSee($p->code)
+            ->assertSee('$2.050.000')
+            ->assertDontSee('Otra Persona')->assertDontSee('Extra');
+
+        Livewire::test(\App\Filament\Pages\ReporteDePagosQr::class)
+            ->call('descargar')
+            ->assertFileDownloaded('pagos-qr-' . now(config('fabos.lab.timezone'))->format('Y-m') . '.csv');
+
+        $filas = app(\App\Services\Reports\VentasPorQr::class)->delMes(now());
+        $texto = app(\App\Services\Reports\VentasPorQr::class)->csv($filas);
+        $this->assertStringContainsString('"Marcela Ruiz Gómez";52.123.456;"Proyecto ' . $p->code, $texto);
+        $this->assertStringContainsString(';1250000;Validado', $texto);
+        $this->assertStringContainsString(';800000;"Comprobante enviado"', $texto);
+
+        // El mes pasado solo tiene el suyo.
+        $this->assertSame(['Otra Persona'], app(\App\Services\Reports\VentasPorQr::class)
+            ->delMes(now()->subMonthNoOverflow())->pluck('nombre')->all());
+    }
 }
