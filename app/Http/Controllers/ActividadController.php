@@ -38,6 +38,11 @@ class ActividadController extends Controller
             'libres'      => $edition->cuposLibres(),
             'enEspera'    => $edition->enEspera(),
             'tipos'       => $edition->tiposDeParticipante(),
+            // Por pregunta que reparte cupo: cuántos quedan en cada opción.
+            'grupos'      => $edition->course->registrationQuestions
+                ->filter(fn (RegistrationQuestion $p) => $p->reparteCupo())
+                ->mapWithKeys(fn (RegistrationQuestion $p) => [$p->id => $p->disponibilidad($edition)])
+                ->all(),
         ]);
     }
 
@@ -112,12 +117,13 @@ class ActividadController extends Controller
             return redirect()->route('actividad', $edition->code);
         }
 
-        $edition->load(['course', 'space']);
+        $edition->load(['course.registrationQuestions', 'space']);
 
         return view('formacion.actividad-listo', [
             'edicion'     => $edition,
             'inscripcion' => $inscripcion,
             'posicion'    => $inscripcion->enEspera() ? $this->actividades->posicionEnEspera($inscripcion) : null,
+            'grupo'       => $this->actividades->grupoDe($inscripcion),
         ]);
     }
 

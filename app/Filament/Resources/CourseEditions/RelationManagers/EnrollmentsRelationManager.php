@@ -68,6 +68,14 @@ class EnrollmentsRelationManager extends RelationManager
                     ->placeholder('—')
                     ->toggleable(),
 
+                // El grupo u horario, cuando la actividad reparte el cupo por
+                // una pregunta del formulario.
+                TextColumn::make('grupo')
+                    ->label('Grupo')
+                    ->state(fn (Enrollment $r) => app(\App\Services\Training\Actividades::class)->grupoDe($r))
+                    ->placeholder('—')
+                    ->visible(fn (RelationManager $livewire) => $livewire->getOwnerRecord()->course?->registrationQuestions->contains(fn ($p) => $p->reparteCupo())),
+
                 TextColumn::make('asistencia')
                     ->label('Asistencia')
                     ->state(fn (Enrollment $r) => app(\App\Services\Training\AsistenciaDeActividad::class)->resumen($r)['estado'])
@@ -160,8 +168,14 @@ class EnrollmentsRelationManager extends RelationManager
                 $e = $livewire->getOwnerRecord();
                 $espera = $e->enEspera();
 
+                $grupos = $e->course?->registrationQuestions
+                    ->filter(fn ($p) => $p->reparteCupo())
+                    ->flatMap(fn ($p) => collect($p->disponibilidad($e))->map(fn ($d, $o) => $o . ': ' . $d['ocupados'] . ' de ' . $d['cupo']))
+                    ->implode(' · ');
+
                 return $e->inscritos() . ' con cupo de ' . $e->capacity . ' · ' . $e->cuposLibres() . ' libres'
-                    . ($espera ? ' · ' . $espera . ' en lista de espera' : '');
+                    . ($espera ? ' · ' . $espera . ' en lista de espera' : '')
+                    . ($grupos ? ' — ' . $grupos : '');
             })
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(Enrollment::ESTADOS),

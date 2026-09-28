@@ -239,6 +239,19 @@
                         <div class="barra"><i style="width:{{ $edicion->capacity ? min(100, round(100 * ($edicion->capacity - $libres) / $edicion->capacity)) : 0 }}%"></i></div>
                         <p>Los cupos se asignan en orden de inscripción.</p>
                     @endif
+
+                    {{-- Con la gente repartida en grupos, el número que importa
+                         es el del grupo que uno quiere, no el total. --}}
+                    @foreach ($grupos as $opciones)
+                        <ul style="list-style:none;padding:0;margin:.8rem 0 0;font-size:.9rem">
+                            @foreach ($opciones as $opcion => $d)
+                                <li style="display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0;border-top:1px solid var(--rule)">
+                                    <span>{{ $opcion }}</span>
+                                    <strong style="white-space:nowrap">{{ $d['libres'] > 0 ? $d['libres'] . ' de ' . $d['cupo'] : 'Lleno' }}</strong>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endforeach
                 </div>
             @endif
 
@@ -318,7 +331,8 @@
                                         <select name="{{ $campo }}" @required($p->required)>
                                             <option value="">Elige una</option>
                                             @foreach ($p->opciones() as $o)
-                                                <option value="{{ $o }}" @selected(old($campo) === $o)>{{ $o }}</option>
+                                                @php $d = $grupos[$p->id][$o] ?? null; @endphp
+                                                <option value="{{ $o }}" @selected(old($campo) === $o)>{{ $o }}@if ($d) · {{ $d['libres'] > 0 ? ($d['libres'] === 1 ? 'queda 1 cupo' : 'quedan ' . $d['libres'] . ' cupos') : 'lleno, lista de espera' }}@endif</option>
                                             @endforeach
                                         </select>
                                         @if ($p->help)<span class="help">{{ $p->help }}</span>@endif

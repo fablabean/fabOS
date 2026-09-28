@@ -273,6 +273,17 @@ class CourseForm
                                 . (! empty($state['required']) ? ' *' : '')
                                 . (isset($state['type']) ? ' · ' . (\App\Models\RegistrationQuestion::TIPOS[$state['type']] ?? '') : ''))
                             ->columns(2)
+                            // Las opciones se guardaban como etiquetas sueltas;
+                            // ahora son filas con su texto y, si se reparte el
+                            // cupo, su número. Las viejas se leen igual.
+                            ->mutateRelationshipDataBeforeFillUsing(function (array $data) {
+                                $data['options'] = collect((array) ($data['options'] ?? []))
+                                    ->map(fn ($o) => is_array($o) ? $o : ['texto' => (string) $o, 'cupo' => null])
+                                    ->values()
+                                    ->all();
+
+                                return $data;
+                            })
                             ->schema([
                                 TextInput::make('label')
                                     ->label('Pregunta o requisito')
@@ -292,11 +303,44 @@ class CourseForm
                                     ->helperText('Sin responderla no se puede terminar la inscripción. En un archivo: sin subirlo, no hay inscripción.')
                                     ->inline(false),
 
-                                \Filament\Forms\Components\TagsInput::make('options')
+                                /*
+                                 * Un grupo por opción, con su cupo: «Grupo 1,
+                                 * 5 cupos; Grupo 2, 5 cupos». El cupo total de
+                                 * la edición sigue siendo el tope de todo.
+                                 */
+                                Toggle::make('capacity_per_option')
+                                    ->label('Cada opción tiene su propio cupo')
+                                    ->helperText('Para repartir la gente en grupos u horarios. Cuando una opción se llena, quien la elige queda en lista de espera de esa opción. El cupo de la edición debe alcanzar para la suma.')
+                                    ->visible(fn (Get $get) => $get('type') === 'seleccion')
+                                    ->live()
+                                    ->columnSpanFull(),
+
+                                Repeater::make('options')
                                     ->label('Opciones')
-                                    ->placeholder('Escribe una y pulsa Enter')
+                                    ->addActionLabel('Añadir una opción')
+                                    ->defaultItems(2)
+                                    ->minItems(fn (Get $get) => in_array($get('type'), \App\Models\RegistrationQuestion::CON_OPCIONES, true) ? 2 : 0)
+                                    ->reorderable()
+                                    ->columns(6)
                                     ->visible(fn (Get $get) => in_array($get('type'), \App\Models\RegistrationQuestion::CON_OPCIONES, true))
-                                    ->required(fn (Get $get) => in_array($get('type'), \App\Models\RegistrationQuestion::CON_OPCIONES, true))
+                                    ->schema([
+                                        TextInput::make('texto')
+                                            ->hiddenLabel()
+                                            ->placeholder('Grupo 1 (10:00 a 13:00)')
+                                            ->required()
+                                            ->maxLength(200)
+                                            ->columnSpan(fn (Get $get) => $get('../../capacity_per_option') && $get('../../type') === 'seleccion' ? 4 : 6),
+
+                                        TextInput::make('cupo')
+                                            ->hiddenLabel()
+                                            ->placeholder('Cupos')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->suffix('cupos')
+                                            ->required(fn (Get $get) => (bool) $get('../../capacity_per_option'))
+                                            ->visible(fn (Get $get) => $get('../../capacity_per_option') && $get('../../type') === 'seleccion')
+                                            ->columnSpan(2),
+                                    ])
                                     ->columnSpanFull(),
 
                                 TextInput::make('help')

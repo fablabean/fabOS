@@ -75,7 +75,10 @@ class Actividades
                     : 'Ya estás inscrito en esta actividad con ese correo.');
             }
 
-            $hayCupo = $fresca->cuposLibres() > 0;
+            // Hay silla si la hay en la edición y en el grupo que eligió:
+            // con el grupo 1 lleno, quien lo elige espera aunque el 2 tenga sitio.
+            $hayCupo = $fresca->cuposLibres() > 0
+                && $this->grupoLleno($fresca, $fijos['tipo'], fn ($p) => $respuestas[$p->id] ?? null) === null;
 
             $campos = [
                 'status'           => $hayCupo ? 'inscrito' : Enrollment::EN_ESPERA,
@@ -141,6 +144,17 @@ class Actividades
 
             if ($edicion->cuposLibres() <= 0) {
                 throw new TrainingException('No hay cupos libres. Sube el cupo de la edición o espera a que alguien se retire.');
+            }
+
+            $edicion->loadMissing('course.registrationQuestions');
+            $lleno = $this->grupoLleno(
+                $edicion,
+                (string) $inscripcion->participant_type,
+                fn ($p) => $inscripcion->answers[(string) $p->id]['valor'] ?? null,
+            );
+
+            if ($lleno !== null) {
+                throw new TrainingException('«' . $lleno . '» ya está lleno. Sube el cupo de esa opción en el formulario de la actividad, o espera a que alguien de ese grupo se retire.');
             }
 
             $inscripcion->update(['status' => 'inscrito', 'promoted_at' => now()]);
@@ -439,6 +453,39 @@ class Actividades
             'inscripciones_cerradas' => 'Las inscripciones de esta actividad están cerradas.',
             default     => 'Esta actividad ya no recibe inscripciones.',
         };
+    }
+
+    /** El grupo que eligió, si la actividad reparte el cupo por opción. */
+    public function grupoDe(Enrollment $inscripcion): ?string
+    {
+        $pregunta = $inscripcion->edition?->course?->registrationQuestions->first(fn (RegistrationQuestion $p) => $p->reparteCupo());
+
+        $valor = $pregunta ? ($inscripcion->answers[(string) $pregunta->id]['valor'] ?? null) : null;
+
+        return filled($valor) ? (string) $valor : null;
+    }
+
+    /**
+     * La opción elegida que ya no tiene cupo, si la hay.
+     *
+     * @param  callable(RegistrationQuestion): mixed  $eleccion  lo que eligió en esa pregunta
+     */
+    private function grupoLleno(CourseEdition $edicion, string $tipo, callable $eleccion): ?string
+    {
+        foreach ($edicion->course->registrationQuestions as $pregunta) {
+            if (! $pregunta->reparteCupo() || ! $pregunta->aplicaA($tipo)) {
+                continue;
+            }
+
+            $opcion = trim((string) $eleccion($pregunta));
+            $cupos = $pregunta->cupos();
+
+            if ($opcion !== '' && isset($cupos[$opcion]) && $pregunta->ocupados($edicion, $opcion) >= $cupos[$opcion]) {
+                return $opcion;
+            }
+        }
+
+        return null;
     }
 
     private function crearPersona(string $nombre, string $correo, string $tipo): User

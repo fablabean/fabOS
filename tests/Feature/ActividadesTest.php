@@ -239,6 +239,59 @@ class ActividadesTest extends TestCase
         Storage::disk('local')->assertExists($respuestas[(string) $diseno->id]['archivo']['ruta']);
     }
 
+    public function test_cada_grupo_tiene_su_cupo(): void
+    {
+        $curso = $this->taller();
+        $horario = $curso->registrationQuestions()->create([
+            'type' => 'seleccion', 'label' => 'Selecciona el horario', 'required' => true, 'capacity_per_option' => true,
+            'options' => [['texto' => 'Grupo 1', 'cupo' => 1], ['texto' => 'Grupo 2', 'cupo' => 1]],
+        ]);
+        $e = $this->edicion($curso, ['capacity' => 5]);
+        $campo = 'p' . $horario->id;
+
+        $this->inscribir($e, ['correo' => 'a@correo.co', $campo => 'Grupo 1']);
+        $this->followRedirects($this->inscribir($e, ['correo' => 'b@correo.co', $campo => 'Grupo 1']))
+            ->assertSee('Los cupos de <strong>Grupo 1</strong> están llenos', false);
+        $this->inscribir($e, ['correo' => 'c@correo.co', $campo => 'Grupo 2']);
+
+        $estado = fn (string $correo) => Enrollment::whereHas('user', fn ($q) => $q->where('email', $correo))->value('status');
+        $this->assertSame('inscrito', $estado('a@correo.co'));
+        $this->assertSame(Enrollment::EN_ESPERA, $estado('b@correo.co'), 'el grupo 1 se llenó aunque la edición tenga sitio');
+        $this->assertSame('inscrito', $estado('c@correo.co'));
+
+        $this->get(route('actividad', $e->code))
+            ->assertSee('Grupo 1 · lleno, lista de espera')
+            ->assertSee('Grupo 2 · lleno, lista de espera');
+
+        // Con cupo en la edición pero no en su grupo, no se le puede dar.
+        $b = Enrollment::whereHas('user', fn ($q) => $q->where('email', 'b@correo.co'))->firstOrFail();
+        try {
+            app(Actividades::class)->darCupo($b);
+            $this->fail('Dio un cupo de un grupo lleno.');
+        } catch (TrainingException $ex) {
+            $this->assertStringContainsString('Grupo 1', $ex->getMessage());
+        }
+
+        // Se libera uno del grupo 1: ahora sí.
+        app(Actividades::class)->cancelarInscripcion(Enrollment::whereHas('user', fn ($q) => $q->where('email', 'a@correo.co'))->firstOrFail());
+        app(Actividades::class)->darCupo($b->fresh());
+        $this->assertSame('inscrito', $b->fresh()->status);
+    }
+
+    public function test_el_formulario_del_curso_guarda_opciones_con_cupo_y_lee_las_viejas(): void
+    {
+        $curso = $this->taller();
+        $vieja = $curso->registrationQuestions()->create(['type' => 'seleccion', 'label' => 'Talla', 'options' => ['S', 'M']]);
+
+        $this->jefa();
+
+        Livewire::test(\App\Filament\Resources\Courses\Pages\EditCourse::class, ['record' => $curso->getRouteKey()])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(['S', 'M'], $vieja->fresh()->opciones());
+    }
+
     public function test_las_preguntas_de_un_tipo_de_participante_no_se_exigen_a_los_demas(): void
     {
         $curso = $this->taller();
