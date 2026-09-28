@@ -67,12 +67,94 @@ class SolicitudDeProyectoController extends Controller
             ->get();
     }
 
+    /**
+     * Si el formulario rebota, los archivos no se pierden.
+     *
+     * Un navegador nunca vuelve a llenar un campo de archivo: al volver con
+     * el error, el texto seguía ahí pero el plano y las fotos no, y había que
+     * buscarlos otra vez —en el teléfono, en la galería—. Así que los válidos
+     * se apartan en el servidor y el formulario los enseña como «ya adjuntos».
+     */
     public function store(Request $request)
+    {
+        $pendientes = $this->pendientesQueSeQuedan($request);
+
+        try {
+            return $this->procesar($request, $pendientes);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->apartarArchivos($request, $pendientes);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Los archivos apartados en un intento anterior que siguen marcados.
+     *
+     * @return list<array{token:string,ruta:string,nombre:string,peso:int}>
+     */
+    private function pendientesQueSeQuedan(Request $request): array
+    {
+        $marcados = (array) $request->input('mantener', []);
+
+        return array_values(array_filter(
+            (array) $request->session()->get('soportes_pendientes', []),
+            fn ($p) => is_array($p) && in_array($p['token'] ?? null, $marcados, true)
+                && Storage::disk('local')->exists($p['ruta'] ?? ''),
+        ));
+    }
+
+    /** @param list<array{token:string,ruta:string,nombre:string,peso:int}> $pendientes */
+    private function apartarArchivos(Request $request, array $pendientes): void
+    {
+        $disco = Storage::disk('local');
+        $carpeta = 'tmp-solicitudes/' . sha1($request->session()->getId());
+        $tipos = SoportesDeSolicitud::tipos();
+
+        foreach ((array) $request->file('soportes', []) as $archivo) {
+            if (count($pendientes) >= SoportesDeSolicitud::maximo()) {
+                break;
+            }
+
+            // Solo lo que pasaría la validación: no se aparta lo que se iba a rechazar.
+            if (! $archivo instanceof \Illuminate\Http\UploadedFile || ! $archivo->isValid()
+                || ! in_array(mb_strtolower($archivo->getClientOriginalExtension()), $tipos, true)
+                || $archivo->getSize() > SoportesDeSolicitud::tamanoKb() * 1024) {
+                continue;
+            }
+
+            $pendientes[] = [
+                'token'  => \Illuminate\Support\Str::random(20),
+                'ruta'   => $archivo->store($carpeta, 'local'),
+                'nombre' => $archivo->getClientOriginalName(),
+                'peso'   => (int) $archivo->getSize(),
+            ];
+        }
+
+        $request->session()->put('soportes_pendientes', $pendientes);
+    }
+
+    /** Lo apartado ya no hace falta: se usó, o se fue a otra parte. */
+    private function limpiarPendientes(Request $request): void
+    {
+        foreach ((array) $request->session()->pull('soportes_pendientes', []) as $p) {
+            Storage::disk('local')->delete($p['ruta'] ?? '');
+        }
+    }
+
+    /** @param list<array{token:string,ruta:string,nombre:string,peso:int}> $pendientes */
+    private function procesar(Request $request, array $pendientes)
     {
         // A quien ya entró no se le vuelve a preguntar quién es. Pedirle otra
         // vez el correo abre además la puerta a que escriba uno distinto y el
         // proyecto acabe colgando de una cuenta que no es la suya.
         $identificado = $request->user();
+
+        if (count((array) $request->file('soportes', [])) + count($pendientes) > SoportesDeSolicitud::maximo()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'soportes' => 'Como mucho ' . SoportesDeSolicitud::maximo() . ' archivos, contando los que ya estaban adjuntos.',
+            ]);
+        }
 
         $datos = $request->validate([
             'titulo'       => ['required', 'string', 'max:180'],
@@ -205,6 +287,8 @@ class SolicitudDeProyectoController extends Controller
             ->first();
 
         if ($repetido) {
+            $this->limpiarPendientes($request);
+
             return $this->aLaConfirmacion($request, $repetido, null, repetido: true);
         }
 
@@ -223,7 +307,14 @@ class SolicitudDeProyectoController extends Controller
         // Los soportes van después de crear el proyecto: si algo falla al
         // guardarlos, la solicitud ya está anotada. Perder la idea por un
         // archivo sería el peor de los dos males.
-        $this->soportes->guardar($proyecto, $request->file('soportes', []));
+        // Con los que quedaron apartados de un intento anterior.
+        $this->soportes->guardar($proyecto, array_merge(
+            (array) $request->file('soportes', []),
+            array_map(fn ($p) => new \Illuminate\Http\UploadedFile(
+                Storage::disk('local')->path($p['ruta']), $p['nombre'], null, null, true,
+            ), $pendientes),
+        ));
+        $this->limpiarPendientes($request);
         $this->soportes->guardarDibujo($proyecto, $request->input('dibujo'));
 
         // Que quede constancia de que llegó. El silencio después de escribir es

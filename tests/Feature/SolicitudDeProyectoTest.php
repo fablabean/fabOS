@@ -288,6 +288,48 @@ class SolicitudDeProyectoTest extends TestCase
         ]))->assertSessionHasErrors('soportes');
     }
 
+    /**
+     * Si el formulario rebota por un error, el archivo y el dibujo no se
+     * pierden: el navegador no vuelve a llenar un campo de archivo, así que se
+     * apartan y se usan al volver a enviar.
+     */
+    public function test_si_rebota_el_archivo_y_el_dibujo_se_conservan(): void
+    {
+        Storage::fake('local');
+
+        $png = 'data:image/png;base64,' . base64_encode(UploadedFile::fake()->image('d.png', 20, 20)->getContent());
+
+        // Sin título: rebota.
+        $this->from(route('proyectos.solicitar'))
+            ->post(route('proyectos.solicitar.store'), $this->solicitud([
+                'titulo'   => '',
+                'soportes' => [UploadedFile::fake()->create('plano.pdf', 30, 'application/pdf')],
+                'dibujo'   => $png,
+            ]))
+            ->assertSessionHasErrors('titulo');
+
+        $pendientes = session('soportes_pendientes');
+        $this->assertCount(1, $pendientes);
+        Storage::disk('local')->assertExists($pendientes[0]['ruta']);
+
+        $this->get(route('proyectos.solicitar'))
+            ->assertSee('Ya adjuntos')
+            ->assertSee('plano.pdf')
+            ->assertSee($png, false);
+
+        // Corregido, se envía de nuevo: sin volver a elegir el archivo.
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'mantener' => [$pendientes[0]['token']],
+            'dibujo'   => $png,
+        ]))->assertRedirect(route('proyectos.recibida'));
+
+        $p = Project::first();
+        $this->assertTrue($p->evidence->pluck('original_name')->contains('plano.pdf'));
+        $this->assertCount(2, $p->evidence, 'el plano y el dibujo');
+        $this->assertNull(session('soportes_pendientes'));
+        Storage::disk('local')->assertMissing($pendientes[0]['ruta']);
+    }
+
     /** Un ejecutable no es un soporte de proyecto. */
     public function test_un_tipo_de_archivo_que_no_toca_se_rechaza(): void
     {

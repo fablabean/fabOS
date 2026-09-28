@@ -202,8 +202,24 @@
             dos medidas ahorra tres correos de ida y vuelta.
         </p>
 
+        {{-- Los que se apartaron cuando el formulario rebotó: un navegador no
+             vuelve a llenar un campo de archivo, así que se guardan aquí. --}}
+        @php $pendientes = (array) session('soportes_pendientes', []); @endphp
+        @if ($pendientes)
+            <div class="ya-adjuntos">
+                <strong>Ya adjuntos</strong> — se envían con la solicitud. Desmarca los que no quieras.
+                @foreach ($pendientes as $p)
+                    <label class="adjunto">
+                        <input type="checkbox" name="mantener[]" value="{{ $p['token'] }}" checked>
+                        {{ $p['nombre'] }}
+                        <span class="foot">{{ number_format($p['peso'] / 1048576, 1, ',', '.') }} MB</span>
+                    </label>
+                @endforeach
+            </div>
+        @endif
+
         <label>
-            Archivos de soporte
+            {{ $pendientes ? 'Agregar más archivos' : 'Archivos de soporte' }}
             <input type="file" name="soportes[]" multiple
                    accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
             <span class="foot">
@@ -224,7 +240,8 @@
                 <span class="foot" id="estado-dibujo">Se manda solo si dibujas algo.</span>
             </div>
 
-            <input type="hidden" name="dibujo" id="dibujo">
+            {{-- Si el formulario rebota, el dibujo vuelve al lienzo. --}}
+            <input type="hidden" name="dibujo" id="dibujo" value="{{ old('dibujo') }}">
         </div>
 
         <h2>Quién eres</h2>
@@ -368,6 +385,11 @@
         .flujo .pasos .detalle { font-size:.8rem; color:var(--ink-soft); }
 
         .dibujo { margin-bottom:1.2rem; }
+        .ya-adjuntos { margin:0 0 1rem; padding:.7rem .9rem; border-left:3px solid var(--ok);
+                       background:color-mix(in srgb, var(--ok) 8%, transparent); font-size:.9rem; }
+        .ya-adjuntos .adjunto { display:flex; gap:.5rem; align-items:center; margin:.4rem 0 0;
+                                font-family:inherit; font-size:.9rem; letter-spacing:0; text-transform:none; color:var(--ink); }
+        .ya-adjuntos .foot { margin:0; }
         .dibujo .rotulo-campo { display:block; font-size:.9rem; font-weight:600; margin-bottom:.3rem; }
         .dibujo canvas { width:100%; max-width:100%; height:auto; aspect-ratio:900/420;
                          background:var(--surface); border:1px solid var(--rule);
@@ -470,6 +492,17 @@
 
             let trazando = false;
             let hayDibujo = false;
+
+            // El dibujo de un intento anterior, si el formulario rebotó.
+            if (campo.value.startsWith('data:image/png;base64,')) {
+                const previo = new Image();
+                previo.onload = function () {
+                    ctx.drawImage(previo, 0, 0, lienzo.width, lienzo.height);
+                    hayDibujo = true;
+                    estado.textContent = 'Tu dibujo sigue aquí: se enviará con la solicitud.';
+                };
+                previo.src = campo.value;
+            }
 
             function punto(e) {
                 const caja = lienzo.getBoundingClientRect();
