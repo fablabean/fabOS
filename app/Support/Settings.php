@@ -457,6 +457,61 @@ final class Settings
         ));
     }
 
+    /** La versión de la marca elegida para compartir enlaces (su ruta de origen). */
+    public const MARCA_COMPARTIR = 'marca.compartir';
+
+    /** El PNG cuadrado que se genera de ella: el que ven WhatsApp y compañía. */
+    public const MARCA_COMPARTIR_PNG = 'marca.compartir_png';
+
+    /** El icono de iOS, en PNG, generado de la versión compacta. */
+    public const MARCA_TOUCH_PNG = 'marca.touch_png';
+
+    /** La versión elegida para compartir, o la compacta, o la larga. */
+    public static function marcaParaCompartir(): ?string
+    {
+        return self::rutaSubida(self::MARCA_COMPARTIR) ?? self::logo() ?? self::logoLargo();
+    }
+
+    /** La dirección completa de la imagen para la vista previa de un enlace. */
+    public static function imagenParaCompartir(): ?string
+    {
+        $png = self::rutaSubida(self::MARCA_COMPARTIR_PNG);
+
+        return $png ? \Illuminate\Support\Facades\Storage::disk('public')->url($png) : null;
+    }
+
+    /** El icono de iOS en PNG, si se generó. */
+    public static function iconoTactil(): ?string
+    {
+        $png = self::rutaSubida(self::MARCA_TOUCH_PNG);
+
+        return $png ? \Illuminate\Support\Facades\Storage::disk('public')->url($png) : null;
+    }
+
+    /**
+     * Rehace los PNG que se derivan de la marca: el de compartir enlaces y el
+     * icono de iOS. Se llama al guardar la marca.
+     */
+    public static function rehacerImagenesDeMarca(): void
+    {
+        $generador = app(\App\Services\Media\ImagenDeMarca::class);
+        $disco = \Illuminate\Support\Facades\Storage::disk('public');
+
+        foreach ([
+            self::MARCA_COMPARTIR_PNG => [self::marcaParaCompartir(), 600, 'compartir'],
+            self::MARCA_TOUCH_PNG     => [self::logo() ?? self::logoLargo(), 180, 'icono-ios'],
+        ] as $clave => [$origen, $lado, $nombre]) {
+            $antes = self::rutaSubida($clave);
+            $nuevo = $origen ? $generador->cuadrado($origen, $lado, $nombre) : null;
+
+            Setting::put($clave, $nuevo ?? '', 'comunicaciones');
+
+            if ($antes && $antes !== $nuevo) {
+                $disco->delete($antes);
+            }
+        }
+    }
+
     /** Las dos versiones para fondo oscuro. Nulas si no hay. */
     public static function logoLargoOscuro(): ?string
     {

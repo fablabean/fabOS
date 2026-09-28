@@ -277,11 +277,13 @@ class TiendaPublicaController extends Controller
         $datos = $request->validate([
             'titulo' => ['required', 'string', 'max:180'],
             'detalle' => ['required', 'string', 'min:10', 'max:2000'],
-            'referencias' => ['nullable', 'array', 'max:'.SoportesDeSolicitud::MAXIMO],
+            // Las mismas reglas que la solicitud de proyecto, por extensión:
+            // un STL binario no se reconoce por su contenido.
+            'referencias' => ['nullable', 'array', 'max:'.SoportesDeSolicitud::maximo()],
             'referencias.*' => [
                 'file',
-                'mimes:'.implode(',', SoportesDeSolicitud::TIPOS),
-                'max:'.SoportesDeSolicitud::TAMANO_MAXIMO,
+                'extensions:'.implode(',', SoportesDeSolicitud::tipos()),
+                'max:'.SoportesDeSolicitud::tamanoKb(),
             ],
             'nombre' => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
             'correo' => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
@@ -292,8 +294,8 @@ class TiendaPublicaController extends Controller
         ], [
             'detalle.required' => 'Cuéntanos qué necesitas: es lo único que no podemos adivinar.',
             'detalle.min' => 'Con un poco más de detalle podemos responderte sin otro correo de por medio.',
-            'referencias.*.mimes' => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos o documentos.',
-            'referencias.*.max' => 'Cada archivo puede pesar hasta '.intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024).' MB.',
+            'referencias.*.extensions' => 'Ese tipo de archivo no lo aceptamos. Se aceptan: '.implode(', ', SoportesDeSolicitud::tipos()).'.',
+            'referencias.*.max' => 'Cada archivo puede pesar hasta '.intdiv(SoportesDeSolicitud::tamanoKb(), 1024).' MB.',
         ]);
 
         $datos['telefono'] = Telefono::componer($datos['telefono_indicativo'] ?? null, $datos['telefono'] ?? null);

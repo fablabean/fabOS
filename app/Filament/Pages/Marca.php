@@ -69,7 +69,45 @@ class Marca extends Page
             'con_texto'  => Settings::marcaConTexto(),
             'variaciones' => Settings::variaciones(),
             'barra_color' => Settings::colorDeLaBarra()['fondo'] ?? null,
+            'compartir'   => \App\Models\Setting::get(Settings::MARCA_COMPARTIR) ?: null,
         ]);
+    }
+
+    /**
+     * Las versiones de la marca entre las que elegir la de compartir: las de
+     * las casillas y las variaciones, con su miniatura.
+     *
+     * @return array<string,string>
+     */
+    private static function versiones(): array
+    {
+        $disco = Storage::disk('public');
+
+        $casillas = array_filter([
+            'Versión compacta'         => Settings::logo(),
+            'Versión larga'            => Settings::logoLargo(),
+            'Compacta, fondo oscuro'   => Settings::logoOscuro(),
+            'Larga, fondo oscuro'      => Settings::logoLargoOscuro(),
+        ]);
+
+        $opciones = [];
+
+        foreach ($casillas as $nombre => $ruta) {
+            $opciones[$ruta] = $nombre;
+        }
+
+        foreach (Settings::variaciones() as $ruta) {
+            // Solo lo que se puede dibujar: el manual en PDF no es una imagen.
+            if (preg_match('/\.(svg|png|jpe?g)$/i', $ruta)) {
+                $opciones[$ruta] ??= 'Variación · ' . basename($ruta);
+            }
+        }
+
+        return collect($opciones)->mapWithKeys(fn ($nombre, $ruta) => [
+            $ruta => '<span style="display:inline-flex;align-items:center;gap:.6rem">'
+                . '<img src="' . e($disco->url($ruta)) . '" alt="" style="height:28px;width:auto;max-width:90px;object-fit:contain;background:#fff;border-radius:3px">'
+                . e($nombre) . '</span>',
+        ])->all();
     }
 
     public function form(Schema $schema): Schema
@@ -150,6 +188,17 @@ class Marca extends Page
                             ->imagePreviewHeight('90')
                             ->maxSize(8192)
                             ->helperText('Cualquier formato de imagen, o el manual de marca en PDF. Se pueden reordenar arrastrando, y se conservan con el nombre del archivo tal como venga.'),
+                    ]),
+
+                Section::make('Al compartir un enlace')
+                    ->description('La imagen que sale en la vista previa cuando alguien pega un enlace del sitio en WhatsApp, Facebook, LinkedIn o un correo. Esos sitios no muestran SVG: la versión elegida se convierte sola en un PNG cuadrado, sobre blanco.')
+                    ->schema([
+                        \Filament\Forms\Components\Select::make('compartir')
+                            ->label('Versión para la vista previa')
+                            ->placeholder('La versión compacta (o la larga, si no hay compacta)')
+                            ->allowHtml()
+                            ->options(fn () => self::versiones())
+                            ->helperText('Elige entre las versiones ya guardadas: si acabas de subir una, guarda primero y vuelve a elegir. WhatsApp recuerda la vista previa de cada enlace unos días: los enlaces que ya se compartieron pueden tardar en cambiar.'),
                     ]),
 
                 Section::make('La barra del menú')
@@ -272,6 +321,12 @@ class Marca extends Page
         Setting::put(Settings::MARCA_ALTO, (int) ($estado['alto'] ?? Settings::ALTO_POR_DEFECTO), 'comunicaciones');
         Setting::put(Settings::MARCA_CON_TEXTO, (bool) ($estado['con_texto'] ?? true), 'comunicaciones');
         Setting::put(Settings::MARCA_BARRA, trim((string) ($estado['barra_color'] ?? '')), 'comunicaciones');
+
+        // La de compartir, si sigue siendo una de las que hay; y los PNG que
+        // se sacan de la marca, rehechos con lo que se acaba de guardar.
+        $compartir = trim((string) ($estado['compartir'] ?? ''));
+        Setting::put(Settings::MARCA_COMPARTIR, in_array($compartir, $enUso, true) ? $compartir : '', 'comunicaciones');
+        Settings::rehacerImagenesDeMarca();
 
         Notification::make()->success()->title('Guardado')
             ->body($this->queSeUsaAhora())

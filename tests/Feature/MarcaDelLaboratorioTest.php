@@ -154,6 +154,36 @@ class MarcaDelLaboratorioTest extends TestCase
             ->assertDontSee('img/favicon-32.png', false);
     }
 
+    /**
+     * La vista previa de un enlace lleva la marca elegida, en PNG.
+     *
+     * WhatsApp no muestra SVG: sin `og:image` tomaba el único PNG que
+     * encontraba —el icono del sistema, con la marca vieja—.
+     */
+    public function test_la_vista_previa_de_un_enlace_lleva_la_marca_elegida_en_png(): void
+    {
+        Storage::fake('public');
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#0d6e63"/></svg>';
+        Storage::disk('public')->put('marca/compacta.svg', $svg);
+        Storage::disk('public')->put('marca/variaciones/redondo.svg', $svg);
+        Setting::put(Settings::MARCA_LOGO, 'marca/compacta.svg', 'comunicaciones');
+        Setting::put(Settings::MARCA_VARIACIONES, ['marca/variaciones/redondo.svg'], 'comunicaciones');
+        Setting::put(Settings::MARCA_COMPARTIR, 'marca/variaciones/redondo.svg', 'comunicaciones');
+
+        Settings::rehacerImagenesDeMarca();
+
+        $png = (string) Setting::get(Settings::MARCA_COMPARTIR_PNG);
+        $this->assertStringEndsWith('.png', $png);
+        Storage::disk('public')->assertExists($png);
+        $this->assertSame([600, 600], array_slice(getimagesize(Storage::disk('public')->path($png)), 0, 2));
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<meta property="og:image" content="' . Storage::disk('public')->url($png) . '">', false)
+            // Y el icono de iOS ya no es el del sistema.
+            ->assertDontSee('img/apple-touch-icon.png', false);
+    }
+
     /** Sin nada subido, los iconos de siempre: no se queda sin icono. */
     public function test_sin_logo_subido_siguen_los_iconos_de_siempre(): void
     {

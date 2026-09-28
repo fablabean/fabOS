@@ -195,6 +195,57 @@ class SolicitudDeProyectoTest extends TestCase
         $this->assertStringNotContainsString('/storage/', $documento->enlace());
     }
 
+    /**
+     * Los archivos con los que se fabrica: un STL binario, un DXF y un STEP.
+     *
+     * Se validaban por el tipo adivinado del contenido, y un STL binario —el
+     * que exportan casi todos los programas de CAD— se ve como «binario
+     * genérico»: se rechazaba aunque la lista dijera que se aceptaba.
+     */
+    public function test_se_aceptan_modelos_y_planos_de_fabricacion(): void
+    {
+        Storage::fake('local');
+
+        // Cabecera de 80 bytes y número de triángulos: así empieza un STL binario.
+        $stlBinario = str_repeat("\0", 80) . pack('V', 0);
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [
+                UploadedFile::fake()->createWithContent('pieza.stl', $stlBinario),
+                UploadedFile::fake()->createWithContent('corte.dxf', "0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n"),
+                UploadedFile::fake()->createWithContent('ensamble.step', "ISO-10303-21;\nHEADER;\nENDSEC;\nEND-ISO-10303-21;\n"),
+            ],
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertEqualsCanonicalizing(
+            ['pieza.stl', 'corte.dxf', 'ensamble.step'],
+            Project::first()->evidence->pluck('original_name')->all(),
+        );
+    }
+
+    /** Los límites se cambian desde el backoffice, y lo peligroso no entra. */
+    public function test_los_limites_se_configuran_y_lo_ejecutable_no_entra(): void
+    {
+        Storage::fake('local');
+
+        \App\Models\Setting::put(\App\Services\Projects\SoportesDeSolicitud::AJUSTE_TIPOS, ['f3d', 'php', 'pdf'], 'proyectos');
+        \App\Models\Setting::put(\App\Services\Projects\SoportesDeSolicitud::AJUSTE_MAXIMO, 2, 'proyectos');
+
+        $this->assertSame(['f3d', 'pdf'], \App\Services\Projects\SoportesDeSolicitud::tipos());
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [UploadedFile::fake()->createWithContent('diseno.f3d', 'x')],
+        ]))->assertSessionHasNoErrors();
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => [UploadedFile::fake()->createWithContent('shell.php', '<?php echo 1;')],
+        ]))->assertSessionHasErrors('soportes.0');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud([
+            'soportes' => array_fill(0, 3, UploadedFile::fake()->create('a.pdf', 5, 'application/pdf')),
+        ]))->assertSessionHasErrors('soportes');
+    }
+
     /** Un ejecutable no es un soporte de proyecto. */
     public function test_un_tipo_de_archivo_que_no_toca_se_rechaza(): void
     {

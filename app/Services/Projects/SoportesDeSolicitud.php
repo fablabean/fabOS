@@ -49,6 +49,91 @@ class SoportesDeSolicitud
         'zip', 'rar', '7z',
     ];
 
+    /**
+     * Lo que nunca se acepta, aunque alguien lo agregue en la configuración:
+     * lo que un navegador o un servidor puede ejecutar.
+     */
+    public const PROHIBIDOS = [
+        'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'phps',
+        'html', 'htm', 'xhtml', 'shtml', 'js', 'mjs', 'jsp', 'asp', 'aspx', 'cgi', 'pl', 'py', 'rb',
+        'exe', 'msi', 'bat', 'cmd', 'com', 'sh', 'bash', 'ps1', 'vbs', 'jar', 'app', 'dll', 'scr', 'htaccess',
+    ];
+
+    /** El techo del servidor: PHP recibe hasta 96 MB por archivo. */
+    public const TAMANO_TECHO_MB = 90;
+
+    public const AJUSTE_MAXIMO = 'soportes.maximo';
+
+    public const AJUSTE_TAMANO_MB = 'soportes.tamano_mb';
+
+    public const AJUSTE_TIPOS = 'soportes.tipos';
+
+    /** Cuántos archivos por envío. */
+    public static function maximo(): int
+    {
+        return max(1, min(20, (int) \App\Models\Setting::get(self::AJUSTE_MAXIMO, 10)));
+    }
+
+    /** Cuánto puede pesar cada uno, en kilobytes, como los espera el validador. */
+    public static function tamanoKb(): int
+    {
+        $mb = (int) \App\Models\Setting::get(self::AJUSTE_TAMANO_MB, intdiv(self::TAMANO_MAXIMO, 1024));
+
+        return max(1, min(self::TAMANO_TECHO_MB, $mb)) * 1024;
+    }
+
+    /**
+     * Las extensiones que se aceptan, sin punto y en minúscula.
+     *
+     * @return list<string>
+     */
+    public static function tipos(): array
+    {
+        $guardados = \App\Models\Setting::get(self::AJUSTE_TIPOS);
+        $lista = is_array($guardados) && $guardados !== [] ? $guardados : self::TIPOS;
+
+        return array_values(array_diff(array_unique(array_map(
+            fn ($t) => mb_strtolower(ltrim(trim((string) $t), '.')),
+            $lista,
+        )), self::PROHIBIDOS, ['']));
+    }
+
+    /**
+     * Las reglas de validación de los archivos, en un sitio.
+     *
+     * Por EXTENSIÓN y no por tipo MIME: el tipo se adivina mirando el
+     * contenido, y un STL binario —el que exportan casi todos los programas de
+     * CAD— se ve como «binario genérico», igual que un DXF o un STEP raros.
+     * La regla `mimes` los rechazaba aunque la lista dijera que se aceptaban.
+     * Nada de esto se ejecuta: se guarda en privado y se entrega como descarga.
+     *
+     * @return array<string,list<string>>
+     */
+    public static function reglas(): array
+    {
+        return [
+            'soportes'   => ['nullable', 'array', 'max:' . self::maximo()],
+            'soportes.*' => ['file', 'max:' . self::tamanoKb(), 'extensions:' . implode(',', self::tipos())],
+        ];
+    }
+
+    /** @return array<string,string> */
+    public static function mensajes(): array
+    {
+        return [
+            'soportes.max'          => 'Como mucho ' . self::maximo() . ' archivos.',
+            'soportes.*.extensions' => 'Ese tipo de archivo no lo aceptamos. Se aceptan: ' . implode(', ', self::tipos()) . '.',
+            'soportes.*.max'        => 'Cada archivo puede pesar hasta ' . intdiv(self::tamanoKb(), 1024) . ' MB.',
+            'soportes.*.uploaded'   => 'Un archivo no alcanzó a subir: puede que pese más de lo que el servidor recibe.',
+        ];
+    }
+
+    /** Para el atributo accept del campo: «.jpg,.stl,…». */
+    public static function accept(): string
+    {
+        return '.' . implode(',.', self::tipos());
+    }
+
     private const DIRECTORIO = 'proyectos/soportes';
 
     public function __construct(private OptimizadorDeImagen $optimizador) {}
@@ -60,7 +145,7 @@ class SoportesDeSolicitud
     {
         $guardados = 0;
 
-        foreach (array_slice($archivos, 0, self::MAXIMO) as $archivo) {
+        foreach (array_slice($archivos, 0, self::maximo()) as $archivo) {
             if (! $archivo instanceof UploadedFile || ! $archivo->isValid()) {
                 continue;
             }
@@ -105,7 +190,7 @@ class SoportesDeSolicitud
     {
         $anotados = 0;
 
-        foreach (array_slice(array_values($rutas), 0, self::MAXIMO) as $ruta) {
+        foreach (array_slice(array_values($rutas), 0, self::maximo()) as $ruta) {
             if (! is_string($ruta) || $ruta === '' || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta)) {
                 continue;
             }

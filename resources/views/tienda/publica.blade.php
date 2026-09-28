@@ -356,7 +356,7 @@
             <label>
                 Referencias <span class="opcional">(opcional)</span>
                 <input type="file" name="referencias[]" multiple
-                       accept="image/*,.pdf,.dxf,.svg,.stl,.doc,.docx,.xls,.xlsx">
+                       accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
             </label>
             <p class="help" style="margin-top:-.4rem">
                 Hasta 5 archivos. Una foto de algo parecido ahorra tres correos de ida y vuelta.

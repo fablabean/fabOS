@@ -230,10 +230,12 @@
         <label>
             Archivos de soporte
             <input type="file" name="soportes[]" multiple
-                   accept=".jpg,.jpeg,.png,.webp,.gif,.heic,.pdf,.dxf,.stl,.step,.stp,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+                   accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
             <span class="foot">
-                Hasta {{ \App\Services\Projects\SoportesDeSolicitud::MAXIMO }} archivos,
-                10 MB cada uno. Fotos, PDF, planos, .stl o documentos de oficina.
+                Hasta {{ \App\Services\Projects\SoportesDeSolicitud::maximo() }} archivos,
+                {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno.
+                Fotos, PDF, planos y vectores (DXF, SVG, AI), modelos 3D (STL, STEP, 3MF, OBJ),
+                documentos de oficina o un ZIP con todo.
             </span>
         </label>
 

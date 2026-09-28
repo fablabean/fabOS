@@ -109,12 +109,7 @@ class SolicitudDeProyectoController extends Controller
                 fn ($q) => $q->where('slug', '<>', 'general')
             )],
 
-            'soportes'     => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
-            'soportes.*'   => [
-                'file',
-                'max:' . SoportesDeSolicitud::TAMANO_MAXIMO,
-                'mimes:' . implode(',', SoportesDeSolicitud::TIPOS),
-            ],
+            ...SoportesDeSolicitud::reglas(),
             'dibujo'       => ['nullable', 'string'],
 
             // Trampa para robots: un campo que nadie ve y nadie debería llenar.
@@ -122,9 +117,7 @@ class SolicitudDeProyectoController extends Controller
         ], [
             'resumen.min'          => 'Cuéntanos un poco más: con dos líneas no podemos evaluarlo.',
             'para_cuando.after'    => 'Esa fecha ya pasó.',
-            'soportes.max'         => 'Como mucho ' . SoportesDeSolicitud::MAXIMO . ' archivos.',
-            'soportes.*.mimes'     => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos o documentos de oficina.',
-            'soportes.*.max'       => 'Cada archivo puede pesar hasta ' . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB.',
+            ...SoportesDeSolicitud::mensajes(),
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
         ]);
 
@@ -434,17 +427,10 @@ class SolicitudDeProyectoController extends Controller
         $datos = $request->validate([
             // Con archivos, el texto puede faltar: mandar el plano ya dice algo.
             'body'       => [Rule::requiredIf(! $request->hasFile('soportes')), 'nullable', 'string', 'min:3', 'max:2000'],
-            'soportes'   => ['nullable', 'array', 'max:' . SoportesDeSolicitud::MAXIMO],
-            'soportes.*' => [
-                'file',
-                'max:' . SoportesDeSolicitud::TAMANO_MAXIMO,
-                'mimes:' . implode(',', SoportesDeSolicitud::TIPOS),
-            ],
+            ...SoportesDeSolicitud::reglas(),
         ], [
             'body.required'    => 'Escribe algo o adjunta un archivo.',
-            'soportes.max'     => 'Como mucho ' . SoportesDeSolicitud::MAXIMO . ' archivos por respuesta.',
-            'soportes.*.mimes' => 'Ese tipo de archivo no lo aceptamos. Imágenes, PDF, planos, modelos o comprimidos.',
-            'soportes.*.max'   => 'Cada archivo puede pesar hasta ' . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB.',
+            ...SoportesDeSolicitud::mensajes(),
         ]);
 
         /*
@@ -455,7 +441,7 @@ class SolicitudDeProyectoController extends Controller
          */
         $archivos = collect($request->file('soportes', []))
             ->filter(fn ($a) => $a instanceof \Illuminate\Http\UploadedFile && $a->isValid())
-            ->take(SoportesDeSolicitud::MAXIMO);
+            ->take(SoportesDeSolicitud::maximo());
 
         $texto = trim((string) ($datos['body'] ?? ''));
 

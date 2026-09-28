@@ -54,15 +54,15 @@ class CommentsRelationManager extends RelationManager
             ArchivoPrivado::previsualizar(FileUpload::make('adjuntos'))
                 ->label('Imágenes o archivos')
                 ->multiple()
-                ->maxFiles(SoportesDeSolicitud::MAXIMO)
-                ->maxSize(SoportesDeSolicitud::TAMANO_MAXIMO)
+                ->maxFiles(SoportesDeSolicitud::maximo())
+                ->maxSize(SoportesDeSolicitud::tamanoKb())
                 ->disk('local')
                 ->directory('proyectos/soportes')
                 ->visibility('private')
                 ->storeFileNamesIn('nombres')
                 ->columnSpanFull()
-                ->helperText('Hasta ' . SoportesDeSolicitud::MAXIMO . ' archivos de '
-                    . intdiv(SoportesDeSolicitud::TAMANO_MAXIMO, 1024) . ' MB. Se ven junto a la respuesta en la propuesta, '
+                ->helperText('Hasta ' . SoportesDeSolicitud::maximo() . ' archivos de '
+                    . intdiv(SoportesDeSolicitud::tamanoKb(), 1024) . ' MB. Se ven junto a la respuesta en la propuesta, '
                     . 'y las imágenes van dentro del correo cuando avises que hay novedades.'),
         ]);
     }

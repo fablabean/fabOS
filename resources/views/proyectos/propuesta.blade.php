@@ -363,10 +363,10 @@
                           placeholder="Tu respuesta. Puede ir sola o con archivos.">{{ old('body') }}</textarea>
 
                 <label style="margin-top:.6rem">
-                    Archivos <small style="opacity:.6">(opcional, hasta {{ \App\Services\Projects\SoportesDeSolicitud::MAXIMO }})</small>
+                    Archivos <small style="opacity:.6">(opcional, hasta {{ \App\Services\Projects\SoportesDeSolicitud::maximo() }})</small>
                     <input type="file" name="soportes[]" multiple
-                           accept=".{{ implode(',.', \App\Services\Projects\SoportesDeSolicitud::TIPOS) }}">
-                    <span class="foot">Fotos, planos, PDF, modelos STL o un ZIP con todo. Hasta {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::TAMANO_MAXIMO, 1024) }} MB cada uno.</span>
+                           accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
+                    <span class="foot">Fotos, planos, PDF, modelos STL o un ZIP con todo. Hasta {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno.</span>
                 </label>
 
                 <button type="submit" style="margin-top:.8rem">Enviar respuesta</button>
