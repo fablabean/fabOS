@@ -510,6 +510,14 @@ final class Settings
                 $disco->delete($antes);
             }
         }
+
+        // El /favicon.ico: del icono de la pestaña, o de la compacta, o de la
+        // larga. Sin marca subida se borra, y nginx vuelve al del sistema.
+        $origen = self::favicon() ?? self::logo() ?? self::logoLargo();
+
+        if (! $origen || ! $generador->favicon($origen)) {
+            $disco->delete(\App\Services\Media\ImagenDeMarca::FAVICON);
+        }
     }
 
     /** Las dos versiones para fondo oscuro. Nulas si no hay. */

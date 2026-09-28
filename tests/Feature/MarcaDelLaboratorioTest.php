@@ -182,6 +182,17 @@ class MarcaDelLaboratorioTest extends TestCase
             ->assertSee('<meta property="og:image" content="' . Storage::disk('public')->url($png) . '">', false)
             // Y el icono de iOS ya no es el del sistema.
             ->assertDontSee('img/apple-touch-icon.png', false);
+
+        // El /favicon.ico sale de la marca: un ICO de verdad, con sus dos PNG.
+        $ico = Storage::disk('public')->get(\App\Services\Media\ImagenDeMarca::FAVICON);
+        $this->assertSame(pack('vvv', 0, 1, 2), substr($ico, 0, 6));
+        $this->assertStringContainsString("\x89PNG", $ico);
+
+        // Y el panel —su pantalla de ingreso, a donde llega un enlace del
+        // backoffice— también lleva la vista previa.
+        $this->followingRedirects()->get('/admin/projects')
+            ->assertOk()
+            ->assertSee('<meta property="og:image" content="' . Storage::disk('public')->url($png) . '">', false);
     }
 
     /** Sin nada subido, los iconos de siempre: no se queda sin icono. */

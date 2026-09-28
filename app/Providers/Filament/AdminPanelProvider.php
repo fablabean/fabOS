@@ -126,6 +126,13 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => ($css = \App\Support\MenuDelPanel::estilos()) ? '<style>' . $css . '</style>' : '',
             )
+            // La vista previa al compartir un enlace del panel, también. Un
+            // enlace del backoffice pegado en WhatsApp llega a la pantalla de
+            // ingreso, que no tenía nada: WhatsApp acababa en el favicon viejo.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => view('partials.compartir')->render(),
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([
