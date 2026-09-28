@@ -55,6 +55,22 @@ class ListAssets extends ListRecords
         return $pestanas;
     }
 
+    /**
+     * Ordenar por una columna quita la agrupación por área.
+     *
+     * Agrupada, la tabla ordena dentro de cada área: pedir «por estado» o
+     * «por número» daba once listas ordenadas por separado, y no la que se
+     * pidió. Al quitar el orden vuelven las áreas.
+     */
+    public function getTableGrouping(): ?\Filament\Tables\Grouping\Group
+    {
+        if (filled($this->getTableSortColumn())) {
+            return null;
+        }
+
+        return parent::getTableGrouping();
+    }
+
     protected function getHeaderActions(): array
     {
         return [

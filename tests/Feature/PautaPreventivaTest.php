@@ -146,6 +146,21 @@ class PautaPreventivaTest extends TestCase
             ->assertCanNotSeeTableRecords([$laser]);
     }
 
+    /** Ordenar por un encabezado quita la agrupación por área; sin orden, vuelve. */
+    public function test_ordenar_por_una_columna_quita_la_agrupacion(): void
+    {
+        $this->activo('Láser');
+
+        $lista = Livewire::test(ListAssets::class);
+        $this->assertNotNull($lista->instance()->getTableGrouping(), 'de entrada, agrupada por área');
+
+        $lista->call('sortTable', 'id');
+        $this->assertNull($lista->instance()->getTableGrouping());
+
+        $lista->set('tableSort', null);
+        $this->assertNotNull($lista->instance()->getTableGrouping());
+    }
+
     public function test_la_opcion_abierta_del_menu_va_en_negro_o_en_el_color_de_su_grupo(): void
     {
         $css = MenuDelPanel::estilos();
