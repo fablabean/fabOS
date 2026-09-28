@@ -196,4 +196,46 @@ class BackofficePreinscripcionTest extends TestCase
             ->assertSee('uno se preinscribe')
             ->assertSee('no ocupa cupo');
     }
+
+    public function test_lo_que_se_carga_en_el_panel_sale_en_la_pagina_de_fab_academy(): void
+    {
+        $this->admin();
+        $this->cohorte();
+
+        Livewire::test(\App\Filament\Pages\PaginaFabAcademy::class)
+            ->set('datos.duracion', '6 meses')
+            ->set('datos.equipo', [['nombre' => 'Instructora de prueba', 'rol' => 'Instructora local', 'especialidad' => 'Electrónica', 'experiencia' => '', 'foto' => null]])
+            ->set('datos.faqs', [['pregunta' => '¿Hay clases los sábados?', 'respuesta' => 'Algunas.']])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->get('/fab-academy')
+            ->assertOk()
+            ->assertSee('6 meses')
+            ->assertSee('Instructora de prueba')
+            ->assertSee('¿Hay clases los sábados?')
+            // Las preguntas de fábrica se quitaron: la lista guardada manda.
+            ->assertDontSee('¿Debo saber inglés?')
+            // Lo que no se tocó sigue con el texto de fábrica.
+            ->assertSee('Así se vive una semana')
+            ->assertSee('no reemplaza el registro oficial');
+    }
+
+    public function test_sin_equipo_cargado_el_bloque_no_sale(): void
+    {
+        $this->cohorte();
+
+        $this->get('/fab-academy')->assertOk()->assertDontSee('Te acompañan en el proceso');
+    }
+
+    public function test_alcanzado_el_minimo_lo_dice_y_sigue_el_formulario(): void
+    {
+        $cohorte = $this->cohorte(datos: ['minimum_to_open' => 1]);
+        $this->preinscrito($cohorte);
+
+        $this->get('/fab-academy')
+            ->assertOk()
+            ->assertSee('Ya alcanzamos el mínimo para abrir la cohorte.')
+            ->assertSee('Preinscríbete');
+    }
 }

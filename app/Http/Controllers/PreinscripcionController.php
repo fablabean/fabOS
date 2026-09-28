@@ -51,13 +51,18 @@ class PreinscripcionController extends Controller
 
         $cohorte = $course->cohortePorAbrir();
 
-        return view('formacion.preinscripcion', [
+        $esFabAcademy = $course->level === 'tera';
+
+        // Fab Academy tiene página propia, con lo que se carga en
+        // Formación → Página Fab Academy; el resto usa la de siempre.
+        return view($esFabAcademy ? 'formacion.fab-academy' : 'formacion.preinscripcion', [
+            'pagina'   => $esFabAcademy ? \App\Support\PaginaFabAcademy::contenido() : null,
             'curso'    => $course->load('riskFamilies'),
             'cohorte'  => $cohorte,
             // La que ya abrió, si la hay: a quien llega tarde se le manda a
             // inscribirse de verdad en vez de decirle que no hay nada.
             'abierta'  => $course->edicionesAbiertas()->first(),
-            'esFabAcademy' => $course->level === 'tera',
+            'esFabAcademy' => $esFabAcademy,
             'yaEstoy'  => $cohorte && auth()->check()
                 ? $cohorte->preenrollments()->vivos()
                     ->where(fn ($q) => $q->where('user_id', auth()->id())
