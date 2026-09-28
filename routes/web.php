@@ -171,6 +171,9 @@ Route::post('/tienda/pagar', [TiendaPublicaController::class, 'pagar'])
 // campus entero con un 429 hasta la hora siguiente. Contra el spam ya esta la
 // trampa para robots del formulario; esto solo tiene que frenar a un script.
 Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'create'])->name('proyectos.solicitar');
+// La confirmación, en su propia página: arriba del formulario, en el teléfono
+// no se veía y se volvía a enviar.
+Route::get('/proyectos/solicitud-recibida', [SolicitudDeProyectoController::class, 'recibida'])->name('proyectos.recibida');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
     ->middleware(['throttle:40,60', 'captcha:correo'])
     ->name('proyectos.solicitar.store');

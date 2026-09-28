@@ -6,30 +6,6 @@
 
     <h1 style="margin-top:.6rem">Proponer un proyecto</h1>
 
-    @if (session('recibido'))
-        <div class="panel" style="border-left:4px solid var(--ok)">
-            <h2 style="margin-top:0">Quedó anotado</h2>
-            <p>
-                Tu solicitud es la <strong>{{ session('recibido') }}</strong>. Te mandamos
-                un correo con ese código.
-            </p>
-            @if (session('aviso'))
-                {{-- Un área que pidió antes de lo que tarda un traslado
-                     presupuestal: se le dice aquí, donde todavía puede
-                     ajustar la fecha o confirmar que no mueve presupuesto. --}}
-                <p style="border-left:3px solid var(--warn);padding-left:.7rem">
-                    <strong>Ojo con la fecha.</strong> {{ session('aviso') }}
-                </p>
-            @endif
-            <p class="help" style="margin-bottom:0">
-                Ahora alguien del laboratorio la va a mirar: si cabe, con qué máquinas y
-                cuánto tomaría. Cuando tengamos una propuesta te llega por correo, con un
-                enlace donde la ves completa. También puedes entrar a
-                <a href="{{ route('home') }}">tu cuenta</a> —creada con este mismo
-                correo— para seguirla.
-            </p>
-        </div>
-    @else
         <p class="help">
             Cuéntanos qué necesitas. No hace falta que sepas cómo se hace ni con qué
             máquina: para eso estamos.
@@ -40,7 +16,6 @@
                 puedas seguir el proyecto desde aquí.
             @endif
         </p>
-    @endif
 
     @if ($errors->any())
         <div class="msg error">
@@ -357,7 +332,9 @@
 
         <x-captcha accion="proyectos.solicitar.store"/>
 
-        <button type="submit">Enviar la solicitud</button>
+        {{-- Se apaga al pulsarlo: con la red lenta del teléfono, un segundo
+             toque mandaba la misma solicitud dos veces. --}}
+        <button type="submit" id="enviar-solicitud">Enviar la solicitud</button>
 
         <p class="foot" style="margin-top:.8rem">
             Enviarla no compromete a nada, ni a ti ni al laboratorio. Es el punto de
@@ -536,6 +513,10 @@
 
             formulario.addEventListener('submit', function () {
                 campo.value = hayDibujo ? lienzo.toDataURL('image/png') : '';
+
+                const boton = document.getElementById('enviar-solicitud');
+                boton.disabled = true;
+                boton.textContent = 'Enviando…';
             });
         })();
     </script>

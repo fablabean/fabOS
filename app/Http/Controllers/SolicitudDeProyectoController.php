@@ -187,6 +187,27 @@ class SolicitudDeProyectoController extends Controller
             $datos['telefono'] = ($datos['telefono'] ?? null) ?: $identificado->phone;
         }
 
+        /*
+         * El mismo proyecto dos veces seguidas no son dos proyectos.
+         *
+         * En el teléfono el «quedó anotado» salía arriba del formulario, fuera
+         * de la vista, y la gente volvía a pulsar Enviar: llegaban tres copias
+         * de la misma idea. Ahora hay página de confirmación y el botón se
+         * apaga al pulsarlo; esto cubre lo que aun así se cuele —la red lenta,
+         * el botón de volver—: mismo correo y mismo nombre en media hora.
+         */
+        $repetido = \App\Models\Project::query()
+            ->where('source', 'formulario')
+            ->where('created_at', '>=', now()->subMinutes(30))
+            ->whereRaw('lower(name) = ?', [mb_strtolower(trim($datos['titulo']))])
+            ->whereHas('requestedBy', fn ($q) => $q->whereRaw('lower(email) = ?', [mb_strtolower(trim((string) $datos['correo']))]))
+            ->latest('id')
+            ->first();
+
+        if ($repetido) {
+            return $this->aLaConfirmacion($request, $repetido, null, repetido: true);
+        }
+
         $proyecto = $this->proyectos->solicitarDesdeLaWeb($datos);
 
         // El aviso queda en la ficha: quien evalue el encargo tiene que ver
@@ -212,10 +233,42 @@ class SolicitudDeProyectoController extends Controller
             'codigo'   => $proyecto->code,
         ], $proyecto);
 
-        return redirect()
-            ->route('proyectos.solicitar')
-            ->with('recibido', $proyecto->code)
-            ->with('aviso', $avisoPresupuesto);
+        return $this->aLaConfirmacion($request, $proyecto, $avisoPresupuesto);
+    }
+
+    /**
+     * A la página de confirmación, con lo que tiene que decir guardado en la
+     * sesión: si la recarga, sigue diciendo lo mismo, y no hay nada que
+     * reenviar.
+     */
+    private function aLaConfirmacion(Request $request, Project $proyecto, ?string $aviso, bool $repetido = false)
+    {
+        $request->session()->put('solicitud_recibida', [
+            'codigo'   => $proyecto->code,
+            'nombre'   => $proyecto->name,
+            'correo'   => $proyecto->requestedBy?->email,
+            'aviso'    => $aviso,
+            'repetido' => $repetido,
+        ]);
+
+        return redirect()->route('proyectos.recibida');
+    }
+
+    /**
+     * «Quedó anotado», en su propia página.
+     *
+     * Antes salía arriba del formulario, que en el teléfono queda fuera de la
+     * vista: parecía que no había pasado nada y se volvía a enviar.
+     */
+    public function recibida(Request $request)
+    {
+        $recibida = $request->session()->get('solicitud_recibida');
+
+        if (! $recibida) {
+            return redirect()->route('proyectos.solicitar');
+        }
+
+        return view('proyectos.recibida', ['recibida' => $recibida]);
     }
 
     /**

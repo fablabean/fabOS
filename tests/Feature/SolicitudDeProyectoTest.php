@@ -90,7 +90,7 @@ class SolicitudDeProyectoTest extends TestCase
     public function test_una_solicitud_crea_el_proyecto_en_idea(): void
     {
         $this->post(route('proyectos.solicitar.store'), $this->solicitud())
-            ->assertRedirect(route('proyectos.solicitar'));
+            ->assertRedirect(route('proyectos.recibida'));
 
         $p = Project::where('name', 'Señalética para el edificio de Bienestar')->firstOrFail();
 
@@ -159,6 +159,48 @@ class SolicitudDeProyectoTest extends TestCase
             'key'    => 'proyecto.recibido',
             'status' => 'enviado',
         ]);
+    }
+
+    // ------------------------------------------------------- la confirmación
+
+    /**
+     * Al enviar se llega a una página de confirmación, no al formulario con
+     * un aviso arriba —que en el teléfono no se veía y se volvía a enviar—.
+     */
+    public function test_al_enviar_se_llega_a_la_confirmacion(): void
+    {
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud())
+            ->assertRedirect(route('proyectos.recibida'));
+
+        $p = Project::first();
+
+        $this->get(route('proyectos.recibida'))
+            ->assertOk()
+            ->assertSee('Tu solicitud llegó')
+            ->assertSee($p->code)
+            ->assertSee('Mi cuenta')
+            ->assertDontSee('id="solicitud"', false);
+
+        // Recargarla no reenvía nada: sigue diciendo lo mismo.
+        $this->get(route('proyectos.recibida'))->assertOk()->assertSee($p->code);
+        $this->assertSame(1, Project::count());
+    }
+
+    /** El mismo proyecto enviado dos veces seguidas se anota una sola vez. */
+    public function test_el_mismo_proyecto_dos_veces_seguidas_se_anota_una(): void
+    {
+        $datos = $this->solicitud();
+
+        $this->post(route('proyectos.solicitar.store'), $datos)->assertRedirect(route('proyectos.recibida'));
+        $this->post(route('proyectos.solicitar.store'), $datos)->assertRedirect(route('proyectos.recibida'));
+
+        $this->assertSame(1, Project::count());
+        $this->get(route('proyectos.recibida'))->assertSee('ya nos había llegado');
+    }
+
+    public function test_sin_solicitud_la_confirmacion_lleva_al_formulario(): void
+    {
+        $this->get(route('proyectos.recibida'))->assertRedirect(route('proyectos.solicitar'));
     }
 
     // -------------------------------------------------------------- soportes
@@ -447,7 +489,8 @@ class SolicitudDeProyectoTest extends TestCase
             'para_cuando' => now()->addDays(5)->toDateString(),
         ]))
             ->assertRedirect()
-            ->assertSessionHas('aviso', fn (?string $m) => $m && str_contains($m, 'presupuesto') && str_contains($m, '15 días'));
+            ->assertSessionHas('solicitud_recibida', fn (array $r) => $r['aviso']
+                && str_contains($r['aviso'], 'presupuesto') && str_contains($r['aviso'], '15 días'));
 
         $p = Project::first();
 
@@ -455,7 +498,7 @@ class SolicitudDeProyectoTest extends TestCase
         $this->assertStringContainsString('traslado presupuestal', (string) $p->notes);
 
         // Y la pantalla lo enseña junto al «recibido».
-        $this->get(route('proyectos.solicitar'))->assertSee('tiempos de la Universidad');
+        $this->get(route('proyectos.recibida'))->assertSee('Ojo con la fecha')->assertSee('tiempos de la Universidad');
 
         // Con tiempo de sobra, no hay aviso.
         $this->post(route('proyectos.solicitar.store'), $this->solicitud([
@@ -464,7 +507,7 @@ class SolicitudDeProyectoTest extends TestCase
             'para_cuando' => now()->addDays(20)->toDateString(),
         ]))
             ->assertRedirect()
-            ->assertSessionMissing('aviso');
+            ->assertSessionHas('solicitud_recibida', fn (array $r) => $r['aviso'] === null);
     }
 
     /** Un estudiante pide con tres dias; con menos, no. */
