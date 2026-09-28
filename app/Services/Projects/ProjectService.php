@@ -302,7 +302,7 @@ class ProjectService
                 ]);
             }
 
-            // A quién le toca, por carga viva y por área (§11). Antes nacía sin
+            // A quién le toca, uno y uno y por área (§11). Antes nacía sin
             // nadie y se asignaba a mano después: de ciento tres proyectos,
             // cincuenta y dos acabaron en la misma persona.
             $area = $datos['area_id'] ?? null;

@@ -44,73 +44,66 @@ class RepartoDeProyectosTest extends TestCase
         return app(RepartoDeProyectos::class);
     }
 
-    // ------------------------------------------------------------ la carga
+    /** Un proyecto que llegó por el formulario, a nombre de alguien. */
+    private function recibido(User $quien, string $hace): Project
+    {
+        $p = $this->proyectoDe($quien, ['source' => 'formulario']);
+        $p->forceFill(['created_at' => now()->sub($hace)])->save();
 
-    public function test_le_toca_a_quien_menos_tiene_encima(): void
+        return $p;
+    }
+
+    // ------------------------------------------------------------ la rueda
+
+    /** Uno y uno: le toca a quien lleva más tiempo sin recibir. */
+    public function test_alterna_uno_y_uno(): void
     {
         $michael = $this->delEquipo('Michael');
         $jhonatan = $this->delEquipo('Jhonatan');
 
-        $this->proyectoDe($michael);
-        $this->proyectoDe($michael);
-        $this->proyectoDe($jhonatan);
+        $vistos = [];
+        for ($i = 0; $i < 6; $i++) {
+            $quien = $this->reparto()->aQuienLeToca();
+            $vistos[] = $quien->name;
+            $this->recibido($quien, (10 - $i) . ' minutes');
+        }
 
-        $this->assertTrue($this->reparto()->aQuienLeToca()->is($jhonatan));
+        $this->assertSame(['Michael', 'Jhonatan', 'Michael', 'Jhonatan', 'Michael', 'Jhonatan'], $vistos);
     }
 
     /**
-     * Lo cerrado no pesa.
-     *
-     * Es la diferencia entre repartir por carga y repartir por historial. Si
-     * contara todo, quien lleva un año aquí no volvería a recibir nada hasta
-     * que el recién llegado le emparejara la cuenta —y lo que pesa no es lo
-     * que hiciste, es lo que tienes encima hoy—.
+     * Lo abierto no cuenta: dejar proyectos sin cerrar no saca a nadie del
+     * turno, y cerrar rápido no le cae en rachas a nadie.
      */
-    public function test_al_cerrar_un_proyecto_se_vuelve_a_la_rueda(): void
+    public function test_dejar_proyectos_abiertos_no_cambia_el_turno(): void
     {
         $michael = $this->delEquipo('Michael');
         $jhonatan = $this->delEquipo('Jhonatan');
 
-        // Michael cargó con veinte, pero ya los entregó todos.
-        for ($i = 0; $i < 20; $i++) {
-            $this->proyectoDe($michael, ['stage' => 'cierre', 'status' => 'cerrado']);
+        // Michael tiene diez abiertos; Jhonatan recibió el último.
+        for ($i = 0; $i < 10; $i++) {
+            $this->recibido($michael, '2 days');
         }
-
-        $this->proyectoDe($jhonatan);
+        $this->recibido($jhonatan, '1 hour');
 
         $this->assertTrue($this->reparto()->aQuienLeToca()->is($michael));
     }
 
-    /** Un proyecto en pausa sigue siendo suyo: está parado, no muerto. */
-    public function test_lo_pausado_sigue_contando(): void
+    /** Un proyecto creado a mano en el panel no le quita el turno a nadie. */
+    public function test_lo_creado_a_mano_no_cuenta_en_la_rueda(): void
     {
         $michael = $this->delEquipo('Michael');
         $jhonatan = $this->delEquipo('Jhonatan');
 
-        $this->proyectoDe($michael, ['status' => 'pausado']);
+        $this->recibido($jhonatan, '2 days');
+        $this->recibido($michael, '1 day');
+        // Jhonatan crea uno suyo a mano: sigue siendo su turno.
+        $this->proyectoDe($jhonatan, ['source' => 'whatsapp']);
 
         $this->assertTrue($this->reparto()->aQuienLeToca()->is($jhonatan));
     }
 
-    /**
-     * Empatados, le toca al que lleva más tiempo sin recibir.
-     *
-     * Sin desempate, dos personas con la misma carga se resuelven siempre por
-     * el orden de la consulta —o sea, siempre la misma— y con proyectos que
-     * entran de dos en dos eso es otra vez todo para uno.
-     */
-    public function test_el_empate_lo_rompe_quien_lleva_mas_sin_recibir(): void
-    {
-        $michael = $this->delEquipo('Michael');
-        $jhonatan = $this->delEquipo('Jhonatan');
-
-        $this->proyectoDe($jhonatan)->forceFill(['created_at' => now()->subMonth()])->save();
-        $this->proyectoDe($michael)->forceFill(['created_at' => now()->subDay()])->save();
-
-        $this->assertTrue($this->reparto()->aQuienLeToca()->is($jhonatan));
-    }
-
-    // ------------------------------------------------------------- el área
+        // ------------------------------------------------------------- el área
 
     /**
      * Quien lleva VR recibe los de VR, y sólo los de VR.
@@ -139,8 +132,8 @@ class RepartoDeProyectosTest extends TestCase
         $this->assertTrue($this->reparto()->aQuienLeToca()->is($michael));
     }
 
-    /** Entre los del área, otra vez por carga: dos llevan VR y se reparten. */
-    public function test_entre_los_del_area_manda_la_carga(): void
+    /** Entre los del área, también uno y uno: dos llevan VR y se turnan. */
+    public function test_entre_los_del_area_tambien_se_turnan(): void
     {
         $vr = Area::create(['slug' => 'vr', 'name' => 'VR']);
 
@@ -149,7 +142,7 @@ class RepartoDeProyectosTest extends TestCase
         $juanPablo->responsibleAreas()->attach($vr->id);
         $camilo->responsibleAreas()->attach($vr->id);
 
-        $this->proyectoDe($juanPablo);
+        $this->recibido($juanPablo, '1 hour');
 
         $this->assertTrue($this->reparto()->aQuienLeToca($vr->id)->is($camilo));
     }
@@ -203,14 +196,14 @@ class RepartoDeProyectosTest extends TestCase
         $this->assertSame($vr->id, $proyecto->area_id);
     }
 
-    /** Y sin área, por carga, que es el caso corriente. */
-    public function test_sin_area_reparte_por_carga(): void
+    /** Y sin área, por turno, que es el caso corriente. */
+    public function test_sin_area_reparte_por_turno(): void
     {
         UserCategory::create(['slug' => 'invitado', 'name' => 'Invitado']);
 
         $michael = $this->delEquipo('Michael');
         $jhonatan = $this->delEquipo('Jhonatan');
-        $this->proyectoDe($michael);
+        $this->recibido($michael, '1 hour');
 
         $proyecto = app(ProjectService::class)->solicitarDesdeLaWeb([
             'nombre'  => 'Quien pide',

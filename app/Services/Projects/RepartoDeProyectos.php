@@ -16,12 +16,16 @@ use Illuminate\Database\Eloquent\Collection;
  * porque nadie quiera repartir, sino porque esa decisión, tomada una por una,
  * no tiene memoria.
  *
- * Reparte por **carga viva**: le toca a quien menos proyectos abiertos tenga
- * ahora mismo. No mira el histórico a propósito. Contar los cincuenta y dos de
- * quien lleva un año aquí mandaría todo lo nuevo al recién llegado hasta
- * emparejar la cuenta, que es justo del revés de lo que se busca: lo que pesa
- * no es lo que hiciste, es lo que tienes encima hoy. Al cerrar un proyecto se
- * vuelve a la rueda solo, sin que nadie toque nada.
+ * Reparte **uno y uno**: le toca a quien lleva más tiempo sin recibir uno.
+ * Con dos personas en el turno es alternar, sin más.
+ *
+ * Al principio repartía por carga viva —a quien menos proyectos abiertos
+ * tuviera—, y en septiembre de 2026 se cambió: con esa regla, quien deja
+ * proyectos abiertos sin cerrar deja de recibir, y quien cierra rápido recibe
+ * rachas de cinco seguidos. El reparto no puede depender de algo que cada uno
+ * controla. Solo cuentan los que llegaron por el formulario, que son los que
+ * reparte esta rueda: un proyecto que alguien crea a mano no le quita el turno
+ * a nadie.
  *
  * Y si el proyecto trae área con responsables, se reparte entre ellos: el de
  * VR va a quien lleva VR. El turno general es para lo que no tiene área o para
@@ -44,14 +48,25 @@ class RepartoDeProyectos
      */
     public function aQuienLeToca(?int $areaId = null): ?User
     {
+        // Una solicitud a la vez. Cinco que entran en el mismo segundo —el
+        // mismo proyecto enviado varias veces— leían la misma rueda y se
+        // repartían sin orden. El candado vive lo que la transacción que crea
+        // el proyecto: el siguiente ya ve al anterior.
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'pgsql') {
+            \Illuminate\Support\Facades\DB::select('select pg_advisory_xact_lock(?)', [self::CANDADO]);
+        }
+
         $candidatos = $this->losDelArea($areaId);
 
         if ($candidatos->isEmpty()) {
             $candidatos = $this->elTurnoGeneral();
         }
 
-        return $candidatos->isEmpty() ? null : $this->elMenosCargado($candidatos);
+        return $candidatos->isEmpty() ? null : $this->elSiguienteEnLaRueda($candidatos);
     }
+
+    /** Un número cualquiera, fijo: identifica el candado del reparto. */
+    private const CANDADO = 110_2026;
 
     /**
      * Quienes responden por el área, estén o no en el turno general.
@@ -90,26 +105,20 @@ class RepartoDeProyectos
     }
 
     /**
-     * El que menos tiene encima. Empate: el que lleva más tiempo sin recibir.
-     *
-     * El desempate importa más de lo que parece. Sin él, dos personas con la
-     * misma carga se resuelven siempre por el orden de la consulta —es decir,
-     * siempre la misma— y con proyectos que entran de dos en dos eso es otra
-     * vez todo para uno.
+     * Quien lleva más tiempo sin recibir. Quien nunca ha recibido va primero;
+     * entre dos que nunca han recibido, el que entró antes al sistema.
      *
      * @param  list<User>|Collection<int,User>  $candidatos
      */
-    private function elMenosCargado(iterable $candidatos): ?User
+    private function elSiguienteEnLaRueda(iterable $candidatos): ?User
     {
-        $cargas = $this->cargaViva();
         $ultimos = $this->ultimoQueRecibio();
         $elegido = null;
         $mejor = null;
 
         foreach ($candidatos as $quien) {
-            // Quien nunca ha recibido va primero en el desempate: cadena vacía
-            // ordena antes que cualquier fecha.
-            $marca = [$cargas[$quien->id] ?? 0, $ultimos[$quien->id] ?? ''];
+            // Cadena vacía ordena antes que cualquier fecha.
+            $marca = [$ultimos[$quien->id] ?? '', $quien->id];
 
             if ($mejor === null || $marca < $mejor) {
                 $mejor = $marca;
@@ -120,23 +129,13 @@ class RepartoDeProyectos
         return $elegido;
     }
 
-    /** Cuántos proyectos abiertos tiene cada uno. @return array<int,int> */
-    private function cargaViva(): array
-    {
-        return Project::query()
-            ->vivos()
-            ->whereNotNull('lead_id')
-            ->selectRaw('lead_id, count(*) as cuantos')
-            ->groupBy('lead_id')
-            ->pluck('cuantos', 'lead_id')
-            ->all();
-    }
-
     /** Cuándo recibió cada uno el último, abierto o cerrado. @return array<int,string> */
     private function ultimoQueRecibio(): array
     {
         return Project::query()
             ->whereNotNull('lead_id')
+            // Solo lo que reparte la rueda: lo que llegó por el formulario.
+            ->where('source', 'formulario')
             ->selectRaw('lead_id, max(created_at) as ultimo')
             ->groupBy('lead_id')
             ->pluck('ultimo', 'lead_id')
