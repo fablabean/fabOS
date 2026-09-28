@@ -250,6 +250,12 @@ return [
             'distintivo' => env('FAB_ACADEMY_DISTINTIVO', 'El único nodo de Fab Academy en Colombia'),
             'nodos_url'  => env('FAB_ACADEMY_NODOS_URL', 'https://fabacademy.org/nodes/list.html#america'),
         ],
+
+        // Lo que se acepta al inscribirse en un curso, taller o evento, cuando
+        // la actividad no escribe el suyo.
+        'condiciones_de_inscripcion' => 'Me comprometo a asistir. Si no puedo, cancelo mi inscripción con al menos 48 horas de anticipación para liberar el cupo a quien está en lista de espera. '
+            . 'Si el laboratorio cancela o reprograma la actividad, me avisan a este correo. '
+            . 'Autorizo el tratamiento de mis datos personales para gestionar esta inscripción (Ley 1581 de 2012).',
     ],
 
     /**

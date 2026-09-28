@@ -526,12 +526,12 @@ class PreinscripcionTest extends TestCase
 
     public function test_los_botones_del_catalogo_van_vestidos(): void
     {
-        $this->cohorte($this->curso(), ['status' => 'abierta']);
+        $cohorte = $this->cohorte($this->curso(), ['status' => 'abierta']);
 
         // El sitio solo viste la clase .btn: un <button> pelado, o metido
         // dentro de un <a>, salía con la cara por defecto del navegador.
         $this->get(route('formacion'))
-            ->assertSee('<a class="btn" href="' . route('login') . '">Entrar para inscribirme</a>', false)
+            ->assertSee('<a class="btn" href="' . route('actividad', $cohorte->code) . '">', false)
             ->assertDontSee('<button type="button">', false);
     }
 

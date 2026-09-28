@@ -39,12 +39,56 @@ class CourseEditionForm
 
                         Select::make('space_id')->label('Dónde')->relationship('space', 'name'),
 
+                        TextInput::make('title')
+                            ->label('Nombre del grupo')
+                            ->maxLength(120)
+                            ->placeholder('Grupo sábados')
+                            ->helperText('Solo si hay varios grupos de la misma actividad. Sale junto al nombre del curso.'),
+
+                        TextInput::make('location')
+                            ->label('Lugar')
+                            ->maxLength(200)
+                            ->placeholder('Auditorio, sede Norte')
+                            ->helperText('Si no es un espacio del laboratorio. Si lo es, basta con «Dónde».'),
+
                         DatePicker::make('starts_on')->label('Empieza')->required(),
                         DatePicker::make('ends_on')->label('Termina'),
 
+                        \Filament\Forms\Components\TimePicker::make('start_time')->label('Hora de inicio')->seconds(false),
+                        \Filament\Forms\Components\TimePicker::make('end_time')->label('Hora de fin')->seconds(false),
+
                         TextInput::make('schedule_note')
-                            ->label('Horario')
+                            ->label('Horario, en palabras')
                             ->placeholder('Martes y jueves, 14:00 a 17:00')
+                            ->helperText('Para cuando no es un solo bloque. Si pones las horas de arriba, se usan esas.')
+                            ->columnSpanFull(),
+
+                        Select::make('audience')
+                            ->label('Dirigida a')
+                            ->options(CourseEdition::PUBLICOS)
+                            ->default('ambos')
+                            ->required()
+                            ->helperText('Decide qué tipos de participante ofrece el formulario. La comunidad EAN se inscribe con su correo institucional.'),
+
+                        \Filament\Forms\Components\Toggle::make('is_paid')
+                            ->label('Es paga')
+                            ->live()
+                            ->inline(false),
+
+                        TextInput::make('price')
+                            ->label('Valor')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix(config('fabos.money.symbol'))
+                            ->helperText('En pesos, sin puntos.')
+                            ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get) => (bool) $get('is_paid')),
+
+                        Textarea::make('payment_info')
+                            ->label('Cómo se paga')
+                            ->rows(2)
+                            ->placeholder('Al inscribirte te enviamos el QR de pago. El cupo se confirma con el comprobante.')
+                            ->helperText('Sale en la página y en el correo de confirmación.')
+                            ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get) => (bool) $get('is_paid'))
                             ->columnSpanFull(),
 
                         TextInput::make('capacity')
@@ -59,7 +103,7 @@ class CourseEditionForm
                             ->options(CourseEdition::ESTADOS)
                             ->default('planeada')
                             ->required()
-                            ->helperText('Solo una edición «abierta» admite inscripciones.'),
+                            ->helperText('Para publicar, cerrar inscripciones, reprogramar o cancelar usa los botones de arriba: dejan historial y avisan a los inscritos.'),
 
                         Textarea::make('notes')->label('Notas')->columnSpanFull(),
                     ]),

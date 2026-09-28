@@ -24,7 +24,7 @@ class CourseEditionsTable
                 TextColumn::make('course.name')
                     ->label('Curso')
                     ->searchable()
-                    ->description(fn (CourseEdition $r) => $r->course?->level),
+                    ->description(fn (CourseEdition $r) => collect([$r->course?->tipoLegible(), $r->course?->level, $r->title])->filter()->implode(' · ')),
 
                 TextColumn::make('starts_on')
                     ->label('Empieza')
@@ -39,7 +39,8 @@ class CourseEditionsTable
                     ->alignEnd()
                     ->state(fn (CourseEdition $r) => $r->inscritos() . ' / ' . $r->capacity)
                     ->color(fn (CourseEdition $r) => $r->cuposLibres() === 0 ? 'danger' : null)
-                    ->description(fn (CourseEdition $r) => $r->cuposLibres() . ' libres'),
+                    ->description(fn (CourseEdition $r) => $r->cuposLibres() . ' libres'
+                        . (($espera = $r->enEspera()) ? ' · ' . $espera . ' en espera' : '')),
 
                 TextColumn::make('status')
                     ->label('Estado')
@@ -47,6 +48,7 @@ class CourseEditionsTable
                     ->formatStateUsing(fn (string $state) => CourseEdition::ESTADOS[$state] ?? $state)
                     ->color(fn (string $state) => match ($state) {
                         'abierta'  => 'success',
+                        'inscripciones_cerradas' => 'warning',
                         'en_curso' => 'info',
                         'cerrada'  => 'gray',
                         'planeada' => 'warning',
@@ -56,27 +58,48 @@ class CourseEditionsTable
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(CourseEdition::ESTADOS),
                 SelectFilter::make('course_id')->label('Curso')->relationship('course', 'name'),
+                SelectFilter::make('tipo')
+                    ->label('Tipo')
+                    ->options(\App\Models\Course::TIPOS)
+                    ->query(fn ($query, array $data) => filled($data['value'] ?? null)
+                        ? $query->whereHas('course', fn ($q) => $q->where('kind', $data['value']))
+                        : $query),
             ])
             ->recordActions([
                 self::abrir(),
                 self::cerrar(),
                 EditAction::make(),
+                Action::make('duplicar')
+                    ->label('Duplicar')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip('Duplicar para otro grupo')
+                    ->requiresConfirmation()
+                    ->modalDescription('Una edición nueva con el mismo curso, cupo, público, precio y lugar. Nace planeada y sin inscritos.')
+                    ->action(function (CourseEdition $record) {
+                        $copia = app(\App\Services\Training\Actividades::class)->duplicarEdicion($record, auth()->user());
+
+                        Notification::make()->success()->title('Duplicada como ' . $copia->code)->send();
+
+                        return redirect(\App\Filament\Resources\CourseEditions\CourseEditionResource::getUrl('edit', ['record' => $copia]));
+                    }),
             ]);
     }
 
     private static function abrir(): Action
     {
         return Action::make('abrir')
-            ->label('Abrir inscripciones')
+            ->label('Publicar')
             ->icon('heroicon-o-lock-open')
             ->color('success')
             ->visible(fn (CourseEdition $r) => $r->status === 'planeada')
             ->requiresConfirmation()
             ->modalDescription('A partir de ahora aparece en el sitio y la gente puede inscribirse hasta llenar el cupo.')
             ->action(function (CourseEdition $record) {
-                $record->update(['status' => 'abierta']);
+                app(\App\Services\Training\Actividades::class)->publicar($record, auth()->user());
 
-                Notification::make()->title('Inscripciones abiertas')->success()->send();
+                Notification::make()->title('Publicada: inscripciones abiertas')->success()->send();
             });
     }
 

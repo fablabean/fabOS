@@ -28,6 +28,10 @@ class CoursesTable
                     ->weight('medium')
                     ->description(fn (Course $r) => $r->area?->name),
 
+                TextColumn::make('kind')
+                    ->label('Tipo')
+                    ->formatStateUsing(fn (Course $r) => $r->tipoLegible()),
+
                 TextColumn::make('level')
                     ->label('Nivel')
                     ->badge()
@@ -62,11 +66,30 @@ class CoursesTable
                     ->disabled(fn (Course $r) => ! auth()->user()->can('update', $r)),
             ])
             ->filters([
+                SelectFilter::make('kind')->label('Tipo')->options(Course::TIPOS),
                 SelectFilter::make('level')->label('Nivel')->options(Course::NIVELES),
                 TernaryFilter::make('is_active')->label('Activo')->default(true),
             ])
             ->recordActions([
                 EditAction::make()->iconButton()->tooltip('Editar'),
+
+                // Otra actividad a partir de esta: contenido, formulario y
+                // encuesta. Nace oculta del sitio para revisarla antes.
+                \Filament\Actions\Action::make('duplicar')
+                    ->iconButton()
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->tooltip('Duplicar la actividad')
+                    ->requiresConfirmation()
+                    ->modalDescription('Una actividad nueva con el mismo contenido, formulario y encuesta, oculta del sitio. Sin fechas ni inscritos: esas van en sus ediciones.')
+                    ->visible(fn () => auth()->user()?->can('create', Course::class))
+                    ->action(function (Course $record) {
+                        $copia = app(\App\Services\Training\Actividades::class)->duplicarCurso($record);
+
+                        Notification::make()->success()->title('Duplicada: ' . $copia->name)->send();
+
+                        return redirect(\App\Filament\Resources\Courses\CourseResource::getUrl('edit', ['record' => $copia]));
+                    }),
 
                 /*
                  * Borrar, solo si nadie paso por el. Con gente inscrita el

@@ -132,6 +132,12 @@ class AppServiceProvider extends ServiceProvider
             fn (DatePicker $campo) => $campo->timezone(config('app.timezone')),
         );
 
+        // Lo mismo para una HORA suelta: «las 14:00» de un taller es hora de
+        // pared, no un instante. Con la zona de Bogota se guardaba 19:00.
+        \Filament\Forms\Components\TimePicker::configureUsing(
+            fn (\Filament\Forms\Components\TimePicker $campo) => $campo->timezone(config('app.timezone')),
+        );
+
         /*
          * Veinticinco filas por pagina en todas las listas del panel: con diez,
          * la lista de proyectos o de personas obligaba a pasar pagina enseguida.

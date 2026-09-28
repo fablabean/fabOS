@@ -20,6 +20,8 @@ class Course extends Model
         'slug', 'name', 'area_id', 'level', 'summary', 'description',
         'requirements', 'hours', 'passing_score', 'requires_practical',
         'photo_path', 'price_minor', 'mostrar_usd', 'is_active', 'is_public', 'by_preenrollment',
+        'kind', 'banner_path', 'gallery', 'objectives', 'recommendations', 'includes_materials',
+        'materials_included', 'materials_to_bring', 'registration_terms',
     ];
 
     protected function casts(): array
@@ -30,6 +32,8 @@ class Course extends Model
             'requires_practical' => 'boolean',
             'by_preenrollment' => 'boolean',
             'passing_score' => 'integer',
+            'includes_materials' => 'boolean',
+            'gallery' => 'array',
         ];
     }
 
@@ -41,6 +45,39 @@ class Course extends Model
         'giga' => 'giga · acompañar a otros',
         'tera' => 'tera · Fab Academy',
     ];
+
+    /**
+     * Qué es. Los tres suben por la misma escalera de niveles: un taller de
+     * corte láser es un «byte» igual que un curso lo sería.
+     */
+    public const TIPOS = [
+        'curso'  => 'Curso',
+        'taller' => 'Taller',
+        'evento' => 'Evento',
+    ];
+
+    public function tipoLegible(): string
+    {
+        return self::TIPOS[$this->kind ?? 'curso'] ?? 'Curso';
+    }
+
+    /** Las preguntas que la actividad añade a las fijas del formulario. */
+    public function registrationQuestions(): HasMany
+    {
+        return $this->hasMany(RegistrationQuestion::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** La encuesta de después. */
+    public function surveyQuestions(): HasMany
+    {
+        return $this->hasMany(SurveyQuestion::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** Lo que se acepta al inscribirse: el de la actividad o el general. */
+    public function condiciones(): string
+    {
+        return trim((string) $this->registration_terms) ?: (string) config('fabos.formacion.condiciones_de_inscripcion');
+    }
 
     public function area(): BelongsTo
     {

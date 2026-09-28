@@ -19,6 +19,12 @@ use Filament\Schemas\Schema;
 
 class CourseForm
 {
+    public const TIPOS_DE_MATERIAL = [
+        'imagen'  => 'Imagen',
+        'video'   => 'Video',
+        'archivo' => 'Documento o enlace',
+    ];
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -39,6 +45,13 @@ class CourseForm
                             ->default('bit')
                             ->required()
                             ->helperText('Marca cuánta autonomía llega a dar. tera es Fab Academy.'),
+
+                        Select::make('kind')
+                            ->label('Tipo')
+                            ->options(Course::TIPOS)
+                            ->default('curso')
+                            ->required()
+                            ->helperText('Curso, taller o evento: los tres se inscriben igual y suben por la misma escalera de niveles.'),
 
                         Select::make('area_id')->label('Área')->relationship('area', 'name'),
 
@@ -153,6 +166,187 @@ class CourseForm
                             ->label('Se entra por preinscripción')
                             ->helperText('Para programas que solo abren si se junta gente, como Fab Academy. La edición «planeada» recibe preinscritos desde su propia página, y se abre cuando se decida.')
                             ->columnSpanFull(),
+                    ]),
+
+                Section::make('La publicación')
+                    ->description('Lo que se ve en la página de cada fecha o grupo, con su formulario de inscripción. Desde la edición puedes abrir la vista previa antes de publicar.')
+                    ->columns(2)
+                    ->collapsible()
+                    ->schema([
+                        FileUpload::make('banner_path')
+                            ->label('Banner o imagen principal')
+                            ->helperText('Ancha, idealmente 1600 × 600. Va detrás del título y arriba de la descripción.')
+                            ->disk('public')
+                            ->visibility('public')
+                            ->image()
+                            ->directory('cursos/banners')
+                            ->maxSize(20480)
+                            ->imageResizeMode('contain')
+                            ->imageResizeTargetWidth(2400)
+                            ->imageResizeTargetHeight(2400)
+                            ->imageResizeUpscale(false)
+                            ->saveUploadedFileUsing(fn ($file) => app(OptimizadorDeImagen::class)->guardar($file, 'cursos/banners'))
+                            ->columnSpanFull(),
+
+                        Textarea::make('objectives')->label('Objetivos')->rows(3)->columnSpanFull(),
+
+                        Textarea::make('recommendations')
+                            ->label('Recomendaciones')
+                            ->rows(2)
+                            ->placeholder('Llega 10 minutos antes. Usa zapato cerrado.')
+                            ->columnSpanFull(),
+
+                        Toggle::make('includes_materials')
+                            ->label('Incluye materiales')
+                            ->live()
+                            ->columnSpanFull(),
+
+                        Textarea::make('materials_included')
+                            ->label('Qué materiales incluye')
+                            ->rows(2)
+                            ->visible(fn (Get $get) => (bool) $get('includes_materials')),
+
+                        Textarea::make('materials_to_bring')
+                            ->label('Qué debe llevar el participante')
+                            ->rows(2)
+                            ->placeholder('Su computador con Inkscape instalado.')
+                            ->helperText('Va también en el correo de confirmación.'),
+
+                        Repeater::make('gallery')
+                            ->label('Imágenes, videos y material informativo')
+                            ->addActionLabel('Añadir')
+                            ->defaultItems(0)
+                            ->collapsed()
+                            ->itemLabel(fn (array $state) => ($state['titulo'] ?? null) ?: (self::TIPOS_DE_MATERIAL[$state['tipo'] ?? ''] ?? null))
+                            ->columns(2)
+                            ->schema([
+                                Select::make('tipo')
+                                    ->label('Qué es')
+                                    ->options(self::TIPOS_DE_MATERIAL)
+                                    ->default('imagen')
+                                    ->required()
+                                    ->live(),
+
+                                TextInput::make('titulo')->label('Título o pie')->maxLength(160),
+
+                                FileUpload::make('archivo')
+                                    ->label('Archivo')
+                                    ->disk('public')
+                                    ->visibility('public')
+                                    ->directory('cursos/material')
+                                    ->maxSize(20480)
+                                    ->visible(fn (Get $get) => in_array($get('tipo'), ['imagen', 'archivo'], true))
+                                    ->acceptedFileTypes(fn (Get $get) => $get('tipo') === 'imagen'
+                                        ? ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+                                        : ['application/pdf', 'image/jpeg', 'image/png'])
+                                    ->columnSpanFull(),
+
+                                TextInput::make('url')
+                                    ->label(fn (Get $get) => $get('tipo') === 'video' ? 'Enlace de YouTube o Vimeo' : 'O un enlace')
+                                    ->url()
+                                    ->visible(fn (Get $get) => in_array($get('tipo'), ['video', 'archivo'], true))
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+
+                        Textarea::make('registration_terms')
+                            ->label('Condiciones de inscripción y cancelación')
+                            ->rows(3)
+                            ->placeholder((string) config('fabos.formacion.condiciones_de_inscripcion'))
+                            ->helperText('Se aceptan con una casilla obligatoria al inscribirse. Vacío: el texto general, que ves de ejemplo.')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Formulario de inscripción')
+                    ->description('Siempre se pregunta nombre y apellidos, correo, programa o dependencia, tipo de participante y la aceptación de las condiciones: no se pueden quitar. Aquí van las preguntas propias de la actividad.')
+                    ->collapsible()
+                    ->collapsed()
+                    ->schema([
+                        Repeater::make('registrationQuestions')
+                            ->label('')
+                            ->relationship()
+                            ->orderColumn('position')
+                            ->addActionLabel('Añadir una pregunta')
+                            ->defaultItems(0)
+                            ->collapsed()
+                            ->itemLabel(fn (array $state) => \Illuminate\Support\Str::limit($state['label'] ?? '', 60)
+                                . (! empty($state['required']) ? ' *' : '')
+                                . (isset($state['type']) ? ' · ' . (\App\Models\RegistrationQuestion::TIPOS[$state['type']] ?? '') : ''))
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('label')
+                                    ->label('Pregunta o requisito')
+                                    ->required()
+                                    ->maxLength(300)
+                                    ->columnSpanFull(),
+
+                                Select::make('type')
+                                    ->label('Tipo')
+                                    ->options(\App\Models\RegistrationQuestion::TIPOS)
+                                    ->default('texto')
+                                    ->required()
+                                    ->live(),
+
+                                Toggle::make('required')
+                                    ->label('Obligatoria')
+                                    ->helperText('Sin responderla no se puede terminar la inscripción. En un archivo: sin subirlo, no hay inscripción.')
+                                    ->inline(false),
+
+                                \Filament\Forms\Components\TagsInput::make('options')
+                                    ->label('Opciones')
+                                    ->placeholder('Escribe una y pulsa Enter')
+                                    ->visible(fn (Get $get) => in_array($get('type'), \App\Models\RegistrationQuestion::CON_OPCIONES, true))
+                                    ->required(fn (Get $get) => in_array($get('type'), \App\Models\RegistrationQuestion::CON_OPCIONES, true))
+                                    ->columnSpanFull(),
+
+                                TextInput::make('help')
+                                    ->label('Ayuda')
+                                    ->maxLength(300)
+                                    ->placeholder(fn (Get $get) => $get('type') === 'archivo' ? 'Tu diseño en SVG o DXF, a escala real.' : null)
+                                    ->columnSpanFull(),
+
+                                \Filament\Forms\Components\CheckboxList::make('participant_types')
+                                    ->label('Solo para')
+                                    ->options(collect(\App\Models\Enrollment::TIPOS_DE_PARTICIPANTE)->map(fn ($t) => $t['nombre'])->all())
+                                    ->columns(3)
+                                    ->helperText('Ninguno marcado: se le pregunta a todos.')
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
+
+                Section::make('Encuesta de satisfacción')
+                    ->description('Se envía después de la actividad, solo a quienes registraron asistencia. Los resultados quedan en cada edición.')
+                    ->collapsible()
+                    ->collapsed()
+                    ->schema([
+                        Repeater::make('surveyQuestions')
+                            ->label('')
+                            ->relationship()
+                            ->orderColumn('position')
+                            ->addActionLabel('Añadir una pregunta')
+                            ->defaultItems(0)
+                            ->collapsed()
+                            ->itemLabel(fn (array $state) => \Illuminate\Support\Str::limit($state['label'] ?? '', 60))
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('label')->label('Pregunta')->required()->maxLength(300)->columnSpanFull(),
+
+                                Select::make('type')
+                                    ->label('Tipo')
+                                    ->options(\App\Models\SurveyQuestion::TIPOS)
+                                    ->default('escala')
+                                    ->required()
+                                    ->live(),
+
+                                Toggle::make('required')->label('Obligatoria')->default(true)->inline(false),
+
+                                \Filament\Forms\Components\TagsInput::make('options')
+                                    ->label('Opciones')
+                                    ->placeholder('Escribe una y pulsa Enter')
+                                    ->visible(fn (Get $get) => $get('type') === 'seleccion')
+                                    ->required(fn (Get $get) => $get('type') === 'seleccion')
+                                    ->columnSpanFull(),
+                            ]),
                     ]),
 
                 Section::make('La teoría')

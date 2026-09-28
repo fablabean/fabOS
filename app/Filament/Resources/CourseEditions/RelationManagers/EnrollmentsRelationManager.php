@@ -54,8 +54,29 @@ class EnrollmentsRelationManager extends RelationManager
                         'aprobado'  => 'success',
                         'inscrito'  => 'info',
                         'reprobado' => 'danger',
+                        'en_espera' => 'warning',
                         default     => 'gray',
-                    }),
+                    })
+                    ->description(fn (Enrollment $r) => $r->enEspera() && $r->waitlisted_at
+                        ? 'Desde el ' . $r->waitlisted_at->timezone($tz)->format('d/m H:i')
+                        : ($r->status === 'retirado' && $r->feedback ? \Illuminate\Support\Str::limit($r->feedback, 60) : null)),
+
+                TextColumn::make('participant_type')
+                    ->label('Participante')
+                    ->formatStateUsing(fn (Enrollment $r) => $r->tipoDeParticipante())
+                    ->description(fn (Enrollment $r) => $r->program)
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                TextColumn::make('asistencia')
+                    ->label('Asistencia')
+                    ->state(fn (Enrollment $r) => app(\App\Services\Training\AsistenciaDeActividad::class)->resumen($r)['estado'])
+                    ->color(fn (string $state) => match (true) {
+                        str_starts_with($state, 'Asistió') => 'success',
+                        $state === 'No asistió'           => 'danger',
+                        default                           => 'gray',
+                    })
+                    ->visible(fn (RelationManager $livewire) => $livewire->getOwnerRecord()->sessions()->exists()),
 
                 /*
                  * El examen teorico, en una columna: la nota, los intentos y
@@ -135,13 +156,25 @@ class EnrollmentsRelationManager extends RelationManager
                     ->formatStateUsing(fn ($state) => $state?->timezone($tz)->format('d/m/Y'))
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->description(function (RelationManager $livewire) {
+                $e = $livewire->getOwnerRecord();
+                $espera = $e->enEspera();
+
+                return $e->inscritos() . ' con cupo de ' . $e->capacity . ' · ' . $e->cuposLibres() . ' libres'
+                    . ($espera ? ' · ' . $espera . ' en lista de espera' : '');
+            })
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(Enrollment::ESTADOS),
+                SelectFilter::make('participant_type')->label('Participante')
+                    ->options(collect(Enrollment::TIPOS_DE_PARTICIPANTE)->map(fn ($t) => $t['nombre'])->all()),
             ])
             ->headerActions([
                 self::inscribir(),
+                self::descargar(),
             ])
             ->recordActions([
+                self::darCupo(),
+                self::respuestas(),
                 self::citar(),
                 self::citarDeNuevo(),
                 self::firmarPractica(),
@@ -151,6 +184,66 @@ class EnrollmentsRelationManager extends RelationManager
                 self::retirar(),
             ])
             ->toolbarActions([]);
+    }
+
+    /**
+     * Le da el cupo que se liberó a alguien de la lista de espera. Lo decide
+     * una persona, no el orden de llegada: la lista dice quién llegó primero,
+     * pero no quién trae el diseño listo.
+     */
+    private static function darCupo(): Action
+    {
+        return Action::make('dar_cupo')
+            ->label('Dar el cupo')
+            ->icon('heroicon-o-arrow-up-circle')
+            ->color('success')
+            ->visible(fn (Enrollment $r) => $r->enEspera())
+            ->disabled(fn (Enrollment $r) => $r->edition?->cuposLibres() <= 0)
+            ->tooltip(fn (Enrollment $r) => $r->edition?->cuposLibres() <= 0 ? 'No hay cupos libres: sube el cupo o espera a que alguien se retire.' : null)
+            ->requiresConfirmation()
+            ->modalDescription(fn (Enrollment $r) => ($r->user?->name ?? 'La persona') . ' pasa a estar inscrita y le llega un correo diciéndole que tiene cupo.')
+            ->action(function (Enrollment $record) {
+                try {
+                    app(\App\Services\Training\Actividades::class)->darCupo($record, auth()->user());
+                } catch (TrainingException $e) {
+                    Notification::make()->danger()->title('No se pudo')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('Cupo asignado')->body('Le llegó el correo.')->send();
+            });
+    }
+
+    /** Lo que respondió en el formulario, con sus archivos. */
+    private static function respuestas(): Action
+    {
+        return Action::make('respuestas')
+            ->label('Inscripción')
+            ->icon('heroicon-o-document-text')
+            ->color('gray')
+            ->visible(fn (Enrollment $r) => $r->source === 'web' || ! empty($r->answers) || $r->participant_type)
+            ->modalHeading(fn (Enrollment $r) => $r->user?->name ?? 'Inscripción')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalContent(fn (Enrollment $r) => view('filament.inscripcion-respuestas', ['inscripcion' => $r]));
+    }
+
+    /** La lista, con respuestas, para abrir en Excel. */
+    private static function descargar(): Action
+    {
+        return Action::make('descargar')
+            ->label('Descargar (CSV)')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('gray')
+            ->action(function (RelationManager $livewire) {
+                $e = $livewire->getOwnerRecord();
+                $csv = app(\App\Services\Training\ListaDeInscritos::class)->csv($e);
+
+                return response()->streamDownload(fn () => print($csv), 'inscritos-' . $e->code . '.csv', [
+                    'Content-Type' => 'text/csv; charset=UTF-8',
+                ]);
+            });
     }
 
     private static function inscribir(): Action

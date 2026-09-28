@@ -369,7 +369,9 @@
                             {{-- Qué falta y por dónde seguir. Sin esto, quien
                                  aprueba el examen y no recibe el certifab no
                                  tiene forma de saber que espera una práctica. --}}
-                            @if (! $inscripcion->aprobada() && $inscripcion->status !== 'retirado')
+                            @if ($inscripcion->enEspera())
+                                <div class="quien">Todavía sin cupo: te escribimos si se libera uno.</div>
+                            @elseif (! $inscripcion->aprobada() && $inscripcion->status !== 'retirado')
                                 @php $curso = $inscripcion->edition?->course; @endphp
 
                                 @if ($curso?->lessons?->isNotEmpty())
@@ -421,14 +423,14 @@
                                 @if ($inscripcion->aprobada() && $habilito->isNotEmpty())
                                     <div class="quien origen"><x-icono nombre="habilitado"/>Te habilitó: {{ $habilito->pluck('name')->implode(', ') }}</div>
                                 @endif
-                            @elseif ($inscripcion->status === 'inscrito')
+                            @elseif (in_array($inscripcion->status, ['inscrito', 'en_espera'], true))
                                 <form method="POST" action="{{ route('formacion.retirar', $inscripcion) }}">
                                     @csrf
                                     <button type="submit"
                                             style="margin:0;padding:.3rem .7rem;font-size:.78rem;
                                                    background:transparent;color:var(--muted);
                                                    border:1px solid var(--rule)">
-                                        Liberar mi cupo
+                                        {{ $inscripcion->enEspera() ? 'Salir de la lista de espera' : 'Liberar mi cupo' }}
                                     </button>
                                 </form>
                             @else

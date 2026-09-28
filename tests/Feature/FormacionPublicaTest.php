@@ -79,7 +79,8 @@ class FormacionPublicaTest extends TestCase
             ->assertSee('byte · Impresión 3D')
             ->assertSee('Martes de 14:00 a 17:00')
             ->assertSee('FDM')
-            ->assertSee('Entrar para inscribirme');
+            // Inscribirse es en la página de la actividad, sin exigir cuenta.
+            ->assertSee('Ver e inscribirme');
     }
 
     public function test_un_curso_no_publico_no_sale_en_la_vitrina(): void

@@ -72,7 +72,7 @@
                          alt="{{ $curso->name }}" loading="lazy">
                 @endif
 
-                <span class="nivel">{{ $curso->level }}</span>
+                <span class="nivel">@if (($curso->kind ?? 'curso') !== 'curso'){{ mb_strtolower($curso->tipoLegible()) }} · @endif{{ $curso->level }}</span>
                 <h2>{{ $curso->name }}</h2>
 
                 @if ($curso->area)
@@ -133,32 +133,27 @@
                                 @endif
                             </div>
                             <div class="cupo">
-                                {{ $edicion->cuposLibres() }} de {{ $edicion->capacity }} cupos libres
+                                {{ $edicion->cuposLibres() > 0 ? $edicion->cuposLibres() . ' de ' . $edicion->capacity . ' cupos libres' : 'Cupo lleno · hay lista de espera' }}
                                 @if ($edicion->instructor) · con {{ $edicion->instructor->name }} @endif
                             </div>
                         </div>
 
-                        @auth
-                            @if (isset($misInscripciones[$edicion->id]))
-                                <span class="lleno">
-                                    {{ $misInscripciones[$edicion->id] === 'aprobado'
-                                        ? 'Ya lo aprobaste'
-                                        : 'Ya estás inscrito' }}
-                                </span>
-                            @elseif ($edicion->cuposLibres() > 0)
-                                <form method="POST" action="{{ route('formacion.inscribir', $edicion) }}">
-                                    @csrf
-                                    <button type="submit" class="btn">Inscribirme</button>
-                                </form>
-                            @else
-                                <span class="lleno">Sin cupos</span>
-                            @endif
+                        {{-- Inscribirse es en la página de la actividad, con su
+                             formulario y sin exigir cuenta. Quien ya está dentro
+                             lo ve aquí mismo en vez de un botón que no le sirve. --}}
+                        @if (isset($misInscripciones[$edicion->id]))
+                            <span class="lleno">
+                                {{ match ($misInscripciones[$edicion->id]) {
+                                    'aprobado'  => 'Ya lo aprobaste',
+                                    'en_espera' => 'Estás en lista de espera',
+                                    default     => 'Ya estás inscrito',
+                                } }}
+                            </span>
                         @else
-                            {{-- Un enlace con cara de botón, y no un <button> dentro de
-                                 un <a>: eso no es HTML válido y además salía sin
-                                 estilo, porque el sitio solo viste la clase .btn. --}}
-                            <a class="btn" href="{{ route('login') }}">Entrar para inscribirme</a>
-                        @endauth
+                            <a class="btn" href="{{ route('actividad', $edicion->code) }}">
+                                {{ $edicion->cuposLibres() > 0 ? 'Ver e inscribirme' : 'Lista de espera' }}
+                            </a>
+                        @endif
                     </div>
                 @empty
                     @if ($curso->by_preenrollment)

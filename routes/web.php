@@ -118,6 +118,45 @@ Route::post('/preinscripcion/{course:slug}', [PreinscripcionController::class, '
 Route::get('/preinscripcion/{course:slug}/gracias', [PreinscripcionController::class, 'gracias'])
     ->name('preinscripcion.gracias');
 
+/*
+ * Cursos, talleres y eventos: la página de cada uno y su inscripción (§9).
+ *
+ * Sin sesión, como la preinscripción: el formulario crea la cuenta si hace
+ * falta. Con captcha porque guarda datos y archivos y manda correo.
+ */
+Route::get('/actividad/{edition:code}', [\App\Http\Controllers\ActividadController::class, 'show'])->name('actividad');
+Route::post('/actividad/{edition:code}', [\App\Http\Controllers\ActividadController::class, 'store'])
+    ->middleware(['throttle:40,60', 'captcha:correo'])
+    ->name('actividad.inscribir');
+Route::get('/actividad/{edition:code}/listo', [\App\Http\Controllers\ActividadController::class, 'listo'])
+    ->name('actividad.listo');
+
+// Cancelar la propia inscripción desde el enlace firmado del correo.
+Route::get('/inscripcion/{enrollment}/cancelar', [\App\Http\Controllers\ActividadController::class, 'cancelar'])
+    ->middleware('signed')
+    ->name('inscripcion.cancelar');
+Route::post('/inscripcion/{enrollment}/cancelar', [\App\Http\Controllers\ActividadController::class, 'confirmarCancelacion'])
+    ->middleware(['signed', 'throttle:20,60'])
+    ->name('inscripcion.cancelar.confirmar');
+
+// La asistencia por QR: una dirección por sesión, sin sesión iniciada.
+Route::get('/asistencia/{token}', [\App\Http\Controllers\AsistenciaController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{20,40}')
+    ->middleware('throttle:120,1')
+    ->name('asistencia');
+Route::post('/asistencia/{token}', [\App\Http\Controllers\AsistenciaController::class, 'store'])
+    ->where('token', '[A-Za-z0-9]{20,40}')
+    ->middleware('throttle:30,1')
+    ->name('asistencia.registrar');
+
+// La encuesta de después, con el enlace firmado que llega por correo.
+Route::get('/encuesta/{enrollment}', [\App\Http\Controllers\EncuestaController::class, 'show'])
+    ->middleware('signed')
+    ->name('encuesta');
+Route::post('/encuesta/{enrollment}', [\App\Http\Controllers\EncuestaController::class, 'store'])
+    ->middleware(['signed', 'throttle:20,60'])
+    ->name('encuesta.responder');
+
 // Open Badges: las credenciales en formato estandar, legibles por cualquier
 // lector del estandar y no solo por este sitio (§19). Publicas por definicion:
 // la verificacion consiste en que el documento viva en la URL del emisor.
@@ -317,6 +356,10 @@ Route::middleware('auth')->group(function () {
     // una direccion que acabara en el nombre del archivo nunca llegaria aqui.
     Route::get('/panel/archivo', [ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
+
+    // El QR de asistencia de una sesión, en una hoja para imprimir o proyectar.
+    Route::get('/panel/asistencia/{session}/qr', [\App\Http\Controllers\AsistenciaController::class, 'imprimir'])
+        ->name('asistencia.qr');
 
     // La vista previa del acuerdo de servicio, con lo escrito en el formulario.
     Route::get('/panel/acuerdo/{project}/{token}', [AcuerdoController::class, 'vista'])

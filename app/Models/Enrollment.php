@@ -21,11 +21,18 @@ class Enrollment extends Model
         'certificate_code', 'completed_at', 'enrolled_at',
         'theory_score', 'theory_passed_at', 'theory_attempts',
         'practical_passed_at', 'practical_by', 'practical_notes', 'failed_at',
+        'participant_type', 'program', 'answers', 'source', 'consent_at',
+        'waitlisted_at', 'promoted_at', 'withdrawn_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'answers'       => 'array',
+            'consent_at'    => UtcDateTime::class,
+            'waitlisted_at' => UtcDateTime::class,
+            'promoted_at'   => UtcDateTime::class,
+            'withdrawn_at'  => UtcDateTime::class,
             'grade'        => 'decimal:2',
             'completed_at' => UtcDateTime::class,
             'enrolled_at'  => UtcDateTime::class,
@@ -295,7 +302,57 @@ class Enrollment extends Model
         'aprobado'  => 'Aprobado',
         'reprobado' => 'No aprobado',
         'retirado'  => 'Retirado',
+        'en_espera' => 'En lista de espera',
     ];
+
+    public const EN_ESPERA = 'en_espera';
+
+    /** Los que no ocupan silla. */
+    public const SIN_CUPO = ['retirado', self::EN_ESPERA];
+
+    /**
+     * Quién se inscribe. Es lo que decide qué se le pregunta y si la
+     * actividad lo admite; la categoría de su cuenta sale de aquí cuando
+     * la cuenta nace con la inscripción.
+     */
+    public const TIPOS_DE_PARTICIPANTE = [
+        'estudiante'  => ['nombre' => 'Estudiante EAN',              'ean' => true,  'categoria' => 'estudiante'],
+        'profesor'    => ['nombre' => 'Profesor EAN',                'ean' => true,  'categoria' => 'profesor'],
+        'colaborador' => ['nombre' => 'Colaborador o administrativo EAN', 'ean' => true, 'categoria' => 'colaborador'],
+        'egresado'    => ['nombre' => 'Egresado EAN',                'ean' => true,  'categoria' => 'externo'],
+        'externo'     => ['nombre' => 'Externo',                     'ean' => false, 'categoria' => 'externo'],
+    ];
+
+    /** Los que se identifican con el correo de la Universidad. */
+    public const CON_CORREO_INSTITUCIONAL = ['estudiante', 'profesor', 'colaborador'];
+
+    public function tipoDeParticipante(): ?string
+    {
+        return $this->participant_type
+            ? (self::TIPOS_DE_PARTICIPANTE[$this->participant_type]['nombre'] ?? $this->participant_type)
+            : null;
+    }
+
+    public function enEspera(): bool
+    {
+        return $this->status === self::EN_ESPERA;
+    }
+
+    public function attendances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SessionAttendance::class);
+    }
+
+    public function surveyResponse(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SurveyResponse::class);
+    }
+
+    /** Si vino al menos a una sesión: es a quien se le manda la encuesta. */
+    public function asistio(): bool
+    {
+        return $this->attendances()->where('status', 'asistio')->exists();
+    }
 
     /** El código se genera al aprobar, no antes: certifica algo que ya pasó. */
     public static function nuevoCodigo(): string

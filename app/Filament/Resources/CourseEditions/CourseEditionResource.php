@@ -69,6 +69,8 @@ class CourseEditionResource extends Resource
         return [
             RelationManagers\PreenrollmentsRelationManager::class,
             RelationManagers\EnrollmentsRelationManager::class,
+            RelationManagers\SessionsRelationManager::class,
+            RelationManagers\ChangesRelationManager::class,
         ];
     }
 
@@ -78,6 +80,7 @@ class CourseEditionResource extends Resource
             'index' => ListCourseEditions::route('/'),
             'create' => CreateCourseEdition::route('/create'),
             'edit' => EditCourseEdition::route('/{record}/edit'),
+            'encuesta' => Pages\ResultadosDeEncuesta::route('/{record}/encuesta'),
         ];
     }
 }

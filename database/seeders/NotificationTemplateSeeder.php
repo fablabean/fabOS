@@ -824,6 +824,116 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'curso', 'cohorte', 'inicio', 'costo', 'enlace'],
             ],
             [
+                'key'          => 'actividad.inscrito',
+                'name'         => 'Inscripción a un curso, taller o evento',
+                'description'  => 'A quien se inscribe desde el sitio y alcanza cupo.',
+                'is_essential' => true,
+                'subject'      => 'Quedaste inscrito en {actividad}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tienes cupo en {actividad}.
+
+                    Fecha: {fecha}
+                    Horario: {horario}
+                    Lugar: {lugar}
+
+                    {costo}
+
+                    {llevar}
+
+                    Toda la información de la actividad: {enlace}
+
+                    Si al final no puedes ir, cancela tu inscripción desde este enlace para liberar el cupo a quien está en lista de espera: {cancelar}
+                    TXT,
+                'variables'    => ['nombre_pila', 'actividad', 'tipo', 'fecha', 'horario', 'lugar', 'costo', 'llevar', 'enlace', 'cancelar'],
+            ],
+            [
+                'key'          => 'actividad.lista_espera',
+                'name'         => 'Lista de espera de un curso, taller o evento',
+                'description'  => 'A quien se inscribe cuando el cupo ya está lleno.',
+                'is_essential' => true,
+                'subject'      => 'Estás en lista de espera de {actividad}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Los cupos de {actividad} ({fecha}) están llenos. Quedaste de {posicion}.º en la lista de espera.
+
+                    Todavía no tienes cupo: no vayas a la actividad hasta que te escribamos. Si alguien cancela y se libera un cupo, te avisamos a este correo.
+
+                    Tus datos quedan guardados aunque no alcances cupo: con la lista de espera decidimos si abrimos otro grupo.
+
+                    Si ya no te interesa, sal de la lista desde aquí: {cancelar}
+                    TXT,
+                'variables'    => ['nombre_pila', 'actividad', 'fecha', 'posicion', 'enlace', 'cancelar'],
+            ],
+            [
+                'key'          => 'actividad.cupo_asignado',
+                'name'         => 'Cupo asignado desde la lista de espera',
+                'description'  => 'A quien estaba en lista de espera, cuando el equipo le da un cupo que se liberó.',
+                'is_essential' => true,
+                'subject'      => 'Tienes cupo en {actividad}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Se liberó un cupo en {actividad} y es tuyo. Ya estás inscrito.
+
+                    Fecha: {fecha}
+                    Horario: {horario}
+                    Lugar: {lugar}
+
+                    {costo}
+
+                    {llevar}
+
+                    Toda la información: {enlace}
+
+                    Si ya no puedes ir, cancela desde aquí para que el cupo pase a la siguiente persona: {cancelar}
+                    TXT,
+                'variables'    => ['nombre_pila', 'actividad', 'fecha', 'horario', 'lugar', 'costo', 'llevar', 'enlace', 'cancelar'],
+            ],
+            [
+                'key'          => 'actividad.novedad',
+                'name'         => 'Novedad de un curso, taller o evento',
+                'description'  => 'A los inscritos cuando la actividad se reprograma, se cancela o hay una novedad que deben saber.',
+                'is_essential' => true,
+                'subject'      => '{novedad}: {actividad}',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Hay una novedad en {actividad}.
+
+                    {detalle}
+
+                    Así queda la actividad:
+                    Fecha: {fecha}
+                    Horario: {horario}
+                    Lugar: {lugar}
+
+                    Toda la información: {enlace}
+
+                    Si con este cambio ya no puedes asistir, cancela tu inscripción desde aquí: {cancelar}
+                    TXT,
+                'variables'    => ['nombre_pila', 'actividad', 'novedad', 'detalle', 'fecha', 'horario', 'lugar', 'enlace', 'cancelar'],
+            ],
+            [
+                'key'          => 'actividad.encuesta',
+                'name'         => 'Encuesta de satisfacción',
+                'description'  => 'A quienes registraron asistencia, cuando el equipo envía la encuesta de la actividad.',
+                'is_essential' => false,
+                'subject'      => '¿Cómo te fue en {actividad}?',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Gracias por venir a {actividad}. Queremos saber cómo te fue: son unas pocas preguntas y nos ayudan a mejorar las próximas.
+
+                    {enlace}
+
+                    El enlace es solo tuyo y vale por dos meses.
+                    TXT,
+                'variables'    => ['nombre_pila', 'actividad', 'enlace'],
+            ],
+            [
                 'key'          => 'practica.agendada',
                 'name'         => 'Práctica agendada',
                 'description'  => 'A quien pidió hora para la prueba práctica de un curso.',
