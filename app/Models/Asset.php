@@ -189,6 +189,18 @@ class Asset extends Model
     }
 
     /** Herramienta o kit: se toma dentro de un espacio, no se reserva suelta. */
+    /**
+     * El número del activo, a tres cifras: 007, 042, 115.
+     *
+     * Es el consecutivo con que se registró, y es como se nombra en voz alta
+     * y en una etiqueta; con más de 999 activos sale con las cifras que haga
+     * falta.
+     */
+    public function numero(): string
+    {
+        return str_pad((string) $this->id, 3, '0', STR_PAD_LEFT);
+    }
+
     public function esHerramienta(): bool
     {
         return in_array($this->kind, self::DE_PRESTAMO, true);

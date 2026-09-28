@@ -131,6 +131,21 @@ class PautaPreventivaTest extends TestCase
             ->assertCanNotSeeTableRecords(Asset::where('kind', '!=', 'computador')->get());
     }
 
+    /** El número del activo, a tres cifras, y se busca con los ceros. */
+    public function test_el_activo_muestra_su_numero_a_tres_cifras(): void
+    {
+        $laser = $this->activo('Láser');
+        $cnc = $this->activo('CNC');
+
+        $this->assertSame(str_pad((string) $laser->id, 3, '0', STR_PAD_LEFT), $laser->numero());
+
+        Livewire::test(ListAssets::class)
+            ->assertSee($laser->numero())
+            ->searchTable($cnc->numero())
+            ->assertCanSeeTableRecords([$cnc])
+            ->assertCanNotSeeTableRecords([$laser]);
+    }
+
     public function test_la_opcion_abierta_del_menu_va_en_negro_o_en_el_color_de_su_grupo(): void
     {
         $css = MenuDelPanel::estilos();

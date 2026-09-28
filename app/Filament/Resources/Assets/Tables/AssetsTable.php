@@ -62,6 +62,18 @@ class AssetsTable
             ->defaultPaginationPageOption('all')
             ->defaultSort('name')
             ->columns([
+                // El número del activo, a tres cifras. Se busca también
+                // escribiéndolo con los ceros: «007» encuentra el 7.
+                TextColumn::make('id')
+                    ->label('#')
+                    ->formatStateUsing(fn (Asset $record) => $record->numero())
+                    ->fontFamily('mono')
+                    ->color('gray')
+                    ->sortable()
+                    ->searchable(query: fn ($query, string $search) => ctype_digit(ltrim($search, '#'))
+                        ? $query->orWhere('id', (int) ltrim($search, '#'))
+                        : $query),
+
                 /*
                  * La foto de la maquina, pequena y a la izquierda.
                  *
