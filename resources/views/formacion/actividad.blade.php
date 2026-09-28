@@ -371,14 +371,16 @@
                 </form>
 
                 <script>
-                    // Las preguntas que son solo para un tipo de participante se
-                    // enseñan al elegirlo; si no le tocan, no se exigen.
+                    // Todas las preguntas se ven desde el principio. Al elegir el
+                    // tipo de participante se esconden las que no le tocan, y
+                    // esas no se exigen. Esconderlas antes de elegir dejaba el
+                    // formulario como si la actividad no preguntara nada.
                     (function () {
                         var tipo = document.getElementById('tipo-participante');
                         function aplicar() {
                             document.querySelectorAll('.pregunta').forEach(function (bloque) {
                                 var tipos = bloque.dataset.tipos ? bloque.dataset.tipos.split(',') : [];
-                                var aplica = tipos.length === 0 || tipos.indexOf(tipo.value) !== -1;
+                                var aplica = tipos.length === 0 || !tipo.value || tipos.indexOf(tipo.value) !== -1;
                                 bloque.style.display = aplica ? '' : 'none';
                                 bloque.querySelectorAll('input,select,textarea').forEach(function (c) {
                                     if (bloque.dataset.obligatoria === '1' && c.type !== 'checkbox' || (c.type === 'checkbox' && bloque.dataset.obligatoria === '1' && !c.name.endsWith('[]'))) {

@@ -263,7 +263,7 @@ class CourseForm
                     ->collapsed()
                     ->schema([
                         Repeater::make('registrationQuestions')
-                            ->label('')
+                            ->hiddenLabel()
                             ->relationship()
                             ->orderColumn('position')
                             ->addActionLabel('Añadir una pregunta')
@@ -309,7 +309,10 @@ class CourseForm
                                     ->label('Solo para')
                                     ->options(collect(\App\Models\Enrollment::TIPOS_DE_PARTICIPANTE)->map(fn ($t) => $t['nombre'])->all())
                                     ->columns(3)
-                                    ->helperText('Ninguno marcado: se le pregunta a todos.')
+                                    ->helperText('Ninguno marcado, o todos: se le pregunta a todos.')
+                                    // Todos marcados es lo mismo que ninguno: se
+                                    // guarda como «a todos».
+                                    ->dehydrateStateUsing(fn ($state) => count(array_filter((array) $state)) >= count(\App\Models\Enrollment::TIPOS_DE_PARTICIPANTE) ? null : $state)
                                     ->columnSpanFull(),
                             ]),
                     ]),
@@ -320,7 +323,7 @@ class CourseForm
                     ->collapsed()
                     ->schema([
                         Repeater::make('surveyQuestions')
-                            ->label('')
+                            ->hiddenLabel()
                             ->relationship()
                             ->orderColumn('position')
                             ->addActionLabel('Añadir una pregunta')
