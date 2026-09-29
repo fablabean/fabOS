@@ -33,7 +33,10 @@ class PaginaFabAcademy
             'duracion'  => '5 meses',
             'modalidad' => 'Presencial',
 
-            'video_portada' => ['archivo' => null, 'url' => null, 'rotulo' => 'Mira la experiencia de Fab Academy'],
+            // fondo: el video (o la imagen) llena la portada detrás del
+            // título, sin sonido y en bucle. lado: el video al lado, con sus
+            // controles, como un reproductor.
+            'video_portada' => ['estilo' => 'fondo', 'archivo' => null, 'url' => null, 'imagen' => null, 'rotulo' => 'Mira la experiencia de Fab Academy'],
 
             'pasos' => [
                 ['titulo' => 'Aprende', 'texto' => 'Una clase global cada semana con Neil Gershenfeld y la red de instructores.', 'imagen' => null],
@@ -197,5 +200,29 @@ class PaginaFabAcademy
     public static function embed(?string $url): ?string
     {
         return \App\Models\CourseLesson::embedDe($url);
+    }
+
+    /**
+     * El mismo enlace, para ir de fondo: arranca solo, sin sonido, en bucle
+     * y sin controles. Sin sonido no es una preferencia: los navegadores no
+     * dejan arrancar solo un video que suena.
+     */
+    public static function embedDeFondo(?string $url): ?string
+    {
+        $embed = self::embed($url);
+
+        if (! $embed) {
+            return null;
+        }
+
+        if (str_contains($embed, 'vimeo.com')) {
+            return $embed . '?background=1&autoplay=1&loop=1&muted=1&dnt=1';
+        }
+
+        // YouTube solo repite un video si se le da como su propia lista.
+        $id = basename(parse_url($embed, PHP_URL_PATH));
+
+        return $embed . '?autoplay=1&mute=1&loop=1&playlist=' . $id
+            . '&controls=0&modestbranding=1&playsinline=1&rel=0&disablekb=1&iv_load_policy=3';
     }
 }

@@ -73,12 +73,24 @@ class PaginaFabAcademy extends Page
                             TextInput::make('duracion')->label('Duración')->placeholder('5 meses'),
                             TextInput::make('modalidad')->label('Modalidad')->placeholder('Presencial'),
                         ]),
-                        Section::make('Video de la portada')
+                        Section::make('Video o imagen de la portada')
                             ->description('De 30 a 45 segundos: diseño, impresión 3D, electrónica, corte láser, CNC y proyectos terminados. Sube el archivo o pega un enlace de YouTube o Vimeo; si hay los dos, manda el archivo.')
                             ->schema([
+                                \Filament\Forms\Components\Radio::make('video_portada.estilo')
+                                    ->label('Cómo se ve')
+                                    ->options([
+                                        'fondo' => 'De fondo: llena la portada detrás del título, sin sonido y en bucle',
+                                        'lado'  => 'Al lado del título, como un reproductor con sus controles',
+                                    ])
+                                    ->default('fondo')
+                                    ->required(),
                                 self::video('video_portada.archivo'),
                                 TextInput::make('video_portada.url')->label('O enlace de YouTube / Vimeo')->url(),
-                                TextInput::make('video_portada.rotulo')->label('Texto sobre el video'),
+                                self::imagen('video_portada.imagen', 'Imagen de la portada')
+                                    ->helperText('Una foto horizontal, de 1920 px de ancho. Sin video, es el fondo de la portada (o la imagen al lado). Con video, es lo que se ve mientras carga, y en los teléfonos que no reproducen videos solos.'),
+                                TextInput::make('video_portada.rotulo')
+                                    ->label('Texto del botón o de la leyenda')
+                                    ->helperText('De fondo: el botón para ver el video con sonido. Al lado: la leyenda sobre el video.'),
                             ]),
                         Repeater::make('pasos')
                             ->label('Qué es: los cuatro pasos')

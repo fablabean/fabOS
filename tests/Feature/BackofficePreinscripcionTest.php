@@ -221,6 +221,39 @@ class BackofficePreinscripcionTest extends TestCase
             ->assertSee('no reemplaza el registro oficial');
     }
 
+    public function test_el_video_de_la_portada_puede_ir_de_fondo_o_al_lado(): void
+    {
+        $this->cohorte();
+        $url = 'https://www.youtube.com/watch?v=abcDEF12345';
+
+        // De fondo, que es lo de fábrica: sin sonido, en bucle y sin controles.
+        \App\Models\Setting::put(\App\Support\PaginaFabAcademy::CLAVE, ['video_portada' => ['url' => $url]], 'formacion');
+
+        $this->get('/fab-academy')
+            ->assertOk()
+            ->assertSee('fa-portada fondo', false)
+            ->assertSee('embed/abcDEF12345?autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=abcDEF12345&amp;controls=0', false)
+            ->assertSee('class="sonido" href="' . $url . '"', false);
+
+        // Al lado, como reproductor.
+        \App\Models\Setting::put(\App\Support\PaginaFabAcademy::CLAVE, ['video_portada' => ['url' => $url, 'estilo' => 'lado']], 'formacion');
+
+        $this->get('/fab-academy')
+            ->assertOk()
+            ->assertDontSee('fa-portada fondo', false)
+            ->assertSee('class="marco"', false)
+            ->assertSee('youtube-nocookie.com/embed/abcDEF12345"', false);
+
+        // Solo una imagen quieta, de fondo.
+        \App\Models\Setting::put(\App\Support\PaginaFabAcademy::CLAVE, ['video_portada' => ['imagen' => 'fab-academy/portada.jpg']], 'formacion');
+
+        $this->get('/fab-academy')
+            ->assertOk()
+            ->assertSee('fa-portada fondo', false)
+            ->assertSee('fab-academy/portada.jpg', false)
+            ->assertDontSee('<iframe id="video-portada"', false);
+    }
+
     public function test_sin_equipo_cargado_el_bloque_no_sale(): void
     {
         $this->cohorte();

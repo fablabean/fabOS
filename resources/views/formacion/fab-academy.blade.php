@@ -15,6 +15,13 @@
     $vp = $pagina['video_portada'];
     $videoPortada = P::url($vp['archivo'] ?? null);
     $embedPortada = $videoPortada ? null : P::embed($vp['url'] ?? null);
+    $imagenPortada = P::url($vp['imagen'] ?? null);
+
+    // De fondo, el video (o la imagen) llena la portada detrás del título.
+    $deFondo = ($vp['estilo'] ?? 'fondo') === 'fondo' && ($videoPortada || $embedPortada || $imagenPortada);
+    $embedDeFondo = $deFondo && ! $videoPortada ? P::embedDeFondo($vp['url'] ?? null) : null;
+    // Para verlo con sonido: el archivo tiene su botón; un enlace se abre donde vive.
+    $verConSonido = $deFondo && ! $videoPortada && filled($vp['url'] ?? null) ? $vp['url'] : null;
 
     $vl = $pagina['laboratorio'];
     $videoLab = P::url($vl['video_archivo'] ?? null);
@@ -78,6 +85,43 @@
     @media (max-width:860px){
         .fa-portada{grid-template-columns:1fr;gap:1.6rem}
         .datos{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+
+    /* ---------- portada con video o imagen de fondo ---------- */
+    html,body{overflow-x:clip}
+    .fa-portada.fondo{position:relative;display:block;margin:1rem calc(50% - 50vw) 0;padding:0;min-height:min(86vh,46rem);
+                      color:#fff;overflow:hidden;background:#111;isolation:isolate}
+    .fa-portada.fondo .capa{position:absolute;inset:0;z-index:-2;container-type:size;overflow:hidden}
+    .fa-portada.fondo .capa video,.fa-portada.fondo .capa img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    /* Un iframe no sabe «cubrir»: se agranda hasta tapar el recuadro, en 16:9. */
+    .fa-portada.fondo .capa iframe{position:absolute;top:50%;left:50%;border:0;pointer-events:none;
+                      width:max(100cqw,177.78cqh);height:max(100cqh,56.25cqw);
+                      /* Un poco más grande que el recuadro: el título y el logo que YouTube
+                         pinta en los bordes quedan fuera de cuadro. */
+                      transform:translate(-50%,-50%) scale(1.3)}
+    .fa-portada.fondo::before{content:"";position:absolute;inset:0;z-index:-1;
+                      background:linear-gradient(90deg,rgba(8,12,10,.86) 0%,rgba(8,12,10,.62) 45%,rgba(8,12,10,.25) 100%),
+                                 linear-gradient(0deg,rgba(8,12,10,.55),transparent 40%)}
+    .fa-portada.fondo .in{max-width:70rem;margin:0 auto;padding:4.5rem 1.4rem 3.4rem;min-height:inherit;
+                      display:flex;flex-direction:column;justify-content:center;box-sizing:border-box}
+    .fa-portada.fondo .texto{max-width:40rem}
+    .fa-portada.fondo h1{color:#fff}
+    .fa-portada.fondo h1 em{color:#5CC9B8}
+    .fa-portada.fondo .lead{color:rgba(255,255,255,.86)}
+    .fa-portada.fondo .distintivo{border-color:#5CC9B8;color:#5CC9B8}
+    .fa-portada.fondo .btn.secundario{color:#fff;border-color:rgba(255,255,255,.55);background:transparent}
+    .fa-portada.fondo .btn.secundario:hover{background:rgba(255,255,255,.1)}
+    .fa-portada.fondo .datos{max-width:40rem}
+    .fa-portada.fondo .datos div{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);backdrop-filter:blur(6px)}
+    .fa-portada.fondo .datos dt{color:rgba(255,255,255,.7)}
+    .sonido{display:inline-flex;align-items:center;gap:.45rem;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);
+            border-radius:999px;padding:.45rem .95rem;font:inherit;font-size:.88rem;cursor:pointer;text-decoration:none;backdrop-filter:blur(6px)}
+    .sonido:hover{background:rgba(0,0,0,.6)}
+    .fa-portada.fondo .sonido{position:absolute;right:1.2rem;bottom:1.2rem}
+    @media (max-width:860px){
+        .fa-portada.fondo{min-height:auto}
+        .fa-portada.fondo::before{background:linear-gradient(0deg,rgba(8,12,10,.9) 10%,rgba(8,12,10,.55))}
+        .fa-portada.fondo .in{padding:3.2rem 1.4rem 4.6rem}
     }
 
     /* ---------- qué es ---------- */
@@ -236,8 +280,25 @@
         <a href="#preguntas">Preguntas</a>
     </nav>
 
-    <header class="fa-portada {{ $videoPortada || $embedPortada ? '' : 'sola' }}">
-        <div>
+    <header class="fa-portada {{ $deFondo ? 'fondo' : ($videoPortada || $embedPortada || $imagenPortada ? '' : 'sola') }}">
+        @if ($deFondo)
+            {{-- Sin sonido y en bucle: es ambiente, no algo que haya que ver
+                 entero. La imagen va de póster mientras carga. --}}
+            <div class="capa" aria-hidden="true">
+                @if ($videoPortada)
+                    <video id="video-portada" autoplay muted loop playsinline preload="metadata"
+                           @if ($imagenPortada) poster="{{ $imagenPortada }}" @endif src="{{ $videoPortada }}"></video>
+                @elseif ($embedDeFondo)
+                    @if ($imagenPortada)<img src="{{ $imagenPortada }}" alt="">@endif
+                    <iframe id="video-portada" src="{{ $embedDeFondo }}" title="Video de Fab Academy" tabindex="-1"
+                            allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+                @else
+                    <img src="{{ $imagenPortada }}" alt="">
+                @endif
+            </div>
+            <div class="in">
+        @endif
+        <div class="{{ $deFondo ? 'texto' : '' }}">
             @if (filled($fab['distintivo'] ?? null))
                 <a class="distintivo" href="{{ $fab['nodos_url'] }}" target="_blank" rel="noopener">{{ $fab['distintivo'] }} ↗</a>
             @endif
@@ -265,10 +326,42 @@
             </dl>
         </div>
 
-        @if ($videoPortada || $embedPortada)
+        @if ($deFondo)
+            </div>
+
+            @if ($videoPortada)
+                <button type="button" class="sonido" id="sonido-portada" aria-pressed="false"><span class="icono">🔇</span> {{ $vp['rotulo'] ?: 'Activar sonido' }}</button>
+            @elseif ($verConSonido)
+                <a class="sonido" href="{{ $verConSonido }}" target="_blank" rel="noopener">▶ {{ $vp['rotulo'] ?: 'Ver el video con sonido' }}</a>
+            @endif
+
+            <script>
+                (function () {
+                    var video = document.getElementById('video-portada');
+                    var boton = document.getElementById('sonido-portada');
+
+                    // Quien pidió menos movimiento ve la imagen quieta.
+                    if (video && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        if (video.tagName === 'VIDEO') { video.removeAttribute('autoplay'); video.pause(); }
+                        else { video.remove(); }
+                    }
+
+                    if (boton && video && video.tagName === 'VIDEO') {
+                        boton.addEventListener('click', function () {
+                            video.muted = !video.muted;
+                            if (!video.muted) { video.play(); }
+                            boton.setAttribute('aria-pressed', String(!video.muted));
+                            boton.querySelector('.icono').textContent = video.muted ? '🔇' : '🔊';
+                        });
+                    }
+                })();
+            </script>
+        @elseif ($videoPortada || $embedPortada || $imagenPortada)
             <div class="marco">
                 @if ($videoPortada)
-                    <video controls playsinline preload="metadata" src="{{ $videoPortada }}"></video>
+                    <video controls playsinline preload="metadata" src="{{ $videoPortada }}" @if ($imagenPortada) poster="{{ $imagenPortada }}" @endif></video>
+                @elseif (! $embedPortada)
+                    <img src="{{ $imagenPortada }}" alt="Fab Academy en {{ $lab }}">
                 @else
                     <iframe src="{{ $embedPortada }}" title="Video de Fab Academy" loading="lazy"
                             allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
