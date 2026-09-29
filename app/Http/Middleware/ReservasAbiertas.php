@@ -17,7 +17,9 @@ class ReservasAbiertas
 {
     public function handle(Request $request, Closure $next)
     {
-        if (! BloqueoDeReservas::activo()) {
+        // Con fecha de reapertura se entra: lo de después ya se puede
+        // reservar, y el servicio rechaza lo que cae dentro del periodo.
+        if (! BloqueoDeReservas::activo() || BloqueoDeReservas::hasta() !== null) {
             return $next($request);
         }
 

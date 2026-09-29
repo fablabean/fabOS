@@ -37,6 +37,13 @@ class CoverageService
         $d  = $desde->copy()->setTimezone($tz);
         $h  = $hasta->copy()->setTimezone($tz);
 
+        // Un cierre del laboratorio deja a todo el mundo fuera. Y el bloqueo
+        // de reservas también: sin nadie en jornada, no se ofrecen horas de
+        // asesoría ni de uso acompañado dentro del periodo.
+        if (\App\Support\BloqueoDeReservas::cubre($desde)) {
+            return collect();
+        }
+
         // Un cierre del laboratorio deja a todo el mundo fuera.
         if ($this->hayCierreGeneral($d)) {
             return collect();

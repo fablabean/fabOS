@@ -81,7 +81,7 @@ class BloqueoDeReservas extends Page
                     ->required(),
                 DateTimePicker::make('hasta')
                     ->label('Se reabre el')
-                    ->helperText('Opcional. Con fecha, el bloqueo se levanta solo a esa hora; sin ella, sigue hasta que alguien lo levante aquí.')
+                    ->helperText('Opcional. Con fecha, se puede reservar desde ya para después de esa hora, y el bloqueo se levanta solo; sin ella, no se reserva nada hasta que alguien lo levante aquí.')
                     ->seconds(false)
                     ->minDate(now()),
             ]);

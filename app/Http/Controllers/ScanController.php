@@ -82,6 +82,9 @@ class ScanController extends Controller
         abort_unless($reservation->user_id === $request->user()->id, 403);
 
         try {
+            // Con el laboratorio bloqueado nadie entra por su cuenta.
+            \App\Support\BloqueoDeReservas::exigirAbierto();
+
             $this->asistencia->checkIn($reservation);
         } catch (BookingException $e) {
             return back()->withErrors(['reserva' => $e->getMessage()]);

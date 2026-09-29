@@ -91,10 +91,29 @@ class BloqueoDeReservas
         Setting::put(self::CLAVE, array_merge(self::estado(), ['activo' => false]), 'reservas');
     }
 
-    /** @throws BookingException mientras esté bloqueado */
-    public static function exigirAbierto(): void
+    /**
+     * Si el bloqueo alcanza algo que empieza en `$desde`.
+     *
+     * Es un periodo, de ahora a la reapertura: lo que empieza después se
+     * puede reservar ya —el laboratorio se reabre y la gente quiere su
+     * turno—. Sin fecha de reapertura, alcanza a todo. Sin `$desde`, se
+     * pregunta por ahora mismo: registrar una llegada, por ejemplo.
+     */
+    public static function cubre(?\Carbon\CarbonInterface $desde = null): bool
     {
         if (! self::activo()) {
+            return false;
+        }
+
+        $reabre = self::hasta();
+
+        return $reabre === null || ($desde ?? now())->lt($reabre);
+    }
+
+    /** @throws BookingException si lo que empieza en `$desde` cae en el bloqueo */
+    public static function exigirAbierto(?\Carbon\CarbonInterface $desde = null): void
+    {
+        if (! self::cubre($desde)) {
             return;
         }
 
@@ -102,7 +121,7 @@ class BloqueoDeReservas
 
         throw new BookingException(
             'Las reservas del laboratorio están bloqueadas: ' . rtrim(self::motivo(), '.') . '.'
-            . ($cuando ? ' Se reabren el ' . $cuando . '.' : ' Te avisaremos cuando se reabran.')
+            . ($cuando ? ' Puedes reservar a partir del ' . $cuando . '.' : ' Te avisaremos cuando se reabran.')
         );
     }
 }

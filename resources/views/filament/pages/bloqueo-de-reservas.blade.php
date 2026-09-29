@@ -51,7 +51,9 @@
     <x-filament::section>
         <x-slot name="heading">Qué hace</x-slot>
         <ul class="text-sm space-y-1" style="list-style:disc;padding-left:1.2rem">
-            <li>Nadie puede crear, ni reprogramar, reservas de equipos, espacios, herramientas ni asesorías, tampoco desde el panel.</li>
+            <li>Nadie puede crear ni reprogramar reservas de equipos, espacios, herramientas ni asesorías que empiecen antes de la reapertura, tampoco desde el panel. Con fecha de reapertura, lo de después sí se puede reservar ya.</li>
+            <li>No se ofrecen horas de asesoría ni de uso acompañado dentro del periodo, y nadie puede registrar su llegada por QR.</li>
+            <li>Los proyectos siguen normales.</li>
             <li>En el sitio sale un aviso en ventana con el motivo la primera vez que alguien entra, y una franja roja arriba en todas las páginas.</li>
             <li>Las reservas que ya existían siguen igual.</li>
         </ul>

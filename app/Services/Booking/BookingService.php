@@ -65,7 +65,7 @@ class BookingService
         array $complementos = [],
         ?User $acompanante = null,
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto();
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
 
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -286,7 +286,7 @@ class BookingService
         ?string $proposito = null,
         ?User $acompanante = null,
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto();
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
 
         $herramientas = collect($herramientas)->unique('id')->values();
         $tope = \App\Support\Settings::maxHerramientasPorReserva();
@@ -373,7 +373,7 @@ class BookingService
      */
     public function reprogramar(Reservation $reserva, CarbonInterface $desde, CarbonInterface $hasta): Reservation
     {
-        \App\Support\BloqueoDeReservas::exigirAbierto();
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
 
         if (! in_array($reserva->status, ['solicitada', 'confirmada'], true)) {
             throw new BookingException(

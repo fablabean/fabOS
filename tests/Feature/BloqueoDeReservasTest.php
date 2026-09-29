@@ -138,4 +138,34 @@ class BloqueoDeReservasTest extends TestCase
 
         $this->get(route('reservas.herramientas'))->assertDontSee('Las reservas están bloqueadas');
     }
+
+    public function test_con_reapertura_se_reserva_lo_de_despues_y_no_lo_de_antes(): void
+    {
+        $reabre = now()->addDays(2)->startOfHour();
+        BloqueoDeReservas::activar('Brigada', $reabre, null);
+
+        // Dentro del periodo: no, y dice desde cuándo.
+        try {
+            BloqueoDeReservas::exigirAbierto($reabre->copy()->subHour());
+            $this->fail('Dejó reservar dentro del bloqueo');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('Puedes reservar a partir del', $e->getMessage());
+        }
+
+        // Después de la reapertura: sí.
+        BloqueoDeReservas::exigirAbierto($reabre->copy()->addHour());
+        $this->assertFalse(BloqueoDeReservas::cubre($reabre->copy()->addHour()));
+
+        // Registrar la llegada, que es ahora: no.
+        $this->assertTrue(BloqueoDeReservas::cubre());
+    }
+
+    public function test_dentro_del_bloqueo_nadie_esta_en_jornada_y_no_se_ofrecen_horas(): void
+    {
+        $cobertura = app(\App\Services\Staffing\CoverageService::class);
+        $reabre = now()->addDays(2);
+        BloqueoDeReservas::activar('Brigada', $reabre, null);
+
+        $this->assertTrue($cobertura->enJornada(now()->addHour(), now()->addHours(2))->isEmpty());
+    }
 }

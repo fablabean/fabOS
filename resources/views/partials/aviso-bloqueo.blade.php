@@ -51,8 +51,8 @@
         <div class="bq-cuerpo">
             <p class="bq-motivo">{{ $bq::motivo() }}</p>
             <p class="bq-cuando">
-                Mientras tanto nadie puede reservar equipos, espacios, herramientas ni asesorías.
-                {{ $cuando ? 'Se reabren el ' . $cuando . '.' : 'Avisaremos cuando se reabran.' }}
+                Mientras tanto nadie puede reservar ni usar equipos, espacios, herramientas ni asesorías.
+                {{ $cuando ? 'Se reabren el ' . $cuando . ': desde ya puedes reservar a partir de esa hora.' : 'Avisaremos cuando se reabran.' }}
             </p>
             <form method="dialog"><button class="bq-ok" autofocus>Entendido</button></form>
         </div>
