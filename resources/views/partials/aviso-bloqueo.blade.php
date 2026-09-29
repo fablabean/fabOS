@@ -16,6 +16,14 @@
         .bq-modal{border:0;border-radius:16px;padding:0;max-width:min(30rem,calc(100vw - 2rem));width:100%;
                   box-shadow:0 30px 70px -20px rgba(0,0,0,.55);font-family:system-ui,"Segoe UI",Arial,sans-serif;
                   background:#fff;color:#191A16}
+        /* Blindado contra los estilos de la página de debajo: sin
+           box-sizing el botón medía más que la ventana y salía una barra de
+           desplazamiento, y el h2 heredaba la letra gris de los títulos. */
+        .bq-modal,.bq-modal *{box-sizing:border-box}
+        .bq-modal{overflow:hidden;max-height:calc(100vh - 2rem)}
+        .bq-modal form{margin:0;padding:0}
+        .bq-modal h2#bq-titulo{color:#fff;font-family:system-ui,"Segoe UI",Arial,sans-serif;font-weight:700;
+                               text-transform:none;letter-spacing:-.01em;font-size:1.3rem;margin:0}
         .bq-modal::backdrop{background:rgba(15,15,15,.6);backdrop-filter:blur(3px)}
         .bq-modal .bq-cabeza{background:#B91C1C;color:#fff;padding:1.4rem 1.5rem 1.2rem;text-align:center}
         .bq-modal .bq-icono{font-size:2.6rem;line-height:1;display:block;margin-bottom:.4rem;animation:bq-latido 1.4s ease-in-out infinite}
