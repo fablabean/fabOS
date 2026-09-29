@@ -424,9 +424,9 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/reservar', '/reservas')->name('reservas.index');
     // Varias herramientas de una vez. Antes que /reservar/{asset}, o
     // «herramientas» se leeria como el id de un equipo.
-    Route::get('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'create'])->name('reservas.herramientas');
+    Route::get('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'create'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('reservas.herramientas');
     Route::post('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'store'])->name('reservas.herramientas.store');
-    Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->name('reservas.show');
+    Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('reservas.show');
     Route::post('/reservar/{asset}', [ReservationController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('reservas.cancel');
     // Cambiar cuantas personas van a un espacio, sin cancelar y volver a pedir.
@@ -458,7 +458,7 @@ Route::middleware('auth')->group(function () {
 
     // Espacios: se reserva la sala y dentro se toman las herramientas (§7).
     Route::get('/espacios', [EspacioController::class, 'index'])->name('espacios.index');
-    Route::get('/espacios/{space}', [EspacioController::class, 'show'])->name('espacios.show');
+    Route::get('/espacios/{space}', [EspacioController::class, 'show'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('espacios.show');
     // Lo que le espera a la reserva antes de enviarla: la pantalla lo pregunta
     // mientras se elige la hora, para advertir antes y no despues.
     Route::get('/espacios/{space}/jornada', [EspacioController::class, 'jornada'])->name('espacios.jornada');
@@ -470,10 +470,10 @@ Route::middleware('auth')->group(function () {
     // 3D» y todavia no sabe si le toca la Prusa o la de resina: elegir la
     // maquina es parte de lo que viene a consultar. Va antes que la de {asset}
     // para que «area» no se lea como el codigo de un equipo.
-    Route::get('/asesoria/area/{area}', [AsesoriaController::class, 'showArea'])->name('asesoria.area.show');
+    Route::get('/asesoria/area/{area}', [AsesoriaController::class, 'showArea'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('asesoria.area.show');
     Route::post('/asesoria/area/{area}', [AsesoriaController::class, 'storeArea'])->name('asesoria.area.store');
 
-    Route::get('/asesoria/{asset}', [AsesoriaController::class, 'show'])->name('asesoria.show');
+    Route::get('/asesoria/{asset}', [AsesoriaController::class, 'show'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('asesoria.show');
     Route::post('/asesoria/{asset}', [AsesoriaController::class, 'store'])->name('asesoria.store');
     Route::post('/espera/{entry}/salir', [ReservationController::class, 'salirDeEspera'])->name('reservas.espera.salir');
 

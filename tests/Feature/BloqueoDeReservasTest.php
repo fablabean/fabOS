@@ -121,4 +121,21 @@ class BloqueoDeReservasTest extends TestCase
 
         $this->assertFalse(BloqueoDeReservas::activo());
     }
+
+    public function test_bloqueado_las_pantallas_de_elegir_hora_no_ofrecen_horas(): void
+    {
+        $u = User::create(['name' => 'Ana', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $this->actingAs($u);
+
+        BloqueoDeReservas::activar('Entrenamiento de la brigada', null, null);
+
+        $this->get(route('reservas.herramientas'))
+            ->assertOk()
+            ->assertSee('Las reservas están bloqueadas')
+            ->assertSee('Entrenamiento de la brigada');
+
+        BloqueoDeReservas::levantar();
+
+        $this->get(route('reservas.herramientas'))->assertDontSee('Las reservas están bloqueadas');
+    }
 }
