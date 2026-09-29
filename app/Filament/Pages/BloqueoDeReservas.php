@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Reservation;
 use App\Support\BloqueoDeReservas as Bloqueo;
+use App\Support\HorarioDeAutoservicio as Horario;
 use BackedEnum;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Textarea;
@@ -19,6 +20,10 @@ use Illuminate\Support\Carbon;
  *
  * Se escribe el porqué, porque es lo que ve todo el que entra al sitio en el
  * aviso; y opcionalmente cuándo se reabre, para que se levante solo.
+ *
+ * Y su pariente suave: el horario en que la gente reserva máquinas por su
+ * cuenta (App\Support\HorarioDeAutoservicio), para cuando lo que sobra no es
+ * una emergencia sino demanda.
  */
 class BloqueoDeReservas extends Page
 {
@@ -33,6 +38,9 @@ class BloqueoDeReservas extends Page
     /** @var array<string,mixed> */
     public array $datos = [];
 
+    /** @var array{activo:bool,desde:string,hasta:string} */
+    public array $horario = [];
+
     public static function getNavigationGroup(): string | \UnitEnum | null
     {
         return 'Operación';
@@ -40,7 +48,7 @@ class BloqueoDeReservas extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Bloqueo de reservas';
+        return 'Bloqueo y horario';
     }
 
     public static function getNavigationBadge(): ?string
@@ -55,11 +63,13 @@ class BloqueoDeReservas extends Page
 
     public function getTitle(): string
     {
-        return 'Bloqueo de reservas';
+        return 'Bloqueo y horario de reservas';
     }
 
     public function mount(): void
     {
+        $this->horario = Horario::estado();
+
         $e = Bloqueo::estado();
 
         $this->form->fill([
@@ -101,6 +111,23 @@ class BloqueoDeReservas extends Page
             ->title('Reservas bloqueadas')
             ->body('Nadie puede reservar hasta que se levante. El aviso ya sale en el sitio.')
             ->danger()
+            ->send();
+    }
+
+    public function guardarHorario(): void
+    {
+        $datos = validator($this->horario, [
+            'desde' => ['required', 'date_format:H:i'],
+            'hasta' => ['required', 'date_format:H:i', 'after:desde'],
+        ], [
+            'hasta.after' => 'La hora de cierre tiene que ser después de la de apertura.',
+        ])->validate();
+
+        Horario::guardar((bool) ($this->horario['activo'] ?? false), $datos['desde'], $datos['hasta']);
+
+        Notification::make()
+            ->title(Horario::activo() ? 'Máquinas: se reservan ' . Horario::legible() : 'Horario de autoservicio apagado')
+            ->success()
             ->send();
     }
 

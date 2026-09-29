@@ -49,7 +49,41 @@
     </form>
 
     <x-filament::section>
-        <x-slot name="heading">Qué hace</x-slot>
+        <x-slot name="heading">Horario de autoservicio</x-slot>
+        <x-slot name="description">
+            Las horas en que la gente puede reservar máquinas por su cuenta. Sirve cuando hay más
+            demanda de la que se puede atender. Lo que se agenda desde el panel no queda limitado.
+        </x-slot>
+
+        <form wire:submit="guardarHorario" class="space-y-4">
+            <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" wire:model="horario.activo" class="rounded">
+                Limitar las reservas de máquinas a este horario
+            </label>
+
+            <div class="flex flex-wrap gap-4 text-sm">
+                <label>Desde
+                    <input type="time" step="900" wire:model="horario.desde"
+                           style="margin-left:.4rem;padding:.35rem .5rem;border-radius:6px;border:1px solid rgba(128,128,128,.35);background:transparent">
+                </label>
+                <label>Hasta
+                    <input type="time" step="900" wire:model="horario.hasta"
+                           style="margin-left:.4rem;padding:.35rem .5rem;border-radius:6px;border:1px solid rgba(128,128,128,.35);background:transparent">
+                </label>
+            </div>
+            @error('desde') <p class="text-sm" style="color:#dc2626">{{ $message }}</p> @enderror
+            @error('hasta') <p class="text-sm" style="color:#dc2626">{{ $message }}</p> @enderror
+
+            <p class="text-sm" style="color:rgb(107 114 128)">
+                La reserva tiene que empezar y terminar dentro del horario, el mismo día. Las que ya existen no se tocan.
+            </p>
+
+            <x-filament::button type="submit">Guardar el horario</x-filament::button>
+        </form>
+    </x-filament::section>
+
+    <x-filament::section>
+        <x-slot name="heading">Qué hace el bloqueo</x-slot>
         <ul class="text-sm space-y-1" style="list-style:disc;padding-left:1.2rem">
             <li>Nadie puede crear ni reprogramar reservas de equipos, espacios, herramientas ni asesorías que empiecen antes de la reapertura, tampoco desde el panel. Con fecha de reapertura, lo de después sí se puede reservar ya.</li>
             <li>No se ofrecen horas de asesoría ni de uso acompañado dentro del periodo, y nadie puede registrar su llegada por QR.</li>

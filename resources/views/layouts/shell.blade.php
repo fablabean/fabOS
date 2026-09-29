@@ -47,6 +47,7 @@
            <em>OS</em> son DOS elementos y el hueco se metia entre ellos,
            partiendo la marca en «fab OS». */
         .brand .palabra{display:inline}
+        .brand a{color:inherit;text-decoration:none}
         .brand em{font-style:normal;color:var(--accent)}
         .powered{
             font-family:ui-monospace,Consolas,monospace;font-size:.62rem;letter-spacing:.16em;
@@ -88,11 +89,11 @@
 <body>
 @include('partials.aviso-bloqueo')
     <main class="card">
-        <p class="brand"><x-logo/>
+        <p class="brand"><a href="{{ route('publico.home') }}"><x-logo/>
             @if (\App\Support\Settings::marcaConTexto())
                 <span class="palabra"><x-nombre-lab/></span>
             @endif
-        </p>
+        </a></p>
         <p class="powered">powered by fab<em>OS</em></p>
 
         @if (session('status'))

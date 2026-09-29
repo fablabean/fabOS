@@ -168,7 +168,7 @@
 <body>
 @include('partials.aviso-bloqueo')
     <header class="top">
-        <a class="brand" href="{{ route('home') }}"><x-logo/>
+        <a class="brand" href="{{ route('publico.home') }}"><x-logo/>
             @if (\App\Support\Settings::marcaConTexto())
                 <span class="palabra"><x-nombre-lab/></span>
             @endif
@@ -191,7 +191,7 @@
 
     {{-- El sitio es del laboratorio; el sistema que lo mueve, fabOS. --}}
     <footer class="pie-sitio">
-        <strong>{{ config('fabos.lab.name') }}</strong>
+        <span><strong>{{ config('fabos.lab.name') }}</strong>@if (filled(config('fabos.lab.affiliation'))), {{ config('fabos.lab.affiliation') }}@endif</span>
         <span>{{ config('fabos.lab.institution') }} · {{ config('fabos.lab.city') }}</span>
         <span class="powered">powered by fab<em>OS</em></span>
     </footer>
