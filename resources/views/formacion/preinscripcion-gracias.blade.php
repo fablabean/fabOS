@@ -3,7 +3,7 @@
 
 @php
     $faltan = $cohorte?->faltanParaAbrir();
-    $enlace = route('preinscripcion', $curso);
+    $enlace = $curso->urlDePreinscripcion();
     $mensaje = 'Me preinscribí a ' . $curso->name . ' en ' . config('fabos.lab.name')
         . ($faltan ? '. Faltan ' . $faltan . ' para que abran la cohorte' : '') . ': ' . $enlace;
 @endphp

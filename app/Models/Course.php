@@ -143,6 +143,36 @@ class Course extends Model
             ->first();
     }
 
+    /**
+     * El curso que se enseña en `/fab-academy`: el tera publicado que entra
+     * por preinscripción. Si hubiera dos, el más antiguo.
+     */
+    public static function deFabAcademy(): ?self
+    {
+        return static::query()
+            ->where('level', 'tera')
+            ->where('by_preenrollment', true)
+            ->where('is_active', true)
+            ->where('is_public', true)
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * La dirección de su página de preinscripción.
+     *
+     * Para Fab Academy es la corta. La larga circulaba por el catálogo, la
+     * página de gracias y el correo, y WhatsApp se quedó con la vista previa
+     * del logo viejo guardada para ella: una dirección que ya circula no se
+     * puede refrescar, solo dejar de repartir.
+     */
+    public function urlDePreinscripcion(): string
+    {
+        return $this->level === 'tera' && static::deFabAcademy()?->is($this)
+            ? route('fab-academy')
+            : route('preinscripcion', $this);
+    }
+
     /** Toda la gente que pasó por el curso, en cualquiera de sus ediciones. */
     public function inscripciones(): HasManyThrough
     {

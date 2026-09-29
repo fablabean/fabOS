@@ -115,7 +115,7 @@
                      decide con un resumen. --}}
                 @if ($curso->by_preenrollment)
                     <p class="mas">
-                        <a class="btn suave" href="{{ route('preinscripcion', $curso) }}">Ver más información</a>
+                        <a class="btn suave" href="{{ $curso->urlDePreinscripcion() }}">Ver más información</a>
                     </p>
                 @endif
 
@@ -186,7 +186,7 @@
                                  información» ya está arriba: dos botones al mismo
                                  sitio solo hacen dudar cuál es cuál. --}}
                             @if ($cohorte)
-                                <a class="btn" href="{{ route('preinscripcion', $curso) }}#preinscripcion">Preinscribirme</a>
+                                <a class="btn" href="{{ $curso->urlDePreinscripcion() }}#preinscripcion">Preinscribirme</a>
                             @endif
                         </div>
                     @else

@@ -415,7 +415,7 @@ class PreinscripcionTest extends TestCase
     {
         $curso = $this->curso();
 
-        $this->get(route('preinscripcion', $curso))
+        $this->get('/fab-academy')
             ->assertOk()
             ->assertSee('Todavía no hay cohorte anunciada')
             ->assertDontSee('Preinscribirme');
@@ -426,7 +426,7 @@ class PreinscripcionTest extends TestCase
         $curso = $this->curso();
         $this->cohorte($curso, ['status' => 'abierta']);
 
-        $this->get(route('preinscripcion', $curso))
+        $this->get('/fab-academy')
             ->assertOk()
             ->assertSee('La cohorte ya abrió')
             ->assertDontSee('Preinscribirme');
@@ -519,9 +519,21 @@ class PreinscripcionTest extends TestCase
 
         $this->get(route('formacion'))
             ->assertOk()
-            ->assertSee(route('preinscripcion', $curso), false)
+            // Fab Academy, por su dirección corta: es la que se comparte.
+            ->assertSee(route('fab-academy'), false)
             // Un curso normal no tiene página propia a la que llevar.
             ->assertDontSee(route('preinscripcion', $normal), false);
+    }
+
+    public function test_la_direccion_larga_de_fab_academy_lleva_a_la_corta(): void
+    {
+        $curso = $this->curso();
+        $this->cohorte($curso);
+
+        // WhatsApp guardó la vista previa vieja para la larga: se deja de
+        // repartir, y quien la tenga llega igual a la página.
+        $this->get(route('preinscripcion', $curso))->assertRedirect(route('fab-academy'));
+        $this->get('/fab-academy')->assertOk();
     }
 
     public function test_los_botones_del_catalogo_van_vestidos(): void

@@ -241,7 +241,7 @@ class PreinscripcionService
             'cohorte' => $cohorte->code,
             'inicio'  => $cohorte->starts_on?->format('d/m/Y') ?? 'por definir',
             'costo'   => $cohorte->price_note ?? '',
-            'enlace'  => route('preinscripcion', $cohorte->course),
+            'enlace'  => $cohorte->course->urlDePreinscripcion(),
             'faltan'  => '',
         ], $datos);
 

@@ -343,7 +343,7 @@
                             </div>
                             @if ($faltanDatos && $cursoPre)
                                 <div class="quien">
-                                    <a href="{{ route('preinscripcion', $cursoPre) }}"><strong>Faltan tus datos: completa tu preinscripción →</strong></a>
+                                    <a href="{{ $cursoPre->urlDePreinscripcion() }}"><strong>Faltan tus datos: completa tu preinscripción →</strong></a>
                                 </div>
                             @endif
                         </td>

@@ -32,13 +32,7 @@ class PreinscripcionController extends Controller
      */
     public function fabAcademy()
     {
-        $curso = Course::query()
-            ->where('level', 'tera')
-            ->where('by_preenrollment', true)
-            ->where('is_active', true)
-            ->where('is_public', true)
-            ->orderBy('id')
-            ->first();
+        $curso = Course::deFabAcademy();
 
         abort_unless($curso !== null, 404);
 
@@ -48,6 +42,12 @@ class PreinscripcionController extends Controller
     public function show(Course $course)
     {
         $this->debeSerVisible($course);
+
+        // La dirección larga de Fab Academy lleva a la corta: es la que se
+        // comparte, y la larga quedó con una vista previa vieja en WhatsApp.
+        if (request()->routeIs('preinscripcion') && $course->urlDePreinscripcion() !== route('preinscripcion', $course)) {
+            return redirect()->to($course->urlDePreinscripcion(), 301);
+        }
 
         $cohorte = $course->cohortePorAbrir();
 
