@@ -76,6 +76,17 @@ class InstalacionTest extends TestCase
             ->assertSee('Fab Lab Ciudad');
     }
 
+    public function test_la_dependencia_va_en_el_pie_despues_del_nombre(): void
+    {
+        LabSettings::guardar([
+            'lab.affiliation' => 'una Coordinación de la Gerencia de Investigación y Transferencia',
+        ]);
+
+        $this->get(route('publico.home'))
+            ->assertOk()
+            ->assertSee(', una Coordinación de la Gerencia de Investigación y Transferencia', false);
+    }
+
     public function test_restablecer_devuelve_el_mando_al_entorno(): void
     {
         $original = config('fabos.lab.name');

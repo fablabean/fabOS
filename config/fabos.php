@@ -26,6 +26,11 @@ return [
         // Red a la que pertenece. Vacio si no pertenece a ninguna.
         'network' => env('LAB_NETWORK', 'Fab Foundation'),
 
+        // De quien depende dentro de la institucion, dicho como sigue al nombre
+        // en el pie: «FABLAB EAN, una Coordinacion de la Gerencia de ...».
+        // Vacio si no hace falta decirlo.
+        'affiliation' => env('LAB_AFFILIATION'),
+
         // Zona horaria de operacion. La app guarda todo en UTC y muestra en esta.
         'timezone' => env('LAB_TIMEZONE', 'America/Bogota'),
 

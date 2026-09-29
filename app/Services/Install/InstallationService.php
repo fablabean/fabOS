@@ -144,6 +144,7 @@ class InstallationService
             'LAB_CITY="' . $vigentes['lab.city'] . '"',
             'LAB_TAGLINE="' . $vigentes['lab.tagline'] . '"',
             'LAB_NETWORK="' . $vigentes['lab.network'] . '"',
+            'LAB_AFFILIATION="' . $vigentes['lab.affiliation'] . '"',
             'LAB_LOGO="' . $vigentes['lab.logo'] . '"',
             'LAB_TIMEZONE=' . config('fabos.lab.timezone'),
             '',

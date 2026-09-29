@@ -40,6 +40,7 @@ final class LabSettings
         'lab.city'        => 'fabos.lab.city',
         'lab.tagline'     => 'fabos.lab.tagline',
         'lab.network'     => 'fabos.lab.network',
+        'lab.affiliation' => 'fabos.lab.affiliation',
         'lab.logo'        => 'fabos.lab.logo',
         'lab.currency_name' => 'fabos.currency.name',
         'lab.currency_code' => 'fabos.currency.code',

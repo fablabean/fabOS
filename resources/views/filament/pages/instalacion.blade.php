@@ -69,6 +69,11 @@
                     <label for="i-net">Red a la que pertenece</label>
                     <input id="i-net" type="text" wire:model="datos.network" placeholder="Fab Foundation">
                 </div>
+                <div style="grid-column:1/-1">
+                    <label for="i-aff">De quién depende (va en el pie, después del nombre y una coma)</label>
+                    <input id="i-aff" type="text" wire:model="datos.affiliation"
+                           placeholder="una Coordinación de la Gerencia de Investigación y Transferencia">
+                </div>
                 <div>
                     <label for="i-logo">Logo (ruta dentro de public/)</label>
                     <input id="i-logo" type="text" wire:model="datos.logo" placeholder="img/fabos-logo.svg">

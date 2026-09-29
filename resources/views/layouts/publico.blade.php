@@ -125,7 +125,9 @@
 
 <footer>
     <div class="in">
-        <strong style="color:var(--ink)"><x-nombre-lab/></strong>
+        <span>
+            <strong style="color:var(--ink)"><x-nombre-lab/></strong>@if (filled(config('fabos.lab.affiliation'))), {{ config('fabos.lab.affiliation') }}@endif
+        </span>
         <span>{{ config('fabos.lab.institution') }} · {{ config('fabos.lab.city') }}</span>
         @if (config('fabos.lab.network'))
             <span>Parte de la red {{ config('fabos.lab.network') }}</span>
