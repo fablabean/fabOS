@@ -176,6 +176,8 @@ class AsesoriaService
         ?string $motivo = null,
         ?User $asesor = null,
     ): ?Reservation {
+        \App\Support\BloqueoDeReservas::exigirAbierto();
+
         return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo, $asesor) {
             // Quien pide tambien tiene que estar libre. Se comprobaba solo al
             // asesor, asi que una misma persona podia agendarse dos asesorias a

@@ -105,6 +105,7 @@
     @include('partials.color-de-la-barra')
 </head>
 <body>
+@include('partials.aviso-bloqueo')
 
 <div class="nav">
     <a class="marca-sitio" href="{{ route('publico.home') }}">

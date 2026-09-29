@@ -86,6 +86,7 @@
     </style>
 </head>
 <body>
+@include('partials.aviso-bloqueo')
     <main class="card">
         <p class="brand"><x-logo/>
             @if (\App\Support\Settings::marcaConTexto())

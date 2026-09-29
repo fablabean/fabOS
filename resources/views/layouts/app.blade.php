@@ -166,6 +166,7 @@
     @include('partials.color-de-la-barra')
 </head>
 <body>
+@include('partials.aviso-bloqueo')
     <header class="top">
         <a class="brand" href="{{ route('home') }}"><x-logo/>
             @if (\App\Support\Settings::marcaConTexto())

@@ -133,6 +133,12 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('partials.compartir')->render(),
             )
+            // El laboratorio cerrado a las reservas: el equipo también lo ve,
+            // que es quien recibe la llamada de «¿por qué no me deja?».
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string => view('partials.aviso-bloqueo')->render(),
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([
