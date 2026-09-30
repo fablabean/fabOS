@@ -49,7 +49,6 @@ Route::get('/llms.txt', [\App\Http\Controllers\BuscadoresController::class, 'llm
 // La analítica propia: el aviso de cada página vista, sin cookies (§20).
 Route::post('/a/v', [\App\Http\Controllers\AnaliticaController::class, 'registrar'])
     ->middleware('throttle:120,1')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
     ->name('analitica.registrar');
 // Preguntas del laboratorio: leer es publico, preguntar exige cuenta (§20).
 Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');

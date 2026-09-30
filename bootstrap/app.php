@@ -28,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'captcha' => ComprobarElCaptcha::class,
         ]);
 
+        // El aviso de la analítica no lleva token: no cambia nada de nadie, y
+        // lo manda sendBeacon, que no puede añadir cabeceras (§20).
+        $middleware->validateCsrfTokens(except: ['a/v']);
+
         // Quién rastrea el sitio: Google, Bing y los asistentes de IA (§20).
         $middleware->appendToGroup('web', \App\Http\Middleware\AnotarRastreadores::class);
     })
