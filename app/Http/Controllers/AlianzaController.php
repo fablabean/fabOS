@@ -86,6 +86,8 @@ class AlianzaController extends Controller
             return back()->withInput()->withErrors(['alianza' => $e->getMessage()]);
         }
 
+        app(\App\Services\Analitica\Analitica::class)->evento('aporte_alianza', $project);
+
         return redirect()->route('alianzas.gracias', $project)->with('nombre', trim($datos['nombre']));
     }
 

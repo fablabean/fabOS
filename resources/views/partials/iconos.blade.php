@@ -26,3 +26,5 @@
 @endif
 
 @include('partials.compartir')
+
+@include('partials.buscadores')

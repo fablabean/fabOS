@@ -40,6 +40,17 @@ use Illuminate\Support\Facades\Storage;
 
 // Cara publica: no exige sesion (§3, portal publico).
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
+
+// Lo que leen los buscadores y los asistentes de IA antes que nada (§20).
+Route::get('/robots.txt', [\App\Http\Controllers\BuscadoresController::class, 'robots'])->name('buscadores.robots');
+Route::get('/sitemap.xml', [\App\Http\Controllers\BuscadoresController::class, 'sitemap'])->name('buscadores.sitemap');
+Route::get('/llms.txt', [\App\Http\Controllers\BuscadoresController::class, 'llms'])->name('buscadores.llms');
+
+// La analítica propia: el aviso de cada página vista, sin cookies (§20).
+Route::post('/a/v', [\App\Http\Controllers\AnaliticaController::class, 'registrar'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->name('analitica.registrar');
 // Preguntas del laboratorio: leer es publico, preguntar exige cuenta (§20).
 Route::get('/preguntas', [PreguntaController::class, 'index'])->name('preguntas.index');
 

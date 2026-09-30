@@ -118,6 +118,8 @@ class PracticasController extends Controller
             return back()->withInput()->withErrors(['convocatoria' => $e->getMessage()]);
         }
 
+        app(\App\Services\Analitica\Analitica::class)->evento('postulacion_practica', $call);
+
         return redirect()
             ->route('practicas.gracias', $call)
             ->with('nombre', trim($datos['nombre']));

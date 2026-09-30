@@ -324,6 +324,8 @@ class SolicitudDeProyectoController extends Controller
             'codigo'   => $proyecto->code,
         ], $proyecto);
 
+        app(\App\Services\Analitica\Analitica::class)->evento('solicitud_proyecto', $proyecto);
+
         return $this->aLaConfirmacion($request, $proyecto, $avisoPresupuesto);
     }
 

@@ -1,5 +1,6 @@
 @extends('layouts.publico')
 @section('title', 'Preguntas · ' . config('fabos.lab.name'))
+@section('description', 'Preguntas y respuestas sobre ' . config('fabos.lab.name') . ': máquinas, cursos, reservas y servicios.')
 
 @section('content')
     <div class="envoltura">

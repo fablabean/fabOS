@@ -112,6 +112,11 @@ class Actividades
             ? $this->avisar('actividad.inscrito', $inscripcion)
             : $this->avisar('actividad.lista_espera', $inscripcion, ['posicion' => (string) $posicion]);
 
+        app(\App\Services\Analitica\Analitica::class)->evento($posicion === null ? 'inscripcion' : 'lista_espera', $inscripcion, [
+            'edicion' => $edicion->code,
+            'tipo'    => $fijos['tipo'],
+        ]);
+
         return $inscripcion;
     }
 

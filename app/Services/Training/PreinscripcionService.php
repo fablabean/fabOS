@@ -105,6 +105,8 @@ class PreinscripcionService
             $this->avisar('curso.preinscripcion', $preinscripcion, [
                 'faltan' => $this->fraseDeLoQueFalta($cohorte),
             ]);
+
+            app(\App\Services\Analitica\Analitica::class)->evento('preinscripcion', $preinscripcion, ['cohorte' => $cohorte->code]);
         }
 
         return $preinscripcion;

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('fabos.lab.name'))</title>
+    <meta name="description" content="@yield('description', \App\Support\Buscadores::descripcion())">
     @include('partials.iconos')
     {{-- Estilos en línea a propósito: el arranque no depende de compilar assets. --}}
     @include('partials.tema')

@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'captcha' => ComprobarElCaptcha::class,
         ]);
+
+        // Quién rastrea el sitio: Google, Bing y los asistentes de IA (§20).
+        $middleware->appendToGroup('web', \App\Http\Middleware\AnotarRastreadores::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

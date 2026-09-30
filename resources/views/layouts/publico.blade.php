@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('fabos.lab.name'))</title>
     @include('partials.iconos')
-    <meta name="description" content="@yield('description', config('fabos.lab.tagline') . ' de ' . config('fabos.lab.institution') . '.')">
+    <meta name="description" content="@yield('description', \App\Support\Buscadores::descripcion())">
     @include('partials.tema')
     <style>
         :root{

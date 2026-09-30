@@ -1,5 +1,9 @@
 @extends('layouts.publico')
 @section('title', $pregunta->title . ' · ' . config('fabos.lab.name'))
+@section('description', \Illuminate\Support\Str::limit(trim(strip_tags((string) ($respuestas->first()?->body ?? $pregunta->body))), 155))
+@push('datos-estructurados')
+    {!! \App\Services\Buscadores\DatosEstructurados::etiqueta(app(\App\Services\Buscadores\DatosEstructurados::class)->pregunta($pregunta) ?? []) !!}
+@endpush
 
 @section('content')
     <div class="envoltura">

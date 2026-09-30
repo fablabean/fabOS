@@ -4,6 +4,16 @@
 
 @use('App\Support\PaginaFabAcademy', 'P')
 
+@if (filled($pagina['video_portada']['imagen'] ?? null))
+    @section('imagen', P::url($pagina['video_portada']['imagen']))
+@endif
+@push('datos-estructurados')
+    {!! \App\Services\Buscadores\DatosEstructurados::etiqueta(
+        app(\App\Services\Buscadores\DatosEstructurados::class)->fabAcademy($curso, $cohorte),
+        app(\App\Services\Buscadores\DatosEstructurados::class)->preguntasFrecuentes($pagina['faqs'] ?? []) ?? [],
+    ) !!}
+@endpush
+
 @php
     $fab = config('fabos.formacion.fab_academy');
     $faltan = $cohorte?->faltanParaAbrir();

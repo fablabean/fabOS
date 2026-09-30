@@ -42,6 +42,10 @@ Schedule::command('fabos:beneficio-semanal')
 // hash. Se conservan 30 días (§18).
 Schedule::command('fabos:respaldar')->dailyAt('03:00');
 
+// La analítica cruda vive 13 meses (§20): comparar un mes con el del año
+// anterior, y nada más.
+Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
+
 /*
  * La dotación mensual por categoría ya no existe (§12). La reemplazaron el
  * beneficio semanal de arriba —hasta 8 cada lunes, sin acumular— y el saldo

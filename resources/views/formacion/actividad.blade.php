@@ -1,6 +1,12 @@
 @extends('layouts.publico')
 @section('title', $edicion->nombre() . ' · ' . config('fabos.lab.name'))
 @section('description', $curso->summary ?: $curso->tipoLegible() . ' en ' . config('fabos.lab.name') . '.')
+@if ($curso->banner_path || $curso->photo_path)
+    @section('imagen', \Illuminate\Support\Facades\Storage::disk('public')->url($curso->banner_path ?: $curso->photo_path))
+@endif
+@push('datos-estructurados')
+    {!! \App\Services\Buscadores\DatosEstructurados::etiqueta(app(\App\Services\Buscadores\DatosEstructurados::class)->actividad($edicion)) !!}
+@endpush
 
 @php
     $publico = \Illuminate\Support\Facades\Storage::disk('public');
