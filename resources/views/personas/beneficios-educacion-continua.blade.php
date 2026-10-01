@@ -35,7 +35,8 @@
         .cabecera td.marca img{height:1.6cm;max-width:4cm}
         h1{font-size:1.35rem;margin:0;line-height:1.25}
         .meta{font-size:.85rem;color:#555;margin-top:.25rem}
-        .derecha{text-align:right;white-space:nowrap;padding-left:1rem}
+        /* Un título no se queda solo al pie de la página, lejos de su texto. */
+        h2{page-break-after:avoid}
         h2{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:#0D6E63;margin:1.5rem 0 .5rem;border-bottom:1px solid #ddd;padding-bottom:.25rem}
         p{margin:.35rem 0 .55rem}
         ul,ol{margin:.3rem 0 .6rem;padding-left:1.2rem}
@@ -65,10 +66,7 @@
         <td>
             <h1>Beneficios para estudiantes de Educación Continua</h1>
             <div class="meta">{{ $d['laboratorio'] }} · {{ $d['institucion'] }} · {{ $d['ciudad'] }}</div>
-        </td>
-        <td class="derecha">
-            <div class="meta">Para: Educación Continua</div>
-            <div class="meta">Valores vigentes al {{ $d['fecha'] }}</div>
+            <div class="meta">Para: Educación Continua · Valores vigentes al {{ $d['fecha'] }}</div>
         </td>
     </tr>
 </table>
