@@ -156,12 +156,20 @@
         @php
             // Cada día se ensancha con lo que se le cruza: siete impresoras
             // produciendo a la vez no caben en una columna de seis letras.
-            $columnas = collect($s['dias'])->map(function ($dia) use ($s) {
+            // Lo que ya pasó se encoge: se mira para hoy y lo que viene, y los
+            // días de atrás no deben empujarlo fuera de la pantalla. Al pasar
+            // el cursor por un bloque angosto, se ensancha para leerlo.
+            $columnas = collect($s['dias'])->map(function ($dia) use ($s, $hoy) {
+                if ($dia->toDateString() < $hoy) {
+                    return 'minmax(4.5rem,.6fr)';
+                }
+
                 $carriles = collect($s['bloques'][$dia->toDateString()] ?? [])->max('carriles') ?? 1;
                 return 'minmax(' . max(6.5, $carriles * 5.2) . 'rem,' . $carriles . 'fr)';
             })->implode(' ');
         @endphp
-        <div class="sem-scroll">
+        {{-- Abre con hoy a la vista, sin tener que desplazarse a buscarlo. --}}
+        <div class="sem-scroll" x-data x-init="$nextTick(() => { const h = $el.querySelector('.sem-dia.hoy'); if (h) $el.scrollLeft = Math.max(0, h.offsetLeft - $el.querySelector('.sem-horas').offsetWidth - 8) })">
             <div class="sem" style="grid-template-columns:3rem {{ $columnas }}">
                 <div></div>
                 @foreach ($s['dias'] as $dia)
@@ -177,7 +185,7 @@
                 </div>
 
                 @foreach ($s['dias'] as $dia)
-                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}"
+                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }}"
                          style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
                         @foreach ($s['bloques'][$dia->toDateString()] ?? [] as $b)
                             @php
@@ -198,6 +206,15 @@
                 @endforeach
             </div>
         </div>
+        @unless ($livewire ?? false)
+            {{-- Fuera del panel no hay Alpine: lo mismo, a mano. --}}
+            <script>
+                (function (el) {
+                    const h = el.querySelector('.sem-dia.hoy');
+                    if (h) el.scrollLeft = Math.max(0, h.offsetLeft - el.querySelector('.sem-horas').offsetWidth - 8);
+                })(document.currentScript.previousElementSibling);
+            </script>
+        @endunless
     @endif
 
     <div class="sem-ley">
@@ -266,6 +283,7 @@
         .sem-b { position:absolute; overflow:hidden; padding:.15rem .3rem; font-size:.68rem; cursor:default; }
         /* Al pasar por encima, el bloque crece hasta que se lea entero. */
         .sem-b:hover { z-index:2; height:auto !important; min-height:var(--alto); box-shadow:0 2px 8px rgb(0 0 0 / .25); }
+        .sem-col.atras .sem-b:hover { min-width:11rem; }
         .sem-f { font-size:.7rem; padding:.2rem .35rem; margin-bottom:.25rem; }
         .sem-f span { display:block; }
         .sem-b .h, .sem-f .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--s-soft); }
