@@ -484,7 +484,7 @@ class BookingService
         }
 
         if (! $this->sinApartarAlAcompanante && ($porQue = $this->porQueNoEstaLibre($acompanante, $desde, $hasta))) {
-            throw new BookingException($porQue);
+            throw new BookingException($porQue, conflictos: $this->queOcupaA($acompanante, $desde, $hasta));
         }
     }
 
@@ -588,6 +588,81 @@ class BookingService
         }
 
         return null;
+    }
+
+    /**
+     * Qué ocupa a esta persona a esa hora, uno por uno.
+     *
+     * `porQueNoEstaLibre` dice que no se puede; esto dice con qué choca, con
+     * hora y enlace, para ir a moverlo si es lo que hay que hacer.
+     *
+     * @return array<int,array{cuando:string,que:string,detalle:?string,url:?string}>
+     */
+    public function queOcupaA(User $persona, CarbonInterface $desde, CarbonInterface $hasta): array
+    {
+        $tz = config('fabos.lab.timezone');
+        $franja = fn (CarbonInterface $d, CarbonInterface $h): string => $d->copy()->setTimezone($tz)->locale('es')->isoFormat('ddd D/MM H:mm')
+            . '–' . $h->copy()->setTimezone($tz)->format('H:i');
+
+        $choques = [];
+
+        // Lo apartado aquí: el tiempo de la persona cuelga de la reserva que
+        // lo pidió —la asesoría, el equipo acompañado—, y es esa la que se edita.
+        Reservation::with(['madre.reservable', 'madre.user', 'reservable', 'user'])
+            ->where('reservable_type', User::class)
+            ->where('reservable_id', $persona->id)
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->orderBy('starts_at')
+            ->get()
+            ->each(function (Reservation $r) use (&$choques, $franja) {
+                $m = $r->madre ?? $r;
+                $que = $m->reservable instanceof User
+                    ? 'Tiempo apartado' . ($m->purpose ? ': ' . $m->purpose : '')
+                    : ($m->reservable?->name ?? 'Reserva') . ($m->purpose ? ' · ' . $m->purpose : '');
+
+                $choques[] = [
+                    'cuando'  => $franja($r->starts_at, $r->ends_at),
+                    'que'     => $que,
+                    'detalle' => $m->user ? 'Reservó ' . $m->user->name : null,
+                    'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $m]),
+                ];
+            });
+
+        // Lo de su calendario de Outlook: se ajusta allá, no aquí.
+        foreach ($this->agenda->choquesEn($persona, $desde, $hasta) as $e) {
+            $choques[] = [
+                'cuando'  => $franja($e['desde'], $e['hasta']),
+                'que'     => $e['titulo'] ?? 'Ocupado (su calendario no publica el título)',
+                'detalle' => 'En su calendario de Outlook' . ($e['lugar'] ? ' · ' . $e['lugar'] : '') . '. Se mueve desde allá.',
+                'url'     => null,
+            ];
+        }
+
+        if ($bloqueo = $this->coverage->bloqueoDe($persona, $desde, $hasta)) {
+            $choques[] = [
+                'cuando'  => $bloqueo->starts_time
+                    ? 'De ' . substr($bloqueo->starts_time, 0, 5) . ' a ' . substr((string) $bloqueo->ends_time, 0, 5)
+                    : 'Todo el día',
+                'que'     => 'Hora bloqueada: ' . $bloqueo->motivo(),
+                'detalle' => $bloqueo->esGeneral() ? 'Para todo el laboratorio' : 'En Ausencias y cierres',
+                'url'     => \App\Filament\Resources\ScheduleExceptions\ScheduleExceptionResource::getUrl('edit', ['record' => $bloqueo]),
+            ];
+        }
+
+        if ($jornada = $this->coverage->descansoDe($persona, $desde, $hasta)) {
+            [$inicio, $fin] = $jornada->descanso();
+
+            $choques[] = [
+                'cuando'  => 'De ' . $inicio . ' a ' . $fin,
+                'que'     => 'Su descanso',
+                'detalle' => 'Según su jornada',
+                'url'     => null,
+            ];
+        }
+
+        return $choques;
     }
 
     /** La restricción EXCLUDE de PostgreSQL viaja con este nombre. */

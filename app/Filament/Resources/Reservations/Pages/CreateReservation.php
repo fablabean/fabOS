@@ -14,6 +14,7 @@ use App\Services\Booking\AsesoriaService;
 use App\Services\Booking\BookingException;
 use App\Services\Booking\BookingService;
 use App\Services\Booking\EspacioBookingService;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -27,6 +28,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Livewire\Attributes\On;
 
 /**
  * Crear una reserva desde el panel (§7, §10).
@@ -53,6 +55,13 @@ class CreateReservation extends CreateRecord
     protected static string $resource = ReservationResource::class;
 
     protected static ?string $title = 'Nueva reserva';
+
+    /**
+     * Con qué chocó el último intento, para enseñarlo en un modal.
+     *
+     * @var array<int,array{cuando:string,que:string,detalle:?string,url:?string}>
+     */
+    public array $conflictos = [];
 
     public function form(Schema $schema): Schema
     {
@@ -458,7 +467,7 @@ class CreateReservation extends CreateRecord
                         $r = $crear($d, $h);
                     } catch (BookingException $e) {
                         throw count($fechas) > 1
-                            ? new BookingException('La ' . ($i + 1) . 'ª (' . $d->format('d/m/Y H:i') . ') no se pudo: ' . $e->getMessage() . ' No quedó ninguna.')
+                            ? new BookingException('La ' . ($i + 1) . 'ª (' . $d->format('d/m/Y H:i') . ') no se pudo: ' . $e->getMessage() . ' No quedó ninguna.', $e->faltantes, $e->conflictos)
                             : $e;
                     }
 
@@ -468,7 +477,16 @@ class CreateReservation extends CreateRecord
                 return $primera;
             });
         } catch (BookingException $e) {
-            Notification::make()->danger()->title('No se pudo reservar')->body($e->getMessage())->persistent()->send();
+            $this->conflictos = $e->conflictos;
+
+            Notification::make()->danger()->title('No se pudo reservar')->body($e->getMessage())->persistent()
+                ->actions($e->conflictos ? [
+                    Action::make('verConflicto')
+                        ->label('Ver con qué choca')
+                        ->button()
+                        ->dispatch('ver-conflicto'),
+                ] : [])
+                ->send();
 
             throw new Halt;
         }
@@ -580,5 +598,22 @@ class CreateReservation extends CreateRecord
         }
 
         return $aviso;
+    }
+
+    #[On('ver-conflicto')]
+    public function abrirConflicto(): void
+    {
+        $this->mountAction('verConflicto');
+    }
+
+    /** Lo que ocupa a la persona a esa hora, con enlace para ir a ajustarlo. */
+    public function verConflictoAction(): Action
+    {
+        return Action::make('verConflicto')
+            ->modalHeading('Con qué choca')
+            ->modalDescription('Lo que ya ocupa a esa persona a la hora pedida. Ajústalo y vuelve a intentar.')
+            ->modalContent(fn () => view('filament.reservas.conflictos', ['conflictos' => $this->conflictos]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
     }
 }

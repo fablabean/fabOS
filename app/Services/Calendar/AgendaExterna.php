@@ -56,9 +56,21 @@ class AgendaExterna
     }
 
     /**
+     * Las que se cruzan con esa hora, para enseñar con qué choca.
+     *
+     * @return Collection<int,array{desde:CarbonInterface,hasta:CarbonInterface,titulo:?string,lugar:?string}>
+     */
+    public function choquesEn(User $persona, CarbonInterface $desde, CarbonInterface $hasta): Collection
+    {
+        return $this->ocupaciones($persona)
+            ->filter(fn (array $r) => $r['desde']->lt($hasta) && $r['hasta']->gt($desde))
+            ->values();
+    }
+
+    /**
      * Las ocupaciones de las próximas semanas.
      *
-     * @return Collection<int,array{desde:CarbonInterface,hasta:CarbonInterface}>
+     * @return Collection<int,array{desde:CarbonInterface,hasta:CarbonInterface,titulo:?string,lugar:?string}>
      */
     public function ocupaciones(User $persona): Collection
     {
@@ -211,7 +223,14 @@ class AgendaExterna
                 // que dice la norma para los de día completo.
                 : $inicio->copy()->addDay();
 
-            $ocupaciones->push(['desde' => $inicio, 'hasta' => $fin]);
+            // El título y el lugar, si el calendario los publica: sirven para
+            // que quien choca con algo sepa qué es y vaya a moverlo.
+            $ocupaciones->push([
+                'desde'  => $inicio,
+                'hasta'  => $fin,
+                'titulo' => trim((string) ($evento->SUMMARY ?? '')) ?: null,
+                'lugar'  => trim((string) ($evento->LOCATION ?? '')) ?: null,
+            ]);
         }
 
         return $ocupaciones->values();

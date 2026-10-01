@@ -10,8 +10,12 @@ use RuntimeException;
  */
 class BookingException extends RuntimeException
 {
-    /** @param array<int,string> $faltantes */
-    public function __construct(string $message, public readonly array $faltantes = [])
+    /**
+     * @param array<int,string> $faltantes
+     * @param array<int,array{cuando:string,que:string,detalle:?string,url:?string}> $conflictos
+     *        lo que ocupa a alguien a esa hora, para poder ir a ajustarlo
+     */
+    public function __construct(string $message, public readonly array $faltantes = [], public readonly array $conflictos = [])
     {
         parent::__construct($message);
     }

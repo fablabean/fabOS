@@ -560,6 +560,31 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame(1, Reservation::where('reservable_type', User::class)->where('reservable_id', $jefa->id)->count());
     }
 
+    /** Si quien acompaña ya está ocupado, el aviso deja ver con qué choca. */
+    public function test_el_choque_de_quien_acompana_se_ve_en_un_modal(): void
+    {
+        $robot = $this->herramienta('Robot Unitree');
+        $jefa = User::whereHas('roles')->first();
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $robot->id, 'es_responsable' => true]);
+        $otro = $this->herramienta('Control');
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $otro->id, 'es_responsable' => true]);
+
+        $datos = fn (User $quien, Asset $que) => [
+            'tipo' => 'herramientas', 'user_id' => $quien->id, 'herramienta_ids' => [$que->id],
+            'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+            'acompanantes' => [$jefa->id],
+        ];
+
+        Livewire::test(CreateReservation::class)->fillForm($datos($this->alguien(), $robot))->call('create')->assertHasNoFormErrors();
+
+        $pagina = Livewire::test(CreateReservation::class)->fillForm($datos($this->alguien(), $otro))->call('create');
+
+        $this->assertCount(1, $pagina->get('conflictos'));
+        $this->assertStringContainsString('Robot Unitree', $pagina->get('conflictos')[0]['que']);
+
+        $pagina->call('abrirConflicto')->assertActionMounted('verConflicto')->assertSee('Robot Unitree');
+    }
+
     /** Quien acompaña tiene que poder: sin certifab ni asesoría declarada, no. */
     public function test_quien_acompana_tiene_que_estar_habilitado(): void
     {

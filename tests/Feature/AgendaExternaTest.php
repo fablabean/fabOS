@@ -77,6 +77,29 @@ class AgendaExternaTest extends TestCase
         return app(AgendaExterna::class);
     }
 
+    // --------------------------------------------------- con qué choca
+
+    public function test_dice_con_que_choca_con_titulo_y_lugar(): void
+    {
+        Http::fake(['*' => Http::response($this->ics(
+            $this->evento('1', '20260824T150000Z', '20260824T160000Z', "LOCATION:Aula 302
+"),
+        ))]);
+
+        $tz = config('fabos.lab.timezone');
+        $choques = app(\App\Services\Booking\BookingService::class)->queOcupaA(
+            $this->persona(),
+            Carbon::parse('2026-08-24 10:15', $tz),
+            Carbon::parse('2026-08-24 11:00', $tz),
+        );
+
+        $this->assertCount(1, $choques);
+        $this->assertSame('Clase', $choques[0]['que']);
+        $this->assertStringContainsString('10:00–11:00', $choques[0]['cuando']);
+        $this->assertStringContainsString('Aula 302', $choques[0]['detalle']);
+        $this->assertNull($choques[0]['url']);
+    }
+
     // ------------------------------------------------------------ leerlo
 
     public function test_una_reunion_ocupa_su_hora(): void
