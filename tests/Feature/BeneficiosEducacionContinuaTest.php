@@ -54,6 +54,7 @@ class BeneficiosEducacionContinuaTest extends TestCase
         UserCategory::updateOrCreate(['slug' => 'externo'], ['name' => 'Externo', 'position' => 20, 'rate_factor' => 2, 'can_reserve' => true, 'client_kind' => 'externo']);
         Setting::put(Settings::BENEFICIO_ACTIVO, true, 'beneficio');
 
+        config(['fabos.lab.affiliation' => 'una Coordinación de la Gerencia de Investigación y Transferencia']);
         $this->jefa();
 
         $this->get(BeneficiosEducacionContinua::getUrl())->assertOk()->assertSee('Descargar PDF');
@@ -68,7 +69,8 @@ class BeneficiosEducacionContinuaTest extends TestCase
             ->assertSee('50 % de la tarifa base')
             ->assertSee('4 veces menos')
             ->assertSee('hasta 8 FBC por semana')
-            ->assertSee('Cómo se activa');
+            ->assertSee('Cómo se activa')
+            ->assertSee(config('fabos.lab.name') . ', una Coordinación de la Gerencia de Investigación y Transferencia');
 
         // Cambia la bienvenida: el documento lo dice sin que nadie lo reescriba.
         UserCategory::where('slug', 'estudiante-bootcamp')->update(['welcome_minor' => 1500]);

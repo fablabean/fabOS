@@ -40,6 +40,8 @@ class BeneficiosDeEducacionContinua
             'fecha'        => now(config('fabos.lab.timezone'))->locale('es')->translatedFormat('j \d\e F \d\e Y'),
             'laboratorio'  => config('fabos.lab.name'),
             'institucion'  => config('fabos.lab.institution'),
+            // Lo mismo que firma el pie del sitio: «FABLAB EAN, una Coordinación de…».
+            'firma'        => config('fabos.lab.name') . (filled(config('fabos.lab.affiliation')) ? ', ' . config('fabos.lab.affiliation') : ''),
             'ciudad'       => config('fabos.lab.city'),
             'sitio'        => url('/'),
             'moneda'       => config('fabos.currency.name', 'FabCoin'),

@@ -65,7 +65,7 @@
         @endif
         <td>
             <h1>Beneficios para estudiantes de Educación Continua</h1>
-            <div class="meta">{{ $d['laboratorio'] }} · {{ $d['institucion'] }} · {{ $d['ciudad'] }}</div>
+            <div class="meta">{{ $d['firma'] }} · {{ $d['institucion'] }} · {{ $d['ciudad'] }}</div>
             <div class="meta">Para: Educación Continua · Valores vigentes al {{ $d['fecha'] }}</div>
         </td>
     </tr>
@@ -196,7 +196,7 @@
 </ul>
 
 <div class="pie">
-    {{ $d['laboratorio'] }} · {{ $d['institucion'] }} · {{ $d['ciudad'] }} · {{ $d['sitio'] }}
+    {{ $d['firma'] }} · {{ $d['institucion'] }} · {{ $d['ciudad'] }} · {{ $d['sitio'] }}
 </div>
 
 </body>
