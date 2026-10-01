@@ -40,6 +40,7 @@
                 Quienes atienden no tienen huecos en los próximos días.
                 Vuelve a mirar mañana, o escribe a la coordinación del laboratorio.
             </p>
+            @include('reservas._horario', ['tipo' => 'asesorias'])
             <p class="foot"><a href="{{ $volver }}">← Volver</a></p>
         </div>
     @else
@@ -51,6 +52,7 @@
                 <p class="help">
                     Solo aparecen horas en las que alguien puede atenderte de verdad.
                 </p>
+                @include('reservas._horario', ['tipo' => 'asesorias'])
 
                 @foreach ($franjas as $dia => $delDia)
                     @php $fecha = \Illuminate\Support\Carbon::parse($dia); @endphp

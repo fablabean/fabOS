@@ -45,8 +45,11 @@
 
                 <div class="agenda-campo">
                     <label for="inicio">Hora de inicio</label>
+                    @php $horario = \App\Support\HorarioDeAutoservicio::class; @endphp
                     <input id="inicio" name="inicio" type="time" required step="900"
+                           @if ($horario::activo('espacios')) min="{{ $horario::desde() }}" max="{{ $horario::hasta() }}" @endif
                            value="{{ old('inicio', $desde->format('H:i')) }}">
+                    @include('reservas._horario', ['tipo' => 'espacios'])
                 </div>
 
                 <div class="agenda-campo">

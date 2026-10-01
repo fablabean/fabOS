@@ -110,11 +110,13 @@ class AsesoriaController extends Controller
     private function pantalla(Request $request, Asset|Area $ambito, array $textos)
     {
         return view('reservas.asesoria', $textos + [
+            // Solo las horas que el horario de autoservicio deja pedir.
             'franjas' => $this->asesorias->franjasDisponibles(
                 $ambito,
                 $request->user(),
                 (int) config('fabos.asesorias.dias_vista', 7),
-            )->groupBy(fn (array $f) => $f['inicio']->toDateString()),
+            )->filter(fn (array $f) => \App\Support\HorarioDeAutoservicio::permite('asesorias', $f['inicio'], $f['fin']))
+                ->groupBy(fn (array $f) => $f['inicio']->toDateString()),
             'minutos' => (int) config('fabos.asesorias.minutos', 45),
             // Lo que cuesta y lo que tiene: se dice antes de elegir la hora,
             // no al enviar. La practica de un curso no pasa por aqui.
@@ -157,6 +159,8 @@ class AsesoriaController extends Controller
         $fin = $inicio->copy()->addMinutes((int) config('fabos.asesorias.minutos', 45));
 
         try {
+            \App\Support\HorarioDeAutoservicio::exigir('asesorias', $inicio, $fin);
+
             $reserva = $this->asesorias->agendar(
                 $request->user(), $ambito, $inicio, $fin, $datos['motivo'] ?? null,
             );

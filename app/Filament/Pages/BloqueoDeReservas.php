@@ -38,7 +38,7 @@ class BloqueoDeReservas extends Page
     /** @var array<string,mixed> */
     public array $datos = [];
 
-    /** @var array{activo:bool,desde:string,hasta:string} */
+    /** @var array{desde:string,hasta:string,aplica:array<int,string>} */
     public array $horario = [];
 
     public static function getNavigationGroup(): string | \UnitEnum | null
@@ -123,10 +123,12 @@ class BloqueoDeReservas extends Page
             'hasta.after' => 'La hora de cierre tiene que ser después de la de apertura.',
         ])->validate();
 
-        Horario::guardar((bool) ($this->horario['activo'] ?? false), $datos['desde'], $datos['hasta']);
+        Horario::guardar((array) ($this->horario['aplica'] ?? []), $datos['desde'], $datos['hasta']);
+
+        $tipos = collect(Horario::estado()['aplica'])->map(fn ($t) => Horario::TIPOS[$t][0])->join(', ', ' y ');
 
         Notification::make()
-            ->title(Horario::activo() ? 'Máquinas: se reservan ' . Horario::legible() : 'Horario de autoservicio apagado')
+            ->title(Horario::activo() ? $tipos . ': ' . Horario::legible() : 'Horario de autoservicio apagado')
             ->success()
             ->send();
     }

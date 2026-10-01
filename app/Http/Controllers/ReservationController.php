@@ -122,7 +122,7 @@ class ReservationController extends Controller
         }
 
         try {
-            \App\Support\HorarioDeAutoservicio::exigir($desde, $hasta);
+            \App\Support\HorarioDeAutoservicio::exigir('maquinas', $desde, $hasta);
 
             $reserva = $this->booking->reservar(
                 $request->user(), $asset, $desde, $hasta, $datos['proposito'] ?? null

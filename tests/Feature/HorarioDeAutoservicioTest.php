@@ -27,24 +27,35 @@ class HorarioDeAutoservicioTest extends TestCase
 
     public function test_apagado_no_limita_nada(): void
     {
-        $this->assertTrue(HorarioDeAutoservicio::permite($this->hora('2026-10-05 08:00'), $this->hora('2026-10-05 22:00')));
+        $this->assertTrue(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 08:00'), $this->hora('2026-10-05 22:00')));
     }
 
     public function test_la_reserva_entera_tiene_que_caber_en_el_horario(): void
     {
-        HorarioDeAutoservicio::guardar(true, '13:00', '18:00');
+        HorarioDeAutoservicio::guardar(['maquinas'], '13:00', '18:00');
 
-        $this->assertTrue(HorarioDeAutoservicio::permite($this->hora('2026-10-05 13:00'), $this->hora('2026-10-05 18:00')));
-        $this->assertTrue(HorarioDeAutoservicio::permite($this->hora('2026-10-05 15:30'), $this->hora('2026-10-05 16:30')));
+        $this->assertTrue(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 13:00'), $this->hora('2026-10-05 18:00')));
+        $this->assertTrue(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 15:30'), $this->hora('2026-10-05 16:30')));
 
-        $this->assertFalse(HorarioDeAutoservicio::permite($this->hora('2026-10-05 12:45'), $this->hora('2026-10-05 13:45')));
-        $this->assertFalse(HorarioDeAutoservicio::permite($this->hora('2026-10-05 17:00'), $this->hora('2026-10-05 18:30')));
-        $this->assertFalse(HorarioDeAutoservicio::permite($this->hora('2026-10-05 09:00'), $this->hora('2026-10-05 10:00')));
+        $this->assertFalse(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 12:45'), $this->hora('2026-10-05 13:45')));
+        $this->assertFalse(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 17:00'), $this->hora('2026-10-05 18:30')));
+        $this->assertFalse(HorarioDeAutoservicio::permite('maquinas', $this->hora('2026-10-05 09:00'), $this->hora('2026-10-05 10:00')));
+
+        // Lo que no se marcó, sigue libre.
+        $this->assertTrue(HorarioDeAutoservicio::permite('asesorias', $this->hora('2026-10-05 09:00'), $this->hora('2026-10-05 09:45')));
+    }
+
+    public function test_el_interruptor_viejo_se_lee_como_maquinas(): void
+    {
+        \App\Models\Setting::put(HorarioDeAutoservicio::CLAVE, ['activo' => true, 'desde' => '13:00', 'hasta' => '18:00']);
+
+        $this->assertTrue(HorarioDeAutoservicio::activo('maquinas'));
+        $this->assertFalse(HorarioDeAutoservicio::activo('asesorias'));
     }
 
     public function test_desde_su_cuenta_no_se_reserva_fuera_del_horario(): void
     {
-        HorarioDeAutoservicio::guardar(true, '13:00', '18:00');
+        HorarioDeAutoservicio::guardar(['maquinas'], '13:00', '18:00');
 
         $area = Area::create(['slug' => 'corte', 'name' => 'Corte láser']);
         $equipo = Asset::create([
@@ -60,7 +71,7 @@ class HorarioDeAutoservicioTest extends TestCase
                 'inicio' => '09:00',
                 'duracion' => 60,
             ])
-            ->assertSessionHasErrors(['fecha' => 'Por ahora las máquinas se reservan de 13:00 a 18:00: la reserva tiene que empezar y terminar dentro de ese horario. Si necesitas otra hora, pídela al equipo del laboratorio.']);
+            ->assertSessionHasErrors(['fecha' => 'Por ahora las máquinas se reservan de 13:00 a 18:00: tiene que empezar y terminar dentro de ese horario. Si necesitas otra hora, pídela al equipo del laboratorio.']);
 
         $this->assertDatabaseCount('reservations', 0);
     }
@@ -79,7 +90,7 @@ class HorarioDeAutoservicioTest extends TestCase
         $this->actingAs($u->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         Livewire::test(Pantalla::class)
-            ->set('horario.activo', true)
+            ->set('horario.aplica', ['maquinas', 'asesorias'])
             ->set('horario.desde', '18:00')
             ->set('horario.hasta', '13:00')
             ->call('guardarHorario')
@@ -88,12 +99,13 @@ class HorarioDeAutoservicioTest extends TestCase
         $this->assertFalse(HorarioDeAutoservicio::activo());
 
         Livewire::test(Pantalla::class)
-            ->set('horario.activo', true)
+            ->set('horario.aplica', ['maquinas', 'asesorias'])
             ->set('horario.desde', '13:00')
             ->set('horario.hasta', '18:00')
             ->call('guardarHorario');
 
-        $this->assertTrue(HorarioDeAutoservicio::activo());
+        $this->assertTrue(HorarioDeAutoservicio::activo('asesorias'));
+        $this->assertFalse(HorarioDeAutoservicio::activo('espacios'));
         $this->assertSame('de 13:00 a 18:00', HorarioDeAutoservicio::legible());
     }
 }

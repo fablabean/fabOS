@@ -51,15 +51,23 @@
     <x-filament::section>
         <x-slot name="heading">Horario de autoservicio</x-slot>
         <x-slot name="description">
-            Las horas en que la gente puede reservar máquinas por su cuenta. Sirve cuando hay más
-            demanda de la que se puede atender. Lo que se agenda desde el panel no queda limitado.
+            Las horas en que la gente puede reservar por su cuenta, en lo que marques. Sirve cuando hay
+            más demanda de la que se puede atender. Lo que se agenda desde el panel no queda limitado.
         </x-slot>
 
         <form wire:submit="guardarHorario" class="space-y-4">
-            <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" wire:model="horario.activo" class="rounded">
-                Limitar las reservas de máquinas a este horario
-            </label>
+            <div class="text-sm">
+                <p class="mb-2">Limitar a este horario:</p>
+                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                    @foreach (\App\Support\HorarioDeAutoservicio::TIPOS as $clave => [$etiqueta])
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" wire:model="horario.aplica" value="{{ $clave }}" class="rounded">
+                            {{ $etiqueta }}
+                        </label>
+                    @endforeach
+                </div>
+                <p class="mt-1" style="color:rgb(107 114 128)">Sin ninguna marcada, no se limita nada.</p>
+            </div>
 
             <div class="flex flex-wrap gap-4 text-sm">
                 <label>Desde
@@ -75,7 +83,8 @@
             @error('hasta') <p class="text-sm" style="color:#dc2626">{{ $message }}</p> @enderror
 
             <p class="text-sm" style="color:rgb(107 114 128)">
-                La reserva tiene que empezar y terminar dentro del horario, el mismo día. Las que ya existen no se tocan.
+                La reserva tiene que empezar y terminar dentro del horario, el mismo día. En asesorías solo se
+                ofrecen las horas que caben. Las reservas que ya existen no se tocan.
             </p>
 
             <x-filament::button type="submit">Guardar el horario</x-filament::button>

@@ -101,8 +101,11 @@
 
                 <div class="agenda-campo">
                     <label for="inicio">Hora de inicio</label>
+                    @php $horario = \App\Support\HorarioDeAutoservicio::class; @endphp
                     <input id="inicio" name="inicio" type="time" required step="900"
-                           value="{{ old('inicio', $franjaHoy ? substr($franjaHoy[0], 0, 5) : '09:00') }}">
+                           @if ($horario::activo('herramientas')) min="{{ $horario::desde() }}" max="{{ $horario::hasta() }}" @endif
+                           value="{{ old('inicio', $horario::activo('herramientas') ? $horario::desde() : ($franjaHoy ? substr($franjaHoy[0], 0, 5) : '09:00')) }}">
+                    @include('reservas._horario', ['tipo' => 'herramientas'])
                 </div>
 
                 <div class="agenda-campo">

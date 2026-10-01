@@ -154,13 +154,9 @@
                 <label for="inicio">Hora de inicio</label>
                 @php $horario = \App\Support\HorarioDeAutoservicio::class; @endphp
                 <input id="inicio" name="inicio" type="time" required step="900"
-                       @if ($horario::activo()) min="{{ $horario::desde() }}" max="{{ $horario::hasta() }}" @endif
-                       value="{{ old('inicio', $horario::activo() ? $horario::desde() : ($franjaHoy ? substr($franjaHoy[0], 0, 5) : '09:00')) }}">
-                @if ($horario::activo())
-                    <small style="display:block;margin-top:.3rem;color:var(--muted)">
-                        Por ahora las máquinas se reservan {{ $horario::legible() }}.
-                    </small>
-                @endif
+                       @if ($horario::activo('maquinas')) min="{{ $horario::desde() }}" max="{{ $horario::hasta() }}" @endif
+                       value="{{ old('inicio', $horario::activo('maquinas') ? $horario::desde() : ($franjaHoy ? substr($franjaHoy[0], 0, 5) : '09:00')) }}">
+                @include('reservas._horario', ['tipo' => 'maquinas'])
                 </div>
 
                 <div class="agenda-campo">

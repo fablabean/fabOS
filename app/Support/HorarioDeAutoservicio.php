@@ -7,12 +7,13 @@ use App\Services\Booking\BookingException;
 use Carbon\CarbonInterface;
 
 /**
- * Las horas en que una persona puede reservar máquinas por su cuenta.
+ * Las horas en que una persona puede reservar por su cuenta.
  *
  * Cuando la demanda aprieta, la coordinación acota el autoservicio —«de 1 a 6
- * de la tarde»— sin tocar la jornada ni los horarios del equipo. Solo alcanza
- * lo que la persona reserva desde su cuenta; lo que se agenda desde el panel
- * no pasa por aquí, porque quien lo hace ya está decidiendo la excepción.
+ * de la tarde»— sin tocar la jornada ni los horarios del equipo. Se elige a
+ * qué se aplica: máquinas, asesorías, espacios, herramientas. Solo alcanza lo
+ * que la persona reserva desde su cuenta; lo que se agenda desde el panel no
+ * pasa por aquí, porque quien lo hace ya está decidiendo la excepción.
  *
  * La reserva entera tiene que caber: empezar desde la hora de apertura y
  * terminar a más tardar a la de cierre, el mismo día.
@@ -21,20 +22,38 @@ class HorarioDeAutoservicio
 {
     public const CLAVE = 'reservas.horario_autoservicio';
 
-    /** @return array{activo:bool,desde:string,hasta:string} */
+    /** tipo => [etiqueta en el panel, cómo se dice en el aviso] */
+    public const TIPOS = [
+        'maquinas'     => ['Máquinas', 'las máquinas se reservan'],
+        'asesorias'    => ['Asesorías', 'las asesorías se agendan'],
+        'espacios'     => ['Espacios', 'los espacios se reservan'],
+        'herramientas' => ['Herramientas', 'las herramientas se prestan'],
+    ];
+
+    /** @return array{desde:string,hasta:string,aplica:array<int,string>} */
     public static function estado(): array
     {
         $guardado = Setting::get(self::CLAVE);
+        $guardado = is_array($guardado) ? $guardado : [];
 
-        return array_merge(
-            ['activo' => false, 'desde' => '13:00', 'hasta' => '18:00'],
-            is_array($guardado) ? $guardado : [],
-        );
+        // La primera versión tenía un solo interruptor, y era para máquinas.
+        if (! isset($guardado['aplica'])) {
+            $guardado['aplica'] = ! empty($guardado['activo']) ? ['maquinas'] : [];
+        }
+
+        return [
+            'desde'  => $guardado['desde'] ?? '13:00',
+            'hasta'  => $guardado['hasta'] ?? '18:00',
+            'aplica' => array_values(array_intersect(array_keys(self::TIPOS), (array) $guardado['aplica'])),
+        ];
     }
 
-    public static function activo(): bool
+    /** Si limita ese tipo; sin tipo, si limita alguno. */
+    public static function activo(?string $tipo = null): bool
     {
-        return (bool) self::estado()['activo'];
+        $aplica = self::estado()['aplica'];
+
+        return $tipo === null ? $aplica !== [] : in_array($tipo, $aplica, true);
     }
 
     public static function desde(): string
@@ -47,12 +66,13 @@ class HorarioDeAutoservicio
         return self::estado()['hasta'];
     }
 
-    public static function guardar(bool $activo, string $desde, string $hasta): void
+    /** @param array<int,string> $aplica */
+    public static function guardar(array $aplica, string $desde, string $hasta): void
     {
         Setting::put(self::CLAVE, [
-            'activo' => $activo,
             'desde'  => substr($desde, 0, 5),
             'hasta'  => substr($hasta, 0, 5),
+            'aplica' => array_values(array_intersect(array_keys(self::TIPOS), $aplica)),
         ], 'reservas');
     }
 
@@ -62,9 +82,15 @@ class HorarioDeAutoservicio
         return 'de ' . self::desde() . ' a ' . self::hasta();
     }
 
-    public static function permite(CarbonInterface $desde, CarbonInterface $hasta): bool
+    /** «Por ahora las asesorías se agendan de 13:00 a 18:00.» */
+    public static function aviso(string $tipo): string
     {
-        if (! self::activo()) {
+        return 'Por ahora ' . self::TIPOS[$tipo][1] . ' ' . self::legible() . '.';
+    }
+
+    public static function permite(string $tipo, CarbonInterface $desde, CarbonInterface $hasta): bool
+    {
+        if (! self::activo($tipo)) {
             return true;
         }
 
@@ -78,15 +104,15 @@ class HorarioDeAutoservicio
     }
 
     /** @throws BookingException si la reserva se sale del horario */
-    public static function exigir(CarbonInterface $desde, CarbonInterface $hasta): void
+    public static function exigir(string $tipo, CarbonInterface $desde, CarbonInterface $hasta): void
     {
-        if (self::permite($desde, $hasta)) {
+        if (self::permite($tipo, $desde, $hasta)) {
             return;
         }
 
         throw new BookingException(
-            'Por ahora las máquinas se reservan ' . self::legible() . ': la reserva tiene que empezar y '
-            . 'terminar dentro de ese horario. Si necesitas otra hora, pídela al equipo del laboratorio.'
+            rtrim(self::aviso($tipo), '.') . ': tiene que empezar y terminar dentro de ese horario. '
+            . 'Si necesitas otra hora, pídela al equipo del laboratorio.'
         );
     }
 }

@@ -145,6 +145,8 @@ class EspacioController extends Controller
         $hasta = $desde->copy()->addMinutes((int) $datos['duracion']);
 
         try {
+            \App\Support\HorarioDeAutoservicio::exigir('espacios', $desde, $hasta);
+
             // El laboratorio entero solo se recorre desde aqui: cerrarlo es
             // del panel. Una sala, lo que diga la persona.
             $reserva = $this->espacios->reservarVarios(

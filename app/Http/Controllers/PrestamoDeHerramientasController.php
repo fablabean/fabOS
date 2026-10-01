@@ -74,6 +74,8 @@ class PrestamoDeHerramientasController extends Controller
         }
 
         try {
+            \App\Support\HorarioDeAutoservicio::exigir('herramientas', $desde, $hasta);
+
             $reserva = $this->booking->reservarHerramientas(
                 $request->user(), $herramientas, $desde, $hasta, $datos['proposito'] ?? null,
             );
