@@ -362,4 +362,34 @@ class RecorridoGamificadoTest extends TestCase
         $this->get(route('recorridos.qr', $c))->assertForbidden();
         $this->get(route('juego.visor', $p->equipos()->first()))->assertForbidden();
     }
+
+    public function test_la_documentacion_de_la_api_se_lee_en_el_panel(): void
+    {
+        $this->superadmin();
+
+        $this->get(\App\Filament\Pages\ApiDeLasGafas::getUrl())
+            ->assertOk()
+            ->assertSee('Emparejar las gafas')
+            ->assertSee('<table>', false)
+            ->assertSee('/api/recorridos/visor');
+    }
+
+    public function test_el_demo_se_arma_y_se_puede_rehacer(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $this->artisan('fabos:recorrido-demo')->assertSuccessful();
+        $this->artisan('fabos:recorrido-demo')->assertSuccessful();
+
+        $this->assertSame(1, Circuito::count());
+        $this->assertCount(5, Circuito::first()->estaciones);
+        $this->assertSame(2, Partida::count());
+
+        $enCurso = Partida::where('estado', 'en_curso')->firstOrFail();
+        $this->assertSame(['terminado', 'secuencia', 'resolviendo', 'buscando'], $enCurso->equipos->pluck('estado')->all());
+        $this->assertTrue($enCurso->equipos->every(fn (Equipo $e) => $e->terminado_at === null || $e->terminado_at->isPast()));
+
+        $this->artisan('fabos:recorrido-demo', ['--borrar' => true])->assertSuccessful();
+        $this->assertSame(0, Partida::count());
+    }
 }
