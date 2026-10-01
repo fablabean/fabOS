@@ -579,6 +579,30 @@ Route::middleware('throttle:60,1')->group(function () {
         ->name('compras.compartida.pdf');
 });
 
+/*
+ * Recorridos gamificados (§7): el celular del equipo, los QR de las estaciones
+ * y el tablero. Sin sesión: los visitantes juegan sin cuenta, y el celular se
+ * identifica con el enlace de su equipo.
+ */
+Route::middleware('throttle:120,1')->prefix('juego')->name('juego.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\JuegoController::class, 'unirse'])->name('unirse');
+    Route::post('/', [\App\Http\Controllers\JuegoController::class, 'entrar'])->name('entrar');
+    Route::get('/e/{token}', [\App\Http\Controllers\JuegoController::class, 'equipo'])
+        ->where('token', '[A-Za-z0-9]{40}')->name('equipo');
+    Route::get('/q/{codigo}', [\App\Http\Controllers\JuegoController::class, 'qr'])
+        ->where('codigo', '[a-z0-9]{6,12}')->name('qr');
+    Route::get('/tablero/{codigo}', [\App\Http\Controllers\JuegoController::class, 'tablero'])
+        ->where('codigo', '[a-z0-9]{6,12}')->name('tablero');
+    Route::get('/visor/{equipo}', [\App\Http\Controllers\JuegoController::class, 'visor'])
+        ->middleware('auth')->name('visor');
+});
+
+// Lo que se imprime para un recorrido: los QR de las estaciones y los equipos.
+Route::middleware('auth')->prefix('recorridos')->name('recorridos.')->group(function () {
+    Route::get('/circuitos/{circuito}/qr', [\App\Http\Controllers\RecorridoImpresionController::class, 'qr'])->name('qr');
+    Route::get('/partidas/{partida}/equipos', [\App\Http\Controllers\RecorridoImpresionController::class, 'equipos'])->name('equipos');
+});
+
 // La ficha de una pregunta va al final: si fuera antes, /preguntas/nueva
 // se interpretaria como el slug de una pregunta llamada «nueva».
 Route::get('/preguntas/{question:slug}', [PreguntaController::class, 'show'])->name('preguntas.show');

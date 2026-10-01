@@ -36,6 +36,7 @@ class MenuDelPanel
         'Software y claves',
         'Compras',
         'Laboratorio',
+        'Recorridos',
         'Formación',
         'Finanzas',
         'Tienda',
