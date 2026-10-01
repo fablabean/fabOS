@@ -49,13 +49,22 @@
         .tabla td b{font-size:1.05em}
         .chico{font-size:.88em;color:#555}
         .pie{margin-top:1.6rem;font-size:.82em;color:#666;border-top:1px solid #ddd;padding-top:.6rem}
-        .aviso{background:#fff7e0;border:1px solid #f0d58c;padding:.6rem .9rem;border-radius:.4rem;margin-bottom:1.2rem;font-size:.9em}
+        .aviso{background:#fff7e0;border:1px solid #f0d58c;border-radius:.4rem;margin-bottom:1.2rem;font-size:.9em;border-collapse:separate}
+        .aviso td{padding:.6rem .9rem;vertical-align:middle}
+        .descargar{display:inline-block;background:#0D6E63;color:#fff;text-decoration:none;font-weight:600;
+                   padding:.45rem .95rem;border-radius:.4rem}
+        .descargar:hover{background:#0a5a51}
     </style>
 </head>
 <body>
 
 @unless ($paraPdf)
-    <div class="aviso">Vista previa. El PDF sale igual, con las cifras vigentes en el momento de descargarlo.</div>
+    <table class="aviso"><tr>
+        <td>Vista previa. El PDF sale igual, con las cifras vigentes en el momento de descargarlo.</td>
+        <td style="text-align:right;white-space:nowrap;padding-left:1rem">
+            <a class="descargar" href="{{ route('beneficios.educacion-continua', ['pdf' => 1]) }}" download>Descargar PDF</a>
+        </td>
+    </tr></table>
 @endunless
 
 <table class="cabecera">

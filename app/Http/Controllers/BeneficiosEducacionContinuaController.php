@@ -19,7 +19,8 @@ class BeneficiosEducacionContinuaController extends Controller
 
         $datos = [
             'd'    => $beneficios->datos(),
-            'logo' => \App\Support\Settings::logoParaPdf(),
+            // La compacta: al lado de un título de dos líneas, la larga se lee apretada.
+            'logo' => \App\Support\Settings::logoParaPdf(compacto: true),
         ];
 
         if ($request->boolean('pdf')) {

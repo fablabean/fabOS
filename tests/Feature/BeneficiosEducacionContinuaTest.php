@@ -70,6 +70,7 @@ class BeneficiosEducacionContinuaTest extends TestCase
             ->assertSee('4 veces menos')
             ->assertSee('hasta 8 FBC por semana')
             ->assertSee('Cómo se activa')
+            ->assertSee('href="' . route('beneficios.educacion-continua', ['pdf' => 1]) . '" download', false)
             ->assertSee(config('fabos.lab.name') . ', una Coordinación de la Gerencia de Investigación y Transferencia');
 
         // Cambia la bienvenida: el documento lo dice sin que nadie lo reescriba.

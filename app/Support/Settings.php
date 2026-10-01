@@ -629,12 +629,16 @@ final class Settings
      * documento es ancha y baja, que es exactamente la forma de una marca
      * horizontal. Sin larga vale la compacta, y sin ninguna la del archivo de
      * configuracion.
+     *
+     * Con `$compacto`, al reves: manda la compacta. Para una cabecera donde
+     * el titulo ya ocupa el ancho y la larga, encogida a su alto, se lee
+     * apretada.
      */
-    public static function logoParaPdf(): ?string
+    public static function logoParaPdf(bool $compacto = false): ?string
     {
         $disco = \Illuminate\Support\Facades\Storage::disk('public');
 
-        if ($ruta = self::logoLargo() ?? self::logo()) {
+        if ($ruta = $compacto ? (self::logo() ?? self::logoLargo()) : (self::logoLargo() ?? self::logo())) {
             return self::comoDataUri($disco->get($ruta), $disco->mimeType($ruta) ?: null, $ruta);
         }
 
