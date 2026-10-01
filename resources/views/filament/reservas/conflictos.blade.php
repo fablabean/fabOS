@@ -14,4 +14,15 @@
     @empty
         <p style="font-size:.9rem">Ya no aparece nada que choque: puede que lo hayan movido. Vuelve a intentar.</p>
     @endforelse
+
+    @if ($sePuedeIgual ?? false)
+        <p style="font-size:.85rem;color:rgb(107 114 128)">
+            Si sabes que no estorba —no va a ir a esa reunión, o el descanso se mueve ese día—, puedes
+            reservar de todas formas. Su tiempo queda apartado igual.
+        </p>
+    @elseif (collect($conflictos)->contains('tipo', 'reserva'))
+        <p style="font-size:.85rem;color:rgb(107 114 128)">
+            Ya tiene algo reservado en fabOS a esa hora: para reservar, ajusta primero esa reserva.
+        </p>
+    @endif
 </div>

@@ -63,6 +63,9 @@ class CreateReservation extends CreateRecord
      */
     public array $conflictos = [];
 
+    /** Se vio con qué choca quien acompaña y se decidió reservar igual. */
+    public bool $aceptarChoques = false;
+
     public function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -435,11 +438,17 @@ class CreateReservation extends CreateRecord
         $acompanantes = User::role(User::rolesDelEquipo())->whereIn('id', array_map('intval', (array) ($data['acompanantes'] ?? [])))->get();
         $acompanante = $acompanantes->count() === 1 && $data['tipo'] !== 'espacio' ? $acompanantes->first() : null;
 
+        $reservas = app(BookingService::class);
+
+        if ($this->aceptarChoques) {
+            $reservas->aceptandoChoquesDelAcompanante();
+        }
+
         $crear = fn (Carbon $desde, Carbon $hasta): Reservation => match ($data['tipo']) {
-            'autonomia' => app(BookingService::class)->reservar(
+            'autonomia' => $reservas->reservar(
                 $quien, Asset::findOrFail($data['asset_id']), $desde, $hasta, $paraQue, [], $acompanante,
             ),
-            'herramientas' => app(BookingService::class)->reservarHerramientas(
+            'herramientas' => $reservas->reservarHerramientas(
                 $quien, Asset::whereIn('id', array_map('intval', (array) ($data['herramienta_ids'] ?? [])))->get(), $desde, $hasta, $paraQue, $acompanante,
             ),
             'espacio' => app(EspacioBookingService::class)->reservarVarios(
@@ -478,6 +487,7 @@ class CreateReservation extends CreateRecord
             });
         } catch (BookingException $e) {
             $this->conflictos = $e->conflictos;
+            $this->aceptarChoques = false;
 
             Notification::make()->danger()->title('No se pudo reservar')->body($e->getMessage())->persistent()
                 ->actions($e->conflictos ? [
@@ -612,8 +622,30 @@ class CreateReservation extends CreateRecord
         return Action::make('verConflicto')
             ->modalHeading('Con qué choca')
             ->modalDescription('Lo que ya ocupa a esa persona a la hora pedida. Ajústalo y vuelve a intentar.')
-            ->modalContent(fn () => view('filament.reservas.conflictos', ['conflictos' => $this->conflictos]))
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Cerrar');
+            ->modalContent(fn () => view('filament.reservas.conflictos', [
+                'conflictos' => $this->conflictos,
+                'sePuedeIgual' => $this->sePuedeReservarIgual(),
+            ]))
+            // Una reunión a la que no va, su descanso: quien agenda sabe si
+            // estorba. Otra reserva de fabOS no: ahí la persona ya está.
+            ->modalSubmitAction(fn ($action) => $this->sePuedeReservarIgual() ? $action : false)
+            ->modalSubmitActionLabel('Reservar de todas formas')
+            ->color('warning')
+            ->modalCancelActionLabel('Cerrar')
+            ->action(function (): void {
+                $this->aceptarChoques = true;
+
+                try {
+                    $this->create();
+                } finally {
+                    $this->aceptarChoques = false;
+                }
+            });
+    }
+
+    private function sePuedeReservarIgual(): bool
+    {
+        return $this->conflictos !== []
+            && collect($this->conflictos)->doesntContain('tipo', 'reserva');
     }
 }

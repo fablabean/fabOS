@@ -583,6 +583,44 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertStringContainsString('Robot Unitree', $pagina->get('conflictos')[0]['que']);
 
         $pagina->call('abrirConflicto')->assertActionMounted('verConflicto')->assertSee('Robot Unitree');
+
+        // Con otra reserva de fabOS no hay «de todas formas»: la persona ya está ahí.
+        $pagina->callMountedAction();
+        $this->assertSame(1, Reservation::where('reservable_type', Asset::class)->count());
+    }
+
+    /** Una reunión de su calendario no estorba si quien agenda lo dice: se reserva igual. */
+    public function test_un_choque_con_su_calendario_se_puede_pasar_por_alto(): void
+    {
+        $robot = $this->herramienta('Robot Unitree');
+        $jefa = User::whereHas('roles')->first();
+        $jefa->forceFill(['external_calendar_url' => 'https://outlook.office365.com/owa/calendar/x/reachcalendar.ics'])->save();
+        AssetAdvisor::create(['user_id' => $jefa->id, 'asset_id' => $robot->id, 'es_responsable' => true]);
+
+        \Illuminate\Support\Facades\Http::fake(['*' => \Illuminate\Support\Facades\Http::response(
+            implode("\r\n", [
+                'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:1', 'DTSTAMP:20260820T120000Z',
+                'DTSTART:20260824T100000Z', 'DTEND:20260825T030000Z', 'SUMMARY:Comité',
+                'END:VEVENT', 'END:VCALENDAR', '',
+            ])
+        )]);
+
+        $pagina = Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'herramientas', 'user_id' => $this->alguien()->id, 'herramienta_ids' => [$robot->id],
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('16:00'),
+                'acompanantes' => [$jefa->id],
+            ])
+            ->call('create');
+
+        $this->assertSame(0, Reservation::count());
+        $this->assertSame('Comité', $pagina->get('conflictos')[0]['que']);
+
+        $pagina->call('abrirConflicto')->callMountedAction();
+
+        $r = Reservation::where('reservable_type', Asset::class)->firstOrFail();
+        $this->assertSame($jefa->id, $r->supervisor_id);
+        $this->assertSame(1, Reservation::where('reservable_type', User::class)->where('reservable_id', $jefa->id)->count(), 'su tiempo queda apartado igual');
     }
 
     /** Quien acompaña tiene que poder: sin certifab ni asesoría declarada, no. */
