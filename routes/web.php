@@ -367,6 +367,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/archivo', [ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
+    // Los beneficios para Educación Continua, en pantalla o en PDF para enviar.
+    Route::get('/panel/beneficios-educacion-continua', \App\Http\Controllers\BeneficiosEducacionContinuaController::class)
+        ->name('beneficios.educacion-continua');
+
     // El QR de asistencia de una sesión, en una hoja para imprimir o proyectar.
     Route::get('/panel/asistencia/{session}/qr', [\App\Http\Controllers\AsistenciaController::class, 'imprimir'])
         ->name('asistencia.qr');

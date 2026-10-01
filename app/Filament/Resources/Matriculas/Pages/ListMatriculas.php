@@ -19,6 +19,14 @@ class ListMatriculas extends ListRecords
     {
         return [
             CreateAction::make()->label('Matricular a alguien'),
+
+            // Lo que reciben, por escrito, para enviárselo a Educación Continua.
+            \Filament\Actions\Action::make('beneficios')
+                ->label('Beneficios (PDF)')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->url(fn () => \App\Filament\Pages\BeneficiosEducacionContinua::getUrl())
+                ->visible(fn () => \App\Filament\Pages\BeneficiosEducacionContinua::canAccess()),
         ];
     }
 }
