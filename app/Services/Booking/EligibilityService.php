@@ -72,6 +72,30 @@ class EligibilityService
             );
         }
 
+        /*
+         * Quien administra fabOS usa todo lo que hay en el laboratorio.
+         *
+         * Un superadmin no espera un certifab para probar el robot que acaba
+         * de dar de alta, ni para acompañar a quien lo va a usar. Lo del
+         * equipo sigue mandando —que esté operativo, sus dependencias, el
+         * mínimo y el máximo—, porque eso no depende de quién pregunta.
+         */
+        if ($user->hasRole(User::ROL_SUPERADMIN)) {
+            if ($minutos !== null && $minutos < $asset->min_minutes) {
+                return Eligibility::noHabilitado(
+                    'La reserva mínima de este equipo es de ' . $asset->min_minutes . ' minutos.',
+                );
+            }
+
+            if ($minutos !== null && $minutos > $asset->max_minutes) {
+                return Eligibility::noHabilitado(
+                    'El máximo para este equipo es de ' . $this->horas($asset->max_minutes) . '.',
+                );
+            }
+
+            return Eligibility::autonomo('Como superadmin, lo usas sin certifab.', $asset->max_minutes);
+        }
+
         $certifab = $this->certifabVigente($user, $asset);
 
         /*

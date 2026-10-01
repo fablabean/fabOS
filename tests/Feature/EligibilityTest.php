@@ -62,6 +62,30 @@ class EligibilityTest extends TestCase
         ], $attrs));
     }
 
+    // ------------------------------------------------------------ superadmin
+
+    public function test_el_superadmin_usa_todo_sin_certifab(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate(User::ROL_SUPERADMIN, 'web');
+        $u = $this->usuario();
+        $u->assignRole(User::ROL_SUPERADMIN);
+
+        // Ni el certifab ni el acompañante de la familia lo frenan.
+        $a = $this->activo(familia: ['requires_companion' => true]);
+        $r = $this->evaluar($u, $a, 240);
+
+        $this->assertSame(Eligibility::AUTONOMO, $r->resultado);
+        $this->assertSame(720, $r->maxMinutos);
+
+        // Lo del equipo sí: fuera de servicio, no.
+        $a->update(['status' => 'mantenimiento']);
+        $this->assertFalse($this->evaluar($u, $a->fresh())->puedeReservar());
+
+        // Y el máximo tampoco se salta.
+        $a->update(['status' => 'operativo']);
+        $this->assertFalse($this->evaluar($u, $a->fresh(), 800)->puedeReservar());
+    }
+
     // ------------------------------------------------------------ sin certifab
 
     public function test_sin_certifab_no_habilita_y_dice_que_falta(): void
