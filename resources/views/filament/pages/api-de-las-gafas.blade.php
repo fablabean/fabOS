@@ -17,6 +17,10 @@
         .doc-api th,.doc-api td{border:1px solid rgba(128,128,128,.3);padding:.45rem .6rem;text-align:left;vertical-align:top}
         .doc-api th{background:rgba(128,128,128,.1);font-weight:600}
         .doc-api strong{font-weight:700}
+        .doc-api .endpoint{padding:.7rem .9rem;border-radius:8px;border:1px solid rgba(128,128,128,.3)}
+        .doc-api .metodo{font-family:ui-monospace,Consolas,monospace;font-weight:700;font-size:.8rem;padding:.15rem .5rem;border-radius:4px;color:#fff}
+        .doc-api .metodo.get{background:#30A46C} .doc-api .metodo.post{background:#3E63DD}
+        .doc-api .copiar{font-size:.8rem;padding:.25rem .7rem;border-radius:6px;border:1px solid rgba(128,128,128,.4);cursor:pointer}
         .doc-api .base{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.8rem 1rem;border-radius:8px;
                        border:1px solid rgba(128,128,128,.3);margin-bottom:1rem}
     </style>
@@ -25,6 +29,26 @@
         <div class="base">
             <strong>Base de la API:</strong>
             <code>{{ $base }}</code>
+        </div>
+
+        <h2 style="border-top:0;padding-top:0;margin-top:1rem">Endpoints</h2>
+        <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.5rem">
+            @foreach ($endpoints as [$metodo, $url, $conToken, $para, $cuerpo])
+                <div x-data="{ copiado: false }" class="endpoint">
+                    <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center">
+                        <span class="metodo {{ strtolower($metodo) }}">{{ $metodo }}</span>
+                        <code style="font-size:.9rem;word-break:break-all;flex:1;min-width:16rem">{{ $url }}</code>
+                        <button type="button" class="copiar"
+                                @click="navigator.clipboard.writeText(@js($url)); copiado = true; setTimeout(() => copiado = false, 1500)"
+                                x-text="copiado ? 'Copiada ✓' : 'Copiar'"></button>
+                    </div>
+                    <div style="font-size:.85rem;margin-top:.35rem;opacity:.8">
+                        {{ $para }} ·
+                        {{ $conToken ? 'Con «Authorization: Bearer <token>»' : 'Sin token' }}
+                        @if ($cuerpo) · cuerpo: <code>{{ json_encode($cuerpo) }}</code> @endif
+                    </div>
+                </div>
+            @endforeach
         </div>
 
         {!! $html !!}

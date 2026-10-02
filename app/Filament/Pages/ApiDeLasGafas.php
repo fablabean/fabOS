@@ -52,11 +52,21 @@ class ApiDeLasGafas extends Page
         $md = @file_get_contents(base_path('docs/RECORRIDOS-API.md')) ?: '# Sin documentación';
 
         // El título ya lo pone la página.
-        $md = preg_replace('/\A#\s[^\n]*\n/', '', $md);
+        $md = preg_replace('/\A#\s[^\n]*\n/', '', str_replace("\r\n", "\n", $md));
+
+        // La tabla de endpoints la pinta la página arriba, con botón de copiar.
+        $md = preg_replace('/^### Endpoints\n.*?\n\n/ms', '', $md);
 
         return [
             'html' => Str::markdown($md, ['html_input' => 'strip', 'allow_unsafe_links' => false]),
             'base' => url('/api/recorridos/visor'),
+            // De las rutas mismas: si un día cambian, esto no queda mintiendo.
+            'endpoints' => [
+                ['POST', route('api.visor.emparejar'), false, 'Emparejar las gafas con un equipo', ['codigo' => 'K7M2QX']],
+                ['GET', route('api.visor.estado'), true, 'Consultar el estado (cada 2 s)', null],
+                ['POST', route('api.visor.secuencia'), true, 'Enviar los 4 botones que marcó el líder', ['botones' => [2, 1, 4, 4]]],
+                ['POST', route('api.visor.lider'), true, 'Elegir quién lleva las gafas (opcional)', ['integrante_id' => 32]],
+            ],
         ];
     }
 }

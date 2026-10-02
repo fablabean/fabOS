@@ -27,12 +27,21 @@ En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafa
 - **Formato:** JSON en el envío y en la respuesta. Hay que enviar `Accept: application/json`.
 - **Autenticación:** `Authorization: Bearer <token>`. El token se obtiene al emparejar.
 
+### Endpoints
+
+| Método | URL completa | Autenticación | Para qué |
+|---|---|---|---|
+| `POST` | `https://fablabean.com/api/recorridos/visor/emparejar` | No | Emparejar las gafas con un equipo |
+| `GET` | `https://fablabean.com/api/recorridos/visor/estado` | Bearer | Consultar el estado (cada 2 s) |
+| `POST` | `https://fablabean.com/api/recorridos/visor/secuencia` | Bearer | Enviar los 4 botones que marcó el líder |
+| `POST` | `https://fablabean.com/api/recorridos/visor/lider` | Bearer | Elegir quién lleva las gafas (opcional) |
+
 ### Emparejar las gafas con un equipo
 
 Cada equipo tiene un **código de 6 caracteres**, por ejemplo `K7M2QX`. Sale en la hoja «Códigos de los equipos» de la partida. Se escribe una vez en las gafas, al inicio. No distingue mayúsculas.
 
 ```http
-POST /api/recorridos/visor/emparejar
+POST https://fablabean.com/api/recorridos/visor/emparejar
 Content-Type: application/json
 
 { "codigo": "K7M2QX" }
@@ -57,7 +66,7 @@ Este endpoint admite 10 intentos por minuto.
 ### Consultar el estado
 
 ```http
-GET /api/recorridos/visor/estado
+GET https://fablabean.com/api/recorridos/visor/estado
 Authorization: Bearer <token>
 ```
 
@@ -103,7 +112,7 @@ Qué significa cada campo:
 Cuando `estado` es `secuencia`, el líder marca 4 botones. La app envía la secuencia **después de la 4.ª pulsación**:
 
 ```http
-POST /api/recorridos/visor/secuencia
+POST https://fablabean.com/api/recorridos/visor/secuencia
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -125,7 +134,7 @@ Content-Type: application/json
 El equipo puede elegir quién lleva las gafas en cada etapa, desde su celular o desde las gafas. Si la app ofrece esa opción, use los `integrantes` que vienen en el estado:
 
 ```http
-POST /api/recorridos/visor/lider
+POST https://fablabean.com/api/recorridos/visor/lider
 Authorization: Bearer <token>
 Content-Type: application/json
 
