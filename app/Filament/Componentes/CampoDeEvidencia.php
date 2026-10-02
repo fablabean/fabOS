@@ -9,6 +9,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 /**
  * El bloque de evidencia, uno solo para los tres sitios donde hace falta.
@@ -62,15 +64,7 @@ class CampoDeEvidencia
                     ->helperText(fn (Get $get) => $get('kind') === 'archivo'
                         ? 'El definitivo: .stl, .gcode, .svg, el PDF que se entregó. Es lo que permite repetir el trabajo sin volver a empezar.'
                         : 'Súbela tal cual: el sistema la endereza y la comprime.')
-                    // Solo las fotos se optimizan; un .gcode pasado por GD seria
-                    // un .gcode roto.
-                    ->saveUploadedFileUsing(function ($file, Get $get) use ($directorio) {
-                        if ($get('kind') === 'foto') {
-                            return app(OptimizadorDeImagen::class)->guardar($file, $directorio, 'local');
-                        }
-
-                        return $file->store($directorio, 'local');
-                    }),
+                    ->saveUploadedFileUsing(fn ($file, Get $get) => self::guardar($file, $get('kind'), $directorio)),
 
                 TextInput::make('url')
                     ->label('Enlace')
@@ -79,5 +73,22 @@ class CampoDeEvidencia
                     ->columnSpanFull()
                     ->helperText('A YouTube, Drive o donde ya viva. Un video de dos minutos no tiene por qué pasar por aquí.'),
             ]);
+    }
+
+    /** Guarda lo subido en el disco privado y devuelve la ruta. */
+    public static function guardar(UploadedFile $file, ?string $tipo, string $directorio): string
+    {
+        // Solo las fotos se optimizan; un .gcode pasado por GD sería un
+        // .gcode roto.
+        if ($tipo === 'foto') {
+            return app(OptimizadorDeImagen::class)->guardar($file, $directorio, 'local');
+        }
+
+        // Con la extensión con que llegó: adivinarla por el contenido
+        // convertía un .dxf o un .ai en «.pdf», y el archivo bajaba sin
+        // abrirse en su programa.
+        $extension = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $file->getClientOriginalExtension()));
+
+        return $file->storeAs($directorio, Str::random(40) . ($extension !== '' ? '.' . $extension : ''), 'local');
     }
 }

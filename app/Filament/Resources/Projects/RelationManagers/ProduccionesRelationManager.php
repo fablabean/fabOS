@@ -151,7 +151,7 @@ class ProduccionesRelationManager extends RelationManager
                     ->schema([CampoDeEvidencia::repetidor(
                         'Archivos y evidencia',
                         'El .stl, el .gcode, la foto de la pieza. Es lo que permite repetir el trabajo dentro de seis meses sin volver a empezar.',
-                        'producciones',
+                        'proyectos/producciones',
                     )]),
 
                 Action::make('terminar')

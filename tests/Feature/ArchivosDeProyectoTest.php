@@ -135,6 +135,34 @@ class ArchivosDeProyectoTest extends TestCase
     }
 
     /**
+     * Los archivos de una producción: un .dxf y un .ai se guardan con su
+     * extensión y el panel los vuelve a mostrar. Se subían a una carpeta que
+     * el panel no tenía permitida: decía «subida completa» y al reabrir no
+     * aparecían, y el .dxf quedaba guardado como «.pdf».
+     */
+    public function test_los_archivos_de_una_produccion_se_ven_y_conservan_su_extension(): void
+    {
+        $guardar = fn (string $nombre) => \App\Filament\Componentes\CampoDeEvidencia::guardar(
+            UploadedFile::fake()->create($nombre, 1300, 'application/pdf'), 'archivo', 'proyectos/producciones',
+        );
+
+        $dxf = $guardar('escenarios-vector-completo.dxf');
+        $ai = $guardar('arte final.AI');
+
+        $this->assertStringStartsWith('proyectos/producciones/', $dxf);
+        $this->assertStringEndsWith('.dxf', $dxf, 'con su extensión, no la que se adivina por el contenido');
+        $this->assertStringEndsWith('.ai', $ai);
+
+        foreach ([$dxf, $ai] as $ruta) {
+            $this->assertNotNull(\App\Filament\Componentes\ArchivoPrivado::vistaPrevia($ruta), 'el panel lo vuelve a mostrar');
+        }
+
+        // Y los que ya se habían subido a la carpeta vieja también se ven.
+        Storage::disk('local')->put('producciones/viejo.pdf', 'x');
+        $this->assertNotNull(\App\Filament\Componentes\ArchivoPrivado::vistaPrevia('producciones/viejo.pdf'));
+    }
+
+    /**
      * El laboratorio responde con una foto: queda pegada a la respuesta, es
      * soporte del proyecto, y quien pidió la ve debajo de lo que se dijo.
      */
