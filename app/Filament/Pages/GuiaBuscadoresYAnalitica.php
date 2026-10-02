@@ -34,7 +34,7 @@ class GuiaBuscadoresYAnalitica extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Buscadores y analítica';
+        return 'Guía de buscadores y analítica';
     }
 
     public function getTitle(): string

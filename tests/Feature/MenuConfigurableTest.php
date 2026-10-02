@@ -50,6 +50,26 @@ class MenuConfigurableTest extends TestCase
         }
     }
 
+    /**
+     * Configuración → Menú reconoce cada opción por su nombre: dos opciones
+     * con el mismo nombre comparten el ajuste guardado, y una acaba en el
+     * grupo de la otra. Pasó con «Buscadores y analítica», que era a la vez
+     * la configuración y su guía.
+     */
+    public function test_no_hay_dos_opciones_del_menu_con_el_mismo_nombre(): void
+    {
+        $this->entraComoSuperadmin();
+
+        $panel = \Filament\Facades\Filament::getPanel('admin');
+        $nombres = collect(array_merge($panel->getPages(), $panel->getResources()))
+            ->filter(fn (string $clase) => method_exists($clase, 'shouldRegisterNavigation') && $clase::shouldRegisterNavigation())
+            ->map(fn (string $clase) => (string) $clase::getNavigationLabel());
+
+        $repetidos = $nombres->countBy()->filter(fn (int $n) => $n > 1)->keys()->all();
+
+        $this->assertSame([], $repetidos, 'Opciones del menú con el mismo nombre: ' . implode(', ', $repetidos));
+    }
+
     public function test_la_pantalla_abre_con_el_menu_como_se_ve(): void
     {
         $this->entraComoSuperadmin();
