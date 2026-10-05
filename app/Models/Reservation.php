@@ -170,12 +170,11 @@ class Reservation extends Model
     }
 
     /**
-     * Si la franja ya empezó, y por tanto aprobarla ya no tiene sentido.
+     * Si la franja ya empezó.
      *
-     * Aprobar programa la jornada de quien abre el laboratorio: hacerlo para
-     * una hora que ya está corriendo es apuntar horas extras hacia atrás. Se
-     * puede rechazar —la solicitud sigue necesitando una respuesta— pero no
-     * confirmar.
+     * Se puede aprobar igual mientras no termine —la persona suele estar ya
+     * en la máquina—; la bandeja lo advierte, y si alguien acompaña, su
+     * jornada se abre desde el momento de aprobar, no hacia atrás.
      */
     public function franjaYaEmpezo(): bool
     {

@@ -61,8 +61,15 @@ class ApprovalService
             );
         }
 
-        if ($solicitud->starts_at->isPast()) {
-            throw new BookingException('Esa franja ya pasó. Pídele a la persona que vuelva a solicitarla.');
+        /*
+         * Hasta que la franja TERMINA. Antes era hasta que empezaba, y una
+         * solicitud de las 8:30 mirada a las 8:45 —la persona ya en la
+         * máquina— solo se podía cerrar. Si ya empezó, se aprueba igual; lo
+         * único que no se hace es abrirle la jornada a nadie hacia atrás: se
+         * abre desde ahora.
+         */
+        if ($solicitud->ends_at->isPast()) {
+            throw new BookingException('Esa franja ya terminó. Pídele a la persona que vuelva a solicitarla.');
         }
 
         $equipo = $solicitud->reservable_type === Asset::class
@@ -108,7 +115,7 @@ class ApprovalService
             if ($acompanante && $abrirJornada && ! $yaEnJornada) {
                 $this->jornadas->programar(
                     $acompanante,
-                    $solicitud->starts_at->copy(),
+                    $solicitud->starts_at->isPast() ? now()->startOfMinute() : $solicitud->starts_at->copy(),
                     $solicitud->ends_at->copy(),
                     'Apertura por la solicitud #' . $solicitud->id . ' · ' . $nombre,
                     $quienAprueba,

@@ -339,14 +339,13 @@ class BandejaTest extends TestCase
     // ------------------------------------------ la franja que ya empezo
 
     /**
-     * Hasta cuando se puede aprobar: hasta que la franja EMPIEZA.
+     * Hasta cuando se puede aprobar: hasta que la franja TERMINA.
      *
-     * La bandeja listaba hasta que la franja terminaba y aprobar solo valia
-     * hasta que empezaba. En medio -una solicitud de 10:00 a 18:00 mirada a
-     * las doce- salia con su boton verde, se pulsaba, y saltaba «esa franja ya
-     * paso». Un boton que siempre falla no es un boton.
+     * Antes era hasta que empezaba, y una solicitud de las 8:30 vista a las
+     * 8:45 —la persona ya en la máquina— solo se podía cerrar. Ahora se
+     * aprueba, y la bandeja advierte que ya empezó.
      */
-    public function test_una_franja_ya_empezada_no_ofrece_aprobar_pero_si_cerrar(): void
+    public function test_una_franja_ya_empezada_se_puede_aprobar_todavia(): void
     {
         $quienPide = $this->persona();
         $solicitud = $this->solicitudDeSabado($this->humanoide(), $quienPide);
@@ -362,8 +361,23 @@ class BandejaTest extends TestCase
         $this->entra($this->persona(User::ROL_ADMINISTRADOR))
             ->get(Bandeja::getUrl())
             ->assertOk()
-            ->assertSee('ya no se puede aprobar')
-            ->assertSee('Cerrar la solicitud');
+            ->assertSee('todavía se puede aprobar')
+            ->assertSee('Aprobar');
+
+        Livewire::test(Bandeja::class)->call('aprobar', $solicitud->id);
+
+        $this->assertSame('confirmada', $solicitud->fresh()->status);
+    }
+
+    /** Ya terminada, no: eso es otra actividad, que se pida de nuevo. */
+    public function test_una_franja_terminada_no_se_aprueba(): void
+    {
+        $solicitud = $this->solicitudDeSabado($this->humanoide(), $this->persona());
+
+        $this->travelTo($solicitud->ends_at->copy()->addMinute());
+
+        $this->expectException(\App\Services\Booking\BookingException::class);
+        app(ApprovalService::class)->aprobar($solicitud->fresh());
     }
 
     /** Y cerrarla con motivo sigue funcionando: es la salida que queda. */
