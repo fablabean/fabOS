@@ -172,4 +172,60 @@ class DescansoEnLaJornadaTest extends TestCase
             fn (WorkSchedule $j) => str_starts_with((string) $j->break_starts_at, '12:30'),
         ));
     }
+
+    // ------------------------------------------------ almuerzos escalonados
+
+    /**
+     * Atendida por relevos: Ana almuerza de 12 a 13 y Beto de 13 a 14. Nadie
+     * está de 12 a 15 entero, pero el laboratorio nunca se queda solo, y una
+     * reserva en esa franja no es «fuera de jornada».
+     */
+    public function test_con_almuerzos_escalonados_la_franja_esta_atendida(): void
+    {
+        $this->colaborador('Ana', '12:00');
+        $c = app(CoverageService::class);
+
+        [$d, $h] = $this->franja('12:00', '15:00');
+        $this->assertFalse($c->hayCobertura($d, $h), 'sola, su almuerzo deja el laboratorio vacío');
+
+        $this->colaborador('Beto', '13:00');
+
+        $this->assertTrue($c->enJornada($d, $h)->isEmpty(), 'nadie cubre la franja entera');
+        $this->assertTrue($c->hayCobertura($d, $h), 'pero se relevan');
+
+        // Y a deshora de reloj también: de 12:19 a 14:41.
+        [$d, $h] = $this->franja('12:19', '14:41');
+        $this->assertTrue($c->hayCobertura($d, $h));
+    }
+
+    /**
+     * Quien acompaña basta con que esté al empezar: acompañar es estar
+     * pendiente. Si después le toca el almuerzo, la reserva vale igual.
+     */
+    public function test_el_acompanante_basta_con_que_este_al_empezar(): void
+    {
+        $ana = $this->colaborador('Ana', '12:00');
+
+        $area = Area::create(['slug' => 'fab', 'name' => 'Fabricación']);
+        $rf = \App\Models\RiskFamily::create([
+            'area_id' => $area->id, 'slug' => 'cnc', 'name' => 'CNC',
+            'required_course_level' => 'mega', 'requires_companion' => true,
+        ]);
+        $cnc = Asset::create([
+            'area_id' => $area->id, 'risk_family_id' => $rf->id, 'name' => 'Fresadora',
+            'kind' => 'fijo', 'status' => 'operativo', 'is_reservable' => true,
+            'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+        \App\Models\Certifab::create(['user_id' => $ana->id, 'risk_family_id' => $rf->id, 'level' => 'mega']);
+
+        $buscar = new \ReflectionMethod(BookingService::class, 'buscarAcompanante');
+
+        // De 11:00 a 14:00 cruza su almuerzo, pero a las 11 está.
+        [$d, $h] = $this->franja('11:00', '14:00');
+        $this->assertSame($ana->id, $buscar->invoke(app(BookingService::class), $cnc, $d, $h)?->id);
+
+        // Empezando en pleno almuerzo, no.
+        [$d, $h] = $this->franja('12:15', '14:00');
+        $this->assertNull($buscar->invoke(app(BookingService::class), $cnc, $d, $h));
+    }
 }

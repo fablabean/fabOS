@@ -505,6 +505,11 @@ class EspacioBookingService
 
         try {
             $creada = DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $herramientas, $proposito, $esRecorrido, $acompanantesIds, $estado, $motivo, $cubierta, $compartida) {
+                // Otra vez, ya con el candado: la de arriba responde rápido,
+                // esta es la que no deja pasar dos clics simultáneos.
+                $this->candadoDePersona($user);
+                $this->exigirQueNoLoTengaYa($user, Space::class, $espacio->id, $espacio->name, $desde, $hasta);
+
                 if ($compartida) {
                     Space::whereKey($espacio->id)->lockForUpdate()->first();
                     $this->exigirPuestos($espacio, $participantes, $desde, $hasta);
@@ -988,6 +993,22 @@ class EspacioBookingService
      * @throws BookingException si la persona ya tiene una reserva o una
      *                          solicitud de ese recurso que pisa la franja
      */
+    /**
+     * Una petición de esta persona a la vez.
+     *
+     * La comprobación de abajo miraba antes de guardar, y tres clics en el
+     * mismo segundo pasaban los tres: cada uno miraba antes de que los otros
+     * guardaran, y la bandeja amanecía con la misma solicitud tres veces. Se
+     * toma dentro de la transacción que crea la reserva, y se suelta sola al
+     * terminar.
+     */
+    public function candadoDePersona(User $user): void
+    {
+        DB::select('select pg_advisory_xact_lock(?, ?)', [self::CANDADO_DE_PERSONA, $user->id]);
+    }
+
+    public const CANDADO_DE_PERSONA = 5_2026;
+
     public function exigirQueNoLoTengaYa(User $user, string $tipo, int $id, string $nombre, CarbonInterface $desde, CarbonInterface $hasta): void
     {
         $previa = Reservation::query()

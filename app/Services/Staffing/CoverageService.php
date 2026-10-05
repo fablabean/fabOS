@@ -159,7 +159,48 @@ class CoverageService
 
     public function hayCobertura(CarbonInterface $desde, CarbonInterface $hasta, bool $incluirRemota = false): bool
     {
-        return $this->enJornada($desde, $hasta, $incluirRemota)->isNotEmpty();
+        return $this->enJornada($desde, $hasta, $incluirRemota)->isNotEmpty()
+            || $this->cubiertaPorRelevos($desde, $hasta, $incluirRemota);
+    }
+
+    /**
+     * Atendida aunque nadie esté la franja entera: por relevos.
+     *
+     * Los almuerzos van escalonados —uno sale a las doce, los demás a la una—
+     * y así el laboratorio nunca se queda solo. Pero exigir que UNA persona
+     * cubriera toda la franja dejaba cualquier reserva de 12:00 a 15:00
+     * «fuera de jornada», en pleno día, y caía en la bandeja como si
+     * implicara horas extras.
+     *
+     * Se mira por cuartos de hora de reloj —los descansos empiezan y terminan
+     * en cuartos—: si en cada uno hay alguien, la franja está atendida.
+     */
+    private function cubiertaPorRelevos(CarbonInterface $desde, CarbonInterface $hasta, bool $incluirRemota): bool
+    {
+        // Un día entero de relevos ya no es «atender»: es otra cosa.
+        if ($desde->diffInMinutes($hasta) > 16 * 60) {
+            return false;
+        }
+
+        $tz = config('fabos.lab.timezone');
+        $tramo = Carbon::parse($desde)->setTimezone($tz);
+        $fin = Carbon::parse($hasta)->setTimezone($tz);
+
+        while ($tramo->lt($fin)) {
+            // Hasta el siguiente cuarto de hora de reloj, o el final.
+            $siguiente = $tramo->copy()->addMinutes(15 - ($tramo->minute % 15))->second(0);
+            if ($siguiente->gt($fin)) {
+                $siguiente = $fin->copy();
+            }
+
+            if ($this->enJornada($tramo, $siguiente, $incluirRemota)->isEmpty()) {
+                return false;
+            }
+
+            $tramo = $siguiente;
+        }
+
+        return true;
     }
 
     /**

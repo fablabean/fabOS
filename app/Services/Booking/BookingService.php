@@ -192,6 +192,11 @@ class BookingService
 
         try {
             return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo, $complementos) {
+                // Con el candado de la persona: dos clics a la vez no pasan.
+                $espacios = app(EspacioBookingService::class);
+                $espacios->candadoDePersona($user);
+                $espacios->exigirQueNoLoTengaYa($user, Asset::class, $asset->id, $asset->name, $desde, $hasta);
+
                 $reserva = Reservation::create([
                     'reservable_type' => Asset::class,
                     'reservable_id'   => $asset->id,
@@ -525,7 +530,30 @@ class BookingService
 
     private function buscarAcompanante(Asset $asset, CarbonInterface $desde, CarbonInterface $hasta): ?User
     {
-        return $this->acompanantesDisponibles($asset, $desde, $hasta)->first();
+        return $this->acompanantesDisponibles($asset, $desde, $hasta)->first()
+            ?? $this->acompananteAlInicio($asset, $desde, $hasta);
+    }
+
+    /**
+     * Quien está al empezar basta.
+     *
+     * Acompañar es estar pendiente, no estar pegado a la máquina: si quien
+     * está certificado está en jornada y libre cuando la reserva empieza, la
+     * reserva vale aunque más tarde le toque el almuerzo o una reunión. Antes
+     * se exigía la franja entera, y una impresión de 11:00 a 15:00 caía en la
+     * bandeja por el almuerzo de quien la abría.
+     *
+     * Lo único que se sigue exigiendo para toda la franja es que no tenga
+     * otra reserva a esa hora: su tiempo se aparta para esto, y dos
+     * acompañamientos a la vez la base no los deja.
+     */
+    private function acompananteAlInicio(Asset $asset, CarbonInterface $desde, CarbonInterface $hasta): ?User
+    {
+        $inicio = $desde->copy()->addMinutes(min(30, (int) $desde->diffInMinutes($hasta)));
+
+        return $this->coverage->acompanantesPara($asset, $desde, $inicio)
+            ->first(fn (User $u) => $this->personaLibre($u, $desde, $inicio)
+                && $this->estaLibre(User::class, $u->id, $desde, $hasta));
     }
 
     /**
