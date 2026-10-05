@@ -38,19 +38,25 @@ class EntregaALaUniversidad
     ];
 
     /** @param  Collection<int, ProfessionalProfile>  $perfiles */
-    public function hojas(Collection $perfiles): \Illuminate\Http\Response
+    public function hojas(Collection $perfiles): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         // A cada uno y no a la coleccion: aqui llega tanto la coleccion de
         // Eloquent que arma la accion por lotes como un `collect()` de una sola
         // ficha, y la segunda no sabe de relaciones.
         $perfiles->each->loadMissing(['documents', 'area']);
 
-        return Pdf::loadView('perfiles.entrega', [
+        $pdf = Pdf::loadView('perfiles.entrega', [
             'perfiles' => $perfiles,
             'paraPdf'  => true,
-        ])
-            ->setPaper('letter')
-            ->download('perfiles-' . now(config('fabos.lab.timezone'))->format('Y-m-d') . '.pdf');
+        ])->setPaper('letter');
+
+        // En flujo: la acción por lotes es de Livewire, y una respuesta con el
+        // PDF dentro se intentaba pasar por JSON y fallaba al pulsarla.
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            'perfiles-' . now(config('fabos.lab.timezone'))->format('Y-m-d') . '.pdf',
+            ['Content-Type' => 'application/pdf'],
+        );
     }
 
     /**

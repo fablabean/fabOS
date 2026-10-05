@@ -273,4 +273,72 @@ class BackofficePerfilesTest extends TestCase
             ->assertSee('Perfiles profesionales')
             ->assertSee('no es una cuenta');
     }
+
+    // ------------------------------------------- compartir con un externo
+
+    /**
+     * Para alguien de fuera: lo justo para contactar a la persona. La hoja
+     * de compras lleva cédula, banco y seguridad social, y esa no sale.
+     */
+    public function test_el_pdf_para_compartir_solo_lleva_lo_de_contacto(): void
+    {
+        $perfil = $this->perfil(['status' => 'propuesto', 'phone' => '+57 300 111 2233']);
+
+        $html = view('perfiles.compartir', [
+            'perfiles' => collect([$perfil]),
+            'razon'    => 'Para la convocatoria de modelado',
+            'para'     => 'Empresa X',
+            'logo'     => null,
+            'fecha'    => '5 de octubre de 2026',
+        ])->render();
+
+        $this->assertStringContainsString('Ana Pérez', $html);
+        $this->assertStringContainsString('Tallerista de textiles', $html);
+        $this->assertStringContainsString($perfil->email, $html);
+        $this->assertStringContainsString('+57 300 111 2233', $html);
+        $this->assertStringContainsString('Para la convocatoria de modelado', $html);
+
+        foreach (['1020304050', 'Bancolombia', 'ahorros', 'Calle 1 # 2-3'] as $sensible) {
+            $this->assertStringNotContainsString($sensible, $html, "Se coló «{$sensible}» en el PDF para externos.");
+        }
+    }
+
+    /** El botón de la cabecera baja los propuestos; los demás no van. */
+    public function test_el_boton_comparte_los_propuestos(): void
+    {
+        $this->admin();
+        $propuesto = $this->perfil(['name' => 'Sofía Propuesta', 'status' => 'propuesto']);
+        $this->perfil(['name' => 'Beto Borrador', 'status' => 'borrador']);
+        $this->perfil(['name' => 'Dora Descartada', 'status' => 'descartado']);
+
+        $servicio = app(\App\Services\Personas\PerfilesParaCompartir::class);
+        $this->assertSame([$propuesto->id], $servicio->cuales('propuesto')->pluck('id')->all());
+        $this->assertCount(2, $servicio->cuales('todos'), 'todos menos el descartado');
+
+        Livewire::test(ListProfessionalProfiles::class)
+            ->callAction('compartir', ['alcance' => 'propuesto', 'razon' => 'Para contactarlos', 'para' => ''])
+            ->assertHasNoActionErrors()
+            ->assertFileDownloaded();
+    }
+
+    /** La hoja de compras también baja desde la acción por lotes. */
+    public function test_la_hoja_de_compras_baja_desde_la_lista(): void
+    {
+        $this->admin();
+        $perfil = $this->perfil();
+
+        Livewire::test(ListProfessionalProfiles::class)
+            ->callTableBulkAction('entregaPdf', [$perfil], ['sellar' => false])
+            ->assertFileDownloaded();
+    }
+
+    public function test_sin_razon_no_se_comparte(): void
+    {
+        $this->admin();
+        $this->perfil(['status' => 'propuesto']);
+
+        Livewire::test(ListProfessionalProfiles::class)
+            ->callAction('compartir', ['alcance' => 'propuesto', 'razon' => ''])
+            ->assertHasActionErrors(['razon' => 'required']);
+    }
 }

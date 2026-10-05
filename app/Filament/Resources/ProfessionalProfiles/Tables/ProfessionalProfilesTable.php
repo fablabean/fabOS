@@ -137,6 +137,7 @@ class ProfessionalProfilesTable
             ->toolbarActions([
                 self::entregaPdf(),
                 self::entregaCsv(),
+                self::compartirSeleccionados(),
 
                 BulkActionGroup::make([
                     /*
@@ -278,6 +279,42 @@ class ProfessionalProfilesTable
 
                 Notification::make()->title('Descartado')->success()->send();
             });
+    }
+
+    /**
+     * Lo que se pregunta antes de compartir: por qué y, si se quiere, con
+     * quién. Lo usan el botón de la cabecera y la acción de los marcados.
+     */
+    public static function camposParaCompartir(): array
+    {
+        return [
+            Textarea::make('razon')
+                ->label('Razón del contacto')
+                ->helperText('Encabeza el PDF: por qué se comparten estos perfiles y para qué se les puede contactar.')
+                ->rows(3)
+                ->maxLength(600)
+                ->required()
+                ->default('Desde ' . config('fabos.lab.name') . ' te compartimos estos perfiles de personas que conocemos por su trabajo con el laboratorio, para que puedas contactarlas directamente.'),
+            TextInput::make('para')
+                ->label('Para quién (opcional)')
+                ->maxLength(160)
+                ->placeholder('Una empresa, una persona, una convocatoria'),
+        ];
+    }
+
+    private static function compartirSeleccionados(): BulkAction
+    {
+        return BulkAction::make('compartir')
+            ->label('Compartir con un externo (PDF)')
+            ->icon('heroicon-o-share')
+            ->color('gray')
+            ->modalHeading('Compartir estos perfiles')
+            ->modalDescription('Solo nombre, perfil, correo y celular, con el membrete del laboratorio. Nada de documentos, banco ni datos tributarios.')
+            ->modalSubmitActionLabel('Bajar el PDF')
+            ->schema(self::camposParaCompartir())
+            ->action(fn (Collection $records, array $data) => app(\App\Services\Personas\PerfilesParaCompartir::class)
+                ->pdf($records, $data['razon'], $data['para'] ?? null))
+            ->deselectRecordsAfterCompletion();
     }
 
     private static function entregaPdf(): BulkAction
