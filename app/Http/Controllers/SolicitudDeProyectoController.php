@@ -80,6 +80,12 @@ class SolicitudDeProyectoController extends Controller
         $pendientes = $this->pendientesQueSeQuedan($request);
 
         try {
+            // El captcha se comprueba en la ruta pero se rechaza aquí, para
+            // que lo adjunto se guarde también cuando el que falla es él.
+            if ($rechazo = $request->attributes->get(\App\Http\Middleware\ComprobarElCaptcha::RECHAZADO)) {
+                throw $rechazo;
+            }
+
             return $this->procesar($request, $pendientes);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->apartarArchivos($request, $pendientes);

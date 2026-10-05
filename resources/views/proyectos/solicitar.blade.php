@@ -349,6 +349,16 @@
 
         <x-captcha accion="proyectos.solicitar.store"/>
 
+        {{-- El error también aquí, al lado del botón: arriba del todo, en
+             una página así de larga, quien acababa de pulsar «enviar» no lo
+             veía y creía que no había pasado nada. --}}
+        @if ($errors->any())
+            <div class="msg error" style="margin:.6rem 0">
+                <strong>No se envió:</strong> {{ $errors->first() }}
+                @if ($errors->count() > 1) (y {{ $errors->count() - 1 }} más, arriba) @endif
+            </div>
+        @endif
+
         {{-- Se apaga al pulsarlo: con la red lenta del teléfono, un segundo
              toque mandaba la misma solicitud dos veces. --}}
         <button type="submit" id="enviar-solicitud">Enviar la solicitud</button>

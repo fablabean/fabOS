@@ -90,6 +90,83 @@
                     }
                 }, 4 * 60 * 1000);
             })();
+
+            /*
+             * No mandar un envío que va a rebotar.
+             *
+             * Si se pulsa «enviar» antes de que el widget haya resuelto —recién
+             * cargada la página, justo tras la renovación de arriba, o en una
+             * red lenta—, el token va vacío y el servidor devuelve el
+             * formulario con el error arriba del todo. Desde el botón, al
+             * final de una página larga, eso se veía como «no pasa nada».
+             *
+             * Aquí se detiene ese envío, se dice que se está comprobando, y en
+             * cuanto llega el token se envía solo. Va en captura sobre el
+             * documento para correr antes que los manejadores del propio
+             * formulario —apagar el botón, guardar el dibujo—, que corren
+             * cuando el envío de verdad sale.
+             */
+            (function () {
+                function aviso(form, texto) {
+                    let nota = form.querySelector('.captcha-espera');
+                    if (! nota) {
+                        nota = document.createElement('p');
+                        nota.className = 'captcha-espera';
+                        nota.setAttribute('role', 'status');
+                        nota.style.cssText = 'margin:.6rem 0;font-size:.9rem;font-weight:600;color:#b45309';
+                        const boton = form.querySelector('[type=submit]');
+                        (boton ? boton.parentNode : form).insertBefore(nota, boton || null);
+                    }
+                    nota.textContent = texto;
+                    return nota;
+                }
+
+                document.addEventListener('submit', function (e) {
+                    const form = e.target;
+                    const widget = form.querySelector && form.querySelector('.cf-turnstile');
+                    if (! widget || form.dataset.captchaEsperando === '1') {
+                        if (form.dataset.captchaEsperando === '1') e.preventDefault();
+                        return;
+                    }
+
+                    const token = () => (form.querySelector('[name="cf-turnstile-response"]') || {}).value;
+                    if (token()) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const quien = e.submitter || null;
+                    form.dataset.captchaEsperando = '1';
+                    aviso(form, 'Un momento: estamos comprobando que no eres un robot. Se envía solo en cuanto termine…');
+
+                    const inicio = Date.now();
+                    let reiniciado = false;
+
+                    (function esperar() {
+                        if (token()) {
+                            delete form.dataset.captchaEsperando;
+                            aviso(form, 'Enviando…');
+                            if (form.requestSubmit) { form.requestSubmit(quien); } else { form.submit(); }
+                            return;
+                        }
+
+                        // Diez segundos sin token: el widget pudo quedarse
+                        // atascado. Una vez se le pide que lo intente de nuevo.
+                        if (! reiniciado && Date.now() - inicio > 10000 && window.turnstile) {
+                            reiniciado = true;
+                            try { window.turnstile.reset(widget); } catch (err) {}
+                        }
+
+                        if (Date.now() - inicio > 30000) {
+                            delete form.dataset.captchaEsperando;
+                            aviso(form, 'No pudimos completar la comprobación. Si arriba del botón aparece una casilla, márcala y vuelve a pulsar «Enviar». Si sigue igual, recarga la página.');
+                            return;
+                        }
+
+                        setTimeout(esperar, 300);
+                    })();
+                }, true);
+            })();
         </script>
     @endonce
 @endif

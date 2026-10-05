@@ -364,4 +364,26 @@ class CaptchaEnLasPuertasTest extends TestCase
             ])
             ->assertSessionHasErrors('correo');
     }
+
+    /**
+     * Si el que falla es el captcha, lo adjunto no se pierde.
+     *
+     * El rechazo ocurría en la ruta, antes del controlador que aparta los
+     * archivos cuando el formulario rebota: quien había subido sus planos los
+     * perdía, y además sin ver el error, que salía arriba de una página larga.
+     */
+    public function test_si_falla_el_captcha_la_solicitud_conserva_los_archivos(): void
+    {
+        $this->conClaves();
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $this->from(route('proyectos.solicitar'))
+            ->post(route('proyectos.solicitar.store'), [
+                'nombre' => 'Quien pide', 'correo' => 'quien@ejemplo.co',
+                'titulo' => 'Algo', 'resumen' => 'Lo que sea', 'cliente' => 'externo',
+                'soportes' => [\Illuminate\Http\UploadedFile::fake()->create('plano.pdf', 50, 'application/pdf')],
+            ])
+            ->assertSessionHasErrors('correo')
+            ->assertSessionHas('soportes_pendientes', fn ($p) => count($p) === 1 && $p[0]['nombre'] === 'plano.pdf');
+    }
 }

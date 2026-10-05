@@ -224,7 +224,7 @@ Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'creat
 // no se veía y se volvía a enviar.
 Route::get('/proyectos/solicitud-recibida', [SolicitudDeProyectoController::class, 'recibida'])->name('proyectos.recibida');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
-    ->middleware(['throttle:40,60', 'captcha:correo'])
+    ->middleware(['throttle:40,60', 'captcha:correo,diferido'])
     ->name('proyectos.solicitar.store');
 
 // Postularse a una practica. Sin cuenta a proposito: pedirle a quien quiere

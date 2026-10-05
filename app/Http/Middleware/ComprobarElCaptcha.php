@@ -29,7 +29,15 @@ class ComprobarElCaptcha
 {
     public function __construct(private Turnstile $turnstile) {}
 
-    public function handle(Request $request, Closure $next, string $campo = 'email'): Response
+    /**
+     * `diferido`: no rechaza aquí, lo anota y deja seguir. Es para un
+     * formulario que guarda lo adjunto cuando rebota —la solicitud de
+     * proyecto—: rechazado aquí, antes del controlador, los archivos se
+     * perdían. El controlador lo lanza dentro de su propio manejo.
+     */
+    public const RECHAZADO = 'captcha_rechazado';
+
+    public function handle(Request $request, Closure $next, string $campo = 'email', ?string $modo = null): Response
     {
         /*
          * La accion esperada sale del nombre de la ruta que se esta pidiendo,
@@ -44,8 +52,16 @@ class ComprobarElCaptcha
             return $next($request);
         }
 
-        throw ValidationException::withMessages([
+        $error = ValidationException::withMessages([
             $campo => 'No pudimos comprobar que no eres un robot. Vuelve a intentarlo.',
         ]);
+
+        if ($modo === 'diferido') {
+            $request->attributes->set(self::RECHAZADO, $error);
+
+            return $next($request);
+        }
+
+        throw $error;
     }
 }
