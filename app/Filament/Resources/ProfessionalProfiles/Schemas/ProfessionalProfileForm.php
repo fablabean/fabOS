@@ -57,6 +57,16 @@ class ProfessionalProfileForm
 
                         CampoDeTelefono::make('phone'),
 
+                        Select::make('user_id')
+                            ->label('Cuenta en el sitio')
+                            ->relationship('user', 'name')
+                            ->getOptionLabelFromRecordUsing(fn (\App\Models\User $u) => $u->name . ' · ' . $u->email)
+                            ->searchable(['name', 'email'])
+                            ->unique(ignoreRecord: true)
+                            ->validationMessages(['unique' => 'Esa cuenta ya es la de otro perfil.'])
+                            ->placeholder('Sin cuenta')
+                            ->helperText('Si hay una cuenta con su mismo correo, se enlaza sola al guardar. Aquí se cambia o se quita.'),
+
                         TextInput::make('rate_note')
                             ->label('Lo que cobra')
                             ->maxLength(160)

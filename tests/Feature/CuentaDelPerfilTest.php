@@ -105,9 +105,9 @@ class CuentaDelPerfilTest extends TestCase
         $ya = User::create(['name' => 'Ana P.', 'email' => 'ana@test.co', 'status' => 'activo']);
         $perfil = $this->perfil(['email' => 'ana@test.co']);
 
-        $persona = $this->servicio()->crear($perfil);
-
-        // Dos cuentas con el mismo correo parten su historial en dos.
+        // Ya no hace falta crearla: el perfil nace enlazado a la cuenta de su
+        // correo. Dos cuentas con el mismo correo parten su historial en dos.
+        $persona = $perfil->user;
         $this->assertSame($ya->id, $persona->id);
         $this->assertSame(1, User::where('email', 'ana@test.co')->count());
     }
@@ -121,7 +121,7 @@ class CuentaDelPerfilTest extends TestCase
         ]);
         $perfil = $this->perfil(['email' => 'ana@test.co', 'phone' => '3001234567', 'document_number' => '1020304050']);
 
-        $persona = $this->servicio()->crear($perfil);
+        $persona = $perfil->user->refresh();
 
         // El perfil es más nuevo que la cuenta, pero no necesariamente más
         // cierto: pisar lo que alguien ya corrigió sería deshacer su trabajo.
@@ -136,7 +136,7 @@ class CuentaDelPerfilTest extends TestCase
         User::create(['name' => 'Ana P.', 'email' => 'ana@test.co', 'status' => 'activo']);
         $perfil = $this->perfil(['email' => 'ana@test.co', 'phone' => '3001234567']);
 
-        $persona = $this->servicio()->crear($perfil);
+        $persona = $perfil->user->refresh();
 
         $this->assertSame('3001234567', $persona->phone);
         $this->assertSame('1020304050', $persona->document_number);

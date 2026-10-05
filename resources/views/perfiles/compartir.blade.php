@@ -18,11 +18,13 @@
 
         /* ---------- membrete ---------- */
         .membrete td{vertical-align:middle;padding:0 0 .55cm}
-        .membrete td.marca{width:1px;padding-right:.6cm}
-        .membrete td.marca img{height:1.45cm;max-width:5.2cm}
+        .membrete td.marca{padding-right:.6cm}
+        /* Alto fijo y el ancho que dé: con un ancho máximo, DomPDF encogía el
+           logo largo de lado y lo dejaba apretado. */
+        .membrete td.marca img{height:1.35cm;width:auto}
         .membrete .lab{font-size:12px;font-weight:bold;letter-spacing:.02em}
         .membrete .inst{font-size:8.5px;color:#6e7066;letter-spacing:.12em;text-transform:uppercase;margin-top:.08cm}
-        .membrete td.fecha{text-align:right;font-size:8.5px;color:#6e7066;white-space:nowrap}
+        .membrete td.fecha{width:6.5cm;text-align:right;font-size:8.5px;color:#6e7066;white-space:nowrap}
         .filete{height:2px;background:{{ $acento }};margin:0 0 .12cm}
         .filete-fino{height:.5px;background:#c7c7bd;margin:0 0 .9cm}
 

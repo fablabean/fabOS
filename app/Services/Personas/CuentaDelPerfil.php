@@ -66,10 +66,7 @@ class CuentaDelPerfil
              * cierto: pisar un teléfono que alguien ya corrigió sería deshacer
              * su trabajo con un dato de origen desconocido.
              */
-            $persona->fill(array_filter([
-                'phone'           => $persona->phone ?: $perfil->phone,
-                'document_number' => $persona->document_number ?: $perfil->document_number,
-            ]))->save();
+            $persona->rellenarHuecosCon($perfil);
 
             // Tener cuenta e inscribirse como proveedor son cosas distintas: el
             // estado del perfil no se toca.

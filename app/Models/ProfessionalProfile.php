@@ -133,6 +133,36 @@ class ProfessionalProfile extends Model
      */
     protected static function booted(): void
     {
+        /*
+         * Si ya hay una cuenta con su correo, es la suya.
+         *
+         * Muchos perfiles son de gente que ya entró al sitio —a reservar, a
+         * un curso— y el perfil quedaba «sin cuenta» aunque la persona
+         * estuviera ahí. Se enlaza al crear el perfil o al cambiarle el
+         * correo, y nunca cuando la cuenta se tocó a mano: si alguien la quitó
+         * en la ficha, volver a ponerla al guardar sería llevarle la contraria.
+         */
+        static::saving(function (self $perfil) {
+            if ($perfil->user_id || $perfil->isDirty('user_id')) {
+                return;
+            }
+
+            if (! $perfil->exists || $perfil->isDirty('email')) {
+                $perfil->user_id = $perfil->cuentaPorCorreo();
+            }
+        });
+
+        // Enlazada, la cuenta recibe lo que le falte del perfil —teléfono,
+        // documento— y nada más: lo que ya tenía puede ser más cierto, y
+        // pisarlo sería deshacer el trabajo de quien lo corrigió.
+        static::saved(function (self $perfil) {
+            if (! $perfil->wasChanged('user_id') && ! $perfil->wasRecentlyCreated) {
+                return;
+            }
+
+            $perfil->user?->rellenarHuecosCon($perfil);
+        });
+
         static::deleting(function (self $perfil) {
             DB::transaction(fn () => $perfil->documents->each->delete());
         });
@@ -143,6 +173,22 @@ class ProfessionalProfile extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ProfileDocument::class, 'profile_id');
+    }
+
+    /**
+     * La cuenta que tiene su mismo correo, sin distinguir mayúsculas, si no
+     * es ya la de otro perfil.
+     */
+    public function cuentaPorCorreo(): ?int
+    {
+        if (blank($this->email)) {
+            return null;
+        }
+
+        return User::query()
+            ->whereRaw('lower(email) = ?', [mb_strtolower(trim($this->email))])
+            ->whereNotIn('id', static::query()->whereNotNull('user_id')->whereKeyNot($this->getKey() ?? 0)->select('user_id'))
+            ->value('id');
     }
 
     public function user(): BelongsTo

@@ -341,4 +341,40 @@ class BackofficePerfilesTest extends TestCase
             ->callAction('compartir', ['alcance' => 'propuesto', 'razon' => ''])
             ->assertHasActionErrors(['razon' => 'required']);
     }
+
+    // ---------------------------------------- la cuenta, por su correo
+
+    /** Si ya hay una cuenta con su correo, el perfil nace enlazado a ella. */
+    public function test_el_perfil_se_enlaza_a_la_cuenta_de_su_correo(): void
+    {
+        $cuenta = User::create(['name' => 'Ana', 'email' => 'Ana.Perez@Test.co', 'status' => 'activo']);
+
+        $perfil = $this->perfil(['email' => 'ana.perez@test.co']);
+
+        $this->assertSame($cuenta->id, $perfil->user_id, 'sin distinguir mayúsculas');
+    }
+
+    /** Una cuenta es de un solo perfil: el segundo con el mismo correo no la toma. */
+    public function test_una_cuenta_no_se_enlaza_a_dos_perfiles(): void
+    {
+        $cuenta = User::create(['name' => 'Ana', 'email' => 'ana@test.co', 'status' => 'activo']);
+
+        $primero = $this->perfil(['email' => 'ana@test.co']);
+        $segundo = $this->perfil(['email' => 'ana@test.co']);
+
+        $this->assertSame($cuenta->id, $primero->user_id);
+        $this->assertNull($segundo->user_id);
+    }
+
+    /** Quitada a mano en la ficha, no vuelve sola al guardar. */
+    public function test_quitada_a_mano_no_vuelve_sola(): void
+    {
+        User::create(['name' => 'Ana', 'email' => 'ana@test.co', 'status' => 'activo']);
+        $perfil = $this->perfil(['email' => 'ana@test.co']);
+
+        $perfil->update(['user_id' => null]);
+        $perfil->update(['notes' => 'otra cosa']);
+
+        $this->assertNull($perfil->fresh()->user_id);
+    }
 }

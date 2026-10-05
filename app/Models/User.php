@@ -92,6 +92,22 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
      * Entra quien tenga cualquier rol que exista: lo que ve dentro lo dice la
      * matriz, y un rol sin nada marcado ve solo el tablero.
      */
+    /**
+     * Lo que le falte, tomado de su perfil profesional; lo que ya tenga, no
+     * se toca. El perfil es más nuevo, pero no necesariamente más cierto.
+     */
+    public function rellenarHuecosCon(ProfessionalProfile $perfil): void
+    {
+        $this->fill(array_filter([
+            'phone'           => $this->phone ?: $perfil->phone,
+            'document_number' => $this->document_number ?: $perfil->document_number,
+        ]));
+
+        if ($this->isDirty()) {
+            $this->save();
+        }
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->status === 'activo'
