@@ -330,6 +330,31 @@ class SolicitudDeProyectoTest extends TestCase
         Storage::disk('local')->assertMissing($pendientes[0]['ruta']);
     }
 
+    /**
+     * Los apartados son del envío que acaba de rebotar, y de nada más. Al
+     * recargar la página —o volver otro día— ya no se enseñan: salían como
+     * «ya adjuntos» de algo que la persona ya no veía.
+     */
+    public function test_al_recargar_ya_no_salen_los_adjuntos_del_intento_anterior(): void
+    {
+        Storage::fake('local');
+
+        $this->from(route('proyectos.solicitar'))
+            ->post(route('proyectos.solicitar.store'), $this->solicitud([
+                'titulo'   => '',
+                'soportes' => [UploadedFile::fake()->create('plano.pdf', 30, 'application/pdf')],
+            ]));
+
+        $ruta = session('soportes_pendientes')[0]['ruta'];
+
+        // Al volver del rebote, sí.
+        $this->get(route('proyectos.solicitar'))->assertSee('Ya adjuntos');
+
+        // Al recargar, no: y el archivo apartado se borra.
+        $this->get(route('proyectos.solicitar'))->assertDontSee('Ya adjuntos');
+        Storage::disk('local')->assertMissing($ruta);
+    }
+
     /** Un ejecutable no es un soporte de proyecto. */
     public function test_un_tipo_de_archivo_que_no_toca_se_rechaza(): void
     {

@@ -34,6 +34,13 @@ class SolicitudDeProyectoController extends Controller
     {
         $usuario = $request->user();
 
+        // Los adjuntos apartados son de un envío que acaba de rebotar. Al
+        // entrar de nuevo —recargar, volver otro día— ya no pertenecen a
+        // nada que se vea, y enseñarlos como «ya adjuntos» desconcierta.
+        if (! $request->session()->has('errors')) {
+            $this->limpiarPendientes($request);
+        }
+
         return view('proyectos.solicitar', [
             'usuario' => $usuario,
             // A quien ya entró no se le pregunta: su categoría ya lo dice, y

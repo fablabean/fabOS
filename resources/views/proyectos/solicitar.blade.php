@@ -211,8 +211,8 @@
                 @foreach ($pendientes as $p)
                     <label class="adjunto">
                         <input type="checkbox" name="mantener[]" value="{{ $p['token'] }}" checked>
-                        {{ $p['nombre'] }}
-                        <span class="foot">{{ number_format($p['peso'] / 1048576, 1, ',', '.') }} MB</span>
+                        <span class="nombre">{{ $p['nombre'] }}</span>
+                        <span class="foot">{{ $p['peso'] < 1048576 ? max(1, (int) round($p['peso'] / 1024)) . ' KB' : number_format($p['peso'] / 1048576, 1, ',', '.') . ' MB' }}</span>
                     </label>
                 @endforeach
             </div>
@@ -400,6 +400,11 @@
         .ya-adjuntos .adjunto { display:flex; gap:.5rem; align-items:center; margin:.4rem 0 0;
                                 font-family:inherit; font-size:.9rem; letter-spacing:0; text-transform:none; color:var(--ink); }
         .ya-adjuntos .foot { margin:0; }
+        /* El estilo general pone cada input al 100 % y cada label en bloque:
+           la casilla se estiraba a todo el ancho y empujaba el nombre fuera. */
+        form.panel .ya-adjuntos .adjunto { display:flex; font-weight:400; margin:.4rem 0 0; }
+        form.panel .ya-adjuntos .adjunto input { width:auto; margin:0; flex:none; }
+        form.panel .ya-adjuntos .adjunto .nombre { overflow-wrap:anywhere; }
         .dibujo .rotulo-campo { display:block; font-size:.9rem; font-weight:600; margin-bottom:.3rem; }
         .dibujo canvas { width:100%; max-width:100%; height:auto; aspect-ratio:900/420;
                          background:var(--surface); border:1px solid var(--rule);
