@@ -21,6 +21,8 @@ También pueden aparecer estos estados:
 
 En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafas nunca reciben la secuencia correcta.** El equipo la trae desde el celular, y ese es el juego.
 
+**Cada equipo recorre las mismas estaciones, pero empezando por una distinta.** Si todos arrancaran por la primera, cinco equipos se amontonarían frente al mismo QR y acabarían pasándose las respuestas. Por eso el estado trae dos números que no hay que confundir: `etapa` es por dónde va el equipo, y `pista.numero` es qué pista está viendo. Para decidir qué mostrar, el que vale es `pista.numero`.
+
 ## Conexión
 
 - **Base:** `https://fablabean.com/api/recorridos/visor`
@@ -84,7 +86,7 @@ Authorization: Bearer <token>
     "estado": "buscando",
     "estado_texto": "Buscando el lugar",
     "lider": { "id": 32, "nombre": "Luis" },
-    "pista": { "texto": "Donde la luz corta sin tocar…", "imagen": "https://fablabean.com/storage/recorridos/abc.jpg" },
+    "pista": { "numero": 4, "id": 17, "texto": "Donde la luz corta sin tocar…", "imagen": "https://fablabean.com/storage/recorridos/abc.jpg" },
     "botones": [
       { "valor": 1, "nombre": "Rojo",     "color": "#E5484D" },
       { "valor": 2, "nombre": "Azul",     "color": "#3E63DD" },
@@ -100,7 +102,11 @@ Authorization: Bearer <token>
 ```
 
 Qué significa cada campo:
+- `etapa` es **por dónde va el equipo**: 1 la primera, 2 la segunda, hasta `total_etapas`. Es su progreso.
+- `pista.numero` es **cuál de las pistas del circuito está viendo**, del 1 al total. No es lo mismo que `etapa`, y esta es la distinción que importa para la app: cada equipo arranca en una estación distinta —si no, cinco equipos se amontonan frente al mismo QR—, así que la etapa 2 de los Rojos y la etapa 2 de los Azules son pistas distintas. **Para decidir qué escena montar, usen `pista.numero`, nunca `etapa`.**
+- `pista.id` es el identificador de la estación en el sistema. No cambia aunque se reordene el circuito; `pista.numero` sí cambiaría. Si la app guarda contenido propio por pista, átenlo a `id`.
 - `pista` es `null` cuando no hay pista que mostrar, es decir, en `esperando` o en `terminado`. `pista.imagen` puede ser `null`.
+- El nombre y el lugar de la estación **no se mandan**, y es a propósito: la pista está escrita en acertijo y mandar «Cortadora láser» al lado la resolvería sola. El código del QR tampoco: eso es lo que el equipo va a buscar.
 - `lider` es `null` mientras el equipo no lo haya elegido.
 - `segundos` es el tiempo de juego del equipo, ya con la penalización sumada. Es `null` si la partida no ha empezado.
 - `botones` es la lista de botones que deben dibujarse, en ese orden, con esos colores. Úsenla en vez de fijar los colores en la app.

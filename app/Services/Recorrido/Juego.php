@@ -225,7 +225,24 @@ class Juego
             'estado' => $equipo->estado,
             'estado_texto' => Equipo::ESTADOS[$equipo->estado] ?? $equipo->estado,
             'lider' => $avance?->lider ? ['id' => $avance->lider->id, 'nombre' => $avance->lider->nombre] : null,
+            /*
+             * La pista lleva su número, no solo su texto.
+             *
+             * `etapa` dice por dónde va el equipo; `pista.numero` dice CUÁL de
+             * las pistas del circuito está viendo. No son lo mismo porque cada
+             * equipo arranca en una estación distinta —cinco equipos frente al
+             * mismo QR se estorban—, así que la etapa 2 de los Rojos y la
+             * etapa 2 de los Azules son pistas distintas. Las gafas lo piden
+             * para montar la escena que le toca a cada una.
+             *
+             * Va el número y el id, y no el nombre ni el lugar: la pista está
+             * escrita en acertijo a propósito, y mandar «Cortadora láser» al
+             * lado la resolvería sola. El código del QR tampoco, que es lo que
+             * hay que ir a buscar.
+             */
             'pista' => $estacion ? [
+                'numero' => $estacion->numeroDePista(),
+                'id' => $estacion->id,
                 'texto' => $estacion->pista,
                 'imagen' => Estacion::urlDeImagen($estacion->pista_imagen),
             ] : null,

@@ -392,4 +392,79 @@ class RecorridoGamificadoTest extends TestCase
         $this->artisan('fabos:recorrido-demo', ['--borrar' => true])->assertSuccessful();
         $this->assertSame(0, Partida::count());
     }
+
+    /**
+     * La etapa dice por donde va el equipo; la pista, cual esta viendo.
+     *
+     * Lo pidio el equipo de las gafas y hacia falta: cada equipo arranca en
+     * una estacion distinta --si no, cinco equipos se amontonan frente al
+     * mismo QR y acaban pasandose las respuestas--, asi que la etapa 2 de los
+     * Rojos y la etapa 2 de los Azules son pistas distintas. Con solo la
+     * etapa, la app no puede saber que escena montar.
+     */
+    public function test_el_estado_dice_que_pista_es_y_no_solo_la_etapa(): void
+    {
+        $c = $this->circuito(3);
+        $p = $this->partida($c, 3, rotar: true);
+        $this->juego()->iniciar($p);
+
+        $equipos = $p->equipos()->orderBy('id')->get();
+
+        // Los tres van por la etapa 1, y cada uno en una pista distinta.
+        foreach ($equipos as $equipo) {
+            $this->assertSame(1, $this->juego()->estado($equipo)['etapa']);
+        }
+
+        $pistas = $equipos->map(fn ($e) => $this->juego()->estado($e)['pista']['numero'])->all();
+
+        $this->assertSame([1, 2, 3], $pistas);
+    }
+
+    /** Y el numero sigue a la estacion cuando el equipo avanza. */
+    public function test_la_pista_cambia_con_la_estacion_no_con_la_etapa(): void
+    {
+        $c = $this->circuito(3);
+        $p = $this->partida($c, 2, rotar: true);
+        $this->juego()->iniciar($p);
+
+        // El segundo equipo arranca en la pista 2 por la rotacion.
+        $equipo = $p->equipos()->orderBy('id')->get()[1];
+
+        $this->assertSame(2, $this->juego()->estado($equipo)['pista']['numero']);
+
+        $this->avanzarUnaEtapa($equipo);
+        $estado = $this->juego()->estado($equipo->fresh());
+
+        $this->assertSame(2, $estado['etapa']);
+        $this->assertSame(3, $estado['pista']['numero']);
+    }
+
+    /**
+     * El id va junto al numero, y el nombre del lugar no.
+     *
+     * La pista esta escrita en acertijo a proposito: mandar <<Cortadora
+     * laser>> al lado la resolveria sola. El codigo del QR tampoco, que es lo
+     * que el equipo va a buscar.
+     */
+    public function test_la_pista_no_se_delata_a_si_misma(): void
+    {
+        $c = $this->circuito(2);
+        $p = $this->partida($c, 1, rotar: false);
+        $this->juego()->iniciar($p);
+
+        $pista = $this->juego()->estado($p->equipos()->first())['pista'];
+
+        $this->assertSame(['numero', 'id', 'texto', 'imagen'], array_keys($pista));
+        $this->assertSame($c->estaciones()->first()->id, $pista['id']);
+    }
+
+    /** Pasa de etapa como lo hace el juego: escanear, responder, secuencia. */
+    private function avanzarUnaEtapa(Equipo $equipo): void
+    {
+        $this->juego()->escanear($equipo, $equipo->estacionActual());
+        $this->juego()->responder($equipo->fresh(), 'laser');
+        $equipo->refresh();
+        $this->juego()->marcarSecuencia($equipo, $equipo->secuencia);
+        $equipo->refresh();
+    }
 }

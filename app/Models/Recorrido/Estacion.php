@@ -63,6 +63,32 @@ class Estacion extends Model
         return route('juego.qr', $this->codigo);
     }
 
+    /**
+     * Qué número de pista es, dentro de su circuito.
+     *
+     * Del 1 al total, siempre el mismo para esta estación. No se confunde con
+     * la etapa del equipo: cada equipo recorre las mismas estaciones empezando
+     * por una distinta —cinco equipos frente al mismo QR se estorban—, así que
+     * la etapa 2 de los Rojos y la etapa 2 de los Azules son pistas distintas.
+     * Las gafas necesitan esto para saber qué escena montar.
+     *
+     * Por posición y no por el campo `orden`: `orden` es una clave de
+     * ordenación y puede valer 0, o 10 y 20, o repetirse. Lo que se promete
+     * aquí es un número del 1 al total, sin huecos.
+     */
+    public function numeroDePista(): int
+    {
+        $ids = static::query()
+            ->where('circuito_id', $this->circuito_id)
+            ->orderBy('orden')->orderBy('id')
+            ->pluck('id')
+            ->all();
+
+        $donde = array_search($this->id, $ids, true);
+
+        return $donde === false ? 0 : $donde + 1;
+    }
+
     /** Una imagen guardada, como dirección pública; o nula. */
     public static function urlDeImagen(?string $ruta): ?string
     {
