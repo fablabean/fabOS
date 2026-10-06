@@ -384,7 +384,13 @@
         form.panel label { display:block; margin-bottom:1rem; font-size:.9rem; font-weight:600; }
         form.panel input, form.panel textarea, form.panel select { width:100%; margin-top:.3rem; font-weight:400; }
         form.panel input[type=file] { padding:.5rem; }
-        form.panel .foot { display:block; font-weight:400; margin-top:.25rem; }
+        /* Las ayudas van dentro de la etiqueta y heredaban su letra: mayúsculas,
+           monoespaciada y espaciada, igual que el título del campo. Se leen
+           como lo que son, una frase de apoyo. */
+        form.panel .foot { display:block; font-weight:400; margin-top:.3rem;
+                           font-family:system-ui,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+                           font-size:.8rem; line-height:1.45; letter-spacing:0; text-transform:none;
+                           color:var(--muted); }
         /* El estilo de arriba pone cada label en bloque, y eso le ganaba al
            atributo hidden: razón social y representante salían también a
            una persona natural. */
