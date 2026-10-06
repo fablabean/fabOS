@@ -41,16 +41,17 @@
         </div>
 
         <h2 style="margin-top:0">Qué necesitas</h2>
+        <p class="foot" style="margin:-.2rem 0 1rem">Lo marcado con <span class="obligatorio" aria-hidden="true">*</span> es obligatorio. Lo demás ayuda, pero puede esperar.</p>
 
         <label>
-            Nombre del proyecto
+            Nombre del proyecto <span class="obligatorio" aria-hidden="true">*</span>
             <input type="text" name="titulo" required maxlength="180"
                    value="{{ old('titulo') }}"
                    placeholder="Señalética para el edificio de Bienestar">
         </label>
 
         <label>
-            De qué se trata
+            De qué se trata <span class="obligatorio" aria-hidden="true">*</span>
             <textarea name="resumen" rows="4" required
                       placeholder="Qué es, para qué lo necesitas y para quién. Con dos o tres frases basta.">{{ old('resumen') }}</textarea>
         </label>
@@ -99,7 +100,7 @@
                  sí sabe que es profesor. El trámite sale de la categoría, y la
                  cuenta que se crea nace ya con ella, pendiente de confirmar. --}}
             <label>
-                ¿Quién eres?
+                ¿Quién eres? <span class="obligatorio" aria-hidden="true">*</span>
                 <select name="categoria" id="cliente" required>
                     <option value="" disabled @selected(! old('categoria'))>Elige una opción</option>
                     @foreach ($categorias as $categoria)
@@ -265,12 +266,12 @@
         @else
             <div class="dos">
                 <label>
-                    Tu nombre
+                    Tu nombre <span class="obligatorio" aria-hidden="true">*</span>
                     <input type="text" name="nombre" required maxlength="120" value="{{ old('nombre') }}">
                 </label>
 
                 <label>
-                    Correo
+                    Correo <span class="obligatorio" aria-hidden="true">*</span>
                     <input type="email" name="correo" required maxlength="180" value="{{ old('correo') }}">
                     <span class="foot">Con este correo se crea tu cuenta y entras sin contraseña.</span>
                 </label>
@@ -289,9 +290,18 @@
              firma con alguien concreto: una persona con su cédula o una empresa
              con su NIT y su representante. Pedirlo aquí ahorra el correo de
              después; nada de esto es obligatorio para preguntar. --}}
-        <div class="panel" style="margin-top:1rem">
-            <p style="margin:0 0 .5rem;font-weight:600">Si el proyecto sigue, ¿a nombre de quién iría el contrato?</p>
-            <p class="foot" style="margin:0 0 .8rem">Opcional ahora; nos lo ahorra después. Se puede completar más adelante.</p>
+        {{-- Plegado: abierto parecía parte de lo que hay que llenar, y la
+             gente se detenía ahí. Se abre solo si ya trae algo —un rebote—. --}}
+        @php
+            $hayContrato = collect(['persona', 'documento', 'razon_social', 'representante', 'direccion'])
+                ->contains(fn ($c) => filled(old($c)));
+        @endphp
+        <details class="panel contrato" style="margin-top:1rem" @if ($hayContrato) open @endif>
+            <summary>
+                <span>Si el proyecto sigue, ¿a nombre de quién iría el contrato?</span>
+                <span class="opcional">Opcional</span>
+            </summary>
+            <p class="foot" style="margin:.6rem 0 .8rem">Nos ahorra un correo después. Si no lo sabes todavía, déjalo: se completa más adelante.</p>
 
             <div class="dos">
                 <label>
@@ -333,7 +343,7 @@
                     <input type="text" name="direccion" maxlength="200" value="{{ old('direccion') }}">
                 </label>
             </div>
-        </div>
+        </details>
 
         <script>
             // Razón social y representante solo tienen sentido en una empresa.
@@ -375,6 +385,20 @@
         form.panel input, form.panel textarea, form.panel select { width:100%; margin-top:.3rem; font-weight:400; }
         form.panel input[type=file] { padding:.5rem; }
         form.panel .foot { display:block; font-weight:400; margin-top:.25rem; }
+        /* El estilo de arriba pone cada label en bloque, y eso le ganaba al
+           atributo hidden: razón social y representante salían también a
+           una persona natural. */
+        form.panel [hidden] { display:none !important; }
+        form.panel .obligatorio { color:#b91c1c; font-weight:700; margin-left:.1rem; }
+
+        details.contrato > summary { cursor:pointer; list-style:none; display:flex; gap:.8rem;
+                                     justify-content:space-between; align-items:center; font-weight:600; font-size:.92rem; }
+        details.contrato > summary::-webkit-details-marker { display:none; }
+        details.contrato > summary::before { content:"+"; color:var(--accent); font-weight:700; width:1rem; flex:none; }
+        details.contrato[open] > summary::before { content:"−"; }
+        details.contrato > summary > span:first-child { flex:1; }
+        details.contrato .opcional { font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; font-weight:600;
+                                     color:var(--muted); border:1px solid var(--rule); border-radius:999px; padding:.1rem .55rem; }
         form.panel .dos { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:0 1rem; }
 
         .condiciones { margin-bottom:1.2rem; }
