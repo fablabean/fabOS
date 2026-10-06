@@ -140,10 +140,9 @@
             display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
         footer.pie-sitio strong{color:var(--ink)}
         footer.pie-sitio .powered{margin-left:auto}
-        footer.pie-sitio .redes{display:flex;gap:.2rem;margin-left:auto}
+        footer.pie-sitio .redes{display:flex;gap:.4rem;justify-content:center;flex-basis:100%;order:-1}
         footer.pie-sitio .redes a{display:flex;padding:.35rem;color:var(--muted);border-radius:4px}
         footer.pie-sitio .redes a:hover{color:var(--accent)}
-        footer.pie-sitio .redes + .powered{margin-left:0}
         footer.pie-sitio em{font-style:normal;color:var(--accent);font-weight:700}
 
         /* En el teléfono las tablas se apilan: cada fila es una tarjeta y
