@@ -309,6 +309,33 @@ class BuscadoresYAnaliticaTest extends TestCase
         $this->get('/llms.txt')->assertSee('Laboratorio de fabricación digital en Bogotá.')->assertSee('https://www.instagram.com/fablabean');
     }
 
+    public function test_las_redes_salen_en_el_pie_con_su_icono(): void
+    {
+        $this->jefa();
+
+        Livewire::test(BuscadoresYAnalitica::class)
+            ->set('datos.redes', [
+                'https://www.instagram.com/fablabean',
+                'https://www.linkedin.com/company/fablabean',
+                'https://www.youtube.com/@fablabean',
+                'https://www.printables.com/@fablabean',
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            ['instagram', 'linkedin', 'youtube', 'sitio'],
+            array_column(Buscadores::redesConNombre(), 'red'),
+        );
+
+        // Una red que no está en la lista sale igual, con su dominio de nombre.
+        $this->get(route('publico.home'))
+            ->assertOk()
+            ->assertSee('href="https://www.linkedin.com/company/fablabean"', false)
+            ->assertSee('aria-label="Instagram"', false)
+            ->assertSee('aria-label="printables.com"', false);
+    }
+
     public function test_la_documentacion_se_lee_en_el_panel(): void
     {
         $this->taller();

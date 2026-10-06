@@ -116,6 +116,50 @@ class Buscadores
             ->all();
     }
 
+    /**
+     * Las redes conocidas, por el dominio: de ahí sale el icono del pie.
+     *
+     * @var array<string,array{0:string,1:string}> dominio => [clave, nombre]
+     */
+    public const REDES_CONOCIDAS = [
+        'instagram.com' => ['instagram', 'Instagram'],
+        'linkedin.com'  => ['linkedin', 'LinkedIn'],
+        'facebook.com'  => ['facebook', 'Facebook'],
+        'fb.com'        => ['facebook', 'Facebook'],
+        'youtube.com'   => ['youtube', 'YouTube'],
+        'youtu.be'      => ['youtube', 'YouTube'],
+        'tiktok.com'    => ['tiktok', 'TikTok'],
+        'x.com'         => ['x', 'X'],
+        'twitter.com'   => ['x', 'X'],
+        'wa.me'         => ['whatsapp', 'WhatsApp'],
+        'whatsapp.com'  => ['whatsapp', 'WhatsApp'],
+    ];
+
+    /**
+     * Las mismas redes, con nombre e icono, para el pie del sitio.
+     *
+     * Una sola lista para todo: la que se declara a los buscadores es la que
+     * se ve. Una red nueva no pide tocar el código: si el dominio es de los
+     * conocidos sale con su icono; si no, con uno genérico y el dominio de
+     * nombre.
+     *
+     * @return list<array{red:string,nombre:string,url:string}>
+     */
+    public static function redesConNombre(): array
+    {
+        return array_map(function (string $url) {
+            $host = preg_replace('/^(www|m)\./', '', strtolower((string) parse_url($url, PHP_URL_HOST)));
+
+            foreach (self::REDES_CONOCIDAS as $dominio => [$red, $nombre]) {
+                if ($host === $dominio || str_ends_with($host, '.' . $dominio)) {
+                    return ['red' => $red, 'nombre' => $nombre, 'url' => $url];
+                }
+            }
+
+            return ['red' => 'sitio', 'nombre' => $host, 'url' => $url];
+        }, self::redes());
+    }
+
     public static function verificacionGoogle(): ?string
     {
         return self::codigo(Setting::get(self::GOOGLE));

@@ -98,6 +98,10 @@
         footer{border-top:1px solid var(--rule);margin-top:3rem;padding:2rem 1.4rem;
                color:var(--muted);font-size:.88rem}
         footer .in{max-width:70rem;margin:0 auto;display:flex;gap:1.4rem;flex-wrap:wrap;align-items:center}
+        footer .redes{display:flex;gap:.2rem;margin-left:auto}
+        footer .redes a{display:flex;padding:.35rem;color:var(--muted);border-radius:4px}
+        footer .redes a:hover{color:var(--accent)}
+        footer .redes + span{margin-left:0!important}
         @yield('styles')
     </style>
     {{-- Después del bloque de arriba a propósito: con la misma especificidad,
@@ -136,6 +140,7 @@
              es un visitante cada muchos, y el menú ya lleva siete entradas
              para lo que viene a hacer todo el mundo. --}}
         <a href="{{ route('marca.publica') }}">La marca</a>
+        @include('partials.redes')
         <span style="margin-left:auto">powered by <strong style="color:var(--accent)">fabOS</strong></span>
     </div>
 </footer>

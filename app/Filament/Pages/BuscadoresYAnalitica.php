@@ -80,7 +80,8 @@ class BuscadoresYAnalitica extends Page
                         TagsInput::make('redes')
                             ->label('Redes y sitios oficiales')
                             ->placeholder('https://www.instagram.com/… y Enter')
-                            ->helperText('Instagram, LinkedIn, YouTube, la página del laboratorio en la Universidad, la de la red Fab. Le dicen a Google y a los asistentes que esas cuentas son del mismo laboratorio.'),
+                            ->reorderable()
+                            ->helperText('Instagram, LinkedIn, Facebook, YouTube, la página del laboratorio en la Universidad, la de la red Fab. Le dicen a Google y a los asistentes que esas cuentas son del mismo laboratorio, y salen con su icono en el pie de todas las páginas, en este orden. Las que no son una red conocida salen con un icono de globo.'),
 
                         Textarea::make('texto_para_ia')
                             ->label('Lo que queremos que un asistente de IA sepa')
