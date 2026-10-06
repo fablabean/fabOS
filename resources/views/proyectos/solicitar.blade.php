@@ -87,35 +87,43 @@
             </span>
         </label>
 
-        {{-- Con qué tiene que ver (§11). Opcional a propósito: quien pide un
-             proyecto no siempre sabe con qué máquina se hace —para eso lo
-             pide—, y exigirlo sería pedirle que acierte antes de preguntar.
-             Cuando lo sabe, decide a qué equipo le llega. --}}
-        <label>
-            ¿Con qué tiene que ver?
-            <select name="area">
-                <option value="">No estoy seguro</option>
-                @foreach ($areas as $area)
-                    <option value="{{ $area->slug }}" @selected(old('area') === $area->slug)>
-                        {{ $area->name }}
-                    </option>
-                @endforeach
-            </select>
-            <span class="foot">
-                Opcional. Si lo sabes, le llega antes a quien lleva esa área; si no, lo
-                miramos nosotros.
-            </span>
-        </label>
+        {{-- Dos preguntas cortas y opcionales: lado a lado caben de sobra. --}}
+        <div class="dos">
+            {{-- Con qué tiene que ver (§11). Opcional a propósito: quien pide un
+                 proyecto no siempre sabe con qué máquina se hace —para eso lo
+                 pide—, y exigirlo sería pedirle que acierte antes de preguntar.
+                 Cuando lo sabe, decide a qué equipo le llega. --}}
+            <label>
+                ¿Con qué tiene que ver?
+                <select name="area">
+                    <option value="">No estoy seguro</option>
+                    @foreach ($areas as $area)
+                        <option value="{{ $area->slug }}" @selected(old('area') === $area->slug)>
+                            {{ $area->name }}
+                        </option>
+                    @endforeach
+                </select>
+                <span class="foot">
+                    Opcional. Si lo sabes, le llega antes a quien lleva esa área; si no, lo
+                    miramos nosotros.
+                </span>
+            </label>
+
+            <label>
+                ¿Para cuándo lo necesitas?
+                <input type="date" name="para_cuando" value="{{ old('para_cuando') }}"
+                       id="para-cuando">
+                <span class="foot" id="aviso-fecha">
+                    Opcional, pero cambia mucho lo que se puede proponer.
+                </span>
+            </label>
+        </div>
 
         @if ($tramite)
             {{-- A quien ya entró no se le pregunta: su categoría lo dice, y
                  preguntárselo sería dejar que se equivoque en una respuesta que
                  el sistema ya tiene. --}}
             <input type="hidden" name="cliente" value="{{ $tramite }}">
-            <p class="help">
-                Como <strong>{{ $usuario->category?->name }}</strong>, tu encargo se
-                tramita como <strong>{{ mb_strtolower(\App\Models\Project::CLIENTES[$tramite]) }}</strong>.
-            </p>
         @else
             {{-- Se pregunta la CATEGORÍA de la persona, no el trámite: un
                  profesor no sabe que su encargo «se tramita como interno», pero
@@ -145,14 +153,64 @@
             </label>
         @endif
 
+        <h2>Enséñanoslo</h2>
+
+        <p class="help" style="margin-top:-.4rem">
+            Una idea contada solo con palabras se entiende de tantas formas como
+            personas la lean. Una foto de la pieza rota, un plano, o un garabato con
+            dos medidas ahorra tres correos de ida y vuelta.
+        </p>
+
+        {{-- Los que se apartaron cuando el formulario rebotó: un navegador no
+             vuelve a llenar un campo de archivo, así que se guardan aquí. --}}
+        @php $pendientes = (array) session('soportes_pendientes', []); @endphp
+        @if ($pendientes)
+            <div class="ya-adjuntos">
+                <strong>Ya adjuntos</strong> — se envían con la solicitud. Desmarca los que no quieras.
+                @foreach ($pendientes as $p)
+                    <label class="adjunto">
+                        <input type="checkbox" name="mantener[]" value="{{ $p['token'] }}" checked>
+                        <span class="nombre">{{ $p['nombre'] }}</span>
+                        <span class="foot">{{ $p['peso'] < 1048576 ? max(1, (int) round($p['peso'] / 1024)) . ' KB' : number_format($p['peso'] / 1048576, 1, ',', '.') . ' MB' }}</span>
+                    </label>
+                @endforeach
+            </div>
+        @endif
+
         <label>
-            ¿Para cuándo lo necesitas?
-            <input type="date" name="para_cuando" value="{{ old('para_cuando') }}"
-                   id="para-cuando">
-            <span class="foot" id="aviso-fecha">
-                Opcional, pero cambia mucho lo que se puede proponer.
+            {{ $pendientes ? 'Agregar más archivos' : 'Archivos de soporte' }}
+            <input type="file" name="soportes[]" multiple
+                   accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
+            <span class="foot">
+                Hasta {{ \App\Services\Projects\SoportesDeSolicitud::maximo() }} archivos,
+                {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno.
+                Fotos, PDF, planos y vectores (DXF, SVG, AI), modelos 3D (STL, STEP, 3MF, OBJ),
+                documentos de oficina o un ZIP con todo.
             </span>
         </label>
+
+        <div class="dibujo">
+            <span class="rotulo-campo">O dibújalo aquí</span>
+
+            <canvas id="lienzo" width="900" height="420"></canvas>
+
+            <div class="herramientas">
+                <button type="button" id="borrar" class="secundario">Borrar el dibujo</button>
+                <span class="foot" id="estado-dibujo">Se manda solo si dibujas algo.</span>
+            </div>
+
+            {{-- Si el formulario rebota, el dibujo vuelve al lienzo. --}}
+            <input type="hidden" name="dibujo" id="dibujo" value="{{ old('dibujo') }}">
+        </div>
+
+        {{-- Lo que aplica a su caso, al final y antes de sus datos: se lee
+             como el resumen de cómo va a ir, no como un obstáculo al empezar. --}}
+        @if ($tramite)
+            <p class="help" id="como-tramite">
+                Como <strong>{{ $usuario->category?->name }}</strong>, tu encargo se
+                tramita como <strong>{{ mb_strtolower(\App\Models\Project::CLIENTES[$tramite]) }}</strong>.
+            </p>
+        @endif
 
         {{-- Las condiciones de cada rol. Enseñarle a un estudiante el circuito
              presupuestal le haría pensar que su encargo también depende de
@@ -215,56 +273,6 @@
                     <span class="detalle">Antes de la confirmación de Planeación no se compra material.</span>
                 </li>
             </ol>
-        </div>
-
-        <h2>Enséñanoslo</h2>
-
-        <p class="help" style="margin-top:-.4rem">
-            Una idea contada solo con palabras se entiende de tantas formas como
-            personas la lean. Una foto de la pieza rota, un plano, o un garabato con
-            dos medidas ahorra tres correos de ida y vuelta.
-        </p>
-
-        {{-- Los que se apartaron cuando el formulario rebotó: un navegador no
-             vuelve a llenar un campo de archivo, así que se guardan aquí. --}}
-        @php $pendientes = (array) session('soportes_pendientes', []); @endphp
-        @if ($pendientes)
-            <div class="ya-adjuntos">
-                <strong>Ya adjuntos</strong> — se envían con la solicitud. Desmarca los que no quieras.
-                @foreach ($pendientes as $p)
-                    <label class="adjunto">
-                        <input type="checkbox" name="mantener[]" value="{{ $p['token'] }}" checked>
-                        <span class="nombre">{{ $p['nombre'] }}</span>
-                        <span class="foot">{{ $p['peso'] < 1048576 ? max(1, (int) round($p['peso'] / 1024)) . ' KB' : number_format($p['peso'] / 1048576, 1, ',', '.') . ' MB' }}</span>
-                    </label>
-                @endforeach
-            </div>
-        @endif
-
-        <label>
-            {{ $pendientes ? 'Agregar más archivos' : 'Archivos de soporte' }}
-            <input type="file" name="soportes[]" multiple
-                   accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
-            <span class="foot">
-                Hasta {{ \App\Services\Projects\SoportesDeSolicitud::maximo() }} archivos,
-                {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno.
-                Fotos, PDF, planos y vectores (DXF, SVG, AI), modelos 3D (STL, STEP, 3MF, OBJ),
-                documentos de oficina o un ZIP con todo.
-            </span>
-        </label>
-
-        <div class="dibujo">
-            <span class="rotulo-campo">O dibújalo aquí</span>
-
-            <canvas id="lienzo" width="900" height="420"></canvas>
-
-            <div class="herramientas">
-                <button type="button" id="borrar" class="secundario">Borrar el dibujo</button>
-                <span class="foot" id="estado-dibujo">Se manda solo si dibujas algo.</span>
-            </div>
-
-            {{-- Si el formulario rebota, el dibujo vuelve al lienzo. --}}
-            <input type="hidden" name="dibujo" id="dibujo" value="{{ old('dibujo') }}">
         </div>
 
         <h2>Quién eres</h2>
@@ -536,6 +544,16 @@
                 b.setAttribute('aria-pressed', b.dataset.vista === '' ? 'true' : 'false');
                 b.addEventListener('click', function () {
                     vista = b.dataset.vista || null;
+
+                    // La frase de su trámite también cambia con la vista.
+                    const frase = document.getElementById('como-tramite');
+                    if (frase) {
+                        frase.dataset.original ??= frase.innerHTML;
+                        frase.innerHTML = vista
+                            ? 'Vista como <strong>' + b.textContent.trim() + '</strong>: el encargo se tramita como <strong>'
+                                + ({!! json_encode(array_map('mb_strtolower', \App\Models\Project::CLIENTES)) !!})[vista] + '</strong>.'
+                            : frase.dataset.original;
+                    }
                     document.querySelectorAll('.vista-como [data-vista]').forEach(function (o) {
                         o.setAttribute('aria-pressed', o === b ? 'true' : 'false');
                     });
