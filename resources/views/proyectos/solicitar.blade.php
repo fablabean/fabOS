@@ -28,6 +28,28 @@
         </div>
     @endif
 
+    {{-- Solo para superadmin: ver el formulario como lo ve cada tipo de
+         cliente, sin cambiar cómo se enviaría el suyo. Lo que cambia según el
+         trámite —condiciones, el circuito del traslado, la fecha mínima— solo
+         se podía revisar entrando con otra cuenta. --}}
+    @if (auth()->user()?->hasRole(\App\Models\User::ROL_SUPERADMIN))
+        <div class="vista-como" role="group" aria-label="Ver el formulario como">
+            <span>Vista de superadmin · ver como</span>
+            <button type="button" data-vista="">Tal como soy</button>
+            @foreach (['estudiante' => 'Estudiante', 'interno' => 'Interno', 'externo' => 'Externo'] as $clave => $texto)
+                <button type="button" data-vista="{{ $clave }}">{{ $texto }}</button>
+            @endforeach
+        </div>
+        <style>
+            .vista-como { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:0 0 1rem;
+                          padding:.55rem .8rem; border:1px dashed var(--accent); border-radius:6px; font-size:.82rem; }
+            .vista-como span { color:var(--muted); margin-right:.3rem; }
+            .vista-como button { margin:0; padding:.3rem .75rem; font-size:.8rem; border-radius:999px;
+                                 background:transparent; color:var(--accent); border:1px solid var(--accent); }
+            .vista-como button[aria-pressed="true"] { background:var(--accent); color:var(--surface); }
+        </style>
+    @endif
+
     <form method="POST" action="{{ route('proyectos.solicitar.store') }}" class="panel"
           enctype="multipart/form-data" id="solicitud">
         @csrf
@@ -471,9 +493,10 @@
                 // El desplegable lista categorias; el tramite viene en cada
                 // opcion. Con sesion, el tramite ya esta fijo.
                 const opcion = cliente ? cliente.selectedOptions[0] : null;
-                const rol = opcion
-                    ? (opcion.dataset.tramite || opcion.value || null)
-                    : (fijo ? fijo.value : null);
+                const rol = vista
+                    || (opcion
+                        ? (opcion.dataset.tramite || opcion.value || null)
+                        : (fijo ? fijo.value : null));
 
                 bloques.forEach(function (b) {
                     b.hidden = b.dataset.rol !== rol;
@@ -506,6 +529,19 @@
                     aviso.textContent = 'Opcional, pero cambia mucho lo que se puede proponer.';
                 }
             }
+
+            // La vista de superadmin: solo cambia lo que se ve.
+            let vista = null;
+            document.querySelectorAll('.vista-como [data-vista]').forEach(function (b) {
+                b.setAttribute('aria-pressed', b.dataset.vista === '' ? 'true' : 'false');
+                b.addEventListener('click', function () {
+                    vista = b.dataset.vista || null;
+                    document.querySelectorAll('.vista-como [data-vista]').forEach(function (o) {
+                        o.setAttribute('aria-pressed', o === b ? 'true' : 'false');
+                    });
+                    ajustar();
+                });
+            });
 
             if (cliente) cliente.addEventListener('change', ajustar);
             if (fecha) fecha.addEventListener('change', ajustar);

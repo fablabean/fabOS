@@ -355,6 +355,25 @@ class SolicitudDeProyectoTest extends TestCase
         Storage::disk('local')->assertMissing($ruta);
     }
 
+    /** El superadmin puede ver el formulario como cada tipo de cliente; nadie más. */
+    public function test_solo_el_superadmin_ve_el_formulario_como_otros(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate(\App\Models\User::ROL_SUPERADMIN, 'web');
+
+        $alguien = \App\Models\User::create(['name' => 'Ana', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $this->actingAs($alguien)->get(route('proyectos.solicitar'))->assertOk()->assertDontSee('Vista de superadmin');
+
+        $jefe = \App\Models\User::create(['name' => 'Jefe', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $jefe->assignRole(\App\Models\User::ROL_SUPERADMIN);
+
+        $this->actingAs($jefe)->get(route('proyectos.solicitar'))
+            ->assertOk()
+            ->assertSee('Vista de superadmin')
+            ->assertSee('data-vista="estudiante"', false)
+            ->assertSee('data-vista="interno"', false)
+            ->assertSee('data-vista="externo"', false);
+    }
+
     /** Un ejecutable no es un soporte de proyecto. */
     public function test_un_tipo_de_archivo_que_no_toca_se_rechaza(): void
     {
