@@ -179,15 +179,95 @@
 
         <label>
             {{ $pendientes ? 'Agregar más archivos' : 'Archivos de soporte' }}
-            <input type="file" name="soportes[]" multiple
-                   accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}">
+            <input type="file" name="soportes[]" multiple id="soportes"
+                   accept="{{ \App\Services\Projects\SoportesDeSolicitud::accept() }}"
+                   data-tipos='@json(\App\Services\Projects\SoportesDeSolicitud::tipos())'
+                   data-maximo="{{ \App\Services\Projects\SoportesDeSolicitud::maximo() }}"
+                   data-kb="{{ \App\Services\Projects\SoportesDeSolicitud::tamanoKb() }}"
+                   data-total-mb="{{ \App\Services\Projects\SoportesDeSolicitud::TAMANO_TECHO_MB }}">
             <span class="foot">
                 Hasta {{ \App\Services\Projects\SoportesDeSolicitud::maximo() }} archivos,
-                {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno.
+                {{ intdiv(\App\Services\Projects\SoportesDeSolicitud::tamanoKb(), 1024) }} MB cada uno
+                y {{ \App\Services\Projects\SoportesDeSolicitud::TAMANO_TECHO_MB }} MB entre todos.
                 Fotos, PDF, planos y vectores (DXF, SVG, AI), modelos 3D (STL, STEP, 3MF, OBJ),
                 documentos de oficina o un ZIP con todo.
             </span>
         </label>
+
+        {{-- Lo que no se puede subir se dice al elegirlo, no al enviar. Un
+             archivo sin formato rebotaba en el servidor, y varios archivos
+             grandes pasaban el tope del envío entero: el servidor web cortaba
+             antes de llegar a la aplicación y devolvía su página de error,
+             sin formulario y sin nada de lo escrito. --}}
+        <div class="aviso-archivos" id="aviso-archivos" role="alert" hidden></div>
+        <script>
+            (function () {
+                const campo = document.getElementById('soportes');
+                const aviso = document.getElementById('aviso-archivos');
+                if (! campo || ! aviso) return;
+
+                const tipos = JSON.parse(campo.dataset.tipos || '[]');
+                const maximo = parseInt(campo.dataset.maximo, 10) || 10;
+                const tope = (parseInt(campo.dataset.kb, 10) || 51200) * 1024;
+                const topeTotal = (parseInt(campo.dataset.totalMb, 10) || 90) * 1024 * 1024;
+                const mb = (n) => (n / 1048576).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' MB';
+
+                // Los «ya adjuntos» de un intento anterior también cuentan.
+                const yaAdjuntos = () => Array.from(document.querySelectorAll('input[name="mantener[]"]:checked'));
+
+                function revisar() {
+                    const quedan = [];
+                    const fuera = [];
+                    let total = 0;
+                    let cuantos = yaAdjuntos().length;
+
+                    Array.from(campo.files).forEach(function (f) {
+                        const punto = f.name.lastIndexOf('.');
+                        const ext = punto > 0 ? f.name.slice(punto + 1).toLowerCase() : '';
+
+                        if (! ext) {
+                            fuera.push(f.name + ': no tiene formato (le falta la extensión, como .pdf o .stl).');
+                        } else if (! tipos.includes(ext)) {
+                            fuera.push(f.name + ': el formato .' + ext + ' no se acepta.');
+                        } else if (f.size > tope) {
+                            fuera.push(f.name + ': pesa ' + mb(f.size) + ', y el máximo por archivo es ' + mb(tope) + '.');
+                        } else if (cuantos >= maximo) {
+                            fuera.push(f.name + ': ya van ' + maximo + ' archivos, que es el máximo.');
+                        } else if (total + f.size > topeTotal) {
+                            fuera.push(f.name + ': con él, el envío pasaría de ' + mb(topeTotal) + ' entre todos. Comprime los archivos o súbelos en un ZIP.');
+                        } else {
+                            quedan.push(f);
+                            total += f.size;
+                            cuantos++;
+                        }
+                    });
+
+                    if (fuera.length) {
+                        // Se quitan de la selección los que no van; los demás siguen.
+                        try {
+                            const dt = new DataTransfer();
+                            quedan.forEach((f) => dt.items.add(f));
+                            campo.files = dt.files;
+                        } catch (e) {
+                            // Un navegador sin DataTransfer: se vacía y que elija de nuevo.
+                            campo.value = '';
+                        }
+
+                        aviso.innerHTML = '<strong>' + (fuera.length === 1 ? 'Este archivo no se puede subir' : 'Estos archivos no se pueden subir')
+                            + '</strong> ' + (fuera.length === 1 ? 'y se quitó' : 'y se quitaron') + ' de la selección:<ul>'
+                            + fuera.map((m) => '<li>' + m.replace(/[<>&]/g, '') + '</li>').join('') + '</ul>'
+                            + 'Se aceptan: ' + tipos.join(', ') + '.';
+                        aviso.hidden = false;
+                    } else {
+                        aviso.hidden = true;
+                    }
+
+                    return fuera.length === 0;
+                }
+
+                campo.addEventListener('change', revisar);
+            })();
+        </script>
 
         <div class="dibujo">
             <span class="rotulo-campo">O dibújalo aquí</span>
@@ -425,6 +505,9 @@
            atributo hidden: razón social y representante salían también a
            una persona natural. */
         form.panel [hidden] { display:none !important; }
+        .aviso-archivos { margin:-.4rem 0 1rem; padding:.7rem .9rem; border-left:3px solid #b91c1c; border-radius:4px;
+                          background:color-mix(in srgb, #b91c1c 8%, transparent); font-size:.88rem; }
+        .aviso-archivos ul { margin:.3rem 0 .4rem; padding-left:1.1rem; }
         form.panel .obligatorio { color:#b91c1c; font-weight:700; margin-left:.1rem; }
 
         details.contrato > summary { cursor:pointer; list-style:none; display:flex; gap:.8rem;
