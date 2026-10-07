@@ -54,7 +54,7 @@ class ProjectDocument extends Model
 
             if ($etapa && $documento->project) {
                 app(\App\Services\Projects\ProjectService::class)
-                    ->avanzarPorEvento($documento->project, $etapa);
+                    ->avanzarPorEvento($documento->project, $etapa, yaSeAviso: false, quien: auth()->user());
             }
         });
     }

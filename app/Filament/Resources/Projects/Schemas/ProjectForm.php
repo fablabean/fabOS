@@ -227,7 +227,7 @@ class ProjectForm
                             ->options(Project::ETAPAS)
                             ->default('idea')
                             ->required()
-                            ->helperText('Se mueve desde el listado, que comprueba las compuertas.'),
+                            ->helperText('Se mueve desde el listado, que comprueba las compuertas. Cambiarla aquí también le avisa por correo a quien pidió y queda en la conversación.'),
 
                         Select::make('status')
                             ->label('Estado')

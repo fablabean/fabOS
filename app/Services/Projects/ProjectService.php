@@ -968,6 +968,7 @@ class ProjectService
             // Retroceder es legítimo: una propuesta puede volver a revisarse.
             // Lo que no se permite es avanzar sin lo que sostiene la etapa.
             $anterior = $proyecto->stage;
+            $proyecto->etapaYaAvisada = true;
             $proyecto->update(['stage' => $etapa]);
             $proyecto->refresh();
 
@@ -997,6 +998,9 @@ class ProjectService
 
         $anterior = $proyecto->stage;
 
+        // El aviso sale de aquí, con quién y con qué texto: que el modelo no
+        // lo repita al ver cambiar la etapa.
+        $proyecto->etapaYaAvisada = true;
         $proyecto->update($datos);
         $proyecto->refresh();
 
@@ -1046,13 +1050,13 @@ class ProjectService
      * aceptaron, se registró un documento— ese hecho ya dejó su propia línea
      * y su propio correo: aquí solo salen los dos hitos de siempre.
      */
-    private function avisarDelCambioDeEtapa(
+    public function avisarDelCambioDeEtapa(
         Project $proyecto,
         string $anterior,
-        ?User $quien,
-        bool $avisar,
-        ?string $mensaje,
-        bool $porEvento,
+        ?User $quien = null,
+        bool $avisar = true,
+        ?string $mensaje = null,
+        bool $porEvento = false,
     ): void {
         $etapa = $proyecto->stage;
         $esHito = in_array($etapa, ['ejecucion', 'cierre'], true);
@@ -1218,7 +1222,7 @@ class ProjectService
      * Solo avanza: un hecho posterior no puede devolver un proyecto a una etapa
      * anterior. Retroceder sigue siendo una decisión de quien coordina.
      */
-    public function avanzarPorEvento(Project $proyecto, string $etapa): Project
+    public function avanzarPorEvento(Project $proyecto, string $etapa, bool $yaSeAviso = true, ?User $quien = null): Project
     {
         $orden = array_keys(Project::ETAPAS);
         $ahora = array_search($proyecto->stage, $orden, true);
@@ -1233,7 +1237,9 @@ class ProjectService
             return $proyecto;
         }
 
-        return $this->moverA($proyecto, $etapa, exigirCompuertas: false, porEvento: true);
+        // Mandar la propuesta o que la acepten ya deja su línea y su correo.
+        // Subir un documento no le dice nada a quien pidió: ahí sí se avisa.
+        return $this->moverA($proyecto, $etapa, exigirCompuertas: false, quien: $quien, porEvento: $yaSeAviso);
     }
 
     /**

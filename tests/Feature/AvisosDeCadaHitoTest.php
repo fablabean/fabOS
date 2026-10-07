@@ -268,6 +268,43 @@ class AvisosDeCadaHitoTest extends TestCase
         $this->assertSame(0, $proyecto->comments()->count());
     }
 
+    public function test_cambiar_la_etapa_en_la_ficha_tambien_avisa(): void
+    {
+        // La ficha guarda la etapa a pelo, sin pasar por el servicio: el
+        // proyecto se movía sin correo y sin dejar nada en la conversación.
+        $jefa = $this->jefa();
+        $proyecto = $this->proyecto(['stage' => 'contrato']);
+
+        $this->actingAs($jefa);
+        $proyecto->update(['stage' => 'brief']);
+
+        $this->assertNotNull($this->avisos('proyecto.cambio_de_etapa')->firstWhere('to', 'marcela@cliente.co'));
+
+        $constancia = $proyecto->comments()->reorder()->latest('id')->first();
+        $this->assertSame('laboratorio', $constancia->side);
+        $this->assertSame($jefa->id, $constancia->user_id);
+        $this->assertStringContainsString('pasó de «Contrato» a «Brief»', $constancia->body);
+
+        // Y guardar la ficha sin tocar la etapa no manda nada más.
+        $proyecto->update(['name' => 'Señalética del bloque C']);
+
+        $this->assertCount(1, $this->avisos('proyecto.cambio_de_etapa')->where('to', 'marcela@cliente.co'));
+        $this->assertSame(1, $proyecto->comments()->count());
+    }
+
+    public function test_subir_el_contrato_mueve_la_etapa_y_avisa_una_sola_vez(): void
+    {
+        // Subir el papel mueve la etapa sola, pero a quien pidió eso no le
+        // dice nada si no le llega un correo.
+        $proyecto = $this->proyecto(['stage' => 'contrato']);
+
+        $proyecto->documents()->create(['kind' => 'contrato', 'title' => 'Contrato firmado']);
+
+        $this->assertSame('brief', $proyecto->fresh()->stage);
+        $this->assertCount(1, $this->avisos('proyecto.cambio_de_etapa')->where('to', 'marcela@cliente.co'));
+        $this->assertSame(1, $proyecto->comments()->count());
+    }
+
     public function test_sin_correo_la_constancia_lo_dice(): void
     {
         $proyecto = $this->proyecto(['stage' => 'idea', 'contact_email' => null, 'lead_id' => null]);

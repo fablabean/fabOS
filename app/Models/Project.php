@@ -957,10 +957,33 @@ class Project extends Model
      * Aquí no hay forma de saltárselo: cualquiera que cree un proyecto, por la
      * vía que sea, obtiene su código.
      */
+    /**
+     * Si quien está moviendo la etapa ya se encarga del aviso.
+     *
+     * Lo pone el servicio cuando la mueve él, que sabe quién, con qué texto y
+     * si se quiso avisar. No es una columna: vive lo que vive esta instancia.
+     */
+    public bool $etapaYaAvisada = false;
+
     protected static function booted(): void
     {
         static::creating(function (self $proyecto) {
             $proyecto->code ??= static::siguienteCodigo();
+        });
+
+        // La etapa también se cambia editando la ficha, y ese guardado no
+        // pasa por el servicio: el proyecto se movía sin correo y sin dejar
+        // nada en la conversación. Aquí se recoge lo que nadie más avisó.
+        static::updated(function (self $proyecto) {
+            if (! $proyecto->wasChanged('stage') || $proyecto->etapaYaAvisada) {
+                return;
+            }
+
+            app(\App\Services\Projects\ProjectService::class)->avisarDelCambioDeEtapa(
+                $proyecto,
+                (string) $proyecto->getOriginal('stage'),
+                auth()->user(),
+            );
         });
 
         // Un proyecto en la etapa de idea todavia no tiene valor acordado, y el
