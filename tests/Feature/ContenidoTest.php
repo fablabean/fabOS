@@ -79,6 +79,48 @@ class ContenidoTest extends TestCase
         Storage::disk('local')->assertExists($pieza->file_path);
     }
 
+    public function test_un_lote_sube_de_a_un_archivo_y_al_final_se_cuenta(): void
+    {
+        Storage::fake('local');
+
+        $quien = $this->persona();
+        $p = $this->proyectoDe($quien);
+
+        // La página manda cada archivo en su propia petición, pidiendo JSON:
+        // ninguna pasa del tope del túnel, por grande que sea el lote.
+        foreach (['uno.jpg', 'dos.jpg', 'tres.jpg'] as $nombre) {
+            $this->actingAs($quien)
+                ->postJson(route('contenido.store'), $this->subida([
+                    'archivos' => [UploadedFile::fake()->image($nombre, 800, 600)],
+                    'project_id' => $p->id,
+                ]))
+                ->assertOk()
+                ->assertJson(['guardados' => 1]);
+        }
+
+        $this->assertSame(3, Contenido::where('project_id', $p->id)->count());
+
+        // Y al volver, el aviso con la cuenta y el proyecto.
+        $this->actingAs($quien)
+            ->get(route('contenido.index', ['subidos' => 3, 'proyecto' => $p->id]))
+            ->assertOk()
+            ->assertSee('3')
+            ->assertSee('archivos guardados')
+            ->assertSee('Quedaron con «Carcasa del sensor»', false);
+    }
+
+    public function test_sin_autorizacion_el_lote_dice_por_que_en_json(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->persona())
+            ->postJson(route('contenido.store'), $this->subida(['derechos' => null]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('derechos');
+
+        $this->assertSame(0, Contenido::count());
+    }
+
     public function test_se_sube_un_video(): void
     {
         Storage::fake('local');

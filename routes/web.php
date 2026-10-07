@@ -530,8 +530,9 @@ Route::middleware('auth')->group(function () {
     // minuto. Exige cuenta -el material queda atribuido a quien lo grabo- pero
     // no rol de backoffice: documentar lo hace quien esta delante de la maquina.
     Route::get('/contenido', [ContenidoController::class, 'index'])->name('contenido.index');
+    // Una petición por archivo: un lote de cien fotos son cien peticiones.
     Route::post('/contenido', [ContenidoController::class, 'store'])
-        ->middleware('throttle:30,60')
+        ->middleware('throttle:300,60')
         ->name('contenido.store');
     Route::get('/contenido/{contenido}/archivo', [ContenidoController::class, 'archivo'])->name('contenido.archivo');
 

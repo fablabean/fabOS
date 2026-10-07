@@ -45,6 +45,10 @@ class ContenidoController extends Controller
              * total que solo suma lo que cabe en pantalla no cuadra con nada.
              */
             'aportes'   => Contenido::where('user_id', $persona->id)->count(),
+
+            // Lo que la página subió por detrás, al volver: el aviso de
+            // «guardados» no puede ir en la sesión porque nadie redirige.
+            'subidos'   => (int) (session('subido') ?? $request->integer('subidos')),
             'ganado'    => (int) Contenido::where('user_id', $persona->id)->sum('recognized_minor'),
         ]);
     }
@@ -98,6 +102,13 @@ class ContenidoController extends Controller
             );
 
             $cuantos++;
+        }
+
+        // La página sube de a un archivo por petición (ver la vista): así
+        // ninguna pasa del tope del túnel, por grande que sea el lote. A ella
+        // se le contesta en JSON y es ella la que lleva la cuenta.
+        if ($request->expectsJson()) {
+            return response()->json(['guardados' => $cuantos]);
         }
 
         return redirect()
