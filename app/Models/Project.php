@@ -829,6 +829,79 @@ class Project extends Model
         };
     }
 
+    /**
+     * Desde cuándo espera este proyecto una respuesta nuestra (§11).
+     *
+     * Espera cuando lo último lo dijo quien pidió: un mensaje, un comprobante
+     * de pago, la aceptación de la propuesta. Y cuando es una solicitud de la
+     * web a la que todavía nadie le ha dicho nada —ni un comentario ni una
+     * propuesta—: ahí lo último que se dijo es la solicitud misma.
+     *
+     * Contestar es dejar algo del lado del laboratorio: un comentario, una
+     * propuesta, un contrato, un cobro. Todo eso queda en la conversación, así
+     * que basta mirar de quién es la última línea.
+     *
+     * Solo lo activo: lo pausado tiene su motivo anotado y lo cerrado ya no
+     * espera nada.
+     */
+    public function esperaRespuestaDesde(): ?\Illuminate\Support\Carbon
+    {
+        // La lista lo pregunta tres veces por fila: una sola consulta.
+        return once(fn () => $this->calcularEsperaDeRespuesta());
+    }
+
+    private function calcularEsperaDeRespuesta(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->status !== 'activo' || $this->estaCerrado()) {
+            return null;
+        }
+
+        $ultimo = $this->comments()->reorder()->latest('id')->first(['id', 'side', 'created_at']);
+
+        if ($ultimo) {
+            return $ultimo->side === 'cliente' ? $ultimo->created_at : null;
+        }
+
+        $sinTocar = $this->source === 'formulario'
+            && $this->stage === 'idea'
+            && $this->proposal_sent_at === null;
+
+        return $sinTocar ? $this->created_at : null;
+    }
+
+    /** Si lleva más de un día hábil esperando: es lo que hace saltar la fila. */
+    public function sinRespuesta(): bool
+    {
+        $desde = $this->esperaRespuestaDesde();
+
+        return $desde !== null && \App\Support\DiasHabiles::vencio($desde);
+    }
+
+    /**
+     * Los que llevan más de un día hábil esperando, para filtrar la lista.
+     *
+     * La misma regla que `sinRespuesta()`, dicha a la base.
+     */
+    public function scopeConRespuestaVencida(Builder $query): Builder
+    {
+        $corte = \App\Support\DiasHabiles::corte()->utc();
+        $ultimo = fn (string $columna) => "(select {$columna} from project_comments where project_comments.project_id = projects.id order by id desc limit 1)";
+
+        return $query
+            ->where('projects.status', 'activo')
+            ->whereNot('projects.stage', 'cierre')
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $c) => $c
+                    ->whereRaw($ultimo('side') . " = 'cliente'")
+                    ->whereRaw($ultimo('created_at') . ' <= ?', [$corte]))
+                ->orWhere(fn (Builder $s) => $s
+                    ->whereDoesntHave('comments')
+                    ->where('projects.source', 'formulario')
+                    ->where('projects.stage', 'idea')
+                    ->whereNull('projects.proposal_sent_at')
+                    ->where('projects.created_at', '<=', $corte)));
+    }
+
     /** Estados que sacan a un proyecto de la mesa de quien lo lleva. */
     public const ESTADOS_CERRADOS = ['cerrado', 'perdido', 'descartado'];
 

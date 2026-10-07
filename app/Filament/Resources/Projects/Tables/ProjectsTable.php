@@ -44,8 +44,13 @@ class ProjectsTable
             // Y las alianzas llevan franja azul: en una lista de cincuenta
             // encargos, los cuatro proyectos que no son encargo se pierden, y
             // son justo los que se cuentan de otra manera.
+            //
+            // Y lo que lleva más de un día hábil esperando una respuesta
+            // nuestra, late: es lo único de la lista que se mueve, a propósito.
             ->recordClasses(fn (Project $r) => trim(
-                ($r->esAlianza() ? 'es-alianza ' : '') . ($r->semaforo() ?? '')
+                ($r->esAlianza() ? 'es-alianza ' : '')
+                . ($r->sinRespuesta() ? 'sin-respuesta ' : '')
+                . ($r->semaforo() ?? '')
             ) ?: null)
             ->columns([
                 TextColumn::make('code')->sortable()
@@ -96,7 +101,13 @@ class ProjectsTable
                     // Se queda con el ancho que sobra: es lo que se viene a
                     // leer, y el resto de columnas caben en lo suyo.
                     ->width('100%')
-                    ->description(fn (Project $r) => $r->quienPide()),
+                    // Debajo, quién pide; y si lleva más de un día hábil
+                    // esperándonos, desde cuándo: el latido de la fila dice
+                    // que algo pasa, y esto dice qué.
+                    ->description(fn (Project $r) => $r->sinRespuesta()
+                        ? new HtmlString(e($r->quienPide()) . '<span class="aviso-sin-respuesta">Sin respuesta '
+                            . e($r->esperaRespuestaDesde()->locale('es')->diffForHumans()) . '</span>')
+                        : $r->quienPide()),
 
                 // De quien es el encargo: estaba pegado al codigo, donde
                 // ensanchaba una columna que solo tiene que decir «PRY-2026-33».
@@ -210,6 +221,10 @@ class ProjectsTable
                     ->query(fn ($query) => $query->where(fn ($q) => $q
                         ->where('lead_id', auth()->id())
                         ->orWhereNull('lead_id'))),
+
+                Filter::make('sin_respuesta')
+                    ->label('Sin respuesta hace más de un día hábil')
+                    ->query(fn ($query) => $query->conRespuestaVencida()),
 
                 Filter::make('sin_responder')
                     ->label('Solicitudes de la web sin responder')

@@ -20,4 +20,19 @@
        de cincuenta, y el color de la entrega sigue tiñendo la fila igual. */
     tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #2B6CB0; }
     .dark tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #63B3ED; }
+
+    /* Sin respuesta hace más de un día hábil: la fila late. Es lo único del
+       panel que se mueve, y por eso se ve; va lento y suave para que avise
+       sin que la lista entera se vuelva ilegible. Gana al semáforo: una
+       entrega para pasado mañana importa menos que alguien esperando. */
+    @keyframes sin-respuesta { 0%, 100% { background-color: color-mix(in srgb, #E53E3E 6%, transparent); }
+                               50%      { background-color: color-mix(in srgb, #E53E3E 26%, transparent); } }
+    tr.sin-respuesta { animation: sin-respuesta 1.4s ease-in-out infinite; }
+    tr.sin-respuesta > td:first-child { box-shadow: inset 4px 0 0 #E53E3E; }
+    .aviso-sin-respuesta { display: table; margin-top: .2rem; padding: .05rem .45rem; border-radius: 999px;
+                           background: #C53030; color: #fff; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+    /* Quien pidió menos movimiento en su sistema lo ve fijo, pero lo ve. */
+    @media (prefers-reduced-motion: reduce) {
+        tr.sin-respuesta { animation: none; background-color: color-mix(in srgb, #E53E3E 18%, transparent); }
+    }
 </style>
