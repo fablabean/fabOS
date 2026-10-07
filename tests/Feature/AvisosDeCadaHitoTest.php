@@ -200,7 +200,7 @@ class AvisosDeCadaHitoTest extends TestCase
 
     // --------------------------------------------------- lo que no debe pasar
 
-    public function test_retroceder_de_etapa_no_avisa_a_nadie(): void
+    public function test_retroceder_de_etapa_no_manda_los_avisos_de_hito(): void
     {
         $proyecto = $this->proyecto(['stage' => 'ejecucion']);
 
@@ -210,15 +210,94 @@ class AvisosDeCadaHitoTest extends TestCase
         $this->assertCount(0, $this->avisos('proyecto.cerrado'));
     }
 
-    public function test_las_etapas_internas_no_generan_correo(): void
+    // ------------------------------------------- mover de etapa es contestar
+
+    public function test_cualquier_cambio_de_etapa_avisa_y_queda_en_la_conversacion(): void
     {
-        // El brief y el contrato no le dicen nada a quien espera su pieza, y un
-        // correo por cada uno enseña a ignorarlos todos.
-        $proyecto = $this->proyecto(['stage' => 'contrato']);
+        // Mover una solicitud de etapa es contestarle a quien la pidió: sin
+        // correo no le llegaba a nadie, y sin constancia la lista la seguía
+        // marcando como sin responder.
+        $jefa = $this->jefa();
+        $proyecto = $this->proyecto(['stage' => 'idea']);
 
-        $this->proyectos()->moverA($proyecto, 'brief', exigirCompuertas: false);
+        $this->proyectos()->moverA($proyecto, 'contrato', exigirCompuertas: false, quien: $jefa);
 
-        $this->assertSame(0, NotificationLog::where('key', 'like', 'proyecto.%')->count());
+        $aviso = $this->avisos('proyecto.cambio_de_etapa')->firstWhere('to', 'marcela@cliente.co');
+        $this->assertNotNull($aviso);
+        $this->assertSame('enviado', $aviso->status);
+        $this->assertStringContainsString('pasó a Contrato', $aviso->subject);
+        $this->assertStringContainsString('de «Idea» a «Contrato»', $aviso->body);
+
+        $constancia = $proyecto->comments()->reorder()->latest('id')->first();
+        $this->assertSame('laboratorio', $constancia->side);
+        $this->assertSame($jefa->id, $constancia->user_id);
+        $this->assertStringContainsString('pasó de «Idea» a «Contrato»', $constancia->body);
+        $this->assertStringContainsString('marcela@cliente.co', $constancia->body);
+    }
+
+    public function test_mover_de_etapa_apaga_la_alarma_de_sin_respuesta(): void
+    {
+        $proyecto = $this->proyecto(['stage' => 'idea']);
+        $proyecto->forceFill(['created_at' => now()->subDays(10)])->saveQuietly();
+
+        $this->assertTrue($proyecto->fresh()->sinRespuesta());
+
+        $this->proyectos()->moverA($proyecto, 'ejecucion', exigirCompuertas: false, quien: $this->jefa());
+
+        $this->assertFalse($proyecto->fresh()->sinRespuesta());
+        $this->assertSame(0, Project::conRespuestaVencida()->count());
+
+        // El hito conserva su propio correo, y también deja constancia.
+        $this->assertNotNull($this->avisos('proyecto.en_ejecucion')->firstWhere('to', 'marcela@cliente.co'));
+        $this->assertCount(0, $this->avisos('proyecto.cambio_de_etapa'));
+        $this->assertStringContainsString(
+            'pasó de «Idea» a «En ejecución»',
+            $proyecto->comments()->reorder()->latest('id')->value('body'),
+        );
+    }
+
+    public function test_lo_que_se_mueve_por_un_hecho_no_repite_el_aviso(): void
+    {
+        // Mandar la propuesta o que la acepten ya deja su línea y su correo.
+        $proyecto = $this->proyecto(['stage' => 'idea']);
+
+        $this->proyectos()->avanzarPorEvento($proyecto, 'contrato');
+
+        $this->assertSame('contrato', $proyecto->fresh()->stage);
+        $this->assertCount(0, $this->avisos('proyecto.cambio_de_etapa'));
+        $this->assertSame(0, $proyecto->comments()->count());
+    }
+
+    public function test_sin_correo_la_constancia_lo_dice(): void
+    {
+        $proyecto = $this->proyecto(['stage' => 'idea', 'contact_email' => null, 'lead_id' => null]);
+
+        $this->proyectos()->moverA($proyecto, 'propuesta', exigirCompuertas: false);
+
+        $this->assertSame('propuesta', $proyecto->fresh()->stage);
+        $this->assertStringContainsString(
+            'No había un correo al que avisar',
+            $proyecto->comments()->reorder()->latest('id')->value('body'),
+        );
+    }
+
+    public function test_el_plazo_corre_desde_el_primer_mensaje_sin_contestar(): void
+    {
+        // Quien escribió tres veces espera desde la primera: insistir no le
+        // puede reiniciar el plazo.
+        $proyecto = $this->proyecto(['stage' => 'contrato', 'source' => 'correo']);
+        $quien = User::create(['name' => 'Marcela', 'email' => 'marcela@cliente.co', 'status' => 'activo']);
+
+        $this->travelTo(now()->subDays(20));
+        $this->proyectos()->comentar($proyecto, 'Revisado.', $this->jefa());
+        $this->travelTo(now()->addDays(5));
+        $primero = $this->proyectos()->comentar($proyecto, '¿Cómo va?', $quien);
+        $this->travelTo(now()->addDays(14)->addHour());
+        $this->proyectos()->comentar($proyecto, '¿Hola?', $quien);
+
+        $this->assertTrue($primero->created_at->equalTo($proyecto->fresh()->esperaRespuestaDesde()));
+        $this->assertTrue($proyecto->fresh()->sinRespuesta());
+        $this->assertSame(1, Project::conRespuestaVencida()->count());
     }
 
     public function test_sin_correo_de_contacto_el_cambio_de_etapa_se_hace_igual(): void

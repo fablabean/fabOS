@@ -165,6 +165,32 @@ class NotificationTemplateSeeder extends Seeder
                     — {quien}, {laboratorio}
                     TXT,
             ],
+            /*
+             * Cualquier otro cambio de etapa hecho por el equipo: mover un
+             * proyecto es contestarle a quien lo pidio. Tambien va en una
+             * migracion.
+             */
+            [
+                'key'          => 'proyecto.cambio_de_etapa',
+                'name'         => 'Tu proyecto cambió de etapa',
+                'description'  => 'A quien pidió el proyecto y a quien lo lidera, cuando alguien del equipo lo mueve de etapa. Entrar en ejecución y cerrar tienen su propio aviso.',
+                'is_essential' => false,
+                'subject'      => '{proyecto} ({codigo}) pasó a {etapa}',
+                'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'etapa', 'etapa_anterior', 'mensaje', 'enlace', 'quien', 'laboratorio'],
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu proyecto «{proyecto}» pasó de «{etapa_anterior}» a «{etapa}».
+
+                    {mensaje}
+
+                    Puedes seguirlo y escribirnos aquí:
+
+                    {enlace}
+
+                    — {quien}, {laboratorio}
+                    TXT,
+            ],
             [
                 'key'          => 'proyecto.pausado',
                 'name'         => 'Tu proyecto quedó en pausa',

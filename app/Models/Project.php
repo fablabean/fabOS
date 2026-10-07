@@ -859,7 +859,16 @@ class Project extends Model
         $ultimo = $this->comments()->reorder()->latest('id')->first(['id', 'side', 'created_at']);
 
         if ($ultimo) {
-            return $ultimo->side === 'cliente' ? $ultimo->created_at : null;
+            if ($ultimo->side !== 'cliente') {
+                return null;
+            }
+
+            // Desde el primer mensaje que quedó sin contestar, no desde el
+            // último: quien escribió tres veces lleva esperando desde la
+            // primera, y cada insistencia no puede reiniciarle el plazo.
+            $nuestro = $this->comments()->reorder()->where('side', '!=', 'cliente')->max('id') ?? 0;
+
+            return $this->comments()->reorder()->where('id', '>', $nuestro)->oldest('id')->value('created_at');
         }
 
         $sinTocar = $this->source === 'formulario'
@@ -886,6 +895,9 @@ class Project extends Model
     {
         $corte = \App\Support\DiasHabiles::corte()->utc();
         $ultimo = fn (string $columna) => "(select {$columna} from project_comments where project_comments.project_id = projects.id order by id desc limit 1)";
+        // El primer mensaje después de lo último que dijo el laboratorio.
+        $primeroSinContestar = "(select min(c.created_at) from project_comments c where c.project_id = projects.id"
+            . " and c.id > coalesce((select max(l.id) from project_comments l where l.project_id = projects.id and l.side <> 'cliente'), 0))";
 
         return $query
             ->where('projects.status', 'activo')
@@ -893,7 +905,7 @@ class Project extends Model
             ->where(fn (Builder $q) => $q
                 ->where(fn (Builder $c) => $c
                     ->whereRaw($ultimo('side') . " = 'cliente'")
-                    ->whereRaw($ultimo('created_at') . ' <= ?', [$corte]))
+                    ->whereRaw($primeroSinContestar . ' <= ?', [$corte]))
                 ->orWhere(fn (Builder $s) => $s
                     ->whereDoesntHave('comments')
                     ->where('projects.source', 'formulario')

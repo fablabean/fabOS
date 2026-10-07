@@ -29,9 +29,10 @@
                                50%      { background-color: color-mix(in srgb, #E53E3E 26%, transparent); } }
     tr.sin-respuesta { animation: sin-respuesta 1.4s ease-in-out infinite; }
     tr.sin-respuesta > td:first-child { box-shadow: inset 4px 0 0 #E53E3E; }
-    .aviso-sin-respuesta { display: table; margin-top: .3rem; padding: .2rem .65rem !important; border-radius: 999px;
-                           background: #C53030; color: #fff; font-size: .62rem !important; line-height: 1.3; font-weight: 600;
-                           letter-spacing: .01em; white-space: nowrap; }
+    .aviso-sin-respuesta { display: block; width: fit-content; box-sizing: content-box; margin-top: .3rem;
+                           padding: .15rem .7rem; border-radius: 999px; background: #C53030; color: #fff;
+                           font-size: .62rem; line-height: 1.4; font-weight: 600; letter-spacing: .01em;
+                           white-space: nowrap; }
     /* Quien pidió menos movimiento en su sistema lo ve fijo, pero lo ve. */
     @media (prefers-reduced-motion: reduce) {
         tr.sin-respuesta { animation: none; background-color: color-mix(in srgb, #E53E3E 18%, transparent); }

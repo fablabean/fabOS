@@ -954,6 +954,7 @@ class ProjectService
         ?User $quien = null,
         bool $avisar = true,
         ?string $mensajeDeCierre = null,
+        bool $porEvento = false,
     ): Project {
         if (! isset(Project::ETAPAS[$etapa])) {
             throw new ProjectException('Esa etapa no existe.');
@@ -966,9 +967,15 @@ class ProjectService
         if ($hasta <= $desde) {
             // Retroceder es legítimo: una propuesta puede volver a revisarse.
             // Lo que no se permite es avanzar sin lo que sostiene la etapa.
+            $anterior = $proyecto->stage;
             $proyecto->update(['stage' => $etapa]);
+            $proyecto->refresh();
 
-            return $proyecto->refresh();
+            if ($anterior !== $etapa) {
+                $this->avisarDelCambioDeEtapa($proyecto, $anterior, $quien, $avisar, null, $porEvento);
+            }
+
+            return $proyecto;
         }
 
         if ($exigirCompuertas) {
@@ -988,6 +995,8 @@ class ProjectService
             $datos['status'] = 'cerrado';
         }
 
+        $anterior = $proyecto->stage;
+
         $proyecto->update($datos);
         $proyecto->refresh();
 
@@ -1001,11 +1010,108 @@ class ProjectService
          * —que lo cierra solo—. Lo fabricado se quedaba en un estante esperando
          * a alguien que no sabia que tenia que venir.
          */
-        if ($avisar) {
-            $this->avisarDelHito($proyecto, $etapa, $quien, $mensajeDeCierre);
-        }
+        $this->avisarDelCambioDeEtapa($proyecto, $anterior, $quien, $avisar, $mensajeDeCierre, $porEvento);
 
         return $proyecto;
+    }
+
+    /**
+     * Lo que se le dice a quien pidió, según a qué etapa llegó su proyecto.
+     *
+     * En sus palabras y no en las del embudo: «brief» no le dice nada a quien
+     * espera una pieza.
+     */
+    private const QUE_SIGNIFICA_LA_ETAPA = [
+        'idea'      => 'Volvimos a revisar tu solicitud antes de seguir.',
+        'propuesta' => 'Estamos preparando la propuesta: qué haríamos, en cuánto tiempo y por cuánto.',
+        'contrato'  => 'Lo que sigue es dejar el acuerdo por escrito.',
+        'brief'     => 'Estamos definiendo los detalles con los que se va a fabricar.',
+        'pago'      => 'Ya está entregado: lo que queda pendiente es el pago.',
+    ];
+
+    /**
+     * Mover de etapa es contestar: se avisa por correo y queda en la
+     * conversación (§11).
+     *
+     * Entrar en ejecución y cerrar llevan su propio texto. Las demás etapas
+     * no avisaban, y entonces mover una solicitud de «idea» a «contrato» no
+     * le llegaba a nadie ni contaba como respuesta: la lista seguía
+     * marcándola como sin contestar.
+     *
+     * La constancia va a la conversación, del lado del laboratorio, con lo
+     * que pasó con el correo: enviado y a quién, o por qué no salió. Es lo
+     * que se relee el día que alguien dice que nunca le avisaron.
+     *
+     * Cuando la etapa se movió **por un hecho** —se mandó la propuesta, la
+     * aceptaron, se registró un documento— ese hecho ya dejó su propia línea
+     * y su propio correo: aquí solo salen los dos hitos de siempre.
+     */
+    private function avisarDelCambioDeEtapa(
+        Project $proyecto,
+        string $anterior,
+        ?User $quien,
+        bool $avisar,
+        ?string $mensaje,
+        bool $porEvento,
+    ): void {
+        $etapa = $proyecto->stage;
+        $esHito = in_array($etapa, ['ejecucion', 'cierre'], true);
+
+        if ($porEvento && ! ($esHito && $avisar)) {
+            return;
+        }
+
+        $aviso = null;
+
+        if ($avisar && $esHito) {
+            $aviso = $this->avisarDelHito($proyecto, $etapa, $quien, $mensaje);
+        } elseif ($avisar) {
+            $aviso = $this->avisarDelProyecto(
+                $proyecto,
+                'proyecto.cambio_de_etapa',
+                self::QUE_SIGNIFICA_LA_ETAPA[$etapa] ?? '',
+                $quien,
+                [
+                    'etapa'          => Project::ETAPAS[$etapa],
+                    'etapa_anterior' => Project::ETAPAS[$anterior] ?? $anterior,
+                ],
+            );
+        }
+
+        $this->dejarConstancia(
+            $proyecto,
+            'El proyecto pasó de «' . (Project::ETAPAS[$anterior] ?? $anterior) . '» a «' . Project::ETAPAS[$etapa] . '».',
+            $aviso,
+            $quien,
+            $avisar,
+        );
+    }
+
+    /**
+     * Anota en la conversación lo que el laboratorio hizo y si se avisó.
+     *
+     * Del lado del laboratorio: es una respuesta, y así cuenta.
+     */
+    private function dejarConstancia(
+        Project $proyecto,
+        string $queSeHizo,
+        ?NotificationLog $aviso,
+        ?User $quien,
+        bool $seQuisoAvisar = true,
+    ): void {
+        $comoQuedo = match (true) {
+            ! $seQuisoAvisar            => ' No se envió aviso por correo.',
+            $aviso === null             => ' No había un correo al que avisar.',
+            $aviso->status === 'enviado' => ' Se lo avisamos por correo a ' . $aviso->to . '.',
+            default                     => ' El aviso por correo no salió' . ($aviso->reason ? ' (' . mb_strtolower($aviso->reason) . ')' : '') . '.',
+        };
+
+        $proyecto->comments()->create([
+            'user_id'     => $quien?->id,
+            'author_name' => $quien?->name ?: 'El laboratorio',
+            'side'        => 'laboratorio',
+            'body'        => $queSeHizo . $comoQuedo,
+        ]);
     }
 
     /**
@@ -1021,7 +1127,7 @@ class ProjectService
      * el cambio de etapa se hace igual y el intento queda anotado en la bitácora
      * de envíos: que falte un correo no puede impedir cerrar un proyecto.
      */
-    private function avisarDelHito(Project $proyecto, string $etapa, ?User $quien = null, ?string $mensaje = null): void
+    private function avisarDelHito(Project $proyecto, string $etapa, ?User $quien = null, ?string $mensaje = null): ?NotificationLog
     {
         $clave = match ($etapa) {
             'ejecucion' => 'proyecto.en_ejecucion',
@@ -1030,7 +1136,7 @@ class ProjectService
         };
 
         if ($clave === null) {
-            return;
+            return null;
         }
 
         $texto = trim((string) $mensaje) ?: match ($etapa) {
@@ -1038,7 +1144,7 @@ class ProjectService
             default  => $this->mensajeDeEjecucionSugerido($proyecto),
         };
 
-        $this->avisarDelProyecto($proyecto, $clave, $texto, $quien);
+        return $this->avisarDelProyecto($proyecto, $clave, $texto, $quien);
     }
 
     /**
@@ -1052,9 +1158,9 @@ class ProjectService
      * No lanza: un aviso que no sale no puede tumbar la operación que lo
      * provocó. Queda en la bitácora con su motivo.
      */
-    private function avisarDelProyecto(Project $proyecto, string $clave, string $mensaje, ?User $quien = null): ?NotificationLog
+    private function avisarDelProyecto(Project $proyecto, string $clave, string $mensaje, ?User $quien = null, array $deMas = []): ?NotificationLog
     {
-        $variables = [
+        $variables = $deMas + [
             'proyecto' => $proyecto->name,
             'codigo'   => $proyecto->code,
             'quien'    => $quien?->name ?: config('fabos.lab.name'),
@@ -1127,7 +1233,7 @@ class ProjectService
             return $proyecto;
         }
 
-        return $this->moverA($proyecto, $etapa, exigirCompuertas: false);
+        return $this->moverA($proyecto, $etapa, exigirCompuertas: false, porEvento: true);
     }
 
     /**
@@ -1189,9 +1295,15 @@ class ProjectService
 
         // Quien pidió algo y no lo va a recibir merece enterarse, y con el
         // motivo: enterarse por el silencio es peor que un «no».
-        if ($avisar) {
-            $this->avisarDelProyecto($proyecto, 'proyecto.descartado', $motivo, $quien);
-        }
+        $aviso = $avisar ? $this->avisarDelProyecto($proyecto, 'proyecto.descartado', $motivo, $quien) : null;
+
+        $this->dejarConstancia(
+            $proyecto,
+            'El proyecto no sigue adelante (' . mb_strtolower(Project::ESTADOS[$estado] ?? $estado) . '). Motivo: ' . $motivo,
+            $aviso,
+            $quien,
+            $avisar,
+        );
 
         return $proyecto;
     }
@@ -1219,9 +1331,9 @@ class ProjectService
 
         // Un proyecto parado sin explicación se lee como un proyecto olvidado,
         // y quien espera acaba preguntando por WhatsApp.
-        if ($avisar) {
-            $this->avisarDelProyecto($proyecto, 'proyecto.pausado', $motivo, $quien);
-        }
+        $aviso = $avisar ? $this->avisarDelProyecto($proyecto, 'proyecto.pausado', $motivo, $quien) : null;
+
+        $this->dejarConstancia($proyecto, 'El proyecto queda en pausa. Motivo: ' . $motivo, $aviso, $quien, $avisar);
 
         return $proyecto;
     }
