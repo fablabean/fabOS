@@ -69,9 +69,41 @@ Content-Type: application/json
     { "id": 18, "numero": 2, "imagen": { "url": "https://fablabean.com/storage/recorridos/Qm8…2c.svg?v=9b74c9897bac", "formato": "svg", "tipo": "image/svg+xml", "bytes": 3120, "hash": "9b74c9897bac770ffc029102a200c5de" } },
     { "id": 19, "numero": 3, "imagen": null }
   ],
-  "estado": { … }
+  "estado": {
+    "partida": { "nombre": "Colegio San José", "estado": "preparada", "iniciada_at": null },
+    "equipo": {
+      "id": 6, "nombre": "Equipo Rojo", "color": "#E5484D",
+      "integrantes": [ { "id": 17, "nombre": "Ana" }, { "id": 18, "nombre": "Luis" } ]
+    },
+    "etapa": 0,
+    "total_etapas": 0,
+    "estado": "esperando",
+    "estado_texto": "Esperando el inicio",
+    "lider": null,
+    "pista": null,
+    "botones": [
+      { "valor": 1, "nombre": "Rojo",     "color": "#E5484D" },
+      { "valor": 2, "nombre": "Azul",     "color": "#3E63DD" },
+      { "valor": 3, "nombre": "Verde",    "color": "#30A46C" },
+      { "valor": 4, "nombre": "Amarillo", "color": "#F5C400" }
+    ],
+    "fallos": 0,
+    "penalizacion_segundos": 0,
+    "segundos": null,
+    "terminado_at": null
+  }
 }
 ```
+
+La respuesta tiene tres partes:
+
+| Campo | Qué es |
+|---|---|
+| `token` | La llave de estas gafas. Va en `Authorization: Bearer <token>` en todas las demás llamadas. |
+| `pistas` | Todas las pistas del circuito con su imagen, para descargarlas de una vez. Se explica abajo. |
+| `estado` | El estado completo del equipo. Es **exactamente el mismo objeto** que devuelve `GET /estado`; cada campo se explica en «Consultar el estado». |
+
+En el ejemplo, la partida todavía no ha empezado: por eso `estado` es `esperando`, `etapa` y `total_etapas` son 0 y `pista` es `null`. Si las gafas se emparejan con la partida ya en curso, `estado` llega con la etapa y la pista del momento.
 
 #### Las imágenes de las pistas
 
