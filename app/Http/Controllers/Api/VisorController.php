@@ -39,7 +39,19 @@ class VisorController extends Controller
         $token = Str::random(48);
         $equipo->forceFill(['visor_token_hash' => hash('sha256', $token), 'visor_visto_at' => now()])->save();
 
-        return response()->json(['token' => $token, 'estado' => $this->juego->estado($equipo)]);
+        return response()->json([
+            'token' => $token,
+            // Todas las imágenes de una vez: las gafas las bajan ahora, con
+            // buena señal y sin prisa, y no cuando el líder espera la pista.
+            'pistas' => $this->juego->pistas($equipo->partida),
+            'estado' => $this->juego->estado($equipo),
+        ]);
+    }
+
+    /** La misma lista del emparejamiento, para unas gafas que se reinician con su token. */
+    public function pistas(Request $request): JsonResponse
+    {
+        return response()->json(['pistas' => $this->juego->pistas($this->equipo($request)->partida)]);
     }
 
     public function estado(Request $request): JsonResponse

@@ -17,6 +17,7 @@ Route::prefix('recorridos/visor')->name('api.visor.')->group(function () {
 
     Route::middleware([AutenticarVisor::class, 'throttle:120,1'])->group(function () {
         Route::get('/estado', [VisorController::class, 'estado'])->name('estado');
+        Route::get('/pistas', [VisorController::class, 'pistas'])->name('pistas');
         Route::post('/secuencia', [VisorController::class, 'secuencia'])->name('secuencia');
         Route::post('/lider', [VisorController::class, 'lider'])->name('lider');
     });

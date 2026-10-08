@@ -4,6 +4,8 @@ namespace App\Models\Recorrido;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -87,6 +89,62 @@ class Estacion extends Model
         $donde = array_search($this->id, $ids, true);
 
         return $donde === false ? 0 : $donde + 1;
+    }
+
+    /**
+     * Guarda la imagen de una pista y devuelve su ruta.
+     *
+     * Un SVG es un documento, no una foto: puede traer código. Este sale por
+     * el mismo dominio del sitio, así que se le quita lo que ejecuta antes de
+     * guardarlo. A un dibujo no le hace falta nada de eso.
+     */
+    public static function guardarImagenDePista(UploadedFile $archivo): string
+    {
+        $esSvg = strtolower($archivo->getClientOriginalExtension()) === 'svg'
+            || str_contains((string) $archivo->getMimeType(), 'svg');
+
+        if (! $esSvg) {
+            return $archivo->storeAs('recorridos', Str::random(40) . '.png', 'public');
+        }
+
+        $svg = (string) file_get_contents($archivo->getRealPath());
+        $svg = preg_replace('#<script\b.*?</script\s*>#is', '', $svg);
+        $svg = preg_replace('#<foreignObject\b.*?</foreignObject\s*>#is', '', $svg);
+        $svg = preg_replace('#\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#i', '', $svg);
+        $svg = preg_replace('#(href\s*=\s*["\']?)\s*javascript:[^"\'\s>]*#i', '$1#', $svg);
+
+        $ruta = 'recorridos/' . Str::random(40) . '.svg';
+        Storage::disk('public')->put($ruta, $svg);
+
+        return $ruta;
+    }
+
+    /**
+     * La imagen de la pista, descrita para que las gafas la bajen: dónde
+     * está, en qué formato y una huella para saber si ya la tienen.
+     *
+     * @return array{url:string,formato:string,tipo:string,bytes:int,hash:string}|null
+     */
+    public function imagenDeLaPista(): ?array
+    {
+        $disco = Storage::disk('public');
+
+        if (blank($this->pista_imagen) || ! $disco->exists($this->pista_imagen)) {
+            return null;
+        }
+
+        $formato = strtolower(pathinfo($this->pista_imagen, PATHINFO_EXTENSION));
+        $hash = md5((string) $disco->get($this->pista_imagen));
+
+        return [
+            // Con la huella en la dirección: si se cambia la imagen, cambia
+            // la dirección, y ninguna caché intermedia sirve la vieja.
+            'url' => $disco->url($this->pista_imagen) . '?v=' . substr($hash, 0, 12),
+            'formato' => $formato,
+            'tipo' => ['svg' => 'image/svg+xml', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp'][$formato] ?? 'application/octet-stream',
+            'bytes' => $disco->size($this->pista_imagen),
+            'hash' => $hash,
+        ];
     }
 
     /** Una imagen guardada, como dirección pública; o nula. */

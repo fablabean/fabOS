@@ -113,7 +113,17 @@ class CircuitoResource extends Resource
                 Textarea::make('pista')
                     ->label('La pista (la ve el líder en las gafas)')
                     ->rows(3)->required(),
-                $imagen('pista_imagen', 'Imagen de la pista (opcional)'),
+                // PNG con fondo transparente o SVG: en las gafas la imagen
+                // flota sobre el laboratorio, y un fondo blanco la taparía.
+                FileUpload::make('pista_imagen')
+                    ->label('Imagen de la pista (opcional)')
+                    ->helperText('PNG con fondo transparente o SVG. Las gafas la descargan al emparejarse.')
+                    ->acceptedFileTypes(['image/png', 'image/svg+xml'])
+                    ->disk('public')
+                    ->visibility('public')
+                    ->directory('recorridos')
+                    ->maxSize(4096)
+                    ->saveUploadedFileUsing(fn ($file) => Estacion::guardarImagenDePista($file)),
             ]),
 
             Grid::make(2)->schema([

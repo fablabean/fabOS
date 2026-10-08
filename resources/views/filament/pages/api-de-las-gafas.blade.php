@@ -5,6 +5,7 @@
         .doc-api{max-width:52rem;font-size:.95rem;line-height:1.65}
         .doc-api h2{font-size:1.3rem;font-weight:700;margin:2rem 0 .6rem;padding-top:1rem;border-top:1px solid rgba(128,128,128,.25)}
         .doc-api h3{font-size:1.05rem;font-weight:700;margin:1.5rem 0 .4rem}
+        .doc-api h4{font-size:.95rem;font-weight:700;margin:1.2rem 0 .3rem}
         .doc-api p{margin:.6rem 0}
         .doc-api ul,.doc-api ol{margin:.5rem 0 .8rem;padding-left:1.4rem}
         .doc-api ul{list-style:disc} .doc-api ol{list-style:decimal}

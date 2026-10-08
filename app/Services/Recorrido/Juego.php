@@ -198,6 +198,27 @@ class Juego
     }
 
     /**
+     * Las pistas del circuito con su imagen, para que las gafas las bajen de
+     * una vez al emparejarse y no en mitad del juego.
+     *
+     * Van en el orden del circuito, no en el del equipo, y sin el texto: lo
+     * que toca ver ahora lo dice `estado.pista`, que se cruza con esta lista
+     * por `id`.
+     *
+     * @return array<int,array{id:int,numero:int,imagen:?array}>
+     */
+    public function pistas(Partida $partida): array
+    {
+        return $partida->circuito->estaciones()->get()->values()
+            ->map(fn (Estacion $e, int $i) => [
+                'id' => $e->id,
+                'numero' => $i + 1,
+                'imagen' => $e->imagenDeLaPista(),
+            ])
+            ->all();
+    }
+
+    /**
      * Todo lo que necesita una pantalla del equipo —las gafas o el
      * celular— para pintarse. Nunca lleva la secuencia: esa la ve solo el
      * celular, que es quien se la lleva al líder.

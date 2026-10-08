@@ -35,6 +35,7 @@ En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafa
 |---|---|---|---|
 | `POST` | `https://fablabean.com/api/recorridos/visor/emparejar` | No | Emparejar las gafas con un equipo |
 | `GET` | `https://fablabean.com/api/recorridos/visor/estado` | Bearer | Consultar el estado (cada 2 s) |
+| `GET` | `https://fablabean.com/api/recorridos/visor/pistas` | Bearer | Las imágenes de las pistas, otra vez (ya vienen al emparejar) |
 | `POST` | `https://fablabean.com/api/recorridos/visor/secuencia` | Bearer | Enviar los 4 botones que marcó el líder |
 | `POST` | `https://fablabean.com/api/recorridos/visor/lider` | Bearer | Elegir quién lleva las gafas (opcional) |
 
@@ -51,8 +52,46 @@ Content-Type: application/json
 
 `200`:
 ```json
-{ "token": "…48 caracteres…", "estado": { … } }
+{
+  "token": "…48 caracteres…",
+  "pistas": [
+    {
+      "id": 17,
+      "numero": 1,
+      "imagen": {
+        "url": "https://fablabean.com/storage/recorridos/Xk3…9f.png?v=5d41402abc4b",
+        "formato": "png",
+        "tipo": "image/png",
+        "bytes": 48213,
+        "hash": "5d41402abc4b2a76b9719d911017c592"
+      }
+    },
+    { "id": 18, "numero": 2, "imagen": { "url": "https://fablabean.com/storage/recorridos/Qm8…2c.svg?v=9b74c9897bac", "formato": "svg", "tipo": "image/svg+xml", "bytes": 3120, "hash": "9b74c9897bac770ffc029102a200c5de" } },
+    { "id": 19, "numero": 3, "imagen": null }
+  ],
+  "estado": { … }
+}
 ```
+
+#### Las imágenes de las pistas
+
+`pistas` trae **todas las pistas del circuito con su imagen**, para que la app las descargue de una vez al emparejar y no en mitad del juego.
+
+- **Cómo descargarlas:** un `GET` simple a `imagen.url`. Es una dirección pública: **no lleva token** ni cabeceras especiales.
+- **A qué pista pertenece cada una:** `id` es el identificador de la pista. Es el mismo `id` que llega después en `estado.pista.id`. Guarden cada imagen con su `id`; cuando el estado diga que toca la pista 17, muestren la imagen que guardaron como 17.
+- **Formato:** `imagen.formato` es `png` (con fondo transparente) o `svg`. Unity no dibuja SVG por sí solo: hace falta el paquete Vector Graphics o una librería equivalente. Si prefieren recibir solo PNG, avisen al laboratorio para que suban las imágenes en ese formato.
+- **Sin imagen:** `imagen` es `null` cuando la pista no tiene. En ese caso se muestra solo el texto.
+- **Caché:** `imagen.hash` es el MD5 del archivo. Si la app ya tiene guardada una imagen con ese hash, no necesita bajarla de nuevo. Si el laboratorio cambia la imagen, cambian el `hash` y la `url`.
+- **Orden:** la lista va en el orden del circuito (`numero` 1, 2, 3…), que **no es el orden en que este equipo las va a recorrer**. No la usen para adelantar pistas: el texto no viene aquí, y lo que toca mostrar lo dice siempre `estado.pista`.
+
+Si las gafas se reinician y conservan el token, pueden pedir la lista otra vez sin emparejar de nuevo:
+
+```http
+GET https://fablabean.com/api/recorridos/visor/pistas
+Authorization: Bearer <token>
+```
+
+`200`: `{ "pistas": [ … ] }`, con el mismo formato.
 
 `404` si el código no existe o la partida ya terminó:
 ```json

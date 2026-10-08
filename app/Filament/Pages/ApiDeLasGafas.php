@@ -64,6 +64,7 @@ class ApiDeLasGafas extends Page
             'endpoints' => [
                 ['POST', route('api.visor.emparejar'), false, 'Emparejar las gafas con un equipo', ['codigo' => 'K7M2QX']],
                 ['GET', route('api.visor.estado'), true, 'Consultar el estado (cada 2 s)', null],
+                ['GET', route('api.visor.pistas'), true, 'Las imágenes de las pistas, otra vez (ya vienen al emparejar)', null],
                 ['POST', route('api.visor.secuencia'), true, 'Enviar los 4 botones que marcó el líder', ['botones' => [2, 1, 4, 4]]],
                 ['POST', route('api.visor.lider'), true, 'Elegir quién lleva las gafas (opcional)', ['integrante_id' => 32]],
             ],

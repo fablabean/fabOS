@@ -440,6 +440,67 @@ class RecorridoGamificadoTest extends TestCase
     }
 
     /**
+     * Al emparejar llegan todas las imagenes de las pistas, cada una con el
+     * id de su pista: las gafas las bajan de una vez y despues las cruzan con
+     * `estado.pista.id`. PNG transparente o SVG; el SVG, sin nada que ejecute.
+     */
+    public function test_al_emparejar_llegan_las_imagenes_de_las_pistas_con_su_id(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $c = $this->circuito(3);
+        [$uno, $dos, $tres] = $c->estaciones;
+
+        $png = Estacion::guardarImagenDePista(\Illuminate\Http\UploadedFile::fake()->image('robot.png', 64, 64));
+        $svg = Estacion::guardarImagenDePista(\Illuminate\Http\UploadedFile::fake()->createWithContent(
+            'laser.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(2)</script><circle r="5" onclick="x()"/><a href="javascript:alert(3)">x</a></svg>',
+        ));
+
+        $uno->update(['pista_imagen' => $png]);
+        $dos->update(['pista_imagen' => $svg]);
+
+        $guardado = \Illuminate\Support\Facades\Storage::disk('public')->get($svg);
+        $this->assertStringEndsWith('.svg', $svg);
+        $this->assertStringContainsString('<circle', $guardado);
+        $this->assertStringNotContainsString('script', $guardado);
+        $this->assertStringNotContainsString('onload', $guardado);
+        $this->assertStringNotContainsString('onclick', $guardado);
+        $this->assertStringNotContainsString('javascript:', $guardado);
+
+        $p = $this->partida($c, 2, rotar: true);
+        $this->juego()->iniciar($p);
+        $equipo = $p->equipos()->orderBy('id')->get()[1];
+
+        $respuesta = $this->postJson('/api/recorridos/visor/emparejar', ['codigo' => $equipo->codigo])->assertOk();
+        $pistas = $respuesta->json('pistas');
+
+        // En el orden del circuito, no en el del equipo, y sin el texto.
+        $this->assertSame([$uno->id, $dos->id, $tres->id], array_column($pistas, 'id'));
+        $this->assertSame([1, 2, 3], array_column($pistas, 'numero'));
+        $this->assertArrayNotHasKey('texto', $pistas[0]);
+
+        $this->assertSame('png', $pistas[0]['imagen']['formato']);
+        $this->assertSame('image/png', $pistas[0]['imagen']['tipo']);
+        $this->assertStringContainsString($png . '?v=', $pistas[0]['imagen']['url']);
+        $this->assertSame(32, strlen($pistas[0]['imagen']['hash']));
+        $this->assertGreaterThan(0, $pistas[0]['imagen']['bytes']);
+
+        $this->assertSame('svg', $pistas[1]['imagen']['formato']);
+        $this->assertSame('image/svg+xml', $pistas[1]['imagen']['tipo']);
+        $this->assertNull($pistas[2]['imagen']);
+
+        // La que toca ahora se cruza por id con la lista.
+        $this->assertContains($respuesta->json('estado.pista.id'), array_column($pistas, 'id'));
+
+        // Y unas gafas que se reinician la piden otra vez con su token.
+        $this->getJson('/api/recorridos/visor/pistas', ['Authorization' => 'Bearer ' . $respuesta->json('token')])
+            ->assertOk()
+            ->assertJsonPath('pistas.0.id', $uno->id);
+        $this->getJson('/api/recorridos/visor/pistas')->assertUnauthorized();
+    }
+
+    /**
      * El id va junto al numero, y el nombre del lugar no.
      *
      * La pista esta escrita en acertijo a proposito: mandar <<Cortadora
