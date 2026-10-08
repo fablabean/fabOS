@@ -25,7 +25,28 @@ class ProjectComment extends Model
     /** Donde guarda a quien lo creo. Lo lee la politica del proyecto. */
     public const COLUMNA_AUTOR = 'user_id';
 
-    protected $fillable = ['project_id', 'user_id', 'author_name', 'side', 'body'];
+    protected $fillable = ['project_id', 'user_id', 'author_name', 'side', 'body', 'edited_at', 'seen_at'];
+
+    protected function casts(): array
+    {
+        return [
+            'edited_at' => \App\Casts\UtcDateTime::class,
+            'seen_at'   => \App\Casts\UtcDateTime::class,
+        ];
+    }
+
+    /**
+     * Quien pidió el proyecto acaba de abrir su página: lo que el laboratorio
+     * le había dicho y no había visto queda como visto, con la hora.
+     */
+    public static function marcarVistos(Project $proyecto): void
+    {
+        static::query()
+            ->where('project_id', $proyecto->id)
+            ->where('side', 'laboratorio')
+            ->whereNull('seen_at')
+            ->update(['seen_at' => now()->utc()]);
+    }
 
     public const LADOS = [
         'cliente'     => 'Quien pidió',

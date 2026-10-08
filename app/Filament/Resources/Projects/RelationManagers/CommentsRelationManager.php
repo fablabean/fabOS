@@ -84,7 +84,27 @@ class CommentsRelationManager extends RelationManager
                     ->state(fn (ProjectComment $r) => $r->quien())
                     ->description(fn (ProjectComment $r) => ProjectComment::LADOS[$r->side] ?? $r->side),
 
-                TextColumn::make('body')->label('Qué dijo')->wrap(),
+                TextColumn::make('body')
+                    ->label('Qué dijo')
+                    ->wrap()
+                    ->description(fn (ProjectComment $r) => $r->edited_at
+                        ? 'Editado el ' . $r->edited_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i')
+                        : null),
+
+                // Si quien pidió el proyecto abrió su página después de este
+                // mensaje. Solo en lo que dice el laboratorio: lo suyo lo
+                // escribió él.
+                TextColumn::make('seen_at')
+                    ->label('Visto')
+                    ->state(fn (ProjectComment $r) => $r->side !== 'laboratorio'
+                        ? null
+                        : ($r->seen_at
+                            ? 'Visto ' . $r->seen_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i')
+                            : 'Sin abrir'))
+                    ->badge()
+                    ->color(fn (ProjectComment $r) => $r->seen_at ? 'success' : 'gray')
+                    ->tooltip('Cuándo abrió su página del proyecto quien lo pidió, después de este mensaje.')
+                    ->placeholder('—'),
 
                 TextColumn::make('adjuntos')
                     ->label('Adjuntos')
@@ -123,7 +143,33 @@ class CommentsRelationManager extends RelationManager
                 AvisarNovedades::make()
                     ->record(fn () => $this->getOwnerRecord()),
             ])
-            ->recordActions([DeleteAction::make()])
+            ->recordActions([
+                /*
+                 * Corregir lo que se dijo. Solo lo del laboratorio —lo del
+                 * cliente es suyo— y queda marcado como editado. Si ya lo
+                 * había visto, vuelve a «sin abrir»: lo que vio fue el texto
+                 * anterior, y decir «visto» del nuevo sería mentira.
+                 */
+                \Filament\Actions\Action::make('editar')
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->visible(fn (ProjectComment $r) => $r->side === 'laboratorio')
+                    ->modalHeading('Editar el mensaje')
+                    ->modalDescription('Cambia lo que se lee en la conversación. El correo que ya se envió no cambia: si el cambio importa, vuelve a avisar.')
+                    ->fillForm(fn (ProjectComment $r) => ['body' => $r->body])
+                    ->schema([
+                        Textarea::make('body')->label('Mensaje')->rows(5)->required()->maxLength(5000),
+                    ])
+                    ->action(function (ProjectComment $r, array $data) {
+                        if (trim($data['body']) === trim((string) $r->body)) {
+                            return;
+                        }
+
+                        $r->update(['body' => trim($data['body']), 'edited_at' => now(), 'seen_at' => null]);
+                    }),
+                DeleteAction::make(),
+            ])
             ->toolbarActions([]);
     }
 }

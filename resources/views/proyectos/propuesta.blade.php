@@ -253,6 +253,7 @@
                     <div class="quien">
                         {{ $comentario->quien() }} ·
                         {{ $comentario->created_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') }}
+                        @if ($comentario->edited_at) · editado @endif
                     </div>
                     <div>{!! nl2br(e($comentario->body)) !!}</div>
 

@@ -297,4 +297,62 @@ class ArchivosDeProyectoTest extends TestCase
         $this->assertSame('proyectos/soportes/modelo.bin', $e->file_path);
         $this->assertSame('soporte.3mf', $e->original_name);
     }
+
+    // ------------------------------------ editar lo dicho y saber si se vio
+
+    /** Una errata en un mensaje ya enviado se corrige, y queda como editado. */
+    public function test_el_laboratorio_edita_lo_que_dijo(): void
+    {
+        $jefa = $this->jefaDentro();
+        $p = app(ProjectService::class)->registrarIdea(['name' => 'Soporte', 'source' => 'whatsapp', 'lead_id' => $jefa->id]);
+        $c = app(ProjectService::class)->comentar($p, 'Tomo tu proeycto personalmente.', $jefa);
+        $c->update(['seen_at' => now()]);
+
+        Livewire::test(\App\Filament\Resources\Projects\RelationManagers\CommentsRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => EditProject::class,
+        ])
+            ->callAction(TestAction::make('editar')->table($c), ['body' => 'Tomo tu proyecto personalmente.'])
+            ->assertHasNoActionErrors();
+
+        $c->refresh();
+        $this->assertSame('Tomo tu proyecto personalmente.', $c->body);
+        $this->assertNotNull($c->edited_at);
+        // Lo que había visto era el texto anterior.
+        $this->assertNull($c->seen_at);
+    }
+
+    /** Lo que dijo quien pidió el proyecto no se le edita. */
+    public function test_lo_del_cliente_no_se_edita(): void
+    {
+        $jefa = $this->jefaDentro();
+        $p = app(ProjectService::class)->registrarIdea(['name' => 'Soporte', 'source' => 'whatsapp', 'lead_id' => $jefa->id]);
+        $c = $p->comments()->create(['side' => 'cliente', 'author_name' => 'Andrés', 'body' => 'Hola']);
+
+        Livewire::test(\App\Filament\Resources\Projects\RelationManagers\CommentsRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => EditProject::class,
+        ])->assertActionHidden(TestAction::make('editar')->table($c));
+    }
+
+    /**
+     * «Visto» es que quien pidió el proyecto abrió su página después del
+     * mensaje. Que la abra alguien del equipo para revisarla no cuenta.
+     */
+    public function test_se_sabe_si_quien_lo_pidio_vio_el_mensaje(): void
+    {
+        $jefa = $this->jefaDentro();
+        $cliente = User::create(['name' => 'Andrés', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
+        $p = app(ProjectService::class)->registrarIdea(['name' => 'Soporte', 'source' => 'whatsapp', 'lead_id' => $jefa->id]);
+        $p->update(['requested_by' => $cliente->id]);
+        $c = app(ProjectService::class)->comentar($p, 'Pasa por el laboratorio.', $jefa);
+
+        // El equipo la mira: sigue sin abrir.
+        $this->get(route('proyectos.propuesta', $p))->assertOk();
+        $this->assertNull($c->fresh()->seen_at);
+
+        // La abre quien la pidió: visto, con la hora.
+        $this->actingAs($cliente)->get(route('proyectos.propuesta', $p))->assertOk();
+        $this->assertNotNull($c->fresh()->seen_at);
+    }
 }

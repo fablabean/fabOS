@@ -391,6 +391,13 @@ class SolicitudDeProyectoController extends Controller
 
         $firmado = $request->hasValidSignature();
 
+        // Quien la abre es quien la pidió —por el enlace del correo o con su
+        // sesión—: lo que el laboratorio le dijo queda como visto. Si la abre
+        // alguien del equipo para revisarla, no cuenta.
+        if (! $request->user()?->hasAnyRole(User::rolesDelEquipo())) {
+            \App\Models\ProjectComment::marcarVistos($project);
+        }
+
         return view('proyectos.propuesta', [
             'proyecto' => $project->load([
                 'deliverables', 'lead', 'area', 'documents', 'evidence', 'comments.user',
