@@ -20,7 +20,7 @@ class Dispositivo extends Model
     /** Sin noticias suyas en este rato, se da por desconectado. */
     public const SEGUNDOS_SIN_SENAL = 60;
 
-    protected $attributes = ['minutos_turno' => 15, 'minutos_por_fabcoin' => 5, 'activo' => true];
+    protected $attributes = ['minutos_turno' => 15, 'minutos_por_fabcoin' => 1, 'activo' => true];
 
     protected $fillable = ['nombre', 'descripcion', 'minutos_turno', 'minutos_por_fabcoin', 'activo', 'clave_hash', 'visto_at'];
 

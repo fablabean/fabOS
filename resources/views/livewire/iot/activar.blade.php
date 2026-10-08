@@ -27,6 +27,7 @@
         .iot .error{color:#B42318;font-size:.85rem;margin-top:.25rem}
         .iot .nota{font-size:.85rem;color:var(--muted);margin:.6rem 0 0}
         .iot button.btn{border:0;cursor:pointer;font:inherit;font-weight:700}
+        .iot button.btn.secundario{border:1px solid var(--accent)}
         .iot .caja{border-top:1px solid var(--rule);margin-top:1.2rem;padding-top:1.2rem}
         .iot .invitar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center}
         .iot .invitar code{word-break:break-all}
@@ -66,14 +67,28 @@
         @if ($aviso)
             <div class="aviso {{ $avisoBueno ? '' : 'malo' }}">
                 {{ $aviso }}
-                @if ($ofrecerIngreso)
-                    <a href="{{ route('login') }}">Ingresar →</a>
-                @endif
             </div>
         @endif
 
         @if (! $dispositivo->activo || ! $dispositivo->conectado())
             <p class="nota">{{ $dispositivo->nombre }} no está conectado en este momento. Avísale a alguien del laboratorio.</p>
+
+        @elseif (! $persona && $correoDelCodigo)
+            {{-- Ya tenía cuenta: el código se escribe aquí, sin salir de la página. --}}
+            <form wire:submit="verificar">
+                <label for="iot-codigo">El código que te llegó a {{ $correoDelCodigo }}</label>
+                <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center">
+                    <input id="iot-codigo" type="text" wire:model="codigo" inputmode="numeric" autocomplete="one-time-code"
+                           maxlength="12" required autofocus
+                           style="max-width:12rem;font-size:1.4rem;letter-spacing:.25em;text-align:center">
+                    <button class="btn" type="submit" wire:loading.attr="disabled">Entrar y jugar</button>
+                </div>
+                @error('codigo') <div class="error">{{ $message }}</div> @enderror
+                <p class="nota">
+                    Puede tardar un minuto; revisa también el correo no deseado.
+                    <button type="button" wire:click="otroCorreo" style="background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer">Usar otro correo</button>
+                </p>
+            </form>
 
         @elseif (! $persona)
             {{-- Sin sesión: registrarse enciende. --}}
@@ -102,14 +117,18 @@
                     <p class="nota">Con el usuario basta: «ehansen» se entiende como ehansen{{ '@' . $dominio }}. Si es otro correo, escríbelo completo.</p>
                 @endif
 
-                <p style="margin:1rem 0 0">
+                <p style="margin:1rem 0 0;display:flex;flex-wrap:wrap;gap:.6rem">
                     <button class="btn" type="submit" wire:loading.attr="disabled">
                         Registrarme y jugar {{ $dispositivo->minutos_turno }} minutos
                     </button>
+                    {{-- Con el mismo correo de arriba: le llega el código y lo escribe aquí. --}}
+                    <button class="btn secundario" type="button" wire:click="ingresar" wire:loading.attr="disabled">
+                        Ya tengo cuenta
+                    </button>
                 </p>
                 <p class="nota">
-                    Al registrarte recibes 1 {{ $moneda }} de regalo. ¿Ya tienes cuenta?
-                    <a href="{{ route('login') }}">Ingresa</a> para activar tu turno.
+                    Al registrarte recibes 1 {{ $moneda }} de regalo y no necesitas código.
+                    Si ya tienes cuenta, escribe tu correo y pulsa «Ya tengo cuenta»: te llega un código y lo pones aquí mismo.
                 </p>
             </form>
 
@@ -128,13 +147,14 @@
 
             <div class="caja">
                 <strong>Tienes {{ $saldo }} {{ $moneda }}{{ $saldo === 1 ? '' : 's' }}</strong>
-                · cada uno vale {{ $dispositivo->minutos_por_fabcoin }} minutos de juego.
+· cada uno vale {{ $dispositivo->minutos_por_fabcoin }} {{ $dispositivo->minutos_por_fabcoin === 1 ? 'minuto' : 'minutos' }} de juego.
 
                 @if ($saldo > 0)
                     <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:.7rem" x-data="{ n: $wire.entangle('fabcoins') }">
                         <button type="button" class="btn secundario" @click="n = Math.max(1, n - 1)" aria-label="Menos">−</button>
                         <span style="min-width:9rem;text-align:center"><b x-text="n"></b> {{ $moneda }} = <b x-text="n * {{ $dispositivo->minutos_por_fabcoin }}"></b> min</span>
                         <button type="button" class="btn secundario" @click="n = Math.min({{ $saldo }}, n + 1)" aria-label="Más">+</button>
+                        <button type="button" class="btn secundario" @click="n = {{ $saldo }}">Todos</button>
                         <button type="button" class="btn" wire:click="pagar" wire:loading.attr="disabled">Reclamar tiempo</button>
                     </div>
                     <p class="nota">O déjalos en tu billetera: sirven para todo lo demás del laboratorio.</p>

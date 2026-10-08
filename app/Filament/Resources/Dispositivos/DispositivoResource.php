@@ -66,7 +66,7 @@ class DispositivoResource extends Resource
                     TextInput::make('minutos_por_fabcoin')
                         ->label('Minutos por ' . config('fabos.currency.name'))
                         ->helperText('Lo que compra cada ' . config('fabos.currency.name') . ' al reclamar tiempo.')
-                        ->numeric()->minValue(1)->maxValue(240)->default(5)->required(),
+                        ->numeric()->minValue(1)->maxValue(240)->default(1)->required(),
                     Textarea::make('descripcion')->label('Notas')->rows(2)->columnSpanFull(),
                 ]),
         ]);

@@ -175,10 +175,10 @@ class DispositivosIotTest extends TestCase
 
         $this->assertSame(3, $this->turnos()->fabcoinsDe($luis));
 
-        // Tres invitados son quince minutos.
+        // Un FabCoin, un minuto.
         $turno = $this->turnos()->pagarConFabcoins($d, $luis, 3);
 
-        $this->assertSame(15, $turno->minutos);
+        $this->assertSame(3, $turno->minutos);
         $this->assertSame('fabcoin', $turno->origen);
         $this->assertSame(0, $this->saldo($luis));
 
@@ -276,15 +276,62 @@ class DispositivosIotTest extends TestCase
         // Registrarse no inicia sesión: el correo no está probado.
         $this->assertGuest();
 
-        // El mismo correo, otra vez: se le manda a ingresar.
-        Livewire::test(Activar::class, ['dispositivoId' => $d->id])
-            ->set('nombre', 'Ana Gómez')
-            ->set('correo', 'ana@test.co')
-            ->call('registrar')
-            ->assertSee('ya tiene cuenta')
-            ->assertSet('ofrecerIngreso', true);
-
         $this->assertSame(1, Turno::count());
+    }
+
+    /**
+     * Quien ya tiene cuenta no sale de la página: el código le llega y lo
+     * escribe en el mismo bloque. Entra y, si no ha usado su turno, juega.
+     */
+    public function test_con_cuenta_el_codigo_se_escribe_en_la_misma_pagina(): void
+    {
+        $d = $this->consola();
+        $luis = $this->persona('luis@universidadean.edu.co');
+        $codigos = app(\App\Services\Auth\LoginCodeService::class);
+
+        // Intentó registrarse con un correo que ya existe: se le pide el código.
+        $bloque = Livewire::test(Activar::class, ['dispositivoId' => $d->id])
+            ->set('nombre', 'Luis Paz')
+            ->set('correo', 'luis')
+            ->call('registrar')
+            ->assertSet('correoDelCodigo', 'luis@universidadean.edu.co')
+            ->assertSee('ya tiene cuenta')
+            ->assertSee('Entrar y jugar');
+
+        $this->assertSame(0, Turno::count());
+        $this->assertGuest();
+
+        $bloque->set('codigo', '000000')->call('verificar')->assertHasErrors('codigo');
+        $this->assertGuest();
+
+        $bloque->set('codigo', $codigos->emitirEnMano('luis@universidadean.edu.co'))
+            ->call('verificar')
+            ->assertHasNoErrors()
+            ->assertSet('correoDelCodigo', null)
+            ->assertSee('Ya está encendido');
+
+        $this->assertAuthenticatedAs($luis);
+        $this->assertSame('cuenta', Turno::firstOrFail()->origen);
+
+        // Y por el botón «Ya tengo cuenta», sin pasar por el registro.
+        auth()->logout();
+
+        Livewire::test(Activar::class, ['dispositivoId' => $d->id])
+            ->set('correo', 'nadie@test.co')
+            ->call('ingresar')
+            ->assertSet('correoDelCodigo', null)
+            ->assertSee('No hay una cuenta con ese correo');
+
+        Livewire::test(Activar::class, ['dispositivoId' => $d->id])
+            ->set('correo', 'luis')
+            ->call('ingresar')
+            ->assertSet('correoDelCodigo', 'luis@universidadean.edu.co')
+            ->set('codigo', $codigos->emitirEnMano('luis@universidadean.edu.co'))
+            ->call('verificar')
+            ->assertSee('Ya usaste tu turno');
+
+        $this->assertAuthenticatedAs($luis);
+        $this->assertSame(1, Turno::count(), 'el turno gratis es uno solo');
     }
 
     public function test_desde_el_panel_se_da_de_alta_se_genera_la_clave_y_se_enciende(): void
@@ -301,7 +348,7 @@ class DispositivosIotTest extends TestCase
         $this->actingAs($jefa->fresh())->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
 
         Livewire::test(\App\Filament\Resources\Dispositivos\Pages\CreateDispositivo::class)
-            ->fillForm(['nombre' => 'Consola de juego', 'minutos_turno' => 15, 'minutos_por_fabcoin' => 5, 'activo' => true])
+            ->fillForm(['nombre' => 'Consola de juego', 'minutos_turno' => 15, 'minutos_por_fabcoin' => 1, 'activo' => true])
             ->call('create')
             ->assertHasNoFormErrors();
 
@@ -352,7 +399,7 @@ class DispositivosIotTest extends TestCase
             ->call('pagar')
             ->assertSee('Quedaste en la fila');
 
-        $this->assertSame(10, Turno::where('origen', 'fabcoin')->first()->minutos);
+        $this->assertSame(2, Turno::where('origen', 'fabcoin')->first()->minutos);
         $this->assertSame(0, $this->saldo($luis));
     }
 }

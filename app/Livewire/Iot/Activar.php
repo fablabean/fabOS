@@ -2,12 +2,17 @@
 
 namespace App\Livewire\Iot;
 
+use App\Exceptions\EnvioDeCodigoFallido;
 use App\Models\Iot\Dispositivo;
 use App\Models\Iot\Turno;
 use App\Models\User;
+use App\Services\Auth\LoginCodeService;
+use App\Services\Auth\TwoFactorService;
 use App\Services\Iot\IotException;
 use App\Services\Iot\Turnos;
 use App\Services\Qr\QrRenderer;
+use App\Support\FactoresDeSesion;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
@@ -39,8 +44,10 @@ class Activar extends Component
 
     public bool $avisoBueno = true;
 
-    /** El correo ya tenía cuenta: se le ofrece entrar. */
-    public bool $ofrecerIngreso = false;
+    /** A este correo se le pidió el código: se muestra dónde escribirlo. */
+    public ?string $correoDelCodigo = null;
+
+    public string $codigo = '';
 
     /** El turno que este navegador acaba de sacar, para señalárselo. */
     public ?int $miTurnoId = null;
@@ -65,8 +72,6 @@ class Activar extends Component
 
     public function registrar(Turnos $turnos): void
     {
-        $this->ofrecerIngreso = false;
-
         $datos = $this->validate([
             'nombre' => ['required', 'string', 'min:5', 'max:120', 'regex:/\S+\s+\S+/'],
             'correo' => ['required', 'string', 'max:255'],
@@ -107,7 +112,14 @@ class Activar extends Component
         try {
             $turno = $turnos->registrar($this->dispositivo(), $datos['nombre'], $correo, $datos['invita'] ?: null, request()->ip());
         } catch (IotException $e) {
-            $this->ofrecerIngreso = $e->getCode() === IotException::YA_TIENE_CUENTA;
+            // Ya tenía cuenta: no se le manda a otra pantalla. El código le
+            // llega y lo escribe aquí mismo.
+            if ($e->getCode() === IotException::YA_TIENE_CUENTA) {
+                $this->pedirCodigo($correo, 'Ese correo ya tiene cuenta.');
+
+                return;
+            }
+
             $this->avisar($e->getMessage(), false);
 
             return;
@@ -123,6 +135,135 @@ class Activar extends Component
             . config('fabos.currency.name') . '. Para reclamarlo, ingresa con tu correo.',
             true,
         );
+    }
+
+    // ------------------------------------------- entrar con el código, aquí
+
+    /** «Ya tengo cuenta»: con el correo que escribió, se le manda el código. */
+    public function ingresar(): void
+    {
+        $this->resetErrorBag();
+        $correo = User::correoDesde($this->correo);
+
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $this->addError('correo', 'Escribe tu correo para enviarte el código.');
+
+            return;
+        }
+
+        if (! User::where('email', $correo)->exists()) {
+            $this->avisar('No hay una cuenta con ese correo. Escribe tu nombre y regístrate: no necesitas código.', false);
+
+            return;
+        }
+
+        $this->pedirCodigo($correo);
+    }
+
+    private function pedirCodigo(string $correo, string $antes = ''): void
+    {
+        $ventana = (int) config('fabos.otp.throttle_window') * 60;
+        $llave = 'otp:email:' . $correo;
+
+        // El mismo límite de la pantalla de ingreso: que esto no sirva para
+        // llenarle el buzón a nadie.
+        if (RateLimiter::tooManyAttempts($llave, (int) config('fabos.otp.throttle_per_email'))) {
+            $this->avisar('Ya te enviamos varios códigos. Usa el último, o espera unos minutos para pedir otro.', false);
+            $this->correoDelCodigo = $correo;
+
+            return;
+        }
+
+        RateLimiter::hit($llave, $ventana);
+        $this->correoDelCodigo = $correo;
+        $this->codigo = '';
+
+        // Quien configuró la app saca el código de su teléfono: no hay correo.
+        if (User::where('email', $correo)->whereNotNull('two_factor_confirmed_at')->exists()) {
+            $this->avisar(trim($antes . ' Escribe aquí el código de tu app de autenticación.'), true);
+
+            return;
+        }
+
+        try {
+            app(LoginCodeService::class)->issue($correo, request()->ip(), request()->userAgent());
+        } catch (EnvioDeCodigoFallido) {
+            $this->avisar(trim($antes . ' No pudimos enviarte el correo. Si te dieron un código en el laboratorio, escríbelo aquí.'), false);
+
+            return;
+        }
+
+        $this->avisar(trim($antes . ' Te enviamos un código a ' . $correo . ': escríbelo aquí.'), true);
+    }
+
+    /** El código, escrito en la misma página: entra y, si le queda, juega. */
+    public function verificar(Turnos $turnos): void
+    {
+        $this->resetErrorBag();
+        $correo = (string) $this->correoDelCodigo;
+        $codigo = trim($this->codigo);
+
+        if ($correo === '' || $codigo === '') {
+            $this->addError('codigo', 'Escribe el código.');
+
+            return;
+        }
+
+        $llave = 'otp:verify:' . $correo;
+
+        if (RateLimiter::tooManyAttempts($llave, 10)) {
+            $this->addError('codigo', 'Demasiados intentos. Espera unos minutos.');
+
+            return;
+        }
+
+        RateLimiter::hit($llave, (int) config('fabos.otp.throttle_window') * 60);
+
+        $factor = FactoresDeSesion::CORREO;
+        $persona = app(LoginCodeService::class)->verify($correo, $codigo);
+
+        if (! $persona) {
+            $conApp = User::where('email', $correo)->whereNotNull('two_factor_confirmed_at')->where('status', 'activo')->first();
+
+            if ($conApp && app(TwoFactorService::class)->verificar($conApp, $codigo)) {
+                [$persona, $factor] = [$conApp, FactoresDeSesion::APP];
+            }
+        }
+
+        if (! $persona) {
+            $this->addError('codigo', 'El código no es válido o ya expiró.');
+
+            return;
+        }
+
+        // Lo mismo que hace la pantalla de ingreso, sin salir de la página.
+        Auth::login($persona, remember: true);
+        session()->regenerate();
+
+        if (request()->hasSession()) {
+            FactoresDeSesion::olvidar(request());
+            FactoresDeSesion::anotar(request(), $factor);
+        }
+
+        $this->reset('correoDelCodigo', 'codigo', 'nombre', 'correo');
+
+        $dispositivo = $this->dispositivo();
+
+        // Vino a jugar: si no ha usado su turno, se le activa de una vez.
+        if ($turnos->tieneTurnoGratis($dispositivo, $persona)) {
+            $this->activar($turnos);
+
+            return;
+        }
+
+        $this->avisar('¡Hola, ' . Turnos::nombreCorto($persona->name) . '! Ya usaste tu turno: para seguir, usa tus '
+            . config('fabos.currency.name') . 's o invita a alguien.', true);
+    }
+
+    public function otroCorreo(): void
+    {
+        $this->reset('correoDelCodigo', 'codigo', 'aviso');
+        $this->resetErrorBag();
     }
 
     public function activar(Turnos $turnos): void
