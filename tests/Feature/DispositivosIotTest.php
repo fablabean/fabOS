@@ -202,6 +202,26 @@ class DispositivosIotTest extends TestCase
         $this->assertSame(0, User::where('email', 'ana@test.co')->count(), 'ni siquiera se crea la cuenta');
     }
 
+    /**
+     * Sin señal no se juega, pero el registro se ve: escondido, la página se
+     * quedaba sin nada que mostrar y no había cómo probarla sin la Raspberry.
+     */
+    public function test_sin_señal_el_formulario_se_ve_igual(): void
+    {
+        $d = $this->consola(conectada: false);
+
+        Livewire::test(Activar::class, ['dispositivoId' => $d->id])
+            ->assertSee('no está conectado en este momento')
+            ->assertSee('Tu nombre completo')
+            ->assertSee('Ya tengo cuenta')
+            ->set('nombre', 'Ana Gómez')
+            ->set('correo', 'ana@test.co')
+            ->call('registrar')
+            ->assertSee('no está conectado');
+
+        $this->assertSame(0, Turno::count());
+    }
+
     public function test_la_raspberry_pregunta_y_esa_es_su_señal_de_vida(): void
     {
         $d = $this->consola(conectada: false);

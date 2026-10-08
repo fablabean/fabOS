@@ -70,10 +70,17 @@
             </div>
         @endif
 
-        @if (! $dispositivo->activo || ! $dispositivo->conectado())
-            <p class="nota">{{ $dispositivo->nombre }} no está conectado en este momento. Avísale a alguien del laboratorio.</p>
+        {{-- Sin señal del aparato no se puede jugar, pero el registro se ve
+             igual: esconderlo dejaba la página sin nada que mostrar ni probar. --}}
+        @php $disponible = $dispositivo->activo && $dispositivo->conectado(); @endphp
+        @unless ($disponible)
+            <div class="aviso malo" style="font-weight:400">
+                <b>{{ $dispositivo->nombre }} no está conectado en este momento.</b>
+                Cuando se conecte se podrá jugar; avísale a alguien del laboratorio.
+            </div>
+        @endunless
 
-        @elseif (! $persona && $correoDelCodigo)
+        @if (! $persona && $correoDelCodigo)
             {{-- Ya tenía cuenta: el código se escribe aquí, sin salir de la página. --}}
             <form wire:submit="verificar">
                 <label for="iot-codigo">El código que te llegó a {{ $correoDelCodigo }}</label>
@@ -118,7 +125,8 @@
                 @endif
 
                 <p style="margin:1rem 0 0;display:flex;flex-wrap:wrap;gap:.6rem">
-                    <button class="btn" type="submit" wire:loading.attr="disabled">
+                    <button class="btn" type="submit" wire:loading.attr="disabled" @disabled(! $disponible)
+                            @style(['opacity:.5;cursor:not-allowed' => ! $disponible])>
                         Registrarme y jugar {{ $dispositivo->minutos_turno }} minutos
                     </button>
                     {{-- Con el mismo correo de arriba: le llega el código y lo escribe aquí. --}}
@@ -136,7 +144,8 @@
             {{-- Con sesión: su turno, y sus FabCoins para seguir. --}}
             @if ($gratis)
                 <p style="margin:0">
-                    <button class="btn" type="button" wire:click="activar" wire:loading.attr="disabled">
+                    <button class="btn" type="button" wire:click="activar" wire:loading.attr="disabled" @disabled(! $disponible)
+                            @style(['opacity:.5;cursor:not-allowed' => ! $disponible])>
                         Activar mi turno de {{ $dispositivo->minutos_turno }} minutos
                     </button>
                 </p>
@@ -155,7 +164,8 @@
                         <span style="min-width:9rem;text-align:center"><b x-text="n"></b> {{ $moneda }} = <b x-text="n * {{ $dispositivo->minutos_por_fabcoin }}"></b> min</span>
                         <button type="button" class="btn secundario" @click="n = Math.min({{ $saldo }}, n + 1)" aria-label="Más">+</button>
                         <button type="button" class="btn secundario" @click="n = {{ $saldo }}">Todos</button>
-                        <button type="button" class="btn" wire:click="pagar" wire:loading.attr="disabled">Reclamar tiempo</button>
+                        <button type="button" class="btn" wire:click="pagar" wire:loading.attr="disabled" @disabled(! $disponible)
+                                @style(['opacity:.5;cursor:not-allowed' => ! $disponible])>Reclamar tiempo</button>
                     </div>
                     <p class="nota">O déjalos en tu billetera: sirven para todo lo demás del laboratorio.</p>
                 @endif
