@@ -81,8 +81,15 @@ class DispositivoResource extends Resource
                 TextColumn::make('conexion')
                     ->label('Conexión')
                     ->badge()
-                    ->state(fn (Dispositivo $d) => $d->conectado() ? 'Conectado' : ($d->visto_at ? 'Sin señal' : 'Nunca se conectó'))
-                    ->color(fn (string $state) => $state === 'Conectado' ? 'success' : 'danger')
+                    ->state(fn (Dispositivo $d) => match (true) {
+                        $d->aparatoConectado() => 'Conectado',
+                        $d->modo_desarrollo => 'Modo desarrollo',
+                        $d->visto_at !== null => 'Sin señal',
+                        default => 'Nunca se conectó',
+                    })
+                    ->color(fn (string $state) => match ($state) {
+                        'Conectado' => 'success', 'Modo desarrollo' => 'warning', default => 'danger',
+                    })
                     ->description(fn (Dispositivo $d) => $d->visto_at ? 'visto ' . $d->visto_at->locale('es')->diffForHumans() : null),
                 TextColumn::make('ahora')
                     ->label('Ahora')

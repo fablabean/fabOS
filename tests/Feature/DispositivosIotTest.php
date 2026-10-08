@@ -222,6 +222,26 @@ class DispositivosIotTest extends TestCase
         $this->assertSame(0, Turno::count());
     }
 
+    /** En modo desarrollo se prueba todo sin Raspberry, y la página lo dice. */
+    public function test_en_modo_desarrollo_se_juega_sin_raspberry(): void
+    {
+        $d = $this->consola(conectada: false);
+        $d->update(['modo_desarrollo' => true]);
+
+        $this->assertTrue($d->conectado());
+        $this->assertFalse($d->aparatoConectado());
+
+        Livewire::test(Activar::class, ['dispositivoId' => $d->id])
+            ->assertSee('Modo de prueba')
+            ->assertDontSee('no está conectado en este momento')
+            ->set('nombre', 'Ana Gómez')
+            ->set('correo', 'ana@test.co')
+            ->call('registrar')
+            ->assertSee('Ya está encendido');
+
+        $this->assertSame(1, Turno::count());
+    }
+
     public function test_la_raspberry_pregunta_y_esa_es_su_señal_de_vida(): void
     {
         $d = $this->consola(conectada: false);
@@ -381,6 +401,11 @@ class DispositivosIotTest extends TestCase
         $clave = $pagina->get('claveNueva');
         $this->assertStringStartsWith('iot_', $clave);
         $this->assertSame($d->id, Dispositivo::porClave($clave)?->id);
+
+        $pagina->callAction('desarrollo');
+        $this->assertTrue($d->fresh()->modo_desarrollo);
+        $pagina->callAction('desarrollo');
+        $this->assertFalse($d->fresh()->modo_desarrollo);
 
         $pagina->callAction('encender', ['minutos' => 2]);
         $this->assertTrue($this->turnos()->estado($d->fresh())['encendido']);

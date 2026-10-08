@@ -42,6 +42,26 @@ class EditDispositivo extends EditRecord
                         ->send();
                 }),
 
+            // Para probar sin la Raspberry: el portal hace como si estuviera
+            // conectada. Nada se enciende de verdad.
+            Action::make('desarrollo')
+                ->label(fn () => $this->record->modo_desarrollo ? 'Salir del modo desarrollo' : 'Activar modo desarrollo')
+                ->icon('heroicon-o-beaker')
+                ->color(fn () => $this->record->modo_desarrollo ? 'warning' : 'gray')
+                ->requiresConfirmation()
+                ->modalHeading(fn () => $this->record->modo_desarrollo ? '¿Salir del modo desarrollo?' : '¿Activar el modo desarrollo?')
+                ->modalDescription(fn () => $this->record->modo_desarrollo
+                    ? 'Vuelve a exigir que la Raspberry esté conectada para poder jugar.'
+                    : 'El portal deja registrarse, hacer fila y usar FabCoins aunque no haya Raspberry conectada. Sirve para probar; la consola no se enciende de verdad si no hay aparato. Los registros y los FabCoins que se den sí son reales.')
+                ->action(function (): void {
+                    $this->record->update(['modo_desarrollo' => ! $this->record->modo_desarrollo]);
+
+                    Notification::make()
+                        ->success()
+                        ->title($this->record->modo_desarrollo ? 'Modo desarrollo activado' : 'Modo desarrollo apagado')
+                        ->send();
+                }),
+
             Action::make('encender')
                 ->label('Encender')
                 ->icon('heroicon-o-play')

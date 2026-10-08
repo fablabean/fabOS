@@ -22,13 +22,13 @@ class Dispositivo extends Model
 
     protected $attributes = ['minutos_turno' => 15, 'minutos_por_fabcoin' => 1, 'activo' => true];
 
-    protected $fillable = ['nombre', 'descripcion', 'minutos_turno', 'minutos_por_fabcoin', 'activo', 'clave_hash', 'visto_at'];
+    protected $fillable = ['nombre', 'descripcion', 'minutos_turno', 'minutos_por_fabcoin', 'activo', 'modo_desarrollo', 'clave_hash', 'visto_at'];
 
     protected $hidden = ['clave_hash'];
 
     protected function casts(): array
     {
-        return ['activo' => 'boolean', 'visto_at' => 'datetime'];
+        return ['activo' => 'boolean', 'modo_desarrollo' => 'boolean', 'visto_at' => 'datetime'];
     }
 
     public function turnos(): HasMany
@@ -53,8 +53,17 @@ class Dispositivo extends Model
         return filled($clave) ? static::where('clave_hash', hash('sha256', $clave))->first() : null;
     }
 
-    /** Si el aparato preguntó hace poco: sin eso, encender no enciende nada. */
+    /**
+     * Si se puede jugar: el aparato preguntó hace poco, o está en modo
+     * desarrollo y se hace como si lo hubiera hecho.
+     */
     public function conectado(): bool
+    {
+        return $this->modo_desarrollo || $this->aparatoConectado();
+    }
+
+    /** Si de verdad hay un aparato preguntando: sin eso, encender no enciende nada. */
+    public function aparatoConectado(): bool
     {
         return $this->visto_at !== null && $this->visto_at->gt(now()->subSeconds(self::SEGUNDOS_SIN_SENAL));
     }

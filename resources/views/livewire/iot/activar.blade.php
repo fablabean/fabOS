@@ -73,6 +73,11 @@
         {{-- Sin señal del aparato no se puede jugar, pero el registro se ve
              igual: esconderlo dejaba la página sin nada que mostrar ni probar. --}}
         @php $disponible = $dispositivo->activo && $dispositivo->conectado(); @endphp
+        @if ($dispositivo->modo_desarrollo && ! $dispositivo->aparatoConectado())
+            <div class="aviso" style="font-weight:400;border-left-color:#B7791F;background:color-mix(in srgb,#B7791F 14%,transparent)">
+                <b>Modo de prueba.</b> Todo funciona, pero la consola no está conectada y no se enciende de verdad.
+            </div>
+        @endif
         @unless ($disponible)
             <div class="aviso malo" style="font-weight:400">
                 <b>{{ $dispositivo->nombre }} no está conectado en este momento.</b>
