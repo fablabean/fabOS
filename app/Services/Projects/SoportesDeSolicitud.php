@@ -158,9 +158,14 @@ class SoportesDeSolicitud
 
             // Las fotos se enderezan y se comprimen; lo demás se guarda tal
             // cual —un .stl pasado por GD sería un .stl roto—.
+            // Con la extensión con que llegó: adivinarla por el contenido dejaba
+            // un .stl como «.bin» en el disco, y el día que se pierde el
+            // nombre original ya no se sabe qué era.
+            $extension = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $archivo->getClientOriginalExtension()));
+
             $ruta = $esImagen
                 ? $this->optimizador->guardar($archivo, self::DIRECTORIO, 'local')
-                : $archivo->store(self::DIRECTORIO, 'local');
+                : $archivo->storeAs(self::DIRECTORIO, \Illuminate\Support\Str::random(40) . ($extension !== '' ? '.' . $extension : ''), 'local');
 
             $proyecto->evidence()->create([
                 'kind'               => $esImagen ? 'foto' : 'archivo',

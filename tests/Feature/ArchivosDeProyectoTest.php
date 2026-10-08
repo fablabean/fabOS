@@ -232,4 +232,69 @@ class ArchivosDeProyectoTest extends TestCase
 
         $this->assertSame('https://drive.google.com/x', $conEnlace->enlace());
     }
+
+    private function jefaDentro(): User
+    {
+        foreach (User::ROLES_BACKOFFICE as $r) {
+            Role::findOrCreate($r, 'web');
+        }
+
+        $jefa = User::create(['name' => 'Jefa', 'email' => uniqid() . '@lab.co', 'status' => 'activo']);
+        $jefa->assignRole(User::ROL_ADMINISTRADOR);
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($jefa);
+        $servicio->confirmar($jefa, app(Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($jefa->fresh())->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        return $jefa;
+    }
+
+    /**
+     * Un adjunto que se quedó sin archivo no tumba la conversación.
+     *
+     * Pasó con PRY-2026-0159: cinco adjuntos del cliente quedaron sin ruta, y
+     * la pestaña entera salía en blanco con «Error al cargar la página».
+     */
+    public function test_la_conversacion_abre_aunque_un_adjunto_no_tenga_archivo(): void
+    {
+        $jefa = $this->jefaDentro();
+        $p = app(ProjectService::class)->registrarIdea(['name' => 'Soporte', 'source' => 'whatsapp', 'lead_id' => $jefa->id]);
+        $c = app(ProjectService::class)->comentar($p, 'Aquí van los modelos.', $jefa);
+        $p->evidence()->create(['kind' => 'archivo', 'file_path' => null, 'project_comment_id' => $c->id]);
+
+        Livewire::test(\App\Filament\Resources\Projects\RelationManagers\CommentsRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => EditProject::class,
+        ])
+            ->assertOk()
+            ->assertSee('Aquí van los modelos.')
+            ->assertSee('sin archivo');
+    }
+
+    /**
+     * Guardar la ficha con el campo de archivo vacío no deja la evidencia sin
+     * su archivo: el campo vive en el navegador y a veces llega vacío sin que
+     * nadie haya quitado nada.
+     */
+    public function test_guardar_la_ficha_no_le_quita_el_archivo_a_una_evidencia(): void
+    {
+        Storage::fake('local');
+        $jefa = $this->jefaDentro();
+        $p = app(ProjectService::class)->registrarIdea(['name' => 'Soporte', 'source' => 'whatsapp', 'lead_id' => $jefa->id]);
+
+        Storage::disk('local')->put('proyectos/soportes/modelo.bin', 'contenido');
+        $e = $p->evidence()->create([
+            'kind' => 'archivo', 'file_path' => 'proyectos/soportes/modelo.bin', 'original_name' => 'soporte.3mf',
+        ]);
+
+        Livewire::test(EditProject::class, ['record' => $p->getRouteKey()])
+            ->set('data.evidence.record-' . $e->id . '.file_path', [])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $e->refresh();
+        $this->assertSame('proyectos/soportes/modelo.bin', $e->file_path);
+        $this->assertSame('soporte.3mf', $e->original_name);
+    }
 }

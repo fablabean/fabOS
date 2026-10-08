@@ -88,9 +88,16 @@ class CommentsRelationManager extends RelationManager
 
                 TextColumn::make('adjuntos')
                     ->label('Adjuntos')
+                    // Un adjunto sin archivo ni enlace se dice, no se enlaza: armarle
+                    // la dirección con la ruta vacía tumbaba la pestaña entera, y
+                    // la conversación salía en blanco con dos avisos de error.
                     ->state(fn (ProjectComment $r) => $r->adjuntos->isEmpty() ? null : $r->adjuntos
-                        ->map(fn (Evidencia $e) => '<a href="' . e(ArchivoPrivado::url($e->file_path, $e->comoSeLlama(), descargar: ! $e->esImagen()))
-                            . '" target="_blank" rel="noopener" class="underline">' . e($e->comoSeLlama()) . '</a>')
+                        ->map(fn (Evidencia $e) => match (true) {
+                            filled($e->file_path) => '<a href="' . e(ArchivoPrivado::url($e->file_path, $e->comoSeLlama(), descargar: ! $e->esImagen()))
+                                . '" target="_blank" rel="noopener" class="underline">' . e($e->comoSeLlama()) . '</a>',
+                            filled($e->url) => '<a href="' . e($e->url) . '" target="_blank" rel="noopener" class="underline">' . e($e->comoSeLlama()) . '</a>',
+                            default => '<span style="opacity:.6">' . e($e->comoSeLlama()) . ' (sin archivo)</span>',
+                        })
                         ->implode('<br>'))
                     ->html()
                     ->placeholder('—'),

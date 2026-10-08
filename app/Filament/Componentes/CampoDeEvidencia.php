@@ -31,6 +31,27 @@ class CampoDeEvidencia
     ): Repeater {
         return Repeater::make('evidence')
             ->relationship()
+            /*
+             * Una evidencia que ya tiene archivo no lo pierde por guardar la
+             * ficha.
+             *
+             * El campo de archivo vive en el navegador: si no logra cargar uno
+             * —un .bin de quince megas, una sección plegada— lo suelta de su
+             * lista, y al guardar llega vacío. El repetidor lo tomaba como
+             * «quitaron el archivo» y dejaba la fila sin ruta y sin nombre:
+             * los adjuntos de un cliente desaparecieron así, con los archivos
+             * todavía en el disco. Quitar una evidencia es borrar su fila, que
+             * es una acción; un campo que llega vacío no lo es.
+             */
+            ->mutateRelationshipDataBeforeSaveUsing(function (array $data, \Illuminate\Database\Eloquent\Model $record): array {
+                if (filled($record->file_path) && blank($data['file_path'] ?? null)
+                    && in_array($data['kind'] ?? $record->kind, Evidencia::SE_SUBEN, true)) {
+                    $data['file_path'] = $record->file_path;
+                    $data['original_name'] = $record->original_name;
+                }
+
+                return $data;
+            })
             ->label($etiqueta)
             ->columnSpanFull()
             ->addActionLabel('Añadir evidencia')
