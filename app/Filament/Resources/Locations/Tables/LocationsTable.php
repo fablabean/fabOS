@@ -43,11 +43,9 @@ class LocationsTable
                     ->getKeyFromRecordUsing(fn (Location $record) => (string) ($record->espacio()?->id ?? 0))
                     /*
                      * Para que cada grupo salga junto hay que ORDENAR por el
-                     * espacio efectivo, y eso si toca resolverlo en SQL. Se
-                     * mira el propio y el de la madre, que cubre el arbol que
-                     * hay. Mas hondo, el titulo del grupo sigue siendo correcto
-                     * -lo calcula el modelo- y lo unico que podria pasar es que
-                     * un espacio saliera en dos tramos.
+                     * espacio efectivo, y eso si toca resolverlo en SQL: el
+                     * propio o el del antepasado mas cercano, a cualquier
+                     * profundidad (Location::SQL_ESPACIO).
                      */
                     /*
                      * Como se acota la consulta a UN grupo, que es lo que pasa
@@ -62,7 +60,7 @@ class LocationsTable
                         ? $query->enElEspacio((int) $key)
                         : $query->sinEspacio())
                     ->orderQueryUsing(fn (Builder $query) => $query->orderByRaw(
-                        'coalesce(locations.space_id, (select p.space_id from locations p where p.id = locations.parent_id)) nulls last',
+                        Location::SQL_ESPACIO . ' nulls last',
                     )),
             )
             // Plegados, salvo cuando ya se filtro a un espacio solo: quien
@@ -86,11 +84,13 @@ class LocationsTable
             /*
              * Y dentro del grupo, cada arbol junto y la madre primero. Una
              * gaveta suelta entre otros muebles no dice de donde sale.
+             *
+             * Por la ruta desde la raiz, no por la madre directa: con
+             * `coalesce(parent_id, id)` un tercer nivel —la repisa de un rack
+             * de un armario— se ordenaba por el numero del rack y caia debajo
+             * del mueble que tuviera el numero anterior, que no era el suyo.
              */
-            ->defaultSort(fn (Builder $query) => $query
-                ->orderByRaw('coalesce(parent_id, id)')
-                ->orderByRaw('parent_id is null desc')
-                ->orderBy('name'))
+            ->defaultSort(fn (Builder $query) => $query->orderByRaw(Location::SQL_RUTA))
             // Las madres cargadas de una: saber a que nivel esta cada mueble
             // es subir por el arbol, y sin esto seria una consulta por fila.
             ->modifyQueryUsing(fn (Builder $query) => $query->with('parent.parent.parent'))

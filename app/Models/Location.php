@@ -138,6 +138,42 @@ class Location extends Model
      * qué. Llegado al tope se devuelve lo contado, que es una respuesta rara
      * pero acotada.
      */
+    /**
+     * El espacio efectivo de cada fila, en SQL: el suyo o el del antepasado
+     * más cercano que lo declare, a cualquier profundidad. Es lo mismo que
+     * `espacio()`, para poder ORDENAR por ello.
+     *
+     * Antes se miraba solo el propio y el de la madre: una repisa dentro de un
+     * rack dentro de un armario quedaba «sin espacio» para el orden, y salía
+     * al final de la lista, lejos de su mueble.
+     */
+    public const SQL_ESPACIO = <<<'SQL'
+        (with recursive sube as (
+            select l.parent_id, l.space_id, 0 as n from locations l where l.id = locations.id
+            union all
+            select p.parent_id, p.space_id, sube.n + 1 from locations p join sube on p.id = sube.parent_id where sube.n < 20
+        ) select space_id from sube where space_id is not null order by n limit 1)
+        SQL;
+
+    /**
+     * La ruta de cada fila desde la raíz de su árbol, para ordenar: cada
+     * mueble seguido de todo lo que tiene dentro, y eso de lo suyo, hasta el
+     * fondo. Hermanos por nombre; el id desempata a los que se llaman igual
+     * —tres «Repisa 1»— para que cada una lleve debajo lo suyo.
+     *
+     * Con `chr(1)` de separador y comparación binaria: así «Armario 1» y todo
+     * lo que contiene va antes que «Armario 10».
+     */
+    public const SQL_RUTA = <<<'SQL'
+        (with recursive sube as (
+            select l.parent_id, (lower(l.name) || ':' || lpad(l.id::text, 9, '0'))::text as ruta, 0 as n
+              from locations l where l.id = locations.id
+            union all
+            select p.parent_id, lower(p.name) || ':' || lpad(p.id::text, 9, '0') || chr(1) || sube.ruta, sube.n + 1
+              from locations p join sube on p.id = sube.parent_id where sube.n < 20
+        ) select ruta from sube where parent_id is null limit 1) collate "C"
+        SQL;
+
     public function nivel(): int
     {
         $nivel = 0;

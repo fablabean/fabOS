@@ -470,4 +470,45 @@ class UbicacionesPorEspacioTest extends TestCase
         $this->assertStringContainsString('↳ Gaveta 1', $html);
         $this->assertStringNotContainsString('↳ Rack A', $html, 'una raíz no cuelga de nadie');
     }
+
+    // ------------------------------------------------- el árbol, a tres niveles
+
+    /**
+     * Cada mueble, con todo lo suyo debajo, hasta el fondo.
+     *
+     * La lista ordenaba por la madre directa, que solo sirve para dos
+     * niveles: las repisas de un rack de un armario se ordenaban por el
+     * número del rack y caían debajo de «Armario 1» —creado entre el armario
+     * de insumos y sus racks—, que no era su mueble.
+     */
+    public function test_un_tercer_nivel_sale_debajo_de_su_mueble(): void
+    {
+        $this->entraComoAdmin();
+        $resina = $this->espacio('Lab. Resina');
+
+        $insumos = $this->raiz($resina, 'Insumos Armario Resina');
+        // Se crea ANTES que los racks: su número queda entre el del armario
+        // de insumos y los de sus racks, que es lo que confundía al orden.
+        $this->raiz($resina, 'Armario 1');
+        $rack1 = $this->dentroDe($insumos, 'Rack 1 Resina');
+        $this->dentroDe($insumos, 'Rack 2 Resina');
+        $this->dentroDe($rack1, 'Repisa A');
+        $this->dentroDe($rack1, 'Repisa B');
+
+        $this->assertSame(
+            ['Armario 1', 'Insumos Armario Resina', 'Rack 1 Resina', 'Repisa A', 'Repisa B', 'Rack 2 Resina'],
+            Location::query()->orderByRaw(Location::SQL_RUTA)->pluck('name')->all(),
+        );
+
+        // Y la repisa cuenta como del mismo espacio que su armario, para que
+        // el grupo no salga partido en dos.
+        $this->assertSame(
+            [$resina->id],
+            \Illuminate\Support\Facades\DB::table('locations')->selectRaw(Location::SQL_ESPACIO . ' as e')->distinct()->pluck('e')->all(),
+        );
+
+        Livewire::test(ListLocations::class)
+            ->assertOk()
+            ->assertSeeInOrder(['Insumos Armario Resina', 'Rack 1 Resina', 'Repisa A', 'Repisa B', 'Rack 2 Resina']);
+    }
 }
