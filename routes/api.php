@@ -22,3 +22,10 @@ Route::prefix('recorridos/visor')->name('api.visor.')->group(function () {
         Route::post('/lider', [VisorController::class, 'lider'])->name('lider');
     });
 });
+
+/*
+ * La API de los dispositivos IoT (docs/IOT-API.md): el aparato pregunta si
+ * debe estar encendido. Se identifica con la clave que se genera en el panel.
+ */
+Route::get('/iot/dispositivo/estado', [\App\Http\Controllers\Api\DispositivoController::class, 'estado'])
+    ->middleware('throttle:120,1')->name('api.iot.estado');

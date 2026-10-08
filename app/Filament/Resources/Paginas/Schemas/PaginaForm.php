@@ -370,6 +370,30 @@ class PaginaForm
                                 ->helperText('El de color. Si hay varios destacados, ninguno lo está.'),
                         ]),
                 ]),
+
+            // El mini registro que enciende un dispositivo IoT: quien no tiene
+            // cuenta se registra y juega; quien la tiene, activa su turno.
+            Block::make('dispositivo')
+                ->label(Pagina::BLOQUES['dispositivo'])
+                ->icon('heroicon-o-bolt')
+                ->schema([
+                    \Filament\Forms\Components\Select::make('dispositivo_id')
+                        ->label('Qué dispositivo enciende')
+                        ->options(fn () => \App\Models\Iot\Dispositivo::orderBy('nombre')->pluck('nombre', 'id'))
+                        ->required()
+                        ->helperText('Se crean en Dispositivos IoT. En la página sale el registro, el botón de activar y la fila de turnos.'),
+
+                    TextInput::make('titulo')
+                        ->label('Título')
+                        ->maxLength(120)
+                        ->placeholder('Juega 15 minutos'),
+
+                    Textarea::make('texto')
+                        ->label('Explicación')
+                        ->rows(2)
+                        ->maxLength(400)
+                        ->placeholder('Regístrate y la consola se enciende. Para seguir jugando, invita a alguien.'),
+                ]),
         ];
     }
 

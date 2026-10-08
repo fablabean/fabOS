@@ -64,6 +64,7 @@ class Pagina extends Model
         'datos' => 'Ficha de datos',
         'hitos' => 'Hitos',
         'botones' => 'Botones',
+        'dispositivo' => 'Activar un dispositivo',
     ];
 
     public function project(): BelongsTo
@@ -197,6 +198,7 @@ class Pagina extends Model
             'datos' => filled($datos['filas'] ?? null),
             'hitos' => filled($datos['hitos'] ?? null),
             'botones' => filled($datos['botones'] ?? null),
+            'dispositivo' => filled($datos['dispositivo_id'] ?? null),
             default => false,
         };
     }

@@ -37,6 +37,7 @@ class MenuDelPanel
         'Compras',
         'Laboratorio',
         'Recorridos',
+        'Dispositivos IoT',
         'Formación',
         'Finanzas',
         'Tienda',
