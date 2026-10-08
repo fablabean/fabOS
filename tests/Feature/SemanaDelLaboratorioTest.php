@@ -200,4 +200,31 @@ class SemanaDelLaboratorioTest extends TestCase
 
         $this->assertFalse(\App\Filament\Widgets\SemanaDelLaboratorio::canView());
     }
+
+    /**
+     * Para el equipo, cada franja abre su reserva en el panel: verla y
+     * corregirla sin ir a buscarla a la lista. A quien no es del equipo no se
+     * le enlaza nada, que la ficha del panel no es suya.
+     */
+    public function test_la_franja_abre_su_reserva_solo_para_el_equipo(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $juan = $this->persona('Juan Estudiante');
+
+        $r = $this->reserva($juan, '10:00', '12:00');
+        $ficha = \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $r->id]);
+
+        foreach (['', '&vista=espacios'] as $vista) {
+            $this->actingAs($admin)
+                ->get(route('proyectos.cronograma') . '?semana=2026-09-30' . $vista)
+                ->assertOk()
+                ->assertSee('href="' . $ficha . '"', false);
+
+            $this->actingAs($juan)
+                ->get(route('proyectos.cronograma') . '?semana=2026-09-30' . $vista)
+                ->assertOk()
+                ->assertSee('10:00–12:00')
+                ->assertDontSee($ficha, false);
+        }
+    }
 }

@@ -37,6 +37,13 @@
         $b['estado'] === 'solicitada' ? 'pedida' : '',
         in_array($b['estado'], ['completada', 'no_show']) ? 'pasada' : '',
     ])->filter()->implode(' ');
+    // Para el equipo, cada franja abre su reserva en el panel: verla y
+    // corregirla ahí mismo, sin ir a buscarla a la lista. A quien no es del
+    // equipo no se le enlaza nada: la ficha del panel no es suya.
+    $esEquipo = auth()->user()?->hasAnyRole(\App\Models\User::rolesDelEquipo()) ?? false;
+    $enlaceDe = fn (array $b) => $esEquipo && ! empty($b['id'])
+        ? \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $b['id']])
+        : null;
     $quienDe = fn (array $b) => $b['responsables'] ? implode(', ', $b['responsables']) : ($b['reserva'] ?? 'Sin responsable');
     $tituloDe = fn (array $b) => $b['hora'] . ' · ' . $b['que']
         . ($b['responsables'] ? "\nResponde: " . implode(', ', $b['responsables']) : '')
@@ -135,7 +142,9 @@
                         @foreach ($s['dias'] as $dia)
                             <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
                                 @foreach (collect($s['bloques'][$dia->toDateString()] ?? [])->where('espacio', $espacio)->sortBy('desde') as $b)
-                                    <div class="sem-f {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}">
+                                    @php $href = $enlaceDe($b); @endphp
+                                    <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
+                                        class="sem-f {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}{{ $href ? "\nClic para abrir la reserva" : '' }}">
                                         <span class="h">{{ $b['hora'] }}</span>
                                         {{-- La sala ya la dice la fila; se nombra lo que hay dentro. --}}
                                         @if ($b['tipo'] !== 'espacio')
@@ -143,7 +152,7 @@
                                         @endif
                                         <span class="r">{{ $quienDe($b) }}</span>
                                         @if ($b['para'])<span class="p">{{ $b['para'] }}</span>@endif
-                                    </div>
+                                    </{{ $href ? 'a' : 'div' }}>
                                 @endforeach
                             </td>
                         @endforeach
@@ -193,14 +202,16 @@
                                 $altoB = max(1.1, ($b['hasta'] - $b['desde']) / 60 * $hPx);
                                 $ancho = 100 / $b['carriles'];
                             @endphp
-                            <div class="sem-b {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}"
+                            @php $href = $enlaceDe($b); @endphp
+                            <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
+                                 class="sem-b {{ $clasesDe($b) }}" title="{{ $tituloDe($b) }}{{ $href ? "\nClic para abrir la reserva" : '' }}"
                                  style="top:{{ $top }}rem;height:{{ $altoB }}rem;--alto:{{ $altoB }}rem;
                                         left:calc({{ $b['carril'] * $ancho }}% + 1px);width:calc({{ $ancho }}% - 2px)">
                                 <div class="h">{{ $b['hora'] }}</div>
                                 <div class="q">{{ $b['que'] }}</div>
                                 <div class="r">{{ $quienDe($b) }}</div>
                                 @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
-                            </div>
+                            </{{ $href ? 'a' : 'div' }}>
                         @endforeach
                     </div>
                 @endforeach
@@ -285,6 +296,12 @@
         .sem-b:hover { z-index:2; height:auto !important; min-height:var(--alto); box-shadow:0 2px 8px rgb(0 0 0 / .25); }
         .sem-col.atras .sem-b:hover { min-width:11rem; }
         .sem-f { font-size:.7rem; padding:.2rem .35rem; margin-bottom:.25rem; }
+        /* La franja que abre su reserva: sigue viéndose como franja, no como
+           enlace, pero avisa de que se puede pulsar. */
+        a.sem-b, a.sem-f { text-decoration:none; cursor:pointer; }
+        a.sem-f { display:block; }
+        a.sem-b:hover, a.sem-f:hover, a.sem-b:focus-visible, a.sem-f:focus-visible {
+            outline:2px solid var(--s-ink); outline-offset:-1px; filter:brightness(.97); z-index:3; }
         .sem-f span { display:block; }
         .sem-b .h, .sem-f .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--s-soft); }
         .sem-b .q, .sem-f .q { font-weight:600; }
