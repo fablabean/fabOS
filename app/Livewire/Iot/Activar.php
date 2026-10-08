@@ -93,10 +93,12 @@ class Activar extends Component
         }
 
         // Sin código de por medio, este es el único freno a quien quiera
-        // registrar correos en serie desde un mismo sitio.
+        // registrar correos en serie desde un mismo sitio. Alto a propósito:
+        // en un evento, todo el wifi de la Universidad sale por la misma
+        // dirección, y un tope bajo dejaría fuera a gente de verdad.
         $llave = 'iot:registro:' . request()->ip();
 
-        if (RateLimiter::tooManyAttempts($llave, 30)) {
+        if (RateLimiter::tooManyAttempts($llave, 200)) {
             $this->avisar('Demasiados registros desde aquí. Espera un rato o pide ayuda en el laboratorio.', false);
 
             return;
