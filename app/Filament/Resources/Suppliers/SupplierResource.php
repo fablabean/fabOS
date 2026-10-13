@@ -74,7 +74,7 @@ class SupplierResource extends Resource
                 ->label('NIT')
                 ->maxLength(40)
                 ->placeholder('901.234.567-8')
-                ->helperText('Con él se reconoce al mismo proveedor aunque el nombre se escriba distinto.'),
+                ->helperText('Con puntos o sin ellos, con guion o sin él: se reconoce igual. Con él se sabe que es el mismo proveedor aunque el nombre se escriba distinto.'),
 
             TextInput::make('address')->label('Dirección')->maxLength(200),
 
@@ -106,13 +106,26 @@ class SupplierResource extends Resource
                     ->sortable()
                     ->description(fn (Supplier $p) => $p->address),
 
-                TextColumn::make('tax_id')->label('NIT')->searchable()->placeholder('—'),
+                // Se encuentra escrito como sea: con puntos, sin ellos, sin guion.
+                TextColumn::make('tax_id')
+                    ->label('NIT')
+                    ->placeholder('—')
+                    ->searchable(query: fn (\Illuminate\Database\Eloquent\Builder $query, string $search) => $query
+                        ->orWhere(fn ($q) => $q->buscar($search))),
 
                 TextColumn::make('contact')
                     ->label('Representante')
                     ->searchable()
                     ->placeholder('—')
                     ->description(fn (Supplier $p) => collect([$p->phone, $p->email])->filter()->implode(' · ') ?: null),
+
+                TextColumn::make('professionalProfile.name')
+                    ->label('Perfil profesional')
+                    ->placeholder('—')
+                    ->url(fn (Supplier $p) => $p->professional_profile_id
+                        ? \App\Filament\Resources\ProfessionalProfiles\ProfessionalProfileResource::getUrl('edit', ['record' => $p->professional_profile_id])
+                        : null)
+                    ->toggleable(),
 
                 TextColumn::make('purchase_requests_count')
                     ->label('Compras')

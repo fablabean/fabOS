@@ -128,6 +128,7 @@ class ProfessionalProfilesTable
 
                     self::proponer(),
                     self::crearleCuenta(),
+                    self::pasarAProveedores(),
                     self::anotarCodigo(),
                     self::descartar(),
 
@@ -278,6 +279,42 @@ class ProfessionalProfilesTable
                 ]);
 
                 Notification::make()->title('Descartado')->success()->send();
+            });
+    }
+
+    /**
+     * De perfil a proveedor, cuando ya se le compra.
+     *
+     * El perfil dice quién puede trabajar con el laboratorio; el proveedor es
+     * a quién se le hace la requisición. Es la misma persona o empresa, y
+     * volver a teclear su NIT en Compras es como acaban existiendo dos
+     * versiones. Queda enlazado: si ya estaba en la lista —por su NIT o por
+     * su nombre— se usa ese y se le completa lo que le faltara.
+     */
+    private static function pasarAProveedores(): Action
+    {
+        return Action::make('proveedor')
+            ->label(fn (ProfessionalProfile $r) => \App\Models\Supplier::where('professional_profile_id', $r->id)->exists()
+                ? 'Ver en proveedores'
+                : 'Pasar a proveedores')
+            ->icon('heroicon-o-building-storefront')
+            ->color('gray')
+            ->requiresConfirmation(fn (ProfessionalProfile $r) => ! \App\Models\Supplier::where('professional_profile_id', $r->id)->exists())
+            ->modalHeading('Pasar a la lista de proveedores')
+            ->modalDescription('Queda en Compras → Proveedores con su nombre o razón social, NIT o documento, dirección, representante, teléfono y correo, para elegirlo en las solicitudes de compra. El perfil sigue aquí, enlazado.')
+            ->modalSubmitActionLabel('Pasar a proveedores')
+            ->action(function (ProfessionalProfile $record) {
+                $yaEstaba = \App\Models\Supplier::where('professional_profile_id', $record->id)->exists();
+                $proveedor = \App\Models\Supplier::desdeElPerfil($record);
+
+                if (! $yaEstaba) {
+                    Notification::make()
+                        ->title($proveedor->name . ' ya está en proveedores')
+                        ->success()
+                        ->send();
+                }
+
+                return redirect(\App\Filament\Resources\Suppliers\SupplierResource::getUrl('edit', ['record' => $proveedor]));
             });
     }
 

@@ -138,9 +138,19 @@ class PurchaseRequestForm
                         Select::make('proveedor_de_la_lista')
                             ->label('Proveedor de la lista')
                             ->placeholder('Buscar por empresa o NIT…')
-                            ->options(fn () => \App\Models\Supplier::orderBy('name')->get()
+                            ->options(fn () => \App\Models\Supplier::orderBy('name')->limit(50)->get()
                                 ->mapWithKeys(fn ($p) => [$p->id => $p->name . ($p->tax_id ? ' · ' . $p->tax_id : '')])
                                 ->all())
+                            // Buscando en el servidor: el NIT se encuentra con
+                            // puntos, sin ellos o sin el guion, aunque en la
+                            // lista esté escrito de otra forma.
+                            ->getSearchResultsUsing(fn (string $search) => \App\Models\Supplier::query()
+                                ->buscar($search)->orderBy('name')->limit(30)->get()
+                                ->mapWithKeys(fn ($p) => [$p->id => $p->name . ($p->tax_id ? ' · ' . $p->tax_id : '')])
+                                ->all())
+                            ->getOptionLabelUsing(fn ($value) => ($p = \App\Models\Supplier::find($value))
+                                ? $p->name . ($p->tax_id ? ' · ' . $p->tax_id : '')
+                                : null)
                             ->searchable()
                             ->live()
                             ->dehydrated(false)
