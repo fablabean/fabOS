@@ -27,9 +27,14 @@ return new class extends Migration
             $table->foreignId('project_id')->nullable()->constrained()->nullOnDelete();
         });
 
-        DB::table('evidencias')
-            ->where('evidenciable_type', \App\Models\Project::class)
-            ->update(['project_id' => DB::raw('evidenciable_id')]);
+        // Solo si el proyecto sigue existiendo: hay evidencias de proyectos
+        // que se borraron, y enlazarlas rompería la llave. Esas se quedan sin
+        // proyecto, que es la verdad.
+        DB::statement(
+            'update evidencias set project_id = evidenciable_id
+              where evidenciable_type = ? and exists (select 1 from projects p where p.id = evidencias.evidenciable_id)',
+            [\App\Models\Project::class],
+        );
 
         foreach ([
             \App\Models\ProjectDeliverable::class => 'project_deliverables',
@@ -42,16 +47,14 @@ return new class extends Migration
             }
 
             DB::statement(
-                "update evidencias set project_id = (select t.project_id from {$tabla} t where t.id = evidencias.evidenciable_id)
+                "update evidencias set project_id = (
+                    select t.project_id from {$tabla} t
+                     where t.id = evidencias.evidenciable_id
+                       and exists (select 1 from projects p where p.id = t.project_id))
                  where evidenciable_type = ?",
                 [$clase],
             );
         }
-
-        // Si el proyecto de una evidencia ya no existe, se queda sin él en vez
-        // de romper la llave.
-        DB::statement('update evidencias set project_id = null where project_id is not null
-                       and not exists (select 1 from projects p where p.id = evidencias.project_id)');
 
         $tz = config('fabos.lab.timezone');
         $codigos = DB::table('projects')->pluck('code', 'id');
