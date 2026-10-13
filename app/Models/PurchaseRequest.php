@@ -21,7 +21,24 @@ class PurchaseRequest extends Model
         'submitted_at', 'decided_at', 'decision_reason', 'closed_at',
         'tax_rate', 'cart_url', 'share_token', 'shared_at',
         'currency', 'exchange_rate',
+        'supplier_name', 'supplier_tax_id', 'supplier_address', 'supplier_contact',
+        'quote_path', 'quote_name',
     ];
+
+    /** Si se anotó a quién se le compra. */
+    public function tieneProveedor(): bool
+    {
+        return filled($this->supplier_name) || filled($this->supplier_tax_id)
+            || filled($this->supplier_address) || filled($this->supplier_contact);
+    }
+
+    /** Cómo se llama la cotización al bajarla: con el código de la solicitud delante. */
+    public function nombreDeLaCotizacion(): string
+    {
+        $extension = strtolower(pathinfo((string) ($this->quote_name ?: $this->quote_path), PATHINFO_EXTENSION));
+
+        return $this->code . '_cotizacion' . ($extension !== '' ? '.' . $extension : '');
+    }
 
     public const MONEDAS = [
         'COP' => 'Pesos colombianos',

@@ -114,6 +114,55 @@ class PurchaseRequestForm
                         Textarea::make('notes')->label('Notas')->columnSpanFull(),
                     ]),
 
+                /*
+                 * A quién se le compra. Iba en las notas, cada vez escrito de
+                 * una forma, y compras lo tenía que pescar del texto. Y la
+                 * cotización formal, que viajaba aparte por correo, queda
+                 * junto a la requisición que la justifica.
+                 */
+                Section::make('Proveedor')
+                    ->description('A quién se le compra y con qué cotización. Sale en la requisición que se le entrega a compras.')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('supplier_name')
+                            ->label('Empresa')
+                            ->maxLength(180)
+                            ->placeholder('Tap Publicidad S.A.S.'),
+
+                        TextInput::make('supplier_tax_id')
+                            ->label('NIT')
+                            ->maxLength(40)
+                            ->placeholder('901.234.567-8'),
+
+                        TextInput::make('supplier_address')
+                            ->label('Dirección')
+                            ->maxLength(200),
+
+                        TextInput::make('supplier_contact')
+                            ->label('Representante o responsable')
+                            ->maxLength(160)
+                            ->helperText('Quien firma o responde por la cotización.'),
+
+                        \App\Filament\Componentes\ArchivoPrivado::previsualizar(
+                            \Filament\Forms\Components\FileUpload::make('quote_path')
+                        )
+                            ->label('Propuesta o cotización formal')
+                            ->columnSpanFull()
+                            // Disco privado: lleva precios y datos del proveedor.
+                            ->disk('local')
+                            ->directory('compras/cotizaciones')
+                            ->storeFileNamesIn('quote_name')
+                            ->acceptedFileTypes([
+                                'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->maxSize(20 * 1024)
+                            ->helperText('El PDF que mandó el proveedor, o una foto legible. Hasta 20 MB. Se puede bajar desde la requisición.'),
+                    ]),
+
                 Section::make('Qué se pide')
                     ->description('Cada línea lleva su cantidad y su precio estimado. El total con impuesto es lo que se compara contra el presupuesto.')
                     ->schema([

@@ -207,4 +207,86 @@ class RequisicionCompartidaTest extends TestCase
 
         $this->assertFalse($s->fresh()->estaCompartida());
     }
+
+    // ------------------------------------------- el proveedor y su cotización
+
+    /**
+     * A quién se le compra sale en la requisición, con sus datos en su sitio
+     * y no perdido en las observaciones.
+     */
+    public function test_la_requisicion_lleva_los_datos_del_proveedor(): void
+    {
+        $s = $this->solicitud();
+        $s->update([
+            'supplier_name' => 'Tap Publicidad S.A.S.', 'supplier_tax_id' => '901.234.567-8',
+            'supplier_address' => 'Calle 72 # 10-34, Bogotá', 'supplier_contact' => 'Jonathan Rincón',
+        ]);
+
+        $this->compras()->compartir($s);
+
+        $this->get(route('compras.compartida', $s->fresh()->share_token))
+            ->assertOk()
+            ->assertSeeInOrder(['Proveedor', 'Tap Publicidad S.A.S.', 'NIT', '901.234.567-8', 'Calle 72 # 10-34, Bogotá', 'Representante', 'Jonathan Rincón'])
+            // Sin cotización adjunta no se ofrece bajarla.
+            ->assertDontSee('Descargar la cotización');
+    }
+
+    /** Sin proveedor anotado, la requisición no deja un bloque vacío. */
+    public function test_sin_proveedor_no_sale_el_bloque(): void
+    {
+        $s = $this->solicitud();
+        $this->compras()->compartir($s);
+
+        $this->get(route('compras.compartida', $s->fresh()->share_token))
+            ->assertOk()
+            ->assertDontSee('Representante');
+    }
+
+    /**
+     * La cotización formal se baja desde la requisición: quien trabaja en el
+     * laboratorio con su sesión, y compras por el enlace compartido. Sin una
+     * de las dos, no.
+     */
+    public function test_la_cotizacion_se_baja_con_permiso_y_no_sin_el(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('compras/cotizaciones/abc.pdf', '%PDF-1.4 cotizacion');
+
+        $admin = $this->administrador();
+        $s = $this->solicitud($admin);
+        $s->update(['quote_path' => 'compras/cotizaciones/abc.pdf', 'quote_name' => 'Cotización Tap 2026.pdf']);
+
+        // Sin sesión y sin enlace compartido: no.
+        $this->get(route('compras.cotizacion', $s))->assertRedirect();
+
+        // Con sesión del laboratorio: se baja, con el código de la solicitud en el nombre.
+        $this->entra($admin)
+            ->get(route('compras.cotizacion', $s))
+            ->assertOk()
+            ->assertDownload($s->code . '_cotizacion.pdf');
+
+        $this->entra($admin)
+            ->get(route('compras.requisicion', $s))
+            ->assertOk()
+            ->assertSee('Descargar la cotización')
+            ->assertSee($s->code . '_cotizacion.pdf');
+
+        // Compartida: compras también la baja.
+        $this->compras()->compartir($s);
+        $token = $s->fresh()->share_token;
+
+        auth()->logout();
+        $this->get(route('compras.compartida.cotizacion', $token))->assertOk()->assertDownload($s->code . '_cotizacion.pdf');
+
+        // Con un enlace que no existe, no.
+        $this->get(route('compras.compartida.cotizacion', str_repeat('x', 40)))->assertNotFound();
+    }
+
+    public function test_sin_cotizacion_adjunta_no_hay_nada_que_bajar(): void
+    {
+        $admin = $this->administrador();
+        $s = $this->solicitud($admin);
+
+        $this->entra($admin)->get(route('compras.cotizacion', $s))->assertNotFound();
+    }
 }

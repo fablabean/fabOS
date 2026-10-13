@@ -110,6 +110,23 @@
     @if ($solicitud->budget)
         <tr><td class="k">Presupuesto</td><td class="v">{{ $solicitud->budget->name }} {{ $solicitud->budget->year }}</td></tr>
     @endif
+
+    {{-- A quién se le compra: los datos que compras necesita para tramitarla. --}}
+    @if ($solicitud->tieneProveedor())
+        <tr><td class="k" style="padding-top:.9rem">Proveedor</td><td class="v" style="padding-top:.9rem">{{ $solicitud->supplier_name ?: '—' }}</td></tr>
+        @if ($solicitud->supplier_tax_id)
+            <tr><td class="k">NIT</td><td class="v">{{ $solicitud->supplier_tax_id }}</td></tr>
+        @endif
+        @if ($solicitud->supplier_address)
+            <tr><td class="k">Dirección</td><td class="v">{{ $solicitud->supplier_address }}</td></tr>
+        @endif
+        @if ($solicitud->supplier_contact)
+            <tr><td class="k">Representante</td><td class="v">{{ $solicitud->supplier_contact }}</td></tr>
+        @endif
+    @endif
+    @if ($solicitud->quote_path)
+        <tr><td class="k">Cotización</td><td class="v">Adjunta a esta requisición ({{ $solicitud->nombreDeLaCotizacion() }})</td></tr>
+    @endif
     @if ($solicitud->approvedBy)
         <tr>
             <td class="k">Aprobó</td>
@@ -220,6 +237,9 @@
     <p class="noimprimir" style="margin-top:2rem">
         @if ($enlacePdf)
             <a class="boton principal" href="{{ $enlacePdf }}">Descargar PDF</a>
+        @endif
+        @if ($enlaceCotizacion ?? null)
+            <a class="boton" href="{{ $enlaceCotizacion }}">Descargar la cotización</a>
         @endif
         <button class="boton" onclick="window.print()">Imprimir</button>
     </p>

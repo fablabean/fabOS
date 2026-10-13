@@ -22,7 +22,9 @@ class ArchivoPrivado
     /** Rutas del disco privado que el panel puede enseñar. */
     public const PREFIJOS = ['proyectos/', 'pagos/', 'perfiles/', 'practicas/', 'inscripciones/',
         // Lo que se subió a las producciones antes de que vivieran en proyectos/.
-        'producciones/'];
+        'producciones/',
+        // Las cotizaciones formales de las requisiciones de compra.
+        'compras/'];
 
     public static function previsualizar(FileUpload $campo): FileUpload
     {
