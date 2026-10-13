@@ -39,10 +39,14 @@ class ListPurchaseRequests extends ListRecords
                     \Filament\Forms\Components\TextInput::make('correo')->label('Correo')->email()->required()->maxLength(160),
 
                     // Quién más se entera. Va como copia visible en el mismo correo.
-                    \Filament\Forms\Components\Toggle::make('copiar_al_equipo')
-                        ->label('Copiar a superadmins y administradores')
-                        ->helperText(fn () => 'Hoy son: '
-                            . (\App\Support\ConfiguracionDeCompras::elEquipoQueCoordina()->pluck('name')->implode(', ') ?: 'nadie') . '.'),
+                    // Persona por persona, y no un interruptor de todos o nadie:
+                    // seis copias es un correo que cinco aprenden a ignorar.
+                    \Filament\Forms\Components\CheckboxList::make('copiar_a')
+                        ->label('Con copia a')
+                        ->options(fn () => \App\Support\ConfiguracionDeCompras::opcionesDelEquipo())
+                        ->columns(2)
+                        ->bulkToggleable()
+                        ->helperText('Superadmins y administradores activos. Marca a quien deba recibir copia de cada requisición; si nadie lo ha cambiado, van marcados los superadmins.'),
                     \Filament\Forms\Components\Textarea::make('copias')
                         ->label('Otros correos en copia')
                         ->rows(2)

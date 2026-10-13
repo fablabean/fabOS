@@ -16,26 +16,20 @@ class ConfiguracionDeCompras
     public const POR_DEFECTO = [
         'correo' => 'scpaguay@universidadean.edu.co',
         'nombre' => 'CAROLINA PAGUAY PARDO',
-        // Quien coordina el laboratorio se entera de lo que sale a compras
-        // sin tener que preguntarlo: por defecto, en copia.
-        'copiar_al_equipo' => true,
         'copias' => '',
     ];
 
-    /** @return array{correo:string,nombre:string,copiar_al_equipo:bool,copias:string} */
+    /** @return array{correo:string,nombre:string,copiar_a:list<int>,copias:string} */
     public static function todo(): array
     {
         $guardado = Setting::get('compras.configuracion');
         $guardado = is_array($guardado) ? $guardado : [];
 
         return [
-            'correo' => filled($guardado['correo'] ?? null) ? $guardado['correo'] : self::POR_DEFECTO['correo'],
-            'nombre' => filled($guardado['nombre'] ?? null) ? $guardado['nombre'] : self::POR_DEFECTO['nombre'],
-            // Un «no» guardado es un no: no se confunde con «sin decidir».
-            'copiar_al_equipo' => array_key_exists('copiar_al_equipo', $guardado)
-                ? (bool) $guardado['copiar_al_equipo']
-                : self::POR_DEFECTO['copiar_al_equipo'],
-            'copias' => (string) ($guardado['copias'] ?? ''),
+            'correo'   => filled($guardado['correo'] ?? null) ? $guardado['correo'] : self::POR_DEFECTO['correo'],
+            'nombre'   => filled($guardado['nombre'] ?? null) ? $guardado['nombre'] : self::POR_DEFECTO['nombre'],
+            'copiar_a' => self::aQuienesSeCopia($guardado),
+            'copias'   => (string) ($guardado['copias'] ?? ''),
         ];
     }
 
@@ -50,8 +44,35 @@ class ConfiguracionDeCompras
     }
 
     /**
-     * Los correos que van en copia: superadmins y administradores, si está
-     * encendido, más los que se escribieron a mano.
+     * A quiénes del equipo se copia: los que se marcaron, o —mientras nadie
+     * haya decidido— los superadmins.
+     *
+     * Solo superadmins por defecto, y no también los administradores: una
+     * requisición en copia a seis personas es un correo que cinco aprenden a
+     * ignorar. Quien quiera sumar a alguien lo marca.
+     *
+     * Siempre cruzado con quien hoy coordina y está activo: quien se marcó y
+     * después salió del equipo deja de recibir copia sin que nadie lo quite.
+     *
+     * @param  array<string,mixed>  $guardado
+     * @return list<int>
+     */
+    private static function aQuienesSeCopia(array $guardado): array
+    {
+        $equipo = self::elEquipoQueCoordina()->get(['id']);
+
+        if (array_key_exists('copiar_a', $guardado) && is_array($guardado['copiar_a'])) {
+            $marcados = array_map('intval', $guardado['copiar_a']);
+
+            return $equipo->pluck('id')->filter(fn ($id) => in_array($id, $marcados, true))->values()->all();
+        }
+
+        return $equipo->filter(fn (User $u) => $u->hasRole(User::ROL_SUPERADMIN))->pluck('id')->values()->all();
+    }
+
+    /**
+     * Los correos que van en copia: los del equipo que estén marcados, más los
+     * que se escribieron a mano.
      *
      * Sin repetir, y sin el destinatario principal: mandarle su propia copia
      * a quien ya lo recibe solo ensucia.
@@ -62,9 +83,9 @@ class ConfiguracionDeCompras
     {
         $config = self::todo();
 
-        $delEquipo = $config['copiar_al_equipo']
-            ? self::elEquipoQueCoordina()->whereNotNull('email')->pluck('email')->all()
-            : [];
+        $delEquipo = $config['copiar_a'] === []
+            ? []
+            : User::whereIn('id', $config['copiar_a'])->whereNotNull('email')->orderBy('name')->pluck('email')->all();
 
         return collect($delEquipo)
             ->merge(self::correosDe($config['copias']))
@@ -77,7 +98,8 @@ class ConfiguracionDeCompras
     }
 
     /**
-     * Superadmins y administradores activos, por nombre.
+     * Superadmins y administradores activos, por nombre: entre quienes se
+     * elige a quién copiar.
      *
      * Con `whereHas` y no con el `role()` de Spatie: ese revienta si el rol
      * todavía no existe, y una instalación recién montada no los tiene.
@@ -88,6 +110,20 @@ class ConfiguracionDeCompras
             ->whereHas('roles', fn ($r) => $r->whereIn('name', [User::ROL_SUPERADMIN, User::ROL_ADMINISTRADOR]))
             ->where('status', 'activo')
             ->orderBy('name');
+    }
+
+    /**
+     * Las casillas para elegir: cada persona con su rol al lado.
+     *
+     * @return array<int,string>
+     */
+    public static function opcionesDelEquipo(): array
+    {
+        return self::elEquipoQueCoordina()->with('roles')->get()
+            ->mapWithKeys(fn (User $u) => [
+                $u->id => $u->name . ' · ' . ($u->hasRole(User::ROL_SUPERADMIN) ? 'superadmin' : 'administrador'),
+            ])
+            ->all();
     }
 
     /**
@@ -104,11 +140,24 @@ class ConfiguracionDeCompras
     /** @param array<string,mixed> $datos */
     public static function guardar(array $datos): void
     {
-        Setting::put('compras.configuracion', [
+        $nuevo = [
             'correo' => trim((string) ($datos['correo'] ?? '')),
             'nombre' => trim((string) ($datos['nombre'] ?? '')),
-            'copiar_al_equipo' => (bool) ($datos['copiar_al_equipo'] ?? self::POR_DEFECTO['copiar_al_equipo']),
             'copias' => implode(', ', self::correosDe($datos['copias'] ?? '')),
-        ], 'compras');
+        ];
+
+        // Solo si vino la lista: guardar el nombre y el correo desde otro
+        // sitio no debe borrar a quién se copia.
+        if (array_key_exists('copiar_a', $datos)) {
+            $nuevo['copiar_a'] = array_values(array_map('intval', (array) $datos['copiar_a']));
+        } else {
+            $anterior = Setting::get('compras.configuracion');
+
+            if (is_array($anterior) && array_key_exists('copiar_a', $anterior)) {
+                $nuevo['copiar_a'] = $anterior['copiar_a'];
+            }
+        }
+
+        Setting::put('compras.configuracion', $nuevo, 'compras');
     }
 }

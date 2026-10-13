@@ -389,10 +389,10 @@ class RequisicionCompartidaTest extends TestCase
     // ------------------------------------------------------------ las copias
 
     /**
-     * Por defecto van en copia superadmins y administradores: quien coordina
-     * se entera de lo que sale a compras sin tener que preguntarlo.
+     * Por defecto van en copia los superadmins, y solo ellos: una requisición
+     * en copia a todo el equipo es un correo que casi todos aprenden a ignorar.
      */
-    public function test_por_defecto_se_copia_a_superadmins_y_administradores(): void
+    public function test_por_defecto_se_copia_solo_a_los_superadmins(): void
     {
         \Illuminate\Support\Facades\Mail::fake();
         \Illuminate\Support\Facades\Storage::fake('local');
@@ -401,19 +401,49 @@ class RequisicionCompartidaTest extends TestCase
         $admin = $this->administrador();
         $jefe = User::create(['name' => 'Súper', 'email' => 'super@lab.co', 'status' => 'activo']);
         $jefe->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
-        // Quien no coordina no va en copia, ni quien está inactivo.
+        // Ni los administradores, ni quien no coordina, ni un superadmin inactivo.
         $this->persona();
         $inactivo = User::create(['name' => 'Ex', 'email' => 'ex@lab.co', 'status' => 'inactivo']);
-        $inactivo->assignRole(User::ROL_ADMINISTRADOR);
+        $inactivo->assignRole(User::ROL_SUPERADMIN);
 
         $s = $this->compras()->enviar($this->solicitud($admin), $admin);
 
-        $esperadas = collect([$admin->email, 'super@lab.co'])->map(fn ($c) => mb_strtolower($c))->sort()->values()->all();
-
-        $this->assertSame($esperadas, collect(explode(', ', $s->sent_cc))->sort()->values()->all());
+        $this->assertSame('super@lab.co', $s->sent_cc);
 
         \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('scpaguay@universidadean.edu.co')
-            && $m->hasCc($admin->email) && $m->hasCc('super@lab.co') && ! $m->hasCc('ex@lab.co'));
+            && $m->hasCc('super@lab.co') && ! $m->hasCc($admin->email) && ! $m->hasCc('ex@lab.co'));
+    }
+
+    /** Se marca y se desmarca persona por persona, y quien sale del equipo deja de recibir copia. */
+    public function test_se_elige_a_quien_del_equipo_se_copia(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $jefe = User::create(['name' => 'Súper', 'email' => 'super@lab.co', 'status' => 'activo']);
+        $jefe->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+        $this->entra($admin);
+
+        // La pantalla abre con los superadmins marcados.
+        Livewire::test(ListPurchaseRequests::class)
+            ->mountAction('configuracion')
+            ->assertSchemaStateSet(['copiar_a' => [$jefe->id]])
+            // Se desmarca al superadmin y se marca al administrador.
+            ->setActionData(['copiar_a' => [$admin->id]])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertSame([mb_strtolower($admin->email)], \App\Support\ConfiguracionDeCompras::copias());
+
+        // Cambiar el nombre desde otro sitio no borra a quién se copia.
+        \App\Support\ConfiguracionDeCompras::guardar(['nombre' => 'Otra', 'correo' => 'otra@universidadean.edu.co']);
+        $this->assertSame([mb_strtolower($admin->email)], \App\Support\ConfiguracionDeCompras::copias());
+
+        // Y si deja de estar activo, deja de recibir copia sin que nadie lo quite.
+        $admin->update(['status' => 'inactivo']);
+        $this->assertSame([], \App\Support\ConfiguracionDeCompras::copias());
     }
 
     /** Se pueden sumar otros correos, y apagar la copia al equipo. */
@@ -429,7 +459,7 @@ class RequisicionCompartidaTest extends TestCase
         Livewire::test(ListPurchaseRequests::class)
             ->callAction('configuracion', [
                 'nombre' => 'CAROLINA PAGUAY PARDO', 'correo' => 'scpaguay@universidadean.edu.co',
-                'copiar_al_equipo' => false,
+                'copiar_a' => [],
                 // Como salen al pegarlos: con comas, saltos de línea, mayúsculas y el principal repetido.
                 'copias' => "Planeacion@universidadean.edu.co,\nfinanzas@universidadean.edu.co; scpaguay@universidadean.edu.co",
             ])
