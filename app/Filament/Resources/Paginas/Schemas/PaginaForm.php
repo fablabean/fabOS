@@ -130,6 +130,63 @@ class PaginaForm
     }
 
     /**
+     * Cómo se llama un bloque en la lista: su tipo y lo que lleva dentro.
+     *
+     * Plegados, todos decían solo «Texto», «Una imagen», «Video»: había que
+     * abrirlos uno por uno para dar con «De qué se trata», y quien no lo
+     * hacía creía que esa sección no se podía editar. Sin estado —en el menú
+     * de añadir— queda el nombre del tipo a secas.
+     *
+     * @param  array<string,mixed>|null  $estado
+     */
+    private static function rotuloDe(string $tipo, ?array $estado): string
+    {
+        $nombre = Pagina::BLOQUES[$tipo];
+
+        if ($estado === null) {
+            return $nombre;
+        }
+
+        // El editor guarda el cuerpo como HTML, pero dentro del formulario
+        // lo lleva como un árbol de nodos: se saca el texto de las dos formas.
+        $texto = function ($v) use (&$texto): string {
+            if (is_string($v)) {
+                return trim(html_entity_decode(strip_tags($v)));
+            }
+
+            if (! is_array($v)) {
+                return '';
+            }
+
+            $trozos = [];
+            array_walk_recursive($v, function ($valor, $clave) use (&$trozos) {
+                if ($clave === 'text' && is_string($valor)) {
+                    $trozos[] = $valor;
+                }
+            });
+
+            return trim(implode('', $trozos));
+        };
+        $cuantos = fn (string $clave, string $uno, string $varios) => ($n = count((array) ($estado[$clave] ?? []))) > 0
+            ? $n . ' ' . ($n === 1 ? $uno : $varios)
+            : '';
+
+        $dentro = $texto($estado['titulo'] ?? null)
+            ?: $texto($estado['pie'] ?? null)
+            ?: $texto($estado['cuerpo'] ?? null)
+            ?: match ($tipo) {
+                'galeria' => $cuantos('imagenes', 'imagen', 'imágenes'),
+                'cifras'  => $cuantos('cifras', 'cifra', 'cifras'),
+                'datos'   => $cuantos('filas', 'dato', 'datos'),
+                'hitos'   => $cuantos('hitos', 'hito', 'hitos'),
+                'botones' => collect((array) ($estado['botones'] ?? []))->pluck('texto')->filter()->implode(', '),
+                default   => '',
+            };
+
+        return $dentro !== '' ? $nombre . ' · ' . Str::limit($dentro, 60) : $nombre;
+    }
+
+    /**
      * Los bloques disponibles.
      *
      * @return list<Block>
@@ -138,7 +195,7 @@ class PaginaForm
     {
         return [
             Block::make('texto')
-                ->label(Pagina::BLOQUES['texto'])
+                ->label(fn (?array $state): string => self::rotuloDe('texto', $state))
                 ->icon('heroicon-o-bars-3-bottom-left')
                 ->schema([
                     TextInput::make('titulo')
@@ -162,7 +219,7 @@ class PaginaForm
                 ]),
 
             Block::make('imagen')
-                ->label(Pagina::BLOQUES['imagen'])
+                ->label(fn (?array $state): string => self::rotuloDe('imagen', $state))
                 ->icon('heroicon-o-photo')
                 ->columns(2)
                 ->schema([
@@ -183,7 +240,7 @@ class PaginaForm
                 ]),
 
             Block::make('galeria')
-                ->label(Pagina::BLOQUES['galeria'])
+                ->label(fn (?array $state): string => self::rotuloDe('galeria', $state))
                 ->icon('heroicon-o-squares-2x2')
                 ->schema([
                     Repeater::make('imagenes')
@@ -214,7 +271,7 @@ class PaginaForm
                 ]),
 
             Block::make('video')
-                ->label(Pagina::BLOQUES['video'])
+                ->label(fn (?array $state): string => self::rotuloDe('video', $state))
                 ->icon('heroicon-o-play')
                 ->columns(2)
                 ->schema([
@@ -256,7 +313,7 @@ class PaginaForm
                 ]),
 
             Block::make('cifras')
-                ->label(Pagina::BLOQUES['cifras'])
+                ->label(fn (?array $state): string => self::rotuloDe('cifras', $state))
                 ->icon('heroicon-o-hashtag')
                 ->schema([
                     Repeater::make('cifras')
@@ -280,7 +337,7 @@ class PaginaForm
                 ]),
 
             Block::make('datos')
-                ->label(Pagina::BLOQUES['datos'])
+                ->label(fn (?array $state): string => self::rotuloDe('datos', $state))
                 ->icon('heroicon-o-table-cells')
                 ->schema([
                     TextInput::make('titulo')
@@ -308,7 +365,7 @@ class PaginaForm
                 ]),
 
             Block::make('hitos')
-                ->label(Pagina::BLOQUES['hitos'])
+                ->label(fn (?array $state): string => self::rotuloDe('hitos', $state))
                 ->icon('heroicon-o-flag')
                 ->schema([
                     TextInput::make('titulo')
@@ -344,7 +401,7 @@ class PaginaForm
                 ]),
 
             Block::make('botones')
-                ->label(Pagina::BLOQUES['botones'])
+                ->label(fn (?array $state): string => self::rotuloDe('botones', $state))
                 ->icon('heroicon-o-cursor-arrow-rays')
                 ->schema([
                     Repeater::make('botones')
@@ -374,7 +431,7 @@ class PaginaForm
             // El mini registro que enciende un dispositivo IoT: quien no tiene
             // cuenta se registra y juega; quien la tiene, activa su turno.
             Block::make('dispositivo')
-                ->label(Pagina::BLOQUES['dispositivo'])
+                ->label(fn (?array $state): string => self::rotuloDe('dispositivo', $state))
                 ->icon('heroicon-o-bolt')
                 ->schema([
                     \Filament\Forms\Components\Select::make('dispositivo_id')

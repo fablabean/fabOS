@@ -383,4 +383,32 @@ class PaginasDelSitioTest extends TestCase
             TextoRico::limpiar('<p>Señalética con braille</p>'),
         );
     }
+
+    /**
+     * En la lista de bloques, cada uno dice lo que lleva dentro.
+     *
+     * Plegados decían solo «Texto», «Una imagen», «Video»: había que abrirlos
+     * uno por uno para dar con una sección, y parecía que no se podía editar.
+     */
+    public function test_cada_bloque_dice_lo_que_lleva_dentro(): void
+    {
+        $this->entra($this->admin());
+
+        $pagina = $this->pagina(['bloques' => [
+            ['type' => 'texto', 'data' => ['titulo' => 'De qué se trata', 'cuerpo' => '<p>Un intercambio.</p>']],
+            ['type' => 'texto', 'data' => ['titulo' => null, 'cuerpo' => '<p>Sin título, pero con <strong>texto</strong>.</p>']],
+            ['type' => 'datos', 'data' => ['titulo' => 'El proyecto', 'filas' => [['clave' => 'Lab', 'valor' => 'EAN']]]],
+            ['type' => 'imagen', 'data' => ['imagen' => 'paginas/x.webp', 'pie' => 'Proceso', 'ancho' => 'normal']],
+            ['type' => 'video', 'data' => ['video' => 'paginas/x.mp4', 'poster' => null, 'pie' => null]],
+        ]]);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Paginas\Pages\EditPagina::class, ['record' => $pagina->getRouteKey()])
+            ->assertOk()
+            ->assertSee('Texto · De qué se trata')
+            ->assertSee('Texto · Sin título, pero con texto.')
+            ->assertSee('Ficha de datos · El proyecto')
+            ->assertSee('Una imagen · Proceso')
+            // Sin nada que decir, el nombre del tipo a secas.
+            ->assertDontSee('Video ·');
+    }
 }
