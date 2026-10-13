@@ -22,8 +22,41 @@ class PurchaseRequest extends Model
         'tax_rate', 'cart_url', 'share_token', 'shared_at',
         'currency', 'exchange_rate',
         'supplier_name', 'supplier_tax_id', 'supplier_address', 'supplier_contact',
-        'quote_path', 'quote_name',
+        'quote_path', 'quote_name', 'supplier_id',
     ];
+
+    /**
+     * El proveedor de la solicitud queda en la lista de proveedores.
+     *
+     * Escrito a mano o elegido de la lista, da igual: al guardar se enlaza al
+     * que ya había —por NIT, o por nombre— o se anota uno nuevo. Así la lista
+     * se llena sola y la próxima vez se elige en vez de teclearlo. La
+     * solicitud conserva su copia de los datos, que es lo que se imprime.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $s) {
+            $cambio = $s->isDirty(['supplier_name', 'supplier_tax_id', 'supplier_address', 'supplier_contact']);
+
+            if (! $cambio && ($s->exists || ! $s->tieneProveedor())) {
+                return;
+            }
+
+            $s->supplier_id = $s->tieneProveedor()
+                ? Supplier::anotar([
+                    'name'    => $s->supplier_name,
+                    'tax_id'  => $s->supplier_tax_id,
+                    'address' => $s->supplier_address,
+                    'contact' => $s->supplier_contact,
+                ])?->id
+                : null;
+        });
+    }
+
+    public function supplier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
     /** Si se anotó a quién se le compra. */
     public function tieneProveedor(): bool

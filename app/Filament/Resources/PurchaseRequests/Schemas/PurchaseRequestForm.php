@@ -128,6 +128,38 @@ class PurchaseRequestForm
                     ->description('A quién se le compra y con qué cotización. Sale en la requisición que se le entrega a compras.')
                     ->columns(2)
                     ->schema([
+                        /*
+                         * De la lista, para no teclearlo otra vez. Elegirlo
+                         * rellena los datos de abajo, que son los que se
+                         * imprimen y se pueden ajustar para esta compra. No se
+                         * guarda: lo que cuenta es lo que queda escrito, y con
+                         * eso la solicitud se enlaza sola a su proveedor.
+                         */
+                        Select::make('proveedor_de_la_lista')
+                            ->label('Proveedor de la lista')
+                            ->placeholder('Buscar por empresa o NIT…')
+                            ->options(fn () => \App\Models\Supplier::orderBy('name')->get()
+                                ->mapWithKeys(fn ($p) => [$p->id => $p->name . ($p->tax_id ? ' · ' . $p->tax_id : '')])
+                                ->all())
+                            ->searchable()
+                            ->live()
+                            ->dehydrated(false)
+                            ->columnSpanFull()
+                            ->afterStateHydrated(fn ($component, ?PurchaseRequest $record) => $component->state($record?->supplier_id))
+                            ->afterStateUpdated(function ($state, $set) {
+                                $p = $state ? \App\Models\Supplier::find($state) : null;
+
+                                if (! $p) {
+                                    return;
+                                }
+
+                                $set('supplier_name', $p->name);
+                                $set('supplier_tax_id', $p->tax_id);
+                                $set('supplier_address', $p->address);
+                                $set('supplier_contact', $p->contact);
+                            })
+                            ->helperText('Elige uno y se llenan sus datos. Si es nuevo, escríbelo abajo: al guardar queda en Compras → Proveedores.'),
+
                         TextInput::make('supplier_name')
                             ->label('Empresa')
                             ->maxLength(180)
