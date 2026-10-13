@@ -200,7 +200,9 @@ class ArchivosDeProyectoTest extends TestCase
 
         $this->assertNotNull($foto, 'la foto queda pegada a la respuesta');
         $this->assertSame('foto', $foto->kind);
-        $this->assertSame('avance.jpg', $foto->original_name);
+        // Con el proyecto delante, y el nombre con que llegó al final.
+        $this->assertStringStartsWith($p->code . '_', $foto->original_name);
+        $this->assertStringEndsWith('_avance.jpg', $foto->original_name);
         $this->assertSame($p->id, $foto->evidenciable_id, 'y es soporte del proyecto');
         $this->assertSame($jefa->id, $foto->uploaded_by);
         $this->assertTrue(Storage::disk('local')->exists($foto->file_path));
@@ -212,7 +214,7 @@ class ArchivosDeProyectoTest extends TestCase
             ->assertOk()
             ->assertSee('Así va la pieza.')
             ->assertSee('/proyectos/evidencia/' . $foto->id, false)
-            ->assertSee('alt="avance.jpg"', false)
+            ->assertSee('alt="' . $foto->original_name . '"', false)
             // Y no repetida en la lista de lo que adjuntó al pedirlo: no la adjuntó él.
             ->assertDontSee('<h2 style="margin-top:0">Lo que adjuntaste</h2>', false);
     }
@@ -295,7 +297,9 @@ class ArchivosDeProyectoTest extends TestCase
 
         $e->refresh();
         $this->assertSame('proyectos/soportes/modelo.bin', $e->file_path);
-        $this->assertSame('soporte.3mf', $e->original_name);
+        // El mismo nombre que tenía antes de guardar: ni se pierde ni se
+        // le vuelve a poner el prefijo.
+        $this->assertSame($p->code . '_' . now(config('fabos.lab.timezone'))->format('Ymd') . '_01_soporte.3mf', $e->original_name);
     }
 
     // ------------------------------------ editar lo dicho y saber si se vio

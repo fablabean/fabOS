@@ -229,7 +229,7 @@ class SolicitudDeProyectoTest extends TestCase
 
         $this->assertNotNull($foto);
         $this->assertNotNull($documento);
-        $this->assertSame('plano.pdf', $documento->original_name);
+        $this->assertStringEndsWith('_plano.pdf', $documento->original_name);
 
         // Disco privado: nada de lo que suba un desconocido queda en una URL
         // adivinable.
@@ -261,7 +261,9 @@ class SolicitudDeProyectoTest extends TestCase
 
         $this->assertEqualsCanonicalizing(
             ['pieza.stl', 'corte.dxf', 'ensamble.step'],
-            Project::first()->evidence->pluck('original_name')->all(),
+            // Sin el prefijo del proyecto, la fecha y el consecutivo.
+            Project::first()->evidence->pluck('original_name')
+                ->map(fn ($n) => preg_replace(\App\Models\Evidencia::PREFIJO, '', $n))->all(),
         );
     }
 
@@ -324,7 +326,7 @@ class SolicitudDeProyectoTest extends TestCase
         ]))->assertRedirect(route('proyectos.recibida'));
 
         $p = Project::first();
-        $this->assertTrue($p->evidence->pluck('original_name')->contains('plano.pdf'));
+        $this->assertTrue($p->evidence->pluck('original_name')->contains(fn ($n) => str_ends_with($n, '_plano.pdf')));
         $this->assertCount(2, $p->evidence, 'el plano y el dibujo');
         $this->assertNull(session('soportes_pendientes'));
         Storage::disk('local')->assertMissing($pendientes[0]['ruta']);

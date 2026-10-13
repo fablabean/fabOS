@@ -104,7 +104,7 @@ class AvisoDeNovedadesTest extends TestCase
         $servicio->avisarNovedades($p, $jefa, 'Mira la foto.');
 
         Mail::assertSent(\App\Mail\PlantillaMail::class, fn (\App\Mail\PlantillaMail $m) => count($m->adjuntos) === 1
-            && $m->adjuntos[0]['nombre'] === 'avance.jpg');
+            && str_ends_with($m->adjuntos[0]['nombre'], '_avance.jpg'));
 
         // El siguiente aviso no la repite.
         $this->assertSame([], $servicio->adjuntosDelAviso($p));
