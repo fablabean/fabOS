@@ -170,4 +170,29 @@ class EditorDelBannerTest extends TestCase
 
         $this->entra($suelto)->get('/admin/banners')->assertForbidden();
     }
+
+    /**
+     * El interruptor de la fila: apagar una lámina es un clic, no entrar a
+     * editarla. Y encenderla de nuevo la devuelve a la portada.
+     */
+    public function test_una_lamina_se_apaga_y_se_enciende_desde_la_lista(): void
+    {
+        $this->entra($this->admin());
+
+        Banner::query()->delete();
+        $una = Banner::create(['titulo' => 'La de la feria', 'position' => 0, 'is_active' => true]);
+        Banner::create(['titulo' => 'La de siempre', 'position' => 1, 'is_active' => true]);
+
+        Livewire::test(ListBanners::class)
+            ->call('updateTableColumnState', 'is_active', (string) $una->getKey(), false);
+
+        $this->assertFalse($una->fresh()->is_active);
+        $this->assertSame(['La de siempre'], Banner::paraLaPortada()->pluck('titulo')->all());
+
+        Livewire::test(ListBanners::class)
+            ->call('updateTableColumnState', 'is_active', (string) $una->getKey(), true);
+
+        $this->assertTrue($una->fresh()->is_active);
+        $this->assertSame(['La de la feria', 'La de siempre'], Banner::paraLaPortada()->pluck('titulo')->all());
+    }
 }

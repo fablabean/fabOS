@@ -63,11 +63,21 @@ class BannersTable
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 /*
+                 * El interruptor, en la fila: apagar una lamina que ya no
+                 * toca era entrar a editarla, bajar hasta el final y guardar.
+                 * Solo quien puede editarla lo mueve.
+                 */
+                \Filament\Tables\Columns\ToggleColumn::make('is_active')
+                    ->label('Encendida')
+                    ->tooltip('Apagada no sale en la portada. No se pierde nada: se vuelve a encender aquí.')
+                    ->disabled(fn (Banner $b) => ! auth()->user()->can('update', $b)),
+
+                /*
                  * Encendida no es lo mismo que visible: una lamina encendida
                  * cuya fecha ya paso no sale en la portada. Enseñar solo el
                  * interruptor haria buscar durante un rato por que no se ve.
                  */
-                IconColumn::make('is_active')
+                IconColumn::make('se_ve')
                     ->label('Se ve ahora')
                     ->boolean()
                     ->state(fn (Banner $b) => $b->is_active
