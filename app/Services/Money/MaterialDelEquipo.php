@@ -16,8 +16,10 @@ use App\Models\RiskFamily;
  * de verdad y se ajusta la diferencia.
  *
  * Es una tarifa «por unidad» puesta sobre el equipo, su familia de riesgo o su
- * área. **Sin tarifa base**: una tarifa por unidad sin destino no convierte a
- * todos los equipos del laboratorio en máquinas que gastan gramos.
+ * área, **y marcada para pedirse al reservar**. Que exista no basta: el área
+ * de láser tiene tres precios de MDF por cm² que sirven para cotizar, y nadie
+ * quiere que por eso toda la sala le pregunte «cuánto material» a quien
+ * reserva, con el precio de un grosor cualquiera.
  */
 class MaterialDelEquipo
 {
@@ -38,6 +40,8 @@ class MaterialDelEquipo
                 ->where('rateable_type', $tipo)
                 ->where('rateable_id', $id)
                 ->where('basis', 'unidad')
+                ->where('ask_on_booking', true)
+                ->orderBy('id')
                 ->first();
 
             if ($tarifa) {

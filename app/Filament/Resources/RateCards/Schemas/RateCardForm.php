@@ -76,9 +76,15 @@ class RateCardForm
                             ->required()
                             ->suffix(fn (callable $get) => $get('unit') ?: 'unidades')
                             ->visible(fn (callable $get) => $get('basis') === 'unidad')
-                            ->helperText('El precio «Por unidad» de abajo es por esta cantidad: 60 si son 8 FabCoins por cada 60 g. '
-                                . 'Puesta sobre un equipo, una familia o un área, la cantidad se le pide a quien reserva y se confirma al cerrar; '
-                                . 'el total se redondea al FabCoin siguiente.'),
+                            ->helperText('El precio «Por unidad» de abajo es por esta cantidad: 60 si son 8 FabCoins por cada 60 g.'),
+
+                        Toggle::make('ask_on_booking')
+                            ->label('Pedir la cantidad al reservar')
+                            ->visible(fn (callable $get) => $get('basis') === 'unidad')
+                            ->columnSpanFull()
+                            ->helperText('Quien reserve un equipo al que aplique esta tarifa tiene que decir cuánto va a gastar: se le retiene '
+                                . 'eso —redondeado al FabCoin siguiente— en vez de la garantía, y al cerrar confirma lo que gastó de verdad. '
+                                . 'Apagada, la tarifa es solo un precio para cotizar. Una sola por equipo, familia o área.'),
 
                         MorphToSelect::make('rateable')
                             ->label('Se aplica a')

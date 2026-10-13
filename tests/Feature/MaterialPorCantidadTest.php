@@ -83,7 +83,7 @@ class MaterialPorCantidadTest extends TestCase
         if ($conMaterial) {
             RateCard::create([
                 'slug' => 'm-' . uniqid(), 'name' => 'Filamento', 'rateable_type' => RiskFamily::class, 'rateable_id' => $rf->id,
-                'basis' => 'unidad', 'unit' => 'g', 'unit_quantity' => 60, 'price_minor' => 800,
+                'basis' => 'unidad', 'unit' => 'g', 'unit_quantity' => 60, 'price_minor' => 800, 'ask_on_booking' => true,
             ]);
         }
 
@@ -108,11 +108,26 @@ class MaterialPorCantidadTest extends TestCase
         }
     }
 
-    public function test_una_tarifa_por_unidad_sin_destino_no_vuelve_a_todo_el_laboratorio_de_gramos(): void
+    public function test_una_tarifa_por_unidad_solo_se_pide_al_reservar_si_asi_se_marco(): void
     {
-        RateCard::create(['slug' => 'suelta', 'name' => 'Suelta', 'basis' => 'unidad', 'unit' => 'g', 'price_minor' => 100]);
+        $equipo = $this->impresora(conMaterial: false);
 
-        $this->assertNull(MaterialDelEquipo::tarifa($this->impresora(conMaterial: false)));
+        // Sin destino, aunque esté marcada: no vuelve a todo el laboratorio de gramos.
+        RateCard::create(['slug' => 'suelta', 'name' => 'Suelta', 'basis' => 'unidad', 'unit' => 'g', 'price_minor' => 100, 'ask_on_booking' => true]);
+
+        // Y un precio de material sobre el área —el MDF por cm² de la sala de
+        // láser— es para cotizar: no se le pregunta a quien reserva.
+        RateCard::create([
+            'slug' => 'mdf', 'name' => 'MDF 5.5 (cm2)', 'rateable_type' => Area::class, 'rateable_id' => $equipo->area_id,
+            'basis' => 'unidad', 'unit' => 'cm2', 'price_minor' => 0.4,
+        ]);
+
+        $this->assertNull(MaterialDelEquipo::tarifa($equipo));
+
+        $u = $this->persona($equipo->riskFamily);
+        $this->assertSame(500, app(QuoteService::class)->cotizar($u, $equipo, 60)->depositoMenor, 'la garantía sigue donde estaba');
+
+        $this->actingAs($u)->get(route('reservas.show', $equipo))->assertOk()->assertDontSee('Material que vas a usar');
     }
 
     public function test_donde_hay_material_se_retiene_lo_que_cuesta_y_no_una_garantia(): void
