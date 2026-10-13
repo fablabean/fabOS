@@ -188,4 +188,79 @@ class PausaEsperandoRespuestaTest extends TestCase
             ->assertSee('pide un proyecto nuevo')
             ->assertSee('acércate al laboratorio');
     }
+
+    // ------------------------------- de activo a pausa, cuando no contesta
+
+    /**
+     * Activo, se le escribió y no contestó en una semana: pasa solo a pausa
+     * esperando respuesta, y desde ahí corre el plazo de siempre.
+     */
+    public function test_activo_sin_respuesta_pasa_a_pausa_y_empieza_el_ciclo(): void
+    {
+        $p = $this->proyecto();
+        $this->servicio()->comentar($p, '¿De qué tamaño lo necesitas?', $this->jefa());
+
+        $this->travel(6)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+        $this->assertSame('activo', $p->fresh()->status, 'a los seis días todavía no');
+
+        $this->travel(1)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+
+        $p->refresh();
+        $this->assertSame('pausado', $p->status);
+        $this->assertTrue($p->awaits_client);
+        $this->assertNotNull($p->venceLaPausaEl());
+        $this->assertNull($p->pause_reminded_at, 'el recordatorio no sale el mismo día que la pausa');
+
+        // Y el ciclo: recordatorio a los cinco días de la pausa, cierre a los siete.
+        $this->travel(5)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+        $this->assertNotNull($p->fresh()->pause_reminded_at);
+        $this->assertSame('pausado', $p->fresh()->status);
+
+        $this->travel(2)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+        $this->assertSame('cerrado', $p->fresh()->status);
+    }
+
+    /** Si lo último lo dijo quien lo pidió, la respuesta la debemos nosotros: no se pausa. */
+    public function test_si_la_respuesta_la_debe_el_laboratorio_no_se_pausa(): void
+    {
+        $p = $this->proyecto();
+        $this->servicio()->comentar($p, '¿De qué tamaño lo necesitas?', $this->jefa());
+        $this->servicio()->comentar($p, 'De 15 centímetros.', $this->cliente($p));
+
+        $this->travel(20)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+
+        $this->assertSame('activo', $p->fresh()->status);
+    }
+
+    /** Un proyecto recién pedido al que nadie le ha escrito tampoco: el silencio es nuestro. */
+    public function test_un_proyecto_sin_tocar_no_se_pausa(): void
+    {
+        $p = $this->proyecto();
+
+        $this->travel(20)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+
+        $this->assertSame('activo', $p->fresh()->status);
+    }
+
+    /**
+     * En ejecución el laboratorio escribe para informar, no para preguntar:
+     * pausar y cerrar por eso un proyecto que se está fabricando sería romperlo.
+     */
+    public function test_lo_que_esta_en_ejecucion_no_se_pausa_solo(): void
+    {
+        $p = $this->proyecto();
+        $p->update(['stage' => 'ejecucion']);
+        $this->servicio()->comentar($p, 'Ya está impreso, falta el acabado.', $this->jefa());
+
+        $this->travel(30)->days();
+        $this->artisan('fabos:pausas-sin-respuesta');
+
+        $this->assertSame('activo', $p->fresh()->status);
+    }
 }

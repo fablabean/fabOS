@@ -932,6 +932,25 @@ class Project extends Model
         return $this->paused_at->copy()->addDays((int) config('fabos.proyectos.dias_sin_respuesta'));
     }
 
+    /**
+     * Desde cuándo espera este proyecto una respuesta de quien lo pidió.
+     *
+     * El espejo de `esperaRespuestaDesde()`: activo, todavía sin acuerdo, y lo
+     * último de la conversación lo dijo el laboratorio. Nulo si no aplica: si
+     * nadie le ha escrito todavía, quien debe una respuesta somos nosotros.
+     */
+    public function esperaAlClienteDesde(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->status !== 'activo' || $this->estaCerrado() || $this->is_internal
+            || ! in_array($this->stage, (array) config('fabos.proyectos.etapas_que_esperan'), true)) {
+            return null;
+        }
+
+        $ultimo = $this->comments()->reorder()->latest('id')->first(['id', 'side', 'created_at']);
+
+        return $ultimo && $ultimo->side !== 'cliente' ? $ultimo->created_at : null;
+    }
+
     /** Estados que sacan a un proyecto de la mesa de quien lo lleva. */
     public const ESTADOS_CERRADOS = ['cerrado', 'perdido', 'descartado'];
 

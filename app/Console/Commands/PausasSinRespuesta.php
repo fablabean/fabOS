@@ -15,6 +15,10 @@ use Illuminate\Console\Command;
  *
  * Solo las marcadas como «espera respuesta»: una pausa por algo del
  * laboratorio —una pieza que no llega, una firma— no tiene plazo.
+ *
+ * Y antes de eso, el paso que las crea solas: un proyecto activo, en idea o
+ * propuesta, al que se le escribió y lleva una semana sin contestar pasa a
+ * pausa esperando respuesta.
  */
 class PausasSinRespuesta extends Command
 {
@@ -27,6 +31,29 @@ class PausasSinRespuesta extends Command
         $avisoPrevio = max(0, (int) config('fabos.proyectos.dias_de_aviso_previo'));
         $recordados = 0;
         $cerrados = 0;
+        $pausados = 0;
+
+        /*
+         * Primero, lo activo que lleva días sin contestar: pasa a pausa
+         * esperando respuesta. No se le recuerda ni se cierra en esta misma
+         * vuelta —acaba de empezar su plazo—, de eso se encarga lo de abajo
+         * los días siguientes.
+         */
+        $limite = now()->subDays(max(1, (int) config('fabos.proyectos.dias_para_pausar')));
+
+        Project::query()
+            ->where('status', 'activo')
+            ->whereIn('stage', (array) config('fabos.proyectos.etapas_que_esperan'))
+            ->get()
+            ->each(function (Project $proyecto) use ($proyectos, $limite, &$pausados) {
+                $desde = $proyecto->esperaAlClienteDesde();
+
+                // Sin a quién escribirle no hay a quién esperar.
+                if ($desde && $desde->lessThanOrEqualTo($limite) && filled($proyecto->correoDeLaPropuesta())) {
+                    $proyectos->pausarPorSilencio($proyecto);
+                    $pausados++;
+                }
+            });
 
         Project::query()
             ->where('status', 'pausado')
@@ -54,7 +81,7 @@ class PausasSinRespuesta extends Command
                 }
             });
 
-        $this->info("Recordados: {$recordados}. Cerrados por falta de respuesta: {$cerrados}.");
+        $this->info("Pasados a pausa: {$pausados}. Recordados: {$recordados}. Cerrados por falta de respuesta: {$cerrados}.");
 
         return self::SUCCESS;
     }

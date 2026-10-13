@@ -301,6 +301,19 @@ return [
          * pieza, una firma— no tienen plazo.
          */
         'dias_sin_respuesta' => (int) env('PROYECTO_DIAS_SIN_RESPUESTA', 7),
+
+        /*
+         * Y el paso anterior: un proyecto ACTIVO al que se le escribió y que
+         * lleva estos días sin que quien lo pidió conteste pasa solo a pausa
+         * esperando respuesta, y ahí empieza el plazo de arriba.
+         *
+         * Solo antes de que haya acuerdo. En contrato, brief o ejecución el
+         * laboratorio escribe muchas veces para informar —«ya está impreso»—
+         * sin esperar nada: pausar y cerrar por eso un proyecto que se está
+         * fabricando sería romperlo.
+         */
+        'dias_para_pausar' => (int) env('PROYECTO_DIAS_PARA_PAUSAR', 7),
+        'etapas_que_esperan' => ['idea', 'propuesta'],
         'dias_de_aviso_previo' => (int) env('PROYECTO_DIAS_DE_AVISO_PREVIO', 2),
 
         // El formulario de pedido con que arranca el traslado presupuestal.

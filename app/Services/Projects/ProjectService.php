@@ -1378,6 +1378,23 @@ class ProjectService
         return $proyecto;
     }
 
+    /**
+     * Pasa a pausa un proyecto activo al que se le escribió y no contestó.
+     *
+     * Es la pausa de siempre, marcada como «espera respuesta»: desde aquí
+     * corre el mismo plazo, con su recordatorio y su cierre.
+     */
+    public function pausarPorSilencio(Project $proyecto): Project
+    {
+        $dias = (int) config('fabos.proyectos.dias_para_pausar');
+
+        return $this->pausar(
+            $proyecto,
+            'No hemos recibido respuesta a nuestro último mensaje desde hace ' . $dias . ' días.',
+            esperaAlCliente: true,
+        );
+    }
+
     /** Y volver: se limpia el motivo, que ya no describe donde esta. */
     public function reanudar(Project $proyecto): Project
     {
