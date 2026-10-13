@@ -26,6 +26,10 @@ class PurchaseRequestForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            // Un bloque debajo de otro, a todo el ancho. Repartidos en dos
+            // columnas, la lista de lo que se pide —siete campos por fila—
+            // quedaba apretada en media pantalla.
+            ->columns(1)
             ->components([
                 Section::make('Para qué es')
                     ->columns(2)
