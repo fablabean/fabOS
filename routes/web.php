@@ -563,6 +563,27 @@ Route::middleware('auth')->group(function () {
         ->name('compras.requisicion.pdf');
     Route::get('/compras/{purchaseRequest}/cotizacion', [PurchaseRequestController::class, 'cotizacion'])
         ->name('compras.cotizacion');
+
+    // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
+    Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');
+    Route::get('/actas/{acta}/formato.pdf', [\App\Http\Controllers\ActaController::class, 'pdf'])->name('actas.pdf');
+});
+
+/*
+ * Firmar un acta de movimiento de activos (§8).
+ *
+ * Sin sesión: el enlace le llega por correo a quien entrega y a quien recibe.
+ * Es largo, aleatorio y de un solo uso práctico: abre esa acta y deja firmarla
+ * una vez. Quien recibe un equipo no debería tener que entrar al sistema para
+ * firmar que lo recibió.
+ */
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/actas/firmar/{token}', [\App\Http\Controllers\ActaController::class, 'firmar'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('actas.firmar');
+    Route::post('/actas/firmar/{token}', [\App\Http\Controllers\ActaController::class, 'guardarFirma'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('actas.firmar.guardar');
 });
 
 /*
