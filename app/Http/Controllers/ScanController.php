@@ -47,6 +47,7 @@ class ScanController extends Controller
             'reserva'   => $this->asistencia->reservaEnCurso($user, $activo),
             'veredicto' => $this->eligibility->evaluar($user, $activo),
             'ordenes'   => $this->mantenimiento->abiertasDe($activo),
+            'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($activo),
         ]);
     }
 
@@ -117,10 +118,43 @@ class ScanController extends Controller
             $reservation->update(['material_note' => mb_substr($nota, 0, 500)]);
         }
 
+        /*
+         * El material tarifado sí se pide: es lo que se cobra.
+         *
+         * Al reservar se dijo lo que daba el laminador; aquí se confirma lo
+         * que se gastó de verdad, y la diferencia vuelve al saldo o se cobra.
+         */
+        $equipo = $reservation->reservable_type === Asset::class ? Asset::find($reservation->reservable_id) : null;
+        $tarifaMaterial = $equipo ? \App\Services\Money\MaterialDelEquipo::tarifa($equipo) : null;
+        $gastado = null;
+
+        if ($tarifaMaterial) {
+            $unidad = $tarifaMaterial->unit ?: 'unidades';
+
+            $gastado = (float) $request->validate([
+                'material_used' => ['required', 'numeric', 'min:0', 'max:100000'],
+            ], [
+                'material_used.required' => 'Dinos cuánto material gastaste (' . $unidad . '). Si no gastaste, escribe 0.',
+                'material_used.numeric'  => 'La cantidad de material va en números (' . $unidad . ').',
+            ])['material_used'];
+        }
+
         try {
-            $this->asistencia->checkOut($reservation);
+            // Todo o nada: si no alcanza para lo que se gastó de más, el
+            // equipo no queda cerrado a medias ni el material anotado sin cobrar.
+            \Illuminate\Support\Facades\DB::transaction(function () use ($reservation, $gastado) {
+                if ($gastado !== null) {
+                    $reservation->update(['material_used' => round($gastado, 2)]);
+                }
+
+                $this->asistencia->checkOut($reservation);
+            });
         } catch (BookingException $e) {
-            return back()->withErrors(['reserva' => $e->getMessage()]);
+            return back()->withErrors(['reserva' => $e->getMessage()])->withInput();
+        } catch (\App\Services\Ledger\LedgerException $e) {
+            return back()->withErrors(['reserva' => $e->getMessage()
+                . ' Gastaste más de lo que se había retenido: recarga la diferencia con el equipo del laboratorio y vuelve a cerrar.',
+            ])->withInput();
         }
 
         $reservation->refresh();

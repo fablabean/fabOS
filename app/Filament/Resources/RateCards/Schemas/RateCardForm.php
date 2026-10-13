@@ -62,6 +62,24 @@ class RateCardForm
                             ->placeholder('hora, g, ml, hoja, m')
                             ->helperText('Cómo se mide lo que se cobra.'),
 
+                        /*
+                         * «8 FabCoins por cada 60 g» se escribe así. Obligar a
+                         * dividir —0,1333 por gramo— es pedir el error, y
+                         * además 0,1333 × 60 no da 8.
+                         */
+                        TextInput::make('unit_quantity')
+                            ->label('Por cada')
+                            ->numeric()
+                            ->step('any')
+                            ->minValue(0.0001)
+                            ->default(1)
+                            ->required()
+                            ->suffix(fn (callable $get) => $get('unit') ?: 'unidades')
+                            ->visible(fn (callable $get) => $get('basis') === 'unidad')
+                            ->helperText('El precio «Por unidad» de abajo es por esta cantidad: 60 si son 8 FabCoins por cada 60 g. '
+                                . 'Puesta sobre un equipo, una familia o un área, la cantidad se le pide a quien reserva y se confirma al cerrar; '
+                                . 'el total se redondea al FabCoin siguiente.'),
+
                         MorphToSelect::make('rateable')
                             ->label('Se aplica a')
                             ->types([
@@ -119,7 +137,12 @@ class RateCardForm
                             }),
 
                         self::dinero('price_minor')
-                            ->label(fn (callable $get) => $get('basis') === 'tiempo' ? 'Por hora' : 'Por unidad')
+                            ->label(fn (callable $get) => match (true) {
+                                $get('basis') === 'tiempo' => 'Por hora',
+                                (float) $get('unit_quantity') > 0 && (float) $get('unit_quantity') != 1.0
+                                    => 'Por cada ' . rtrim(rtrim(number_format((float) $get('unit_quantity'), 4, ',', '.'), '0'), ',') . ' ' . ($get('unit') ?: 'unidades'),
+                                default => 'Por unidad',
+                            })
                             ->required(),
 
                         self::dinero('setup_minor')

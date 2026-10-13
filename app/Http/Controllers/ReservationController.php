@@ -53,6 +53,7 @@ class ReservationController extends Controller
                 $user, $asset, $referencia, $veredicto->requierePresencia()
             ),
             'minutosCotizados' => $referencia,
+            'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($asset),
             'saldo' => $this->libro->saldoDe($user),
             'miEspera' => WaitlistEntry::where('asset_id', $asset->id)
                 ->where('user_id', $user->id)
@@ -113,6 +114,23 @@ class ReservationController extends Controller
             'proposito' => ['nullable', 'string', 'max:500'],
         ]);
 
+        // Donde el material está tarifado, se dice cuánto antes de reservar:
+        // de ahí sale lo que se retiene.
+        $tarifaMaterial = \App\Services\Money\MaterialDelEquipo::tarifa($asset);
+
+        if ($tarifaMaterial) {
+            $unidad = $tarifaMaterial->unit ?: 'unidades';
+
+            $datos += $request->validate([
+                'material' => ['required', 'numeric', 'min:1', 'max:100000'],
+            ], [
+                'material.required' => 'Dinos cuánto material vas a usar (' . $unidad . '): con eso se calcula lo que cuesta.',
+                'material.numeric'  => 'La cantidad de material va en números (' . $unidad . ').',
+                'material.min'      => 'La cantidad de material debe ser de al menos 1 ' . $unidad . '.',
+                'material.max'      => 'Esa cantidad de material no parece correcta. Revísala.',
+            ]);
+        }
+
         $tz = config('fabos.lab.timezone');
         $desde = Carbon::parse($datos['fecha'] . ' ' . $datos['inicio'], $tz);
         $hasta = $desde->copy()->addMinutes((int) $datos['duracion']);
@@ -125,7 +143,8 @@ class ReservationController extends Controller
             \App\Support\HorarioDeAutoservicio::exigir('maquinas', $desde, $hasta);
 
             $reserva = $this->booking->reservar(
-                $request->user(), $asset, $desde, $hasta, $datos['proposito'] ?? null
+                $request->user(), $asset, $desde, $hasta, $datos['proposito'] ?? null,
+                material: isset($datos['material']) ? (float) $datos['material'] : null,
             );
         } catch (BookingException $e) {
             return back()->withErrors(['fecha' => $e->getMessage()])->withInput();

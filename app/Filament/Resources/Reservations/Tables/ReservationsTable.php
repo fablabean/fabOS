@@ -121,6 +121,17 @@ class ReservationsTable
                  * enterrada en el menu de columnas no la mira nadie, y entonces
                  * escribirlo no habria servido de nada.
                  */
+                // El material tarifado: lo que se dijo al reservar y lo que
+                // se gastó al cerrar.
+                TextColumn::make('material_used')
+                    ->label('Material')
+                    ->state(fn (Reservation $r) => $r->material_used ?? $r->material_estimated)
+                    ->formatStateUsing(fn ($state, Reservation $r) => \App\Services\Money\MaterialDelEquipo::numero((float) $state)
+                        . ($r->material_used === null ? ' (estimado)' : ''))
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->visible(fn () => Reservation::whereNotNull('material_estimated')->exists()),
+
                 TextColumn::make('material_note')
                     ->label('Material sin cargar')
                     ->wrap()

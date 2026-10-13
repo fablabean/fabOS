@@ -44,6 +44,23 @@
                      Lo que se quiera llevar se compra en la tienda, que es
                      donde hay precio y existencia. Lo que se gastó se dice con
                      palabras, y de ahí sale lo que falta por cargar. --}}
+                {{-- Lo tarifado sí se pide, con su número: es lo que se cobra. --}}
+                @if (($tarifaMaterial ?? null))
+                    @php $unidadMaterial = $tarifaMaterial->unit ?: 'unidades'; @endphp
+                    <label for="material_used" style="margin-top:1.2rem">
+                        ¿Cuánto material gastaste? ({{ $unidadMaterial }})
+                        <span class="help">&mdash; {{ \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial) }}, redondeado al
+                            {{ config('fabos.currency.name') }} siguiente.
+                            @if ($reserva->material_estimated)
+                                Al reservar dijiste {{ \App\Services\Money\MaterialDelEquipo::numero($reserva->material_estimated) }} {{ $unidadMaterial }}:
+                                si gastaste menos, la diferencia vuelve a tu saldo; si gastaste más, se cobra.
+                            @endif
+                        </span>
+                    </label>
+                    <input id="material_used" name="material_used" type="number" required min="0" max="100000" step="any" inputmode="decimal"
+                           value="{{ old('material_used', $reserva->material_estimated) }}" style="max-width:14rem">
+                @endif
+
                 <label for="material_note" style="margin-top:1.2rem">
                     ¿Usaste material?
                     <span class="help">&mdash; opcional, y con tus palabras. Nos sirve para

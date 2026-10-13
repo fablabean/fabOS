@@ -32,6 +32,7 @@ class QuoteService
      * @param  array<int,array{tarifa:RateCard,cantidad:float,nombre?:string}>  $materiales
      * @param  Reservation|null  $reserva  la reserva que se recotiza, si ya existe: no se cuenta contra sí misma
      * @param  CarbonInterface|null  $cuando  cuándo ocurre el trabajo, para saber contra qué semana va
+     * @param  float|null  $material  cuánto material del equipo se gasta (gramos de filamento); si no se dice, lo que tenga anotado la reserva
      */
     public function cotizar(
         User $usuario,
@@ -41,6 +42,7 @@ class QuoteService
         array $materiales = [],
         ?Reservation $reserva = null,
         ?CarbonInterface $cuando = null,
+        ?float $material = null,
     ): Quote {
         $tarifa = RateCard::para($activo);
 
@@ -156,10 +158,32 @@ class QuoteService
             ];
         }
 
+        /*
+         * El material del equipo, por cantidad (§12).
+         *
+         * Lo que se gastó de verdad si ya se dijo; si no, lo que se estimó al
+         * reservar. Y donde hay material tarifado no hay garantía fija: lo que
+         * se retiene es lo que el trabajo cuesta, no un número aparte.
+         */
+        $tarifaMaterial = MaterialDelEquipo::tarifa($activo);
+        $material ??= $reserva ? ($reserva->material_used ?? $reserva->material_estimated) : null;
+
+        if ($tarifaMaterial && $material > 0) {
+            $importe = MaterialDelEquipo::costo($tarifaMaterial, (float) $material);
+            $total += $importe;
+            $supuesta = $supuesta || $tarifaMaterial->is_assumed;
+            $lineas[] = [
+                'concepto' => 'Material',
+                'detalle'  => MaterialDelEquipo::numero((float) $material) . ' ' . $tarifaMaterial->unit
+                    . ' · ' . MaterialDelEquipo::regla($tarifaMaterial),
+                'importe'  => $importe,
+            ];
+        }
+
         return new Quote(
             $lineas,
             (int) $total,
-            $prestamoSinCosto ? 0 : (int) round($tarifa->deposit_minor),
+            ($prestamoSinCosto || $tarifaMaterial) ? 0 : (int) round($tarifa->deposit_minor),
             $supuesta,
             $gratis,
             $restantes,

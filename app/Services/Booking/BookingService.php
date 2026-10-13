@@ -80,8 +80,12 @@ class BookingService
         ?string $proposito = null,
         array $complementos = [],
         ?User $acompanante = null,
+        ?float $material = null,
     ): Reservation {
         \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+
+        // El material solo cuenta donde está tarifado.
+        $material = ($material > 0 && \App\Services\Money\MaterialDelEquipo::tarifa($asset)) ? round($material, 2) : null;
 
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -188,10 +192,34 @@ class BookingService
 
         // Con la fecha del trabajo: el cupo semanal del certifab se cuenta
         // contra la semana en que ocurre, no contra la de hoy.
-        $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null, cuando: $desde);
+        $cotizacion = $this->cotizador->cotizar($user, $asset, $minutos, $supervisor !== null, cuando: $desde, material: $material);
+
+        /*
+         * Si el material no se puede pagar, no se reserva (§12).
+         *
+         * Se mira antes, y también en una solicitud —que no retiene nada hasta
+         * que se aprueba—: enterarse de que no alcanza cuando ya se la
+         * aprobaron es peor que saberlo ahora, con la cifra delante.
+         */
+        if ($material && $this->cobros->activo()) {
+            $falta = $cotizacion->comprometidoMenor() - app(\App\Services\Ledger\LedgerService::class)->saldoDe($user);
+
+            if ($falta > 0) {
+                $unidades = (int) config('fabos.currency.minor_units');
+                $moneda = config('fabos.currency.code');
+                $enFbc = fn (int $menor) => number_format($menor / $unidades, 2, ',', '.') . ' ' . $moneda;
+
+                throw new BookingException(
+                    'No te alcanzan los FabCoins: esta reserva necesita ' . $enFbc($cotizacion->comprometidoMenor())
+                    . ' y te faltan ' . $enFbc($falta)
+                    . ' (' . config('fabos.money.symbol') . number_format(app(\App\Services\Money\PricingService::class)->aPesos($falta), 0, ',', '.') . '). '
+                    . 'Recárgalos en el laboratorio y vuelve a reservar.'
+                );
+            }
+        }
 
         try {
-            return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo, $complementos) {
+            return DB::transaction(function () use ($user, $asset, $desde, $hasta, $proposito, $estado, $modo, $supervisor, $cotizacion, $motivo, $complementos, $material) {
                 // Con el candado de la persona: dos clics a la vez no pasan.
                 $espacios = app(EspacioBookingService::class);
                 $espacios->candadoDePersona($user);
@@ -209,6 +237,7 @@ class BookingService
                     'purpose'         => $proposito,
                     'status_reason'   => $motivo,
                     'estimated_cost_minor' => $cotizacion->totalMenor,
+                    'material_estimated'   => $material,
                 ]);
 
                 // Lo que no sirve por separado se reserva con ello.

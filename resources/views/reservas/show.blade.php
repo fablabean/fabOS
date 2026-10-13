@@ -184,6 +184,32 @@
                 </select>
                 </div>
 
+                {{-- El material tarifado se dice aquí: de esto sale lo que se
+                     retiene. En una impresora es el dato que da el laminador. --}}
+                @if ($tarifaMaterial)
+                    @php
+                        $unidadMaterial = $tarifaMaterial->unit ?: 'unidades';
+                        $reglaMaterial = \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial);
+                    @endphp
+                    <div class="agenda-campo agenda-material">
+                    <label for="material">Material que vas a usar <span style="text-transform:none;letter-spacing:0">({{ $unidadMaterial }})</span></label>
+                    <input id="material" name="material" type="number" required min="1" max="100000" step="any" inputmode="decimal"
+                           placeholder="60" value="{{ old('material') }}"
+                           data-precio="{{ $tarifaMaterial->price_minor }}"
+                           data-por-cada="{{ \App\Services\Money\MaterialDelEquipo::porCada($tarifaMaterial) }}"
+                           data-unidad="{{ $unidadMaterial }}"
+                           data-base="{{ $cotizacion->totalMenor }}"
+                           data-saldo="{{ $saldo }}"
+                           data-cobra="{{ \App\Support\Settings::cobrosActivos() ? 1 : 0 }}"
+                           data-pesos="{{ (int) config('fabos.currency.peso_rate') }}">
+                    <p class="help" style="margin:.35rem 0 0">
+                        {{ $reglaMaterial }}, redondeado al {{ config('fabos.currency.name') }} siguiente.
+                        Escribe lo que te indica el laminador; al cerrar confirmas lo que gastaste de verdad.
+                    </p>
+                    <p id="material-cuenta" class="help" style="margin:.35rem 0 0;font-weight:600" aria-live="polite"></p>
+                    </div>
+                @endif
+
                 <div class="agenda-campo agenda-ancho">
                 <label for="proposito">¿Para qué? <span style="text-transform:none;letter-spacing:0">(opcional)</span></label>
                 <input id="proposito" name="proposito" type="text" maxlength="500"
@@ -229,12 +255,31 @@
                         </td>
                     </tr>
                 @endforeach
+                @if ($tarifaMaterial ?? null)
+                    <tr>
+                        <th style="font-weight:500">
+                            Material
+                            <div class="quien"><span id="desglose-material-detalle">según lo que escribas arriba</span>
+                                · {{ \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial) }}</div>
+                        </th>
+                        <td style="text-align:right;white-space:nowrap" id="desglose-material">—</td>
+                    </tr>
+                @endif
                 <tr>
                     <th>Total estimado</th>
                     <td style="text-align:right;white-space:nowrap;font-weight:700">
-                        {{ number_format($cotizacion->total(), 2, ',', '.') }} {{ $moneda }}
+                        <span id="desglose-total">{{ number_format($cotizacion->total(), 2, ',', '.') }}</span> {{ $moneda }}
                     </td>
                 </tr>
+                @if ($tarifaMaterial ?? null)
+                    <tr>
+                        <th style="font-weight:500">
+                            Se retiene al reservar
+                            <div class="quien">al cerrar se ajusta a lo que gastaste; lo que sobre vuelve a tu saldo</div>
+                        </th>
+                        <td style="text-align:right;white-space:nowrap" id="desglose-retiene">—</td>
+                    </tr>
+                @endif
                 @if ($cotizacion->depositoMenor > 0)
                     <tr>
                         <th style="font-weight:500">
@@ -259,6 +304,65 @@
                 @endif
             </p>
         </div>
+    @endif
+
+    @if ($tarifaMaterial ?? null)
+        <script>
+            // La cuenta del material, mientras se escribe. Es la misma del
+            // servidor —proporcional y al FabCoin siguiente—; la que manda es
+            // la de allá.
+            (function () {
+                const campo = document.getElementById('material');
+                if (! campo) return;
+
+                const d = campo.dataset;
+                const UNIDADES = {{ (int) config('fabos.currency.minor_units') }};
+                const MONEDA = @json(config('fabos.currency.code'));
+                const SIMBOLO = @json(config('fabos.money.symbol'));
+                const cuenta = document.getElementById('material-cuenta');
+                const fbc = (menor) => (menor / UNIDADES).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const poner = (id, texto) => { const e = document.getElementById(id); if (e) e.textContent = texto; };
+
+                function calcular() {
+                    const cantidad = parseFloat(String(campo.value).replace(',', '.'));
+                    const base = parseInt(d.base, 10) || 0;
+
+                    if (! (cantidad > 0)) {
+                        cuenta.textContent = '';
+                        poner('desglose-material', '—');
+                        poner('desglose-material-detalle', 'según lo que escribas arriba');
+                        poner('desglose-total', fbc(base));
+                        poner('desglose-retiene', '—');
+                        return;
+                    }
+
+                    const exacto = parseFloat(d.precio) * cantidad / parseFloat(d.porCada) / UNIDADES;
+                    const material = Math.ceil(Math.round(exacto * 1e6) / 1e6) * UNIDADES;
+                    const total = base + material;
+                    const falta = total - (parseInt(d.saldo, 10) || 0);
+                    const cuanto = cantidad.toLocaleString('es-CO', { maximumFractionDigits: 2 }) + ' ' + d.unidad;
+
+                    poner('desglose-material', fbc(material));
+                    poner('desglose-material-detalle', cuanto);
+                    poner('desglose-total', fbc(total));
+                    poner('desglose-retiene', fbc(total));
+
+                    if (d.cobra === '1' && falta > 0) {
+                        const pesos = Math.round(falta / UNIDADES * parseInt(d.pesos, 10));
+                        cuenta.style.color = '#f87171';
+                        cuenta.textContent = cuanto + ' son ' + fbc(material) + ' ' + MONEDA + '. Te faltan ' + fbc(falta) + ' ' + MONEDA
+                            + ' (' + SIMBOLO + pesos.toLocaleString('es-CO') + '): recárgalos en el laboratorio antes de reservar.';
+                    } else {
+                        cuenta.style.color = '';
+                        cuenta.textContent = cuanto + ' son ' + fbc(material) + ' ' + MONEDA
+                            + (d.cobra === '1' ? '. Se retienen ' + fbc(total) + ' ' + MONEDA + ' al reservar.' : '.');
+                    }
+                }
+
+                campo.addEventListener('input', calcular);
+                calcular();
+            })();
+        </script>
     @endif
 
     {{-- ------------------------------------------------- lista de espera --}}
@@ -372,6 +476,8 @@
         @media (min-width: 720px) {
             .agenda { grid-template-columns: repeat(3, 1fr); }
             .agenda-ancho { grid-column: span 2; }
+            .agenda-material { grid-column: 1 / -1; }
+            .agenda-material input { max-width: 14rem; }
 
             /* La espera solo tiene dos fechas: tres columnas la dejarian
                desequilibrada, con un hueco donde no falta nada. */
