@@ -233,7 +233,7 @@ class MaterialPorCantidadTest extends TestCase
             ->assertOk()
             ->assertSee('Material que vas a usar')
             ->assertSee('8 FBC por cada 60 g')
-            ->assertDontSee('garantía; el resto se cobra al cerrar');
+            ->assertDontSee('No: traigo el mío');
 
         $cuando = ['fecha' => now()->addDay()->format('Y-m-d'), 'inicio' => '10:00', 'duracion' => 60];
 
@@ -297,5 +297,158 @@ class MaterialPorCantidadTest extends TestCase
         $this->assertSame(75.0, $reserva->material_used);
         $this->assertSame(1000, $reserva->actual_cost_minor);
         $this->assertSame(0, $this->saldo($u));
+    }
+
+    // ------------------------------------------------- el láser: tiempo, y material a elegir
+
+    /**
+     * La cortadora láser como queda: 8 FabCoins la media hora, sin garantía,
+     * y MDF por cm² para quien quiera comprarlo —con 20 × 20 del de 5 mm de regalo—.
+     *
+     * @return array{0: Asset, 1: RateCard, 2: RateCard} el equipo, el MDF de 5 y el de 2,7
+     */
+    private function laser(): array
+    {
+        $area = Area::create(['slug' => 'a-' . uniqid(), 'name' => 'Corte y grabado']);
+        $rf = RiskFamily::create(['area_id' => $area->id, 'slug' => 'f-' . uniqid(), 'name' => 'Láser CO₂']);
+
+        RateCard::create([
+            'slug' => 't-' . uniqid(), 'name' => 'Láser CO₂', 'rateable_type' => RiskFamily::class, 'rateable_id' => $rf->id,
+            'basis' => 'tiempo', 'unit' => 'hora', 'price_minor' => 1600, 'rounding_minutes' => 15,
+        ]);
+
+        $mdf = fn (string $nombre, float $precio, float $regalo = 0) => RateCard::create([
+            'slug' => 'm-' . uniqid(), 'name' => $nombre, 'rateable_type' => RiskFamily::class, 'rateable_id' => $rf->id,
+            'basis' => 'unidad', 'unit' => 'cm2', 'price_minor' => $precio, 'capture_currency' => 'pesos',
+            'offer_on_booking' => true, 'free_quantity' => $regalo,
+        ]);
+
+        $equipo = Asset::create([
+            'area_id' => $area->id, 'risk_family_id' => $rf->id, 'name' => 'Máquina de corte Láser',
+            'kind' => 'fijo', 'status' => 'operativo', 'is_reservable' => true,
+            'min_minutes' => 30, 'autonomous_minutes' => 720, 'max_minutes' => 720,
+        ]);
+
+        return [$equipo, $mdf('MDF 5.5 (cm2)', 0.4, 400), $mdf('MDF 2.7 (cm2)', 0.2)];
+    }
+
+    public function test_en_el_laser_se_paga_el_tiempo_ocho_la_media_hora(): void
+    {
+        [$equipo] = $this->laser();
+        $u = $this->persona($equipo->riskFamily);
+        $q = app(QuoteService::class);
+
+        foreach ([30 => 800, 60 => 1600, 90 => 2400, 180 => 4800, 20 => 800] as $minutos => $menor) {
+            $this->assertSame($menor, $q->cotizar($u, $equipo, $minutos)->totalMenor, $minutos . ' min');
+        }
+
+        // Sin garantía aparte: se retiene lo que cuesta el tiempo.
+        $this->assertSame(1600, $q->cotizar($u, $equipo, 60)->comprometidoMenor());
+        $this->assertNull(MaterialDelEquipo::tarifa($equipo), 'aquí el material no es obligatorio');
+        $this->assertCount(2, MaterialDelEquipo::ofrecidas($equipo));
+    }
+
+    public function test_el_material_del_laser_se_elige_y_veinte_por_veinte_van_de_regalo(): void
+    {
+        [$equipo, $mdf5, $mdf2] = $this->laser();
+
+        // 4 pesos el cm²: el regalo son 400 cm², y lo que pase se cobra.
+        foreach ([400 => 0, 300 => 0, 401 => 100, 900 => 200, 1600 => 500] as $cm2 => $menor) {
+            $this->assertSame($menor, MaterialDelEquipo::costo($mdf5, (float) $cm2), $cm2 . ' cm² del de 5');
+        }
+
+        // El de 2,7 no trae regalo.
+        $this->assertSame(100, MaterialDelEquipo::costo($mdf2, 400));
+        $this->assertSame('0,4 FBC por cada 100 cm2', MaterialDelEquipo::regla($mdf5));
+        $this->assertTrue(MaterialDelEquipo::esSuperficie($mdf5));
+
+        $u = $this->persona($equipo->riskFamily);
+        $q = app(QuoteService::class)->cotizar($u, $equipo, 60, material: 900, tarifaMaterial: $mdf5);
+
+        $this->assertSame(1800, $q->totalMenor, 'una hora y 500 cm² de más');
+        $linea = collect($q->lineas)->last();
+        $this->assertSame('Material · MDF 5.5 (cm2)', $linea['concepto']);
+        $this->assertStringContainsString('400 de regalo', $linea['detalle']);
+
+        // Una tarifa de otro equipo no se cuela por el identificador.
+        $ajena = RateCard::create(['slug' => 'ajena', 'name' => 'Ajena', 'basis' => 'unidad', 'unit' => 'g', 'price_minor' => 9999, 'offer_on_booking' => true]);
+        $this->assertNull(MaterialDelEquipo::elegida($equipo, $ajena->id));
+    }
+
+    public function test_reservar_el_laser_retiene_el_tiempo_y_el_material_y_sin_saldo_no_deja(): void
+    {
+        [$equipo, $mdf5] = $this->laser();
+        $u = $this->persona($equipo->riskFamily, 2000);
+        $this->actingAs($u);
+
+        $this->get(route('reservas.show', $equipo))
+            ->assertOk()
+            ->assertSee('¿Compras material del laboratorio?')
+            ->assertSee('No: traigo el mío')
+            ->assertSee('400 cm2 de regalo')
+            ->assertDontSee('Material que vas a usar');
+
+        // La cuenta que pide la página al cambiar la duración o el material.
+        $this->getJson(route('reservas.cotizar', $equipo) . '?duracion=90')
+            ->assertOk()
+            ->assertJson(['total' => '24,00', 'retiene' => '24,00', 'falta' => '4,00', 'faltaEnPesos' => '$4.000', 'tiempo' => '1 hora 30 minutos']);
+
+        $this->getJson(route('reservas.cotizar', $equipo) . '?duracion=60&material=900&material_tarifa=' . $mdf5->id)
+            ->assertOk()
+            ->assertJson(['total' => '18,00', 'retiene' => '18,00', 'falta' => null]);
+
+        $cuando = ['fecha' => now()->addDay()->format('Y-m-d'), 'inicio' => '10:00'];
+
+        // Hora y media son 24: no le alcanza.
+        $this->from(route('reservas.show', $equipo))
+            ->post(route('reservas.store', $equipo), $cuando + ['duracion' => 90])
+            ->assertSessionHasErrors('fecha');
+        $this->assertSame(0, Reservation::count());
+
+        // Elegir material sin decir cuánto no pasa.
+        $this->from(route('reservas.show', $equipo))
+            ->post(route('reservas.store', $equipo), $cuando + ['duracion' => 60, 'material_tarifa' => $mdf5->id])
+            ->assertSessionHasErrors('material');
+
+        // Una hora con 900 cm² de MDF: 16 + 2.
+        $this->post(route('reservas.store', $equipo), $cuando + ['duracion' => 60, 'material_tarifa' => $mdf5->id, 'material' => 900])
+            ->assertSessionHasNoErrors();
+
+        $reserva = Reservation::first();
+        $this->assertSame($mdf5->id, $reserva->material_rate_card_id);
+        $this->assertSame(900.0, $reserva->material_estimated);
+        $this->assertSame(1800, $reserva->estimated_cost_minor);
+        $this->assertSame(200, $this->saldo($u));
+    }
+
+    public function test_sin_comprar_material_el_laser_solo_cobra_el_tiempo_y_al_cerrar_el_real(): void
+    {
+        [$equipo, $mdf5, $mdf2] = $this->laser();
+        $equipo->update(['qr_token' => 'qr-' . uniqid()]);
+        $u = $this->persona($equipo->riskFamily, 5000);
+
+        $desde = now()->addMinutes(5);
+        $reserva = app(BookingService::class)->reservar($u, $equipo, $desde, $desde->copy()->addHours(2));
+
+        $this->assertNull($reserva->material_rate_card_id);
+        $this->assertSame(3200, $reserva->estimated_cost_minor);
+        $this->assertSame(1800, $this->saldo($u), 'dos horas retenidas');
+
+        $this->travelTo($desde);
+        app(AttendanceService::class)->checkIn($reserva->refresh());
+        $this->travel(30)->minutes();
+
+        $this->actingAs($u);
+        $this->get(route('escaneo.equipo', $equipo->qr_token))->assertOk()->assertSee('¿Compraste material del laboratorio?');
+
+        // Usó media hora y al final compró 400 cm² del de 2,7: 8 + 1.
+        $this->post(route('escaneo.checkout', $reserva), ['material_tarifa' => $mdf2->id, 'material_used' => 400])
+            ->assertSessionHasNoErrors();
+
+        $reserva->refresh();
+        $this->assertSame('completada', $reserva->status);
+        $this->assertSame($mdf2->id, $reserva->material_rate_card_id);
+        $this->assertSame(900, $reserva->actual_cost_minor);
+        $this->assertSame(4100, $this->saldo($u), 'lo que sobró del tiempo vuelve');
     }
 }

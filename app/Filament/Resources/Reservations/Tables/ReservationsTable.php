@@ -127,6 +127,7 @@ class ReservationsTable
                     ->label('Material')
                     ->state(fn (Reservation $r) => $r->material_used ?? $r->material_estimated)
                     ->formatStateUsing(fn ($state, Reservation $r) => \App\Services\Money\MaterialDelEquipo::numero((float) $state)
+                        . ($r->material_rate_card_id ? ' ' . (\App\Models\RateCard::find($r->material_rate_card_id)?->unit ?? '') : '')
                         . ($r->material_used === null ? ' (estimado)' : ''))
                     ->placeholder('—')
                     ->toggleable()

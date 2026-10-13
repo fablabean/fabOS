@@ -81,10 +81,27 @@ class RateCardForm
                         Toggle::make('ask_on_booking')
                             ->label('Pedir la cantidad al reservar')
                             ->visible(fn (callable $get) => $get('basis') === 'unidad')
+                            ->live()
                             ->columnSpanFull()
                             ->helperText('Quien reserve un equipo al que aplique esta tarifa tiene que decir cuánto va a gastar: se le retiene '
                                 . 'eso —redondeado al FabCoin siguiente— en vez de la garantía, y al cerrar confirma lo que gastó de verdad. '
-                                . 'Apagada, la tarifa es solo un precio para cotizar. Una sola por equipo, familia o área.'),
+                                . 'Es para lo que se gasta sí o sí: el filamento de una impresora. Una sola por equipo, familia o área.'),
+
+                        Toggle::make('offer_on_booking')
+                            ->label('Ofrecerlo al reservar, a elegir')
+                            ->visible(fn (callable $get) => $get('basis') === 'unidad' && ! $get('ask_on_booking'))
+                            ->live()
+                            ->helperText('Quien reserve puede comprarlo o no: el MDF de la cortadora láser. Pueden ofrecerse varios, y elige uno.'),
+
+                        TextInput::make('free_quantity')
+                            ->label('De regalo en cada reserva')
+                            ->numeric()
+                            ->step('any')
+                            ->minValue(0)
+                            ->default(0)
+                            ->suffix(fn (callable $get) => $get('unit') ?: 'unidades')
+                            ->visible(fn (callable $get) => $get('basis') === 'unidad' && ($get('ask_on_booking') || $get('offer_on_booking')))
+                            ->helperText('Lo que no se cobra. 400 son 20 × 20 cm si la unidad es cm². Cero: se cobra todo.'),
 
                         MorphToSelect::make('rateable')
                             ->label('Se aplica a')

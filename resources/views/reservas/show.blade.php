@@ -185,28 +185,52 @@
                 </div>
 
                 {{-- El material tarifado se dice aquí: de esto sale lo que se
-                     retiene. En una impresora es el dato que da el laminador. --}}
+                     retiene. En una impresora es obligatorio —el dato que da el
+                     laminador—; en el láser es una opción: se trae o se compra. --}}
                 @if ($tarifaMaterial)
-                    @php
-                        $unidadMaterial = $tarifaMaterial->unit ?: 'unidades';
-                        $reglaMaterial = \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial);
-                    @endphp
+                    @php $unidadMaterial = $tarifaMaterial->unit ?: 'unidades'; @endphp
                     <div class="agenda-campo agenda-material">
                     <label for="material">Material que vas a usar <span style="text-transform:none;letter-spacing:0">({{ $unidadMaterial }})</span></label>
                     <input id="material" name="material" type="number" required min="1" max="100000" step="any" inputmode="decimal"
-                           placeholder="60" value="{{ old('material') }}"
-                           data-precio="{{ $tarifaMaterial->price_minor }}"
-                           data-por-cada="{{ \App\Services\Money\MaterialDelEquipo::porCada($tarifaMaterial) }}"
-                           data-unidad="{{ $unidadMaterial }}"
-                           data-base="{{ $cotizacion->totalMenor }}"
-                           data-saldo="{{ $saldo }}"
-                           data-cobra="{{ \App\Support\Settings::cobrosActivos() ? 1 : 0 }}"
-                           data-pesos="{{ (int) config('fabos.currency.peso_rate') }}">
+                           placeholder="60" value="{{ old('material') }}">
                     <p class="help" style="margin:.35rem 0 0">
-                        {{ $reglaMaterial }}, redondeado al {{ config('fabos.currency.name') }} siguiente.
+                        {{ \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial) }}, redondeado al {{ config('fabos.currency.name') }} siguiente.
                         Escribe lo que te indica el laminador; al cerrar confirmas lo que gastaste de verdad.
                     </p>
-                    <p id="material-cuenta" class="help" style="margin:.35rem 0 0;font-weight:600" aria-live="polite"></p>
+                    </div>
+                @elseif ($materialesOfrecidos->isNotEmpty())
+                    <div class="agenda-campo agenda-material">
+                    <label for="material_tarifa">¿Compras material del laboratorio? <span style="text-transform:none;letter-spacing:0">(opcional)</span></label>
+                    <select id="material_tarifa" name="material_tarifa">
+                        <option value="">No: traigo el mío</option>
+                        @foreach ($materialesOfrecidos as $m)
+                            @php $regalo = \App\Services\Money\MaterialDelEquipo::regalo($m); @endphp
+                            <option value="{{ $m->id }}" @selected((string) old('material_tarifa') === (string) $m->id)
+                                    data-unidad="{{ $m->unit ?: 'unidades' }}"
+                                    data-superficie="{{ \App\Services\Money\MaterialDelEquipo::esSuperficie($m) ? 1 : 0 }}">
+                                {{ $m->name }} — {{ \App\Services\Money\MaterialDelEquipo::regla($m) }}
+                                @if ($regalo > 0)
+                                    · {{ \App\Services\Money\MaterialDelEquipo::numero($regalo) }} {{ $m->unit }} de regalo
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <div id="material-cuanto" style="display:none;margin-top:.6rem">
+                        <div id="material-medidas" style="display:none;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
+                            <input id="material-ancho" type="number" min="1" step="any" inputmode="decimal" placeholder="Ancho (cm)" style="max-width:9rem" aria-label="Ancho en centímetros">
+                            <span>×</span>
+                            <input id="material-alto" type="number" min="1" step="any" inputmode="decimal" placeholder="Alto (cm)" style="max-width:9rem" aria-label="Alto en centímetros">
+                            <span class="help" style="margin:0">en centímetros</span>
+                        </div>
+                        <label for="material">Cuánto <span style="text-transform:none;letter-spacing:0">(<span id="material-unidad">unidades</span>)</span></label>
+                        <input id="material" name="material" type="number" min="1" max="1000000" step="any" inputmode="decimal"
+                               value="{{ old('material') }}">
+                    </div>
+                    <p class="help" style="margin:.35rem 0 0">
+                        Lo que cuesta este equipo es el tiempo. El material lo puedes traer o comprarlo aquí;
+                        al cerrar confirmas lo que gastaste de verdad.
+                    </p>
                     </div>
                 @endif
 
@@ -226,22 +250,25 @@
     {{-- ------------------------------------------------- cuánto cuesta (§12) --}}
     {{-- También cuando sale gratis por las horas incluidas: a quien no le
          cuesta le interesa saber por qué, y cuánto cupo le queda. --}}
-    @if ($cotizacion->tieneDesglose())
+    @php $hayMaterial = $tarifaMaterial || $materialesOfrecidos->isNotEmpty(); @endphp
+    @if ($cotizacion->tieneDesglose() || $hayMaterial)
         @php
             $moneda = config('fabos.currency.code');
             $unidades = config('fabos.currency.minor_units');
             $horas = intdiv($minutosCotizados, 60);
         @endphp
 
-        <div class="panel">
+        <div class="panel" id="cuanto-cuesta" data-url="{{ route('reservas.cotizar', $activo) }}" data-moneda="{{ $moneda }}">
             <h2 style="margin-top:0">Cuánto cuesta</h2>
             <p class="help" style="margin-top:0">
-                Estimado para {{ $horas ? $horas . ($horas > 1 ? ' horas' : ' hora') : $minutosCotizados . ' minutos' }}
+                Estimado para <span id="desglose-tiempo">{{ $horas ? $horas . ($horas > 1 ? ' horas' : ' hora') : $minutosCotizados . ' minutos' }}</span>
                 de uso. Al cerrar se cobra el tiempo real y la diferencia vuelve a tu saldo.
             </p>
 
+            {{-- Lo pinta el servidor una vez, y la página lo repinta cada vez
+                 que cambia la duración o el material: misma cuenta, mismo sitio. --}}
             <table>
-                <tbody>
+                <tbody id="desglose-cuerpo">
                 @foreach ($cotizacion->lineas as $l)
                     <tr>
                         <th style="font-weight:500">
@@ -255,44 +282,29 @@
                         </td>
                     </tr>
                 @endforeach
-                @if ($tarifaMaterial ?? null)
-                    <tr>
-                        <th style="font-weight:500">
-                            Material
-                            <div class="quien"><span id="desglose-material-detalle">según lo que escribas arriba</span>
-                                · {{ \App\Services\Money\MaterialDelEquipo::regla($tarifaMaterial) }}</div>
-                        </th>
-                        <td style="text-align:right;white-space:nowrap" id="desglose-material">—</td>
-                    </tr>
-                @endif
                 <tr>
                     <th>Total estimado</th>
                     <td style="text-align:right;white-space:nowrap;font-weight:700">
-                        <span id="desglose-total">{{ number_format($cotizacion->total(), 2, ',', '.') }}</span> {{ $moneda }}
+                        {{ number_format($cotizacion->total(), 2, ',', '.') }} {{ $moneda }}
                     </td>
                 </tr>
-                @if ($tarifaMaterial ?? null)
+                @if ($cotizacion->comprometidoMenor() > 0)
                     <tr>
                         <th style="font-weight:500">
                             Se retiene al reservar
-                            <div class="quien">al cerrar se ajusta a lo que gastaste; lo que sobre vuelve a tu saldo</div>
-                        </th>
-                        <td style="text-align:right;white-space:nowrap" id="desglose-retiene">—</td>
-                    </tr>
-                @endif
-                @if ($cotizacion->depositoMenor > 0)
-                    <tr>
-                        <th style="font-weight:500">
-                            Se retiene al reservar
-                            <div class="quien">garantía; el resto se cobra al cerrar</div>
+                            <div class="quien">{{ $cotizacion->depositoMenor > 0
+                                ? 'garantía; el resto se cobra al cerrar'
+                                : 'al cerrar se ajusta a lo que usaste; lo que sobre vuelve a tu saldo' }}</div>
                         </th>
                         <td style="text-align:right;white-space:nowrap">
-                            {{ number_format($cotizacion->deposito(), 2, ',', '.') }}
+                            {{ number_format($cotizacion->comprometidoMenor() / $unidades, 2, ',', '.') }}
                         </td>
                     </tr>
                 @endif
                 </tbody>
             </table>
+
+            <p id="desglose-falta" class="help" style="display:none;margin:.9rem 0 0;font-weight:600;color:#dc2626" aria-live="polite"></p>
 
             <p class="foot" style="margin-top:.9rem">
                 Tu saldo: <strong>{{ number_format($saldo / $unidades, 2, ',', '.') }} {{ $moneda }}</strong>.
@@ -304,63 +316,125 @@
                 @endif
             </p>
         </div>
-    @endif
 
-    @if ($tarifaMaterial ?? null)
         <script>
-            // La cuenta del material, mientras se escribe. Es la misma del
-            // servidor —proporcional y al FabCoin siguiente—; la que manda es
-            // la de allá.
+            // La cuenta, cada vez que cambia algo del formulario. Se le pide
+            // al servidor: lleva el cupo del certifab, el regalo del material
+            // y el redondeo, y hacerla aquí otra vez sería tener dos.
             (function () {
-                const campo = document.getElementById('material');
-                if (! campo) return;
+                const panel = document.getElementById('cuanto-cuesta');
+                const cuerpo = document.getElementById('desglose-cuerpo');
+                const el = (id) => document.getElementById(id);
+                const duracion = el('duracion');
+                if (! panel || ! cuerpo || ! duracion) return;
 
-                const d = campo.dataset;
-                const UNIDADES = {{ (int) config('fabos.currency.minor_units') }};
-                const MONEDA = @json(config('fabos.currency.code'));
-                const SIMBOLO = @json(config('fabos.money.symbol'));
-                const cuenta = document.getElementById('material-cuenta');
-                const fbc = (menor) => (menor / UNIDADES).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                const poner = (id, texto) => { const e = document.getElementById(id); if (e) e.textContent = texto; };
+                const material = el('material');
+                const tarifa = el('material_tarifa');
+                const ancho = el('material-ancho');
+                const alto = el('material-alto');
+                const falta = el('desglose-falta');
+                const MONEDA = panel.dataset.moneda;
+                let turno = 0;
 
-                function calcular() {
-                    const cantidad = parseFloat(String(campo.value).replace(',', '.'));
-                    const base = parseInt(d.base, 10) || 0;
+                function fila(titulo, detalle, importe, fuerte) {
+                    const tr = document.createElement('tr');
+                    const th = document.createElement('th');
+                    const td = document.createElement('td');
 
-                    if (! (cantidad > 0)) {
-                        cuenta.textContent = '';
-                        poner('desglose-material', '—');
-                        poner('desglose-material-detalle', 'según lo que escribas arriba');
-                        poner('desglose-total', fbc(base));
-                        poner('desglose-retiene', '—');
+                    th.textContent = titulo;
+                    if (! fuerte) th.style.fontWeight = '500';
+
+                    if (detalle) {
+                        const d = document.createElement('div');
+                        d.className = 'quien';
+                        d.textContent = detalle;
+                        th.appendChild(d);
+                    }
+
+                    td.textContent = importe;
+                    td.style.textAlign = 'right';
+                    td.style.whiteSpace = 'nowrap';
+                    if (fuerte) td.style.fontWeight = '700';
+
+                    tr.append(th, td);
+                    return tr;
+                }
+
+                // El material opcional: solo se pregunta cuánto si se compra, y
+                // lo que va por superficie se dice en ancho por alto.
+                function acomodar() {
+                    if (! tarifa) return;
+
+                    const opcion = tarifa.selectedOptions[0];
+                    const compra = tarifa.value !== '';
+
+                    el('material-cuanto').style.display = compra ? '' : 'none';
+                    material.required = compra;
+
+                    if (! compra) {
+                        material.value = '';
                         return;
                     }
 
-                    const exacto = parseFloat(d.precio) * cantidad / parseFloat(d.porCada) / UNIDADES;
-                    const material = Math.ceil(Math.round(exacto * 1e6) / 1e6) * UNIDADES;
-                    const total = base + material;
-                    const falta = total - (parseInt(d.saldo, 10) || 0);
-                    const cuanto = cantidad.toLocaleString('es-CO', { maximumFractionDigits: 2 }) + ' ' + d.unidad;
+                    el('material-unidad').textContent = opcion.dataset.unidad;
+                    el('material-medidas').style.display = opcion.dataset.superficie === '1' ? 'flex' : 'none';
+                }
 
-                    poner('desglose-material', fbc(material));
-                    poner('desglose-material-detalle', cuanto);
-                    poner('desglose-total', fbc(total));
-                    poner('desglose-retiene', fbc(total));
+                function medir() {
+                    const a = parseFloat(ancho.value), b = parseFloat(alto.value);
 
-                    if (d.cobra === '1' && falta > 0) {
-                        const pesos = Math.round(falta / UNIDADES * parseInt(d.pesos, 10));
-                        cuenta.style.color = '#f87171';
-                        cuenta.textContent = cuanto + ' son ' + fbc(material) + ' ' + MONEDA + '. Te faltan ' + fbc(falta) + ' ' + MONEDA
-                            + ' (' + SIMBOLO + pesos.toLocaleString('es-CO') + '): recárgalos en el laboratorio antes de reservar.';
-                    } else {
-                        cuenta.style.color = '';
-                        cuenta.textContent = cuanto + ' son ' + fbc(material) + ' ' + MONEDA
-                            + (d.cobra === '1' ? '. Se retienen ' + fbc(total) + ' ' + MONEDA + ' al reservar.' : '.');
+                    if (a > 0 && b > 0) {
+                        material.value = Math.round(a * b * 100) / 100;
                     }
                 }
 
-                campo.addEventListener('input', calcular);
-                calcular();
+                async function cotizar() {
+                    const mio = ++turno;
+                    const q = new URLSearchParams({ duracion: duracion.value });
+
+                    if (el('fecha') && el('fecha').value) q.set('fecha', el('fecha').value);
+                    if (el('inicio') && el('inicio').value) q.set('inicio', el('inicio').value);
+                    if (material && parseFloat(material.value) > 0) q.set('material', material.value);
+                    if (tarifa && tarifa.value) q.set('material_tarifa', tarifa.value);
+
+                    let d;
+
+                    try {
+                        const r = await fetch(panel.dataset.url + '?' + q, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                        if (! r.ok) return;
+                        d = await r.json();
+                    } catch (e) {
+                        return;   // sin red: se queda lo que había, y al reservar manda el servidor
+                    }
+
+                    if (mio !== turno) return;   // llegó tarde: ya hay otra en camino
+
+                    el('desglose-tiempo').textContent = d.tiempo;
+                    cuerpo.replaceChildren(
+                        ...d.lineas.map((l) => fila(l.concepto, l.detalle, l.importe, false)),
+                        fila('Total estimado', null, d.total + ' ' + MONEDA, true),
+                        ...(d.retiene ? [fila('Se retiene al reservar', d.esGarantia
+                            ? 'garantía; el resto se cobra al cerrar'
+                            : 'al cerrar se ajusta a lo que usaste; lo que sobre vuelve a tu saldo', d.retiene, false)] : []),
+                    );
+
+                    falta.style.display = d.falta ? '' : 'none';
+                    falta.textContent = d.falta
+                        ? 'Te faltan ' + d.falta + ' ' + MONEDA + ' (' + d.faltaEnPesos + ') para esta reserva: recárgalos en el laboratorio antes de reservar.'
+                        : '';
+                }
+
+                let espera;
+                const pronto = () => { clearTimeout(espera); espera = setTimeout(cotizar, 250); };
+
+                duracion.addEventListener('change', cotizar);
+                ['fecha', 'inicio'].forEach((id) => el(id) && el(id).addEventListener('change', cotizar));
+                if (material) material.addEventListener('input', pronto);
+                if (tarifa) tarifa.addEventListener('change', () => { acomodar(); cotizar(); });
+                [ancho, alto].forEach((c) => c && c.addEventListener('input', () => { medir(); pronto(); }));
+
+                acomodar();
+                cotizar();
             })();
         </script>
     @endif
@@ -432,8 +506,12 @@
             <tr>
                 <th>Sin visto bueno</th>
                 <td>
+                    @php
+                        $h = intdiv((int) $activo->autonomous_minutes, 60);
+                        $m = (int) $activo->autonomous_minutes % 60;
+                    @endphp
                     {{ $activo->autonomous_minutes
-                        ? intdiv($activo->autonomous_minutes, 60) . ' h ' . ($activo->autonomous_minutes % 60 ?: '') . ' min'
+                        ? trim(($h ? $h . ($h > 1 ? ' horas' : ' hora') : '') . ($m ? ' ' . $m . ' minutos' : ''))
                         : 'siempre requiere visto bueno' }}
                 </td>
             </tr>

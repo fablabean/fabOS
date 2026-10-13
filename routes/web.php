@@ -441,6 +441,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'create'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('reservas.herramientas');
     Route::post('/reservar/herramientas', [PrestamoDeHerramientasController::class, 'store'])->name('reservas.herramientas.store');
     Route::get('/reservar/{asset}', [ReservationController::class, 'show'])->middleware(\App\Http\Middleware\ReservasAbiertas::class)->name('reservas.show');
+    Route::get('/reservar/{asset}/cotizar', [ReservationController::class, 'cotizar'])->name('reservas.cotizar');
     Route::post('/reservar/{asset}', [ReservationController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/{reservation}/cancelar', [ReservationController::class, 'cancel'])->name('reservas.cancel');
     // Cambiar cuantas personas van a un espacio, sin cancelar y volver a pedir.

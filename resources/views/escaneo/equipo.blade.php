@@ -59,6 +59,27 @@
                     </label>
                     <input id="material_used" name="material_used" type="number" required min="0" max="100000" step="any" inputmode="decimal"
                            value="{{ old('material_used', $reserva->material_estimated) }}" style="max-width:14rem">
+                @elseif (($materialesOfrecidos ?? collect())->isNotEmpty())
+                    {{-- El opcional: lo que compró al final, que puede no ser
+                         lo que pensaba al reservar. --}}
+                    @php $elegido = old('material_tarifa', $reserva->material_rate_card_id); @endphp
+                    <label for="material_tarifa" style="margin-top:1.2rem">
+                        ¿Compraste material del laboratorio?
+                        <span class="help">&mdash; si gastaste menos de lo que dijiste al reservar, la diferencia vuelve a tu saldo.</span>
+                    </label>
+                    <select id="material_tarifa" name="material_tarifa">
+                        <option value="">No: traje el mío</option>
+                        @foreach ($materialesOfrecidos as $m)
+                            @php $regalo = \App\Services\Money\MaterialDelEquipo::regalo($m); @endphp
+                            <option value="{{ $m->id }}" @selected((string) $elegido === (string) $m->id)>
+                                {{ $m->name }} — {{ \App\Services\Money\MaterialDelEquipo::regla($m) }}
+                                @if ($regalo > 0) · {{ \App\Services\Money\MaterialDelEquipo::numero($regalo) }} {{ $m->unit }} de regalo @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <label for="material_used" style="margin-top:.8rem">Cuánto gastaste <span class="help">&mdash; en la unidad del material (un trozo de 20 × 20 cm son 400 cm²)</span></label>
+                    <input id="material_used" name="material_used" type="number" min="0" max="1000000" step="any" inputmode="decimal"
+                           value="{{ old('material_used', $reserva->material_estimated) }}" style="max-width:14rem">
                 @endif
 
                 <label for="material_note" style="margin-top:1.2rem">

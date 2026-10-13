@@ -43,6 +43,7 @@ class QuoteService
         ?Reservation $reserva = null,
         ?CarbonInterface $cuando = null,
         ?float $material = null,
+        ?RateCard $tarifaMaterial = null,
     ): Quote {
         $tarifa = RateCard::para($activo);
 
@@ -165,16 +166,25 @@ class QuoteService
          * reservar. Y donde hay material tarifado no hay garantía fija: lo que
          * se retiene es lo que el trabajo cuesta, no un número aparte.
          */
-        $tarifaMaterial = MaterialDelEquipo::tarifa($activo);
+        // El obligatorio manda —la impresora no se reserva sin filamento—; si
+        // no lo hay, el que se eligió entre los que se ofrecen, si se eligió.
+        $obligatoria = MaterialDelEquipo::tarifa($activo);
+        $tarifaMaterial = $obligatoria
+            ?? $tarifaMaterial
+            ?? ($reserva?->material_rate_card_id ? MaterialDelEquipo::elegida($activo, $reserva->material_rate_card_id) : null);
         $material ??= $reserva ? ($reserva->material_used ?? $reserva->material_estimated) : null;
+        $conMaterial = $tarifaMaterial && $material > 0;
 
-        if ($tarifaMaterial && $material > 0) {
+        if ($conMaterial) {
             $importe = MaterialDelEquipo::costo($tarifaMaterial, (float) $material);
+            $regalo = min((float) $material, MaterialDelEquipo::regalo($tarifaMaterial));
             $total += $importe;
             $supuesta = $supuesta || $tarifaMaterial->is_assumed;
             $lineas[] = [
-                'concepto' => 'Material',
+                // El obligatorio es «el material»; el elegido se dice cuál es.
+                'concepto' => $obligatoria ? 'Material' : 'Material · ' . $tarifaMaterial->name,
                 'detalle'  => MaterialDelEquipo::numero((float) $material) . ' ' . $tarifaMaterial->unit
+                    . ($regalo > 0 ? ' · ' . MaterialDelEquipo::numero($regalo) . ' de regalo' : '')
                     . ' · ' . MaterialDelEquipo::regla($tarifaMaterial),
                 'importe'  => $importe,
             ];
@@ -183,7 +193,7 @@ class QuoteService
         return new Quote(
             $lineas,
             (int) $total,
-            ($prestamoSinCosto || $tarifaMaterial) ? 0 : (int) round($tarifa->deposit_minor),
+            ($prestamoSinCosto || $obligatoria || $conMaterial) ? 0 : (int) round($tarifa->deposit_minor),
             $supuesta,
             $gratis,
             $restantes,

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class RateCard extends Model
 {
     protected $fillable = [
-        'slug', 'name', 'rateable_type', 'rateable_id', 'basis', 'unit', 'unit_quantity', 'ask_on_booking',
+        'slug', 'name', 'rateable_type', 'rateable_id', 'basis', 'unit', 'unit_quantity', 'ask_on_booking', 'offer_on_booking', 'free_quantity',
         'price_minor', 'setup_minor', 'supervision_hour_minor', 'minimum_minor',
         'deposit_minor', 'capture_currency', 'rounding_minutes', 'included_weekly_minutes',
         'is_active', 'is_assumed', 'effective_from', 'notes',
@@ -31,6 +31,8 @@ class RateCard extends Model
             // «Por cada»: 8 FabCoins por cada 60 g.
             'unit_quantity'          => 'float',
             'ask_on_booking'         => 'boolean',
+            'offer_on_booking'       => 'boolean',
+            'free_quantity'          => 'float',
             'is_active'              => 'boolean',
             'is_assumed'             => 'boolean',
             'effective_from'         => 'date',

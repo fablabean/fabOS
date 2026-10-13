@@ -48,6 +48,7 @@ class ScanController extends Controller
             'veredicto' => $this->eligibility->evaluar($user, $activo),
             'ordenes'   => $this->mantenimiento->abiertasDe($activo),
             'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($activo),
+            'materialesOfrecidos' => \App\Services\Money\MaterialDelEquipo::ofrecidas($activo),
         ]);
     }
 
@@ -127,6 +128,7 @@ class ScanController extends Controller
         $equipo = $reservation->reservable_type === Asset::class ? Asset::find($reservation->reservable_id) : null;
         $tarifaMaterial = $equipo ? \App\Services\Money\MaterialDelEquipo::tarifa($equipo) : null;
         $gastado = null;
+        $elegida = null;
 
         if ($tarifaMaterial) {
             $unidad = $tarifaMaterial->unit ?: 'unidades';
@@ -137,14 +139,27 @@ class ScanController extends Controller
                 'material_used.required' => 'Dinos cuánto material gastaste (' . $unidad . '). Si no gastaste, escribe 0.',
                 'material_used.numeric'  => 'La cantidad de material va en números (' . $unidad . ').',
             ])['material_used'];
+        } elseif ($equipo && ($ofrecidas = \App\Services\Money\MaterialDelEquipo::ofrecidas($equipo))->isNotEmpty()) {
+            // El material opcional: lo que compró al final, que puede no ser
+            // lo que pensaba al reservar. O nada.
+            $material = $request->validate([
+                'material_tarifa' => ['nullable', 'integer', \Illuminate\Validation\Rule::in($ofrecidas->pluck('id')->all())],
+                'material_used'   => ['nullable', 'required_with:material_tarifa', 'numeric', 'min:0', 'max:1000000'],
+            ], [
+                'material_used.required_with' => 'Dinos cuánto material gastaste, o elige que no compraste.',
+            ]);
+
+            $elegida = $material['material_tarifa'] ?? null;
+            $gastado = $elegida ? (float) $material['material_used'] : 0.0;
         }
 
         try {
             // Todo o nada: si no alcanza para lo que se gastó de más, el
             // equipo no queda cerrado a medias ni el material anotado sin cobrar.
-            \Illuminate\Support\Facades\DB::transaction(function () use ($reservation, $gastado) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($reservation, $gastado, $tarifaMaterial, $elegida) {
                 if ($gastado !== null) {
-                    $reservation->update(['material_used' => round($gastado, 2)]);
+                    $reservation->update(['material_used' => round($gastado, 2)]
+                        + ($tarifaMaterial ? [] : ['material_rate_card_id' => $elegida]));
                 }
 
                 $this->asistencia->checkOut($reservation);

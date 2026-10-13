@@ -54,11 +54,65 @@ class ReservationController extends Controller
             ),
             'minutosCotizados' => $referencia,
             'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($asset),
+            'materialesOfrecidos' => \App\Services\Money\MaterialDelEquipo::ofrecidas($asset),
             'saldo' => $this->libro->saldoDe($user),
             'miEspera' => WaitlistEntry::where('asset_id', $asset->id)
                 ->where('user_id', $user->id)
                 ->whereIn('status', ['esperando', 'avisado'])
                 ->first(),
+        ]);
+    }
+
+    /**
+     * Lo que costaría, con lo que hay escrito en el formulario (§12).
+     *
+     * La página lo pide cada vez que cambia la duración o el material. La
+     * cuenta se hace aquí y no en el navegador: lleva el cupo del certifab, la
+     * categoría de la persona, el regalo del material y el redondeo, y dos
+     * copias de esa regla acaban dando dos números.
+     */
+    public function cotizar(Request $request, Asset $asset)
+    {
+        abort_unless($asset->is_reservable, 404);
+
+        $user = $request->user();
+        $minutos = max(1, min(1440, (int) $request->query('duracion', max(60, $asset->min_minutes))));
+        $material = (float) str_replace(',', '.', (string) $request->query('material', '0'));
+        $tarifa = \App\Services\Money\MaterialDelEquipo::elegida($asset, $request->query('material_tarifa'));
+
+        try {
+            $cuando = $request->query('fecha')
+                ? Carbon::parse($request->query('fecha') . ' ' . $request->query('inicio', '12:00'), config('fabos.lab.timezone'))
+                : null;
+        } catch (\Throwable) {
+            $cuando = null;
+        }
+
+        $q = $this->cotizador->cotizar(
+            $user, $asset, $minutos, $this->eligibility->evaluar($user, $asset)->requierePresencia(),
+            cuando: $cuando, material: $material > 0 ? $material : 0.0, tarifaMaterial: $tarifa,
+        );
+
+        $unidades = (int) config('fabos.currency.minor_units');
+        $fbc = fn (int $menor) => number_format($menor / $unidades, 2, ',', '.');
+        $cobra = \App\Support\Settings::cobrosActivos();
+        $saldo = $this->libro->saldoDe($user);
+        $falta = $cobra ? max(0, $q->comprometidoMenor() - $saldo) : 0;
+        $h = intdiv($minutos, 60);
+        $m = $minutos % 60;
+
+        return response()->json([
+            'tiempo'  => trim(($h ? $h . ($h > 1 ? ' horas' : ' hora') : '') . ($m ? ' ' . $m . ' minutos' : '')),
+            'lineas'  => array_map(fn (array $l) => [
+                'concepto' => $l['concepto'], 'detalle' => $l['detalle'], 'importe' => $fbc((int) $l['importe']),
+            ], $q->lineas),
+            'total'   => $fbc($q->totalMenor),
+            'retiene' => $q->comprometidoMenor() > 0 ? $fbc($q->comprometidoMenor()) : null,
+            'esGarantia' => $q->depositoMenor > 0,
+            'falta'   => $falta > 0 ? $fbc($falta) : null,
+            'faltaEnPesos' => $falta > 0
+                ? config('fabos.money.symbol') . number_format(app(\App\Services\Money\PricingService::class)->aPesos($falta), 0, ',', '.')
+                : null,
         ]);
     }
 
@@ -129,6 +183,16 @@ class ReservationController extends Controller
                 'material.min'      => 'La cantidad de material debe ser de al menos 1 ' . $unidad . '.',
                 'material.max'      => 'Esa cantidad de material no parece correcta. Revísala.',
             ]);
+        } elseif (($ofrecidas = \App\Services\Money\MaterialDelEquipo::ofrecidas($asset))->isNotEmpty()) {
+            // Aquí el material es una opción: se compra del que hay, o no.
+            $datos += $request->validate([
+                'material_tarifa' => ['nullable', 'integer', \Illuminate\Validation\Rule::in($ofrecidas->pluck('id')->all())],
+                'material'        => ['nullable', 'required_with:material_tarifa', 'numeric', 'min:1', 'max:1000000'],
+            ], [
+                'material.required_with' => 'Dinos cuánto material vas a comprar, o elige que no compras.',
+                'material.min'           => 'La cantidad de material debe ser mayor que cero.',
+                'material.numeric'       => 'La cantidad de material va en números.',
+            ]);
         }
 
         $tz = config('fabos.lab.timezone');
@@ -145,6 +209,7 @@ class ReservationController extends Controller
             $reserva = $this->booking->reservar(
                 $request->user(), $asset, $desde, $hasta, $datos['proposito'] ?? null,
                 material: isset($datos['material']) ? (float) $datos['material'] : null,
+                tarifaMaterial: isset($datos['material_tarifa']) ? (int) $datos['material_tarifa'] : null,
             );
         } catch (BookingException $e) {
             return back()->withErrors(['fecha' => $e->getMessage()])->withInput();
