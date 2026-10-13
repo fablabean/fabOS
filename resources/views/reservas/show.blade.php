@@ -304,6 +304,21 @@
                 </tbody>
             </table>
 
+            {{-- Solo superadmin: la cuenta con la categoría de otro. No cambia
+                 la reserva, que sigue siendo suya y con su precio. --}}
+            @if ($verComo->isNotEmpty())
+                <div style="margin-top:.9rem;padding:.7rem .9rem;border:1px dashed var(--rule);border-radius:6px">
+                    <label for="ver-como" style="margin:0 0 .3rem">Ver el precio como <span style="text-transform:none;letter-spacing:0">(solo superadmin)</span></label>
+                    <select id="ver-como" style="max-width:22rem;margin:0">
+                        <option value="">Yo{{ auth()->user()->category ? ' — ' . auth()->user()->category->name : '' }}</option>
+                        @foreach ($verComo as $c)
+                            <option value="{{ $c->id }}">{{ $c->name }} — paga {{ \App\Services\Money\MaterialDelEquipo::numero((float) $c->rate_factor * 100) }} % del tiempo</option>
+                        @endforeach
+                    </select>
+                    <p class="help" style="margin:.3rem 0 0">Es solo para mirar la cuenta: si reservas, la reserva es tuya y con tu precio.</p>
+                </div>
+            @endif
+
             <p id="desglose-falta" class="help" style="display:none;margin:.9rem 0 0;font-weight:600;color:#dc2626" aria-live="polite"></p>
 
             <p class="foot" style="margin-top:.9rem">
@@ -396,6 +411,7 @@
                     if (el('inicio') && el('inicio').value) q.set('inicio', el('inicio').value);
                     if (material && parseFloat(material.value) > 0) q.set('material', material.value);
                     if (tarifa && tarifa.value) q.set('material_tarifa', tarifa.value);
+                    if (el('ver-como') && el('ver-como').value) q.set('como', el('ver-como').value);
 
                     let d;
 
@@ -430,6 +446,7 @@
                 duracion.addEventListener('change', cotizar);
                 ['fecha', 'inicio'].forEach((id) => el(id) && el(id).addEventListener('change', cotizar));
                 if (material) material.addEventListener('input', pronto);
+                if (el('ver-como')) el('ver-como').addEventListener('change', cotizar);
                 if (tarifa) tarifa.addEventListener('change', () => { acomodar(); cotizar(); });
                 [ancho, alto].forEach((c) => c && c.addEventListener('input', () => { medir(); pronto(); }));
 

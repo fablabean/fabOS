@@ -55,6 +55,9 @@ class ReservationController extends Controller
             'minutosCotizados' => $referencia,
             'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($asset),
             'materialesOfrecidos' => \App\Services\Money\MaterialDelEquipo::ofrecidas($asset),
+            'verComo' => $user->hasRole(\App\Models\User::ROL_SUPERADMIN)
+                ? \App\Models\UserCategory::orderBy('name')->get(['id', 'name', 'rate_factor'])
+                : collect(),
             'saldo' => $this->libro->saldoDe($user),
             'miEspera' => WaitlistEntry::where('asset_id', $asset->id)
                 ->where('user_id', $user->id)
@@ -76,6 +79,21 @@ class ReservationController extends Controller
         abort_unless($asset->is_reservable, 404);
 
         $user = $request->user();
+        $real = $user;
+
+        /*
+         * «Ver como», solo para superadmin y solo para la cuenta.
+         *
+         * Quien coordina es Colaborador, y a un colaborador el tiempo le sale
+         * en cero: no tiene forma de ver lo que le va a costar a un estudiante
+         * o a un externo. Aquí se cotiza con otra categoría sin tocar a nadie;
+         * la reserva, si la hace, sigue siendo la suya y con su precio.
+         */
+        if ($request->query('como') && $user->hasRole(\App\Models\User::ROL_SUPERADMIN)
+            && ($categoria = \App\Models\UserCategory::find((int) $request->query('como')))) {
+            $user = (clone $user)->setRelation('category', $categoria);
+        }
+
         $minutos = max(1, min(1440, (int) $request->query('duracion', max(60, $asset->min_minutes))));
         $material = (float) str_replace(',', '.', (string) $request->query('material', '0'));
         $tarifa = \App\Services\Money\MaterialDelEquipo::elegida($asset, $request->query('material_tarifa'));
@@ -96,7 +114,7 @@ class ReservationController extends Controller
         $unidades = (int) config('fabos.currency.minor_units');
         $fbc = fn (int $menor) => number_format($menor / $unidades, 2, ',', '.');
         $cobra = \App\Support\Settings::cobrosActivos();
-        $saldo = $this->libro->saldoDe($user);
+        $saldo = $this->libro->saldoDe($real);
         $falta = $cobra ? max(0, $q->comprometidoMenor() - $saldo) : 0;
         $h = intdiv($minutos, 60);
         $m = $minutos % 60;

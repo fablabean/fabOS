@@ -104,7 +104,10 @@ class QuoteService
             $servicio += $importe;
             $lineas[] = [
                 'concepto' => 'Tiempo de máquina',
-                'detalle'  => $this->enHoras($minutosCobrables) . ' · ' . $activo->name,
+                // Un cero sin explicar parece una cuenta rota: si es la
+                // categoría la que no paga el tiempo, se dice.
+                'detalle'  => $this->enHoras($minutosCobrables) . ' · ' . $activo->name
+                    . ($factor <= 0 ? ' · tu categoría' . ($usuario->category?->name ? ' (' . $usuario->category->name . ')' : '') . ' no paga el tiempo de máquina' : ''),
                 'importe'  => $importe,
             ];
         }

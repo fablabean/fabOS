@@ -451,4 +451,35 @@ class MaterialPorCantidadTest extends TestCase
         $this->assertSame(900, $reserva->actual_cost_minor);
         $this->assertSame(4100, $this->saldo($u), 'lo que sobró del tiempo vuelve');
     }
+
+    public function test_el_superadmin_ve_la_cuenta_como_otra_categoria_y_el_cero_se_explica(): void
+    {
+        [$equipo] = $this->laser();
+        \Spatie\Permission\Models\Role::findOrCreate(User::ROL_SUPERADMIN, 'web');
+
+        $colaborador = UserCategory::create(['slug' => 'colaborador', 'name' => 'Colaborador', 'can_reserve' => true, 'rate_factor' => 0]);
+        $externo = UserCategory::create(['slug' => 'externo', 'name' => 'Externo', 'can_reserve' => true, 'rate_factor' => 2]);
+
+        $jefe = $this->persona($equipo->riskFamily);
+        $jefe->update(['user_category_id' => $colaborador->id]);
+        $jefe->assignRole(User::ROL_SUPERADMIN);
+        $this->actingAs($jefe->fresh());
+
+        $url = route('reservas.cotizar', $equipo) . '?duracion=60';
+
+        // A quien coordina el tiempo le sale en cero, y se le dice por qué.
+        $suya = $this->getJson($url)->assertOk()->assertJson(['total' => '0,00'])->json();
+        $this->assertStringContainsString('tu categoría (Colaborador) no paga el tiempo', $suya['lineas'][0]['detalle']);
+
+        // Y puede mirar lo que le costaría a un externo.
+        $this->getJson($url . '&como=' . $externo->id)->assertOk()->assertJson(['total' => '32,00']);
+        $this->get(route('reservas.show', $equipo))->assertOk()->assertSee('Ver el precio como');
+
+        // Nadie más: a un estudiante el «como» no le cambia nada.
+        $estudiante = $this->persona($equipo->riskFamily);
+        $this->actingAs($estudiante);
+
+        $this->getJson($url . '&como=' . $colaborador->id)->assertOk()->assertJson(['total' => '16,00']);
+        $this->get(route('reservas.show', $equipo))->assertOk()->assertDontSee('Ver el precio como');
+    }
 }
