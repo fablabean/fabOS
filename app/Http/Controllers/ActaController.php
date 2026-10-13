@@ -82,6 +82,96 @@ class ActaController extends Controller
         );
     }
 
+    // ------------------------------------------------------- devoluciones
+
+    /** La pantalla donde quien recibe en el laboratorio anota lo que volvió. */
+    public function devolver(Request $request, Acta $acta)
+    {
+        $this->soloElEquipo($request);
+
+        abort_unless(in_array($acta->status, ['firmada', 'enviada'], true), 404);
+
+        return view('actas.devolver', [
+            'acta'       => $acta->load('devoluciones.items'),
+            'pendientes' => $acta->pendientesDeVolver()->get(),
+        ]);
+    }
+
+    public function guardarDevolucion(Request $request, Acta $acta)
+    {
+        $this->soloElEquipo($request);
+
+        $datos = $request->validate([
+            'fecha'            => ['required', 'date', 'before_or_equal:today'],
+            'observaciones'    => ['nullable', 'string', 'max:1000'],
+            'firma'            => ['required', 'string'],
+            'items'            => ['required', 'array'],
+            'items.*.vuelve'   => ['nullable'],
+            'items.*.estado'   => ['nullable', 'in:B,R,M'],
+            'items.*.nota'     => ['nullable', 'string', 'max:300'],
+        ], [
+            'firma.required' => 'Dibuja tu firma en el recuadro.',
+            'fecha.before_or_equal' => 'La devolución no puede tener una fecha futura.',
+        ]);
+
+        // Solo lo que se marcó como que vuelve.
+        $vuelven = collect($datos['items'])
+            ->filter(fn ($i) => ! empty($i['vuelve']))
+            ->map(fn ($i) => ['estado' => $i['estado'] ?? null, 'nota' => $i['nota'] ?? null])
+            ->all();
+
+        try {
+            $devolucion = $this->actas->registrarDevolucion(
+                $acta,
+                $request->user(),
+                $vuelven,
+                \Illuminate\Support\Carbon::parse($datos['fecha'], config('fabos.lab.timezone')),
+                $datos['observaciones'] ?? null,
+                $datos['firma'],
+            );
+        } catch (ActaException $e) {
+            return back()->withInput($request->except('firma'))->withErrors(['items' => $e->getMessage()]);
+        }
+
+        return redirect()->route('actas.devolucion.ver', $devolucion)->with('status', 'Devolución registrada.');
+    }
+
+    public function verDevolucion(Request $request, \App\Models\ActaDevolucion $devolucion)
+    {
+        $this->soloElEquipo($request);
+
+        return view('actas.devolucion', $this->actas->datosDeLaDevolucion($devolucion) + ['paraPdf' => false]);
+    }
+
+    public function pdfDevolucion(Request $request, \App\Models\ActaDevolucion $devolucion)
+    {
+        $this->soloElEquipo($request);
+
+        $pdf = $this->actas->pdfDeLaDevolucion($devolucion);
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            'Devolucion_' . $devolucion->code . '.pdf',
+            ['Content-Type' => 'application/pdf'],
+        );
+    }
+
+    /** Avisar a Planta Física de que regresó: opcional, y lo pulsa alguien. */
+    public function enviarDevolucion(Request $request, \App\Models\ActaDevolucion $devolucion)
+    {
+        $this->soloElEquipo($request);
+
+        try {
+            $aviso = $this->actas->enviarDevolucionAPlantaFisica($devolucion, $request->user());
+        } catch (ActaException $e) {
+            return back()->withErrors(['envio' => $e->getMessage()]);
+        }
+
+        return $aviso->status === 'enviado'
+            ? back()->with('status', 'Enviada a Planta Física (' . $aviso->to . '), con el formato adjunto.')
+            : back()->withErrors(['envio' => 'El correo no salió' . ($aviso->reason ? ': ' . $aviso->reason : '') . '.']);
+    }
+
     private function soloElEquipo(Request $request): void
     {
         abort_unless($request->user()?->hasAnyRole(User::rolesDelEquipo()), 403);

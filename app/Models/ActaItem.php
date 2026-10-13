@@ -16,7 +16,29 @@ class ActaItem extends Model
 {
     protected $table = 'acta_items';
 
-    protected $fillable = ['acta_id', 'asset_id', 'placa', 'descripcion', 'marca', 'modelo', 'serie', 'estado', 'position'];
+    protected $fillable = [
+        'acta_id', 'asset_id', 'placa', 'descripcion', 'marca', 'modelo', 'serie', 'estado', 'position',
+        'devolucion_id', 'estado_devolucion', 'nota_devolucion',
+    ];
+
+    public function devolucion(): BelongsTo
+    {
+        return $this->belongsTo(ActaDevolucion::class, 'devolucion_id');
+    }
+
+    public function yaVolvio(): bool
+    {
+        return $this->devolucion_id !== null;
+    }
+
+    /** Si volvió peor de como salió: B es mejor que R, y R que M. */
+    public function volvioPeor(): bool
+    {
+        $orden = ['B' => 0, 'R' => 1, 'M' => 2];
+
+        return $this->yaVolvio()
+            && ($orden[$this->estado_devolucion] ?? 0) > ($orden[$this->estado] ?? 0);
+    }
 
     /**
      * Lo que se escribe en el acta completa la ficha del equipo.

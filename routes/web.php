@@ -567,6 +567,13 @@ Route::middleware('auth')->group(function () {
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');
     Route::get('/actas/{acta}/formato.pdf', [\App\Http\Controllers\ActaController::class, 'pdf'])->name('actas.pdf');
+
+    // Y su devolución: lo que volvió, en qué estado, firmado por quien lo recibe.
+    Route::get('/actas/{acta}/devolucion', [\App\Http\Controllers\ActaController::class, 'devolver'])->name('actas.devolver');
+    Route::post('/actas/{acta}/devolucion', [\App\Http\Controllers\ActaController::class, 'guardarDevolucion'])->name('actas.devolver.guardar');
+    Route::get('/actas/devoluciones/{devolucion}', [\App\Http\Controllers\ActaController::class, 'verDevolucion'])->name('actas.devolucion.ver');
+    Route::get('/actas/devoluciones/{devolucion}/pdf', [\App\Http\Controllers\ActaController::class, 'pdfDevolucion'])->name('actas.devolucion.pdf');
+    Route::post('/actas/devoluciones/{devolucion}/enviar', [\App\Http\Controllers\ActaController::class, 'enviarDevolucion'])->name('actas.devolucion.enviar');
 });
 
 /*

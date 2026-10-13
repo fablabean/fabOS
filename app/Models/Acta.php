@@ -93,6 +93,45 @@ class Acta extends Model
         return $this->hasMany(ActaItem::class)->orderBy('position')->orderBy('id');
     }
 
+    public function devoluciones(): HasMany
+    {
+        return $this->hasMany(ActaDevolucion::class)->orderBy('id');
+    }
+
+    /** Lo que salió y todavía no ha vuelto. */
+    public function pendientesDeVolver(): HasMany
+    {
+        return $this->items()->whereNull('devolucion_id');
+    }
+
+    /**
+     * Si a esta acta se le puede registrar una devolución: ya está firmada
+     * —lo que no se entregó no puede volver— y le queda algo fuera.
+     */
+    public function admiteDevolucion(): bool
+    {
+        return in_array($this->status, ['firmada', 'enviada'], true)
+            && $this->pendientesDeVolver()->exists();
+    }
+
+    /** «Devuelta», «Volvieron 2 de 3» o nada, para la lista. */
+    public function resumenDeDevolucion(): ?string
+    {
+        if (! in_array($this->status, ['firmada', 'enviada'], true)) {
+            return null;
+        }
+
+        $total = $this->items()->count();
+        $fuera = $this->pendientesDeVolver()->count();
+
+        return match (true) {
+            $total === 0     => null,
+            $fuera === 0     => 'Devuelta',
+            $fuera === $total => 'Sin devolver',
+            default          => 'Volvieron ' . ($total - $fuera) . ' de ' . $total,
+        };
+    }
+
     public function entrega(): BelongsTo
     {
         return $this->belongsTo(User::class, 'entrega_user_id');

@@ -436,4 +436,249 @@ class ActasDeMovimientoTest extends TestCase
 
         $this->assertNull($otro->fresh()->asset_tag);
     }
+
+    // ------------------------------------------------- dentro de la U y devoluciones
+
+    /** Un acta con dos activos, firmada por las dos partes. */
+    private function actaFirmada(User $entrega, User $recibe, string $tipo = 'prestamo_fuera'): Acta
+    {
+        $acta = $this->acta($entrega, $recibe, $tipo);
+        $acta->items()->create(['descripcion' => 'Control del robot', 'placa' => '60509', 'marca' => 'Unitree', 'estado' => 'B']);
+
+        $this->servicio()->enviarAFirma($acta, $entrega);
+
+        foreach (['entrega', 'recibe'] as $parte) {
+            $this->servicio()->firmar($acta->fresh(), $parte, $this->firma());
+        }
+
+        return $acta->fresh();
+    }
+
+    public function test_un_movimiento_dentro_de_la_universidad_no_lleva_la_autorizacion_de_planta_fisica(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Ruiz', '52000111');
+
+        $dentro = $this->acta($erick, $ana, collect(array_keys(Acta::TIPOS))->first(fn ($t) => ! in_array($t, Acta::FUERA_DE_LA_U, true)));
+        $this->assertFalse($dentro->saleDeLaUniversidad());
+
+        $this->entra($erick);
+
+        $this->get(route('actas.ver', $dentro))
+            ->assertOk()
+            ->assertSee('NO APLICA')
+            ->assertSee('no requiere la firma de autorización de Planta Física')
+            ->assertDontSee('Wilmer Palencia');
+
+        // El que sale de la Universidad sigue llevándola.
+        $this->get(route('actas.ver', $this->acta($erick, $ana)))
+            ->assertOk()
+            ->assertSee('Wilmer Palencia')
+            ->assertDontSee('NO APLICA');
+    }
+
+    public function test_la_devolucion_se_registra_activo_por_activo_con_el_estado_en_que_volvio(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Ruiz', '52000111');
+        $acta = $this->actaFirmada($erick, $ana);
+
+        [$robot, $control] = $acta->items()->reorder('id')->get()->all();
+
+        $this->assertTrue($acta->admiteDevolucion());
+        $this->assertSame('Sin devolver', $acta->resumenDeDevolucion());
+
+        $this->entra($erick);
+
+        $this->get(route('actas.devolver', $acta))
+            ->assertOk()
+            ->assertSee('Robot perro')
+            ->assertSee('Control del robot');
+
+        // Vuelve solo el robot, y vuelve peor.
+        $respuesta = $this->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => now(config('fabos.lab.timezone'))->toDateString(),
+            'observaciones' => 'Llegó sin la maleta.',
+            'firma' => $this->firma(),
+            'items' => [
+                $robot->id   => ['vuelve' => '1', 'estado' => 'R', 'nota' => 'Rayón en la carcasa'],
+                $control->id => ['estado' => 'B'],
+            ],
+        ]);
+
+        $devolucion = $acta->devoluciones()->first();
+        $this->assertNotNull($devolucion);
+        $respuesta->assertRedirect(route('actas.devolucion.ver', $devolucion));
+
+        $this->assertMatchesRegularExpression('/^DEV-\d{4}-0001$/', $devolucion->code);
+        $this->assertSame('Ana Ruiz', $devolucion->devuelve_nombre);
+        $this->assertSame('Erick Hansen Gómez', $devolucion->recibe_nombre);
+        $this->assertNotNull($devolucion->firmo_at);
+        Storage::disk('local')->assertExists($devolucion->firma_path);
+        Storage::disk('local')->assertExists($devolucion->pdf_path);
+
+        $robot->refresh();
+        $this->assertTrue($robot->yaVolvio());
+        $this->assertSame('R', $robot->estado_devolucion);
+        $this->assertTrue($robot->volvioPeor());
+        $this->assertFalse($control->fresh()->yaVolvio());
+
+        $acta->refresh();
+        $this->assertSame('Volvieron 1 de 2', $acta->resumenDeDevolucion());
+        $this->assertTrue($acta->admiteDevolucion());
+
+        $this->get(route('actas.devolucion.ver', $devolucion))
+            ->assertOk()
+            ->assertSee('DEVOLUCIÓN DE ACTIVOS')
+            ->assertSee('ROBOT PERRO')
+            ->assertSee('Rayón en la carcasa')
+            ->assertSee('Llegó sin la maleta.')
+            ->assertSee('Queda un activo por regresar')
+            ->assertSee('Control del robot')
+            ->assertSee('Enviar a Planta Física');
+
+        $this->get(route('actas.devolucion.pdf', $devolucion))->assertOk()->assertHeader('content-type', 'application/pdf');
+
+        // Después vuelve el control: el acta queda devuelta del todo.
+        $this->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => now(config('fabos.lab.timezone'))->toDateString(),
+            'firma' => $this->firma(),
+            'items' => [
+                // El robot ya volvió: marcarlo otra vez no lo devuelve dos veces.
+                $robot->id   => ['vuelve' => '1', 'estado' => 'M'],
+                $control->id => ['vuelve' => '1', 'estado' => 'B'],
+            ],
+        ])->assertRedirect();
+
+        $acta->refresh();
+        $this->assertSame(2, $acta->devoluciones()->count());
+        $this->assertSame('Devuelta', $acta->resumenDeDevolucion());
+        $this->assertFalse($acta->admiteDevolucion());
+        $this->assertSame('R', $robot->fresh()->estado_devolucion);
+
+        $this->get(route('actas.devolver', $acta))->assertOk()->assertSee('Ya volvió todo');
+    }
+
+    public function test_no_se_devuelve_lo_que_no_se_ha_entregado_ni_sin_firma_ni_sin_marcar_nada(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Ruiz', '52000111');
+
+        $this->entra($erick);
+
+        // Un borrador no tiene pantalla de devolución.
+        $borrador = $this->acta($erick, $ana);
+        $this->get(route('actas.devolver', $borrador))->assertNotFound();
+
+        try {
+            $this->servicio()->registrarDevolucion($borrador, $erick, [$borrador->items()->first()->id => ['estado' => 'B']], now(), null, $this->firma());
+            $this->fail('no debía dejar');
+        } catch (ActaException $e) {
+            $this->assertStringContainsString('no está firmada', $e->getMessage());
+        }
+
+        $acta = $this->actaFirmada($erick, $ana);
+        $item = $acta->items()->reorder('id')->first();
+        $hoy = now(config('fabos.lab.timezone'))->toDateString();
+        $desde = route('actas.devolver', $acta);
+
+        // Sin firma.
+        $this->from($desde)->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => $hoy, 'items' => [$item->id => ['vuelve' => '1', 'estado' => 'B']],
+        ])->assertRedirect($desde)->assertSessionHasErrors('firma');
+
+        // Sin marcar nada.
+        $this->from($desde)->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => $hoy, 'firma' => $this->firma(), 'items' => [$item->id => ['estado' => 'B']],
+        ])->assertRedirect($desde)->assertSessionHasErrors('items');
+
+        // Con una fecha que todavía no llega.
+        $this->from($desde)->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => now()->addDays(3)->toDateString(), 'firma' => $this->firma(),
+            'items' => [$item->id => ['vuelve' => '1', 'estado' => 'B']],
+        ])->assertRedirect($desde)->assertSessionHasErrors('fecha');
+
+        $this->assertSame(0, $acta->devoluciones()->count());
+
+        // Y nadie de fuera del equipo.
+        $this->entra($ana);
+        $this->get($desde)->assertForbidden();
+        $this->post(route('actas.devolver.guardar', $acta), [
+            'fecha' => $hoy, 'firma' => $this->firma(), 'items' => [$item->id => ['vuelve' => '1', 'estado' => 'B']],
+        ])->assertForbidden();
+    }
+
+    public function test_la_devolucion_se_le_avisa_a_planta_fisica_solo_si_habia_salido_de_la_universidad(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Ruiz', '52000111');
+
+        $devolver = function (Acta $acta) use ($erick) {
+            return $this->servicio()->registrarDevolucion(
+                $acta, $erick,
+                $acta->items->mapWithKeys(fn ($i) => [$i->id => ['estado' => 'B']])->all(),
+                now(), null, $this->firma(),
+            );
+        };
+
+        $this->entra($erick);
+
+        // Salió de la Universidad: se puede avisar, con el formato adjunto.
+        $fuera = $devolver($this->actaFirmada($erick, $ana));
+
+        $this->from(route('actas.devolucion.ver', $fuera))
+            ->post(route('actas.devolucion.enviar', $fuera))
+            ->assertRedirect(route('actas.devolucion.ver', $fuera))
+            ->assertSessionHasNoErrors();
+
+        $fuera->refresh();
+        $this->assertNotNull($fuera->enviada_a_planta_at);
+        $this->assertSame(ConfiguracionDeActas::valor('correo_planta'), $fuera->enviada_a_planta_a);
+
+        $aviso = NotificationLog::where('key', 'acta.devolucion_planta')->reorder()->latest('id')->first();
+        $this->assertNotNull($aviso);
+        $this->assertStringContainsString($fuera->code, $aviso->subject . $aviso->body);
+        $this->assertStringContainsString('regresó todo', $aviso->body);
+
+        // Dentro de la Universidad: Planta Física no la conoce.
+        $interno = collect(array_keys(Acta::TIPOS))->first(fn ($t) => ! in_array($t, Acta::FUERA_DE_LA_U, true));
+        $dentro = $devolver($this->actaFirmada($erick, $ana, $interno));
+
+        $this->get(route('actas.devolucion.ver', $dentro))
+            ->assertOk()
+            ->assertSee('no se envía a Planta Física')
+            ->assertDontSee('Enviar a Planta Física');
+
+        $this->from(route('actas.devolucion.ver', $dentro))
+            ->post(route('actas.devolucion.enviar', $dentro))
+            ->assertSessionHasErrors('envio');
+
+        $this->assertNull($dentro->fresh()->enviada_a_planta_at);
+    }
+
+    public function test_la_lista_ofrece_registrar_la_devolucion_solo_cuando_hay_algo_fuera(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Ruiz', '52000111');
+
+        $borrador = $this->acta($erick, $ana);
+        $firmada = $this->actaFirmada($erick, $ana);
+
+        $this->entra($erick);
+
+        Livewire::test(ListActas::class)
+            ->assertActionHidden(TestAction::make('devolucion')->table($borrador))
+            ->assertActionVisible(TestAction::make('devolucion')->table($firmada))
+            ->assertSee('Sin devolver');
+
+        $this->servicio()->registrarDevolucion(
+            $firmada, $erick,
+            $firmada->items->mapWithKeys(fn ($i) => [$i->id => ['estado' => 'B']])->all(),
+            now(), null, $this->firma(),
+        );
+
+        Livewire::test(ListActas::class)
+            ->assertActionHidden(TestAction::make('devolucion')->table($firmada))
+            ->assertSee('Devuelta');
+    }
 }

@@ -192,6 +192,164 @@ class ActaService
         return $aviso;
     }
 
+    /**
+     * Registra que volvieron unos activos, y en qué estado.
+     *
+     * Por partes: solo los que se marquen. Firma quien los recibe en el
+     * laboratorio, que es quien los tiene delante y puede decir cómo llegaron;
+     * no se espera a que quien los devuelve abra un correo, porque el equipo ya
+     * está de vuelta y eso es un hecho.
+     *
+     * @param  array<int|string, array{estado?:string, nota?:?string}>  $items  id del renglón => cómo volvió
+     *
+     * @throws ActaException
+     */
+    public function registrarDevolucion(
+        Acta $acta,
+        User $quienRecibe,
+        array $items,
+        \Carbon\CarbonInterface $fecha,
+        ?string $observaciones,
+        string $firma,
+    ): \App\Models\ActaDevolucion {
+        if (! in_array($acta->status, ['firmada', 'enviada'], true)) {
+            throw new ActaException('Esta acta todavía no está firmada: lo que no se ha entregado no puede volver.');
+        }
+
+        $pendientes = $acta->pendientesDeVolver()->get()->keyBy('id');
+        $vuelven = collect($items)->filter(fn ($_, $id) => $pendientes->has((int) $id));
+
+        if ($vuelven->isEmpty()) {
+            throw new ActaException('Marca al menos un activo de los que faltan por volver.');
+        }
+
+        foreach ($vuelven as $como) {
+            if (! isset(Acta::CONDICIONES[$como['estado'] ?? ''])) {
+                throw new ActaException('Indica en qué estado volvió cada activo: bueno, regular o malo.');
+            }
+        }
+
+        $binario = $this->pngDe($firma);
+
+        return DB::transaction(function () use ($acta, $quienRecibe, $vuelven, $pendientes, $fecha, $observaciones, $binario) {
+            $devolucion = \App\Models\ActaDevolucion::create([
+                'acta_id'         => $acta->id,
+                'fecha'           => $fecha->toDateString(),
+                'devuelve_nombre' => $acta->recibe_nombre,
+                'devuelve_cedula' => $acta->recibe_cedula,
+                'recibe_user_id'  => $quienRecibe->id,
+                'recibe_nombre'   => $quienRecibe->name,
+                'recibe_cedula'   => $quienRecibe->document_number,
+                'observaciones'   => filled($observaciones) ? trim($observaciones) : null,
+            ]);
+
+            $ruta = 'actas/firmas/' . $devolucion->code . '-recibe-' . Str::random(24) . '.png';
+            Storage::disk('local')->put($ruta, $binario);
+            $devolucion->forceFill(['firma_path' => $ruta, 'firmo_at' => now()])->save();
+
+            foreach ($vuelven as $id => $como) {
+                $pendientes[(int) $id]->update([
+                    'devolucion_id'     => $devolucion->id,
+                    'estado_devolucion' => $como['estado'],
+                    'nota_devolucion'   => filled($como['nota'] ?? null) ? mb_substr(trim($como['nota']), 0, 300) : null,
+                ]);
+            }
+
+            $this->guardarPdfDeLaDevolucion($devolucion);
+
+            return $devolucion->refresh();
+        });
+    }
+
+    /**
+     * Le avisa a Planta Física que regresó lo que había salido.
+     *
+     * Opcional y a mano: es un aviso, no un trámite. Y solo si el acta era de
+     * las que salen de la Universidad, que son las únicas que ellos conocen.
+     *
+     * @throws ActaException
+     */
+    public function enviarDevolucionAPlantaFisica(\App\Models\ActaDevolucion $devolucion, User $quien): NotificationLog
+    {
+        $acta = $devolucion->acta;
+
+        if (! $acta->saleDeLaUniversidad()) {
+            throw new ActaException('El acta era de un movimiento dentro de la Universidad: Planta Física no la conoce.');
+        }
+
+        $correo = ConfiguracionDeActas::valor('correo_planta');
+
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            throw new ActaException('No hay un correo de Planta Física configurado. Se pone en Actas de movimiento → Configuración.');
+        }
+
+        $faltan = $acta->pendientesDeVolver()->count();
+
+        $aviso = $this->avisos->enviarSinCuenta(
+            'acta.devolucion_planta',
+            $correo,
+            ConfiguracionDeActas::valor('autoriza_nombre'),
+            [
+                'codigo'     => $devolucion->code,
+                'acta'       => $acta->code,
+                'fecha'      => $devolucion->fecha->format('d/m/Y'),
+                'devuelve'   => $devolucion->devuelve_nombre . ($devolucion->devuelve_cedula ? ' · C.C. ' . $devolucion->devuelve_cedula : ''),
+                'activos'    => $devolucion->items->map(fn ($i) => '· ' . $i->descripcion
+                    . ($i->placa ? ' (placa ' . $i->placa . ')' : '')
+                    . ' — volvió en estado ' . mb_strtolower(Acta::CONDICIONES[$i->estado_devolucion] ?? '?')
+                    . ($i->nota_devolucion ? ': ' . $i->nota_devolucion : ''))->implode("\n"),
+                'pendientes' => $faltan === 0
+                    ? 'Con esto regresó todo lo que había salido con esa acta.'
+                    : ($faltan === 1 ? 'Queda un activo de esa acta por regresar.' : 'Quedan ' . $faltan . ' activos de esa acta por regresar.'),
+                'quien'      => $quien->name,
+            ],
+            $acta,
+            [['ruta' => $this->guardarPdfDeLaDevolucion($devolucion), 'nombre' => 'Devolucion_' . $devolucion->code . '.pdf']],
+        );
+
+        if ($aviso->status === 'enviado') {
+            $devolucion->update([
+                'enviada_a_planta_at'  => now(),
+                'enviada_a_planta_a'   => $correo,
+                'enviada_a_planta_por' => $quien->id,
+            ]);
+        }
+
+        return $aviso;
+    }
+
+    public function pdfDeLaDevolucion(\App\Models\ActaDevolucion $devolucion): \Barryvdh\DomPDF\PDF
+    {
+        return Pdf::loadView('actas.devolucion', $this->datosDeLaDevolucion($devolucion) + ['paraPdf' => true])->setPaper('letter');
+    }
+
+    public function guardarPdfDeLaDevolucion(\App\Models\ActaDevolucion $devolucion): string
+    {
+        $ruta = $devolucion->pdf_path ?: 'actas/pdf/' . $devolucion->code . '-' . Str::random(16) . '.pdf';
+
+        Storage::disk('local')->put($ruta, $this->pdfDeLaDevolucion($devolucion)->output());
+
+        if ($devolucion->pdf_path !== $ruta) {
+            $devolucion->forceFill(['pdf_path' => $ruta])->save();
+        }
+
+        return $ruta;
+    }
+
+    /** @return array<string,mixed> */
+    public function datosDeLaDevolucion(\App\Models\ActaDevolucion $devolucion): array
+    {
+        $devolucion->loadMissing(['items', 'acta']);
+
+        return [
+            'devolucion' => $devolucion,
+            'acta'       => $devolucion->acta,
+            'config'     => ConfiguracionDeActas::todo(),
+            'firma'      => $this->firmaComoImagen($devolucion->firma_path),
+            'faltan'     => $devolucion->acta->pendientesDeVolver()->count(),
+        ];
+    }
+
     /** Anula un acta que no llegó a nada: no se borra, queda dicho. */
     public function anular(Acta $acta): Acta
     {

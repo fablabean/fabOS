@@ -178,7 +178,10 @@
     {{-- ------------------------------------------------ firmas --}}
     <table class="sin">
         <tr>
-            <td class="firma b" style="width:30%">{{ $config['autoriza_nombre'] }}</td>
+            {{-- Dentro de la Universidad no hay nada que autorizar: la casilla
+                 de Planta Física queda dicha como que no aplica, en vez de con
+                 un nombre que parecería una firma pendiente. --}}
+            <td class="firma b" style="width:30%">{{ $acta->saleDeLaUniversidad() ? $config['autoriza_nombre'] : '' }}</td>
             @foreach (['entrega', 'recibe'] as $parte)
                 <td class="firma" style="width:35%">
                     @if ($firmas[$parte] ?? null)
@@ -195,12 +198,24 @@
             <td style="border-top:1px solid #111">FIRMA DE QUIEN RECIBE</td>
         </tr>
         <tr>
-            <td><span class="b">NOMBRE:</span> {{ $config['autoriza_nombre'] }}</td>
+            <td>
+                @if ($acta->saleDeLaUniversidad())
+                    <span class="b">NOMBRE:</span> {{ $config['autoriza_nombre'] }}
+                @else
+                    <span class="b">NO APLICA</span>
+                @endif
+            </td>
             <td class="c">{{ $acta->entrega_nombre }}</td>
             <td class="c">{{ $acta->recibe_nombre }}</td>
         </tr>
         <tr>
-            <td><span class="b">CARGO:</span> {{ $config['autoriza_cargo'] }}</td>
+            <td>
+                @if ($acta->saleDeLaUniversidad())
+                    <span class="b">CARGO:</span> {{ $config['autoriza_cargo'] }}
+                @else
+                    Movimiento dentro de la Universidad
+                @endif
+            </td>
             <td class="c">{{ $acta->entrega_proceso }}</td>
             <td class="c">{{ $acta->recibe_proceso }}</td>
         </tr>
@@ -220,7 +235,16 @@
     <div class="sep"></div>
 
     <table>
-        <tr><td><span class="b">IMPORTANTE</span>: Para realizar cualquier movimiento de ACTIVOS, este formato debe tener la firma autorizada.</td></tr>
+        <tr>
+            <td>
+                <span class="b">IMPORTANTE</span>:
+                @if ($acta->saleDeLaUniversidad())
+                    Para realizar cualquier movimiento de ACTIVOS, este formato debe tener la firma autorizada.
+                @else
+                    Movimiento dentro de las instalaciones de la Universidad: no requiere la firma de autorización de Planta Física.
+                @endif
+            </td>
+        </tr>
     </table>
 </div>
 

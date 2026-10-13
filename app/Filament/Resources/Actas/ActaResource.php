@@ -271,6 +271,19 @@ class ActaResource extends Resource
                     ->placeholder('—')
                     ->color(fn (Acta $r) => $r->estaFirmadaPorTodos() ? 'success' : 'warning'),
 
+                // Si lo que salió ya volvió: un acta firmada no es un asunto
+                // cerrado mientras el equipo siga fuera.
+                TextColumn::make('devolucion')
+                    ->label('Devolución')
+                    ->state(fn (Acta $r) => $r->resumenDeDevolucion())
+                    ->badge()
+                    ->color(fn (?string $state) => match (true) {
+                        $state === 'Devuelta'     => 'success',
+                        $state === 'Sin devolver' => 'warning',
+                        default                   => 'info',
+                    })
+                    ->placeholder('—'),
+
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -296,14 +309,42 @@ class ActaResource extends Resource
             ->recordActions([
                 self::enviarAFirma(),
                 self::enviarAPlantaFisica(),
+                self::registrarDevolucion(),
                 ActionGroup::make([
                     self::verFormato(),
+                    self::verDevoluciones(),
                     self::firmarYo(),
                     self::reenviarEnlaces(),
                     EditAction::make()->visible(fn (Acta $r) => $r->esEditable()),
                     self::anular(),
                 ]),
             ]);
+    }
+
+    /**
+     * Anotar lo que volvió. Va a su propia pantalla: ahí se marca activo por
+     * activo, se dice en qué estado llegó y firma quien lo recibe.
+     */
+    public static function registrarDevolucion(): Action
+    {
+        return Action::make('devolucion')
+            ->label('Registrar devolución')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->color('gray')
+            ->visible(fn (Acta $r) => $r->admiteDevolucion())
+            ->url(fn (Acta $r) => route('actas.devolver', $r))
+            ->openUrlInNewTab();
+    }
+
+    /** Las devoluciones que ya tiene, con sus formatos. */
+    public static function verDevoluciones(): Action
+    {
+        return Action::make('devoluciones')
+            ->label('Ver las devoluciones')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->visible(fn (Acta $r) => $r->devoluciones()->exists())
+            ->url(fn (Acta $r) => route('actas.devolver', $r))
+            ->openUrlInNewTab();
     }
 
     public static function verFormato(): Action
