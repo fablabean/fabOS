@@ -37,6 +37,24 @@ class ListPurchaseRequests extends ListRecords
                 ->schema([
                     \Filament\Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(160),
                     \Filament\Forms\Components\TextInput::make('correo')->label('Correo')->email()->required()->maxLength(160),
+
+                    // Quién más se entera. Va como copia visible en el mismo correo.
+                    \Filament\Forms\Components\Toggle::make('copiar_al_equipo')
+                        ->label('Copiar a superadmins y administradores')
+                        ->helperText(fn () => 'Hoy son: '
+                            . (\App\Support\ConfiguracionDeCompras::elEquipoQueCoordina()->pluck('name')->implode(', ') ?: 'nadie') . '.'),
+                    \Filament\Forms\Components\Textarea::make('copias')
+                        ->label('Otros correos en copia')
+                        ->rows(2)
+                        ->placeholder('persona@universidadean.edu.co, otra@universidadean.edu.co')
+                        ->helperText('Separados por comas o uno por línea. Reciben el mismo correo, con la requisición y la cotización.')
+                        ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                            foreach (\App\Support\ConfiguracionDeCompras::correosDe($value) as $correo) {
+                                if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                                    $fail('«' . $correo . '» no es un correo válido.');
+                                }
+                            }
+                        }),
                 ])
                 ->action(function (array $data) {
                     \App\Support\ConfiguracionDeCompras::guardar($data);

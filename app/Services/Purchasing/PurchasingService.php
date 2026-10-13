@@ -213,12 +213,13 @@ class PurchasingService
                 : 'Va adjunta la requisición en PDF.',
             'enlace'    => $enlace,
             'quien'     => $quien?->name ?: $solicitud->requestedBy?->name ?: config('fabos.lab.name'),
-        ], $solicitud, $adjuntos);
+        ], $solicitud, $adjuntos, $copias = \App\Support\ConfiguracionDeCompras::copias());
 
         $solicitud->update([
             'sent_to_email' => $correo,
             'sent_to_name'  => $nombre,
             'sent_to_at'    => $aviso->status === 'enviado' ? now() : null,
+            'sent_cc'       => $copias ? implode(', ', $copias) : null,
         ]);
 
         return $aviso;

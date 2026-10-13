@@ -23,7 +23,7 @@ class PurchaseRequest extends Model
         'currency', 'exchange_rate',
         'supplier_name', 'supplier_tax_id', 'supplier_address', 'supplier_contact',
         'quote_path', 'quote_name', 'supplier_id',
-        'sent_to_email', 'sent_to_name', 'sent_to_at',
+        'sent_to_email', 'sent_to_name', 'sent_to_at', 'sent_cc',
     ];
 
     /**

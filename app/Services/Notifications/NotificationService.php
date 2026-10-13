@@ -90,6 +90,7 @@ class NotificationService
         array $datos = [],
         ?Model $referencia = null,
         array $adjuntos = [],
+        array $copias = [],
     ): NotificationLog {
         $plantilla = NotificationTemplate::where('key', $clave)->first();
 
@@ -107,7 +108,8 @@ class NotificationService
         $cuerpo = $plantilla->render('body', $datos);
 
         try {
-            Mail::to($correo)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos));
+            // Con copia visible: quien lo recibe ve quién más está enterado.
+            Mail::to($correo)->cc($copias)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos));
         } catch (\Throwable $e) {
             return $this->anotarSuelto($clave, $correo, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
         }

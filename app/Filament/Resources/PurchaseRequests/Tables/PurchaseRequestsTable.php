@@ -132,8 +132,9 @@ class PurchaseRequestsTable
             ->requiresConfirmation()
             ->modalHeading('Enviar a compras')
             ->modalDescription(fn () => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
-                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la adjuntaste. '
-                . 'Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
+                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la adjuntaste.'
+                . self::enCopia()
+                . ' Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
             ->modalSubmitActionLabel('Enviar')
             ->visible(fn (PurchaseRequest $r) => $r->status === 'borrador')
             ->action(function (PurchaseRequest $r) {
@@ -162,6 +163,7 @@ class PurchaseRequestsTable
             ->modalHeading('Enviar a compras')
             ->modalDescription(fn (PurchaseRequest $r) => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
                 . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la hay.'
+                . self::enCopia()
                 . ($r->sent_to_at
                     ? ' Ya se le había enviado a ' . $r->sent_to_email . ' el ' . $r->sent_to_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') . '.'
                     : ' Todavía no se le ha enviado a nadie.'))
@@ -180,13 +182,22 @@ class PurchaseRequestsTable
             });
     }
 
+    /** Quién va en copia, para la ventana de confirmación: se dice antes de enviar. */
+    private static function enCopia(): string
+    {
+        $copias = \App\Support\ConfiguracionDeCompras::copias();
+
+        return $copias ? ' Con copia a: ' . implode(', ', $copias) . '.' : ' Sin copia a nadie.';
+    }
+
     /** A quién le llegó, o que no salió: enviar sin decir a quién es lo que había. */
     private static function decirSiLlego(PurchaseRequest $r): void
     {
         $r->sent_to_at
             ? Notification::make()
                 ->title('Enviada a ' . $r->sent_to_name)
-                ->body('A ' . $r->sent_to_email . ', con la requisición en PDF adjunta.')
+                ->body('A ' . $r->sent_to_email . ', con la requisición en PDF adjunta.'
+                    . ($r->sent_cc ? ' Con copia a: ' . $r->sent_cc . '.' : ''))
                 ->success()
                 ->send()
             : Notification::make()

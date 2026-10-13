@@ -385,4 +385,70 @@ class RequisicionCompartidaTest extends TestCase
         $this->assertSame('enviada', $s->status);
         $this->assertNull($s->sent_to_at);
     }
+
+    // ------------------------------------------------------------ las copias
+
+    /**
+     * Por defecto van en copia superadmins y administradores: quien coordina
+     * se entera de lo que sale a compras sin tener que preguntarlo.
+     */
+    public function test_por_defecto_se_copia_a_superadmins_y_administradores(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $jefe = User::create(['name' => 'Súper', 'email' => 'super@lab.co', 'status' => 'activo']);
+        $jefe->assignRole(Role::findOrCreate(User::ROL_SUPERADMIN, 'web'));
+        // Quien no coordina no va en copia, ni quien está inactivo.
+        $this->persona();
+        $inactivo = User::create(['name' => 'Ex', 'email' => 'ex@lab.co', 'status' => 'inactivo']);
+        $inactivo->assignRole(User::ROL_ADMINISTRADOR);
+
+        $s = $this->compras()->enviar($this->solicitud($admin), $admin);
+
+        $esperadas = collect([$admin->email, 'super@lab.co'])->map(fn ($c) => mb_strtolower($c))->sort()->values()->all();
+
+        $this->assertSame($esperadas, collect(explode(', ', $s->sent_cc))->sort()->values()->all());
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('scpaguay@universidadean.edu.co')
+            && $m->hasCc($admin->email) && $m->hasCc('super@lab.co') && ! $m->hasCc('ex@lab.co'));
+    }
+
+    /** Se pueden sumar otros correos, y apagar la copia al equipo. */
+    public function test_las_copias_se_configuran(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $this->entra($admin);
+
+        Livewire::test(ListPurchaseRequests::class)
+            ->callAction('configuracion', [
+                'nombre' => 'CAROLINA PAGUAY PARDO', 'correo' => 'scpaguay@universidadean.edu.co',
+                'copiar_al_equipo' => false,
+                // Como salen al pegarlos: con comas, saltos de línea, mayúsculas y el principal repetido.
+                'copias' => "Planeacion@universidadean.edu.co,\nfinanzas@universidadean.edu.co; scpaguay@universidadean.edu.co",
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(
+            ['planeacion@universidadean.edu.co', 'finanzas@universidadean.edu.co'],
+            \App\Support\ConfiguracionDeCompras::copias(),
+            'sin el equipo, sin repetir al destinatario principal',
+        );
+
+        $s = $this->compras()->enviar($this->solicitud($admin), $admin);
+
+        $this->assertSame('planeacion@universidadean.edu.co, finanzas@universidadean.edu.co', $s->sent_cc);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasCc('finanzas@universidadean.edu.co') && ! $m->hasCc($admin->email));
+
+        // Un correo mal escrito no se guarda.
+        Livewire::test(ListPurchaseRequests::class)
+            ->callAction('configuracion', ['nombre' => 'X', 'correo' => 'x@ean.co', 'copias' => 'esto-no-es-un-correo'])
+            ->assertHasActionErrors(['copias']);
+    }
 }
