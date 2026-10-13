@@ -101,13 +101,10 @@ class PurchaseRequestController extends Controller
 
     private function documento(PurchaseRequest $solicitud)
     {
-        $pdf = Pdf::loadView('compras.requisicion', [
-            'solicitud' => $this->cargada($solicitud),
-            'enlacePdf' => null,
-            'paraPdf'   => true,
-        ])->setPaper('letter');
-
-        return $pdf->download($solicitud->code . '.pdf');
+        // El mismo PDF que se adjunta al enviarla a compras: una sola plantilla.
+        return app(\App\Services\Purchasing\PurchasingService::class)
+            ->pdfDeLaRequisicion($solicitud)
+            ->download($solicitud->code . '.pdf');
     }
 
     private function cargada(PurchaseRequest $solicitud): PurchaseRequest

@@ -146,7 +146,7 @@ class PurchasingService
      *
      * @throws PurchasingException
      */
-    public function enviar(PurchaseRequest $solicitud): PurchaseRequest
+    public function enviar(PurchaseRequest $solicitud, ?User $quien = null): PurchaseRequest
     {
         if ($solicitud->status !== 'borrador') {
             throw new PurchasingException('Esta solicitud ya fue enviada.');
@@ -158,7 +158,80 @@ class PurchasingService
 
         $solicitud->update(['status' => 'enviada', 'submitted_at' => now()]);
 
+        // Enviar es mandársela a alguien. Antes solo cambiaba el estado, y
+        // quien la tramita en compras no se enteraba de que existía.
+        $this->enviarACompras($solicitud->refresh(), $quien);
+
         return $solicitud->refresh();
+    }
+
+    /**
+     * Le manda la requisición por correo a quien la tramita en compras.
+     *
+     * Con el PDF adjunto, la cotización formal si la hay, y el enlace para
+     * verla —que se crea aquí si no existía: mandar la requisición ya es
+     * decidir compartirla—. Queda anotado a quién y cuándo, salga o no el
+     * correo: si falla, el aviso lo dice y se puede volver a enviar.
+     *
+     * @throws PurchasingException si no hay a quién enviársela
+     */
+    public function enviarACompras(PurchaseRequest $solicitud, ?User $quien = null): \App\Models\NotificationLog
+    {
+        $correo = \App\Support\ConfiguracionDeCompras::correo();
+        $nombre = \App\Support\ConfiguracionDeCompras::nombre();
+
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            throw new PurchasingException('No hay un correo de compras configurado. Se pone en Solicitudes de compra → Configuración.');
+        }
+
+        $solicitud->load(['items', 'adjustments', 'requestedBy']);
+        $enlace = $this->compartir($solicitud);
+
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+        $ruta = 'compras/requisiciones/' . $solicitud->code . '-' . Str::random(16) . '.pdf';
+        $disco->put($ruta, $this->pdfDeLaRequisicion($solicitud)->output());
+
+        $adjuntos = [['ruta' => $ruta, 'nombre' => $solicitud->code . '.pdf']];
+        $hayCotizacion = filled($solicitud->quote_path) && $disco->exists($solicitud->quote_path);
+
+        if ($hayCotizacion) {
+            $adjuntos[] = ['ruta' => $solicitud->quote_path, 'nombre' => $solicitud->nombreDeLaCotizacion()];
+        }
+
+        $aviso = $this->avisos->enviarSinCuenta('compra.requisicion', $correo, $nombre, [
+            'codigo'    => $solicitud->code,
+            'para_que'  => $solicitud->justification ?: 'Sin especificar',
+            'total'     => $this->enPesos((int) $solicitud->totalEstimado()),
+            'proveedor' => $solicitud->tieneProveedor()
+                ? trim(($solicitud->supplier_name ?: '') . ($solicitud->supplier_tax_id ? ' · NIT ' . $solicitud->supplier_tax_id : ''))
+                : 'Sin proveedor definido',
+            'lineas'    => $solicitud->items
+                ->map(fn ($i) => '· ' . rtrim(rtrim(number_format((float) $i->quantity, 2, ',', '.'), '0'), ',') . ' ' . ($i->unit ?: 'unidad') . ' — ' . $i->description)
+                ->implode("\n"),
+            'adjuntos'  => $hayCotizacion
+                ? 'Van adjuntas la requisición en PDF y la cotización del proveedor.'
+                : 'Va adjunta la requisición en PDF.',
+            'enlace'    => $enlace,
+            'quien'     => $quien?->name ?: $solicitud->requestedBy?->name ?: config('fabos.lab.name'),
+        ], $solicitud, $adjuntos);
+
+        $solicitud->update([
+            'sent_to_email' => $correo,
+            'sent_to_name'  => $nombre,
+            'sent_to_at'    => $aviso->status === 'enviado' ? now() : null,
+        ]);
+
+        return $aviso;
+    }
+
+    /** La requisición en PDF: la misma hoja que se ve en pantalla. */
+    public function pdfDeLaRequisicion(PurchaseRequest $solicitud): \Barryvdh\DomPDF\PDF
+    {
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('compras.requisicion', [
+            'solicitud' => $solicitud->load(['items.supply', 'adjustments', 'budget', 'area', 'project', 'requestedBy', 'approvedBy']),
+            'enlacePdf' => null,
+            'paraPdf'   => true,
+        ])->setPaper('letter');
     }
 
     /**

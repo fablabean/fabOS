@@ -289,4 +289,100 @@ class RequisicionCompartidaTest extends TestCase
 
         $this->entra($admin)->get(route('compras.cotizacion', $s))->assertNotFound();
     }
+
+    // ------------------------------------------------ enviar es mandársela a alguien
+
+    /**
+     * «Enviar» marcaba la solicitud como enviada y no se la mandaba a nadie.
+     * Ahora le llega por correo a quien la tramita, con la requisición en PDF.
+     */
+    public function test_enviar_le_manda_la_requisicion_a_compras(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $s = $this->solicitud($admin);
+        $s->update(['supplier_name' => 'Tap Publicidad S.A.S.', 'supplier_tax_id' => '901.234.567-8']);
+
+        $s = $this->compras()->enviar($s, $admin);
+
+        $this->assertSame('enviada', $s->status);
+        $this->assertSame('scpaguay@universidadean.edu.co', $s->sent_to_email);
+        $this->assertSame('CAROLINA PAGUAY PARDO', $s->sent_to_name);
+        $this->assertNotNull($s->sent_to_at);
+        // Mandarla es decidir compartirla: lleva el enlace para verla.
+        $this->assertTrue($s->estaCompartida());
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('scpaguay@universidadean.edu.co')
+            && count($m->adjuntos) === 1
+            && $m->adjuntos[0]['nombre'] === $s->code . '.pdf');
+
+        $aviso = \App\Models\NotificationLog::where('key', 'compra.requisicion')->sole();
+        $this->assertStringContainsString($s->code, $aviso->subject);
+        $this->assertStringContainsString('Hola CAROLINA', $aviso->body);
+        $this->assertStringContainsString('Tap Publicidad S.A.S.', $aviso->body);
+        $this->assertStringContainsString('Sensor de temperatura DS18B20', $aviso->body);
+        $this->assertStringContainsString($s->enlaceCompartido(), $aviso->body);
+    }
+
+    /** Con cotización adjunta, va en el mismo correo. */
+    public function test_la_cotizacion_viaja_con_la_requisicion(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('compras/cotizaciones/abc.pdf', '%PDF-1.4');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $s = $this->solicitud($admin);
+        $s->update(['quote_path' => 'compras/cotizaciones/abc.pdf', 'quote_name' => 'cotiza.pdf']);
+
+        $s = $this->compras()->enviar($s, $admin);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => count($m->adjuntos) === 2
+            && $m->adjuntos[1]['nombre'] === $s->code . '_cotizacion.pdf');
+    }
+
+    /** A quién se envían se cambia desde el panel; y una ya enviada se puede volver a mandar. */
+    public function test_el_destinatario_es_configurable_y_se_puede_reenviar(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
+
+        $admin = $this->administrador();
+        $s = $this->compras()->enviar($this->solicitud($admin), $admin);
+        $this->assertSame('scpaguay@universidadean.edu.co', $s->sent_to_email);
+
+        $this->entra($admin);
+
+        Livewire::test(ListPurchaseRequests::class)
+            ->callAction('configuracion', ['nombre' => 'Otra Persona', 'correo' => 'otra@universidadean.edu.co'])
+            ->assertHasNoActionErrors()
+            // «Enviar» ya no sale: está enviada. Sale «volver a enviar».
+            ->assertActionHidden(TestAction::make('enviar')->table($s))
+            ->callAction(TestAction::make('reenviarACompras')->table($s))
+            ->assertHasNoActionErrors();
+
+        $s->refresh();
+        $this->assertSame('otra@universidadean.edu.co', $s->sent_to_email);
+        $this->assertSame('Otra Persona', $s->sent_to_name);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('otra@universidadean.edu.co'));
+    }
+
+    /** Si el correo no sale, la solicitud lo dice en vez de darlo por enviado. */
+    public function test_si_el_correo_no_sale_no_se_da_por_entregada(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        // Sin sembrar las plantillas: el aviso queda omitido.
+        \App\Models\NotificationTemplate::where('key', 'compra.requisicion')->delete();
+
+        $admin = $this->administrador();
+        $s = $this->compras()->enviar($this->solicitud($admin), $admin);
+
+        $this->assertSame('enviada', $s->status);
+        $this->assertNull($s->sent_to_at);
+    }
 }

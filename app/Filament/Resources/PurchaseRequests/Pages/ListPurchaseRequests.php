@@ -22,6 +22,28 @@ class ListPurchaseRequests extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            /*
+             * A quién se le envían. Aquí y no en un archivo: el día que cambie
+             * la persona de compras no debería hacer falta desplegar nada.
+             */
+            Action::make('configuracion')
+                ->label('Configuración')
+                ->icon('heroicon-o-cog-6-tooth')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->hasAnyRole([\App\Models\User::ROL_ADMINISTRADOR, \App\Models\User::ROL_SUPERADMIN]) ?? false)
+                ->modalHeading('A quién se envían las requisiciones')
+                ->modalDescription('La persona de compras que las tramita. Al pulsar «Enviar» en una solicitud, le llega por correo con la requisición en PDF.')
+                ->fillForm(fn () => \App\Support\ConfiguracionDeCompras::todo())
+                ->schema([
+                    \Filament\Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(160),
+                    \Filament\Forms\Components\TextInput::make('correo')->label('Correo')->email()->required()->maxLength(160),
+                ])
+                ->action(function (array $data) {
+                    \App\Support\ConfiguracionDeCompras::guardar($data);
+
+                    \Filament\Notifications\Notification::make()->title('Configuración guardada')->success()->send();
+                }),
+
             CreateAction::make()->label('Nuevo carrito'),
 
             // Atajo para el caso más frecuente: reponer lo que se está acabando.

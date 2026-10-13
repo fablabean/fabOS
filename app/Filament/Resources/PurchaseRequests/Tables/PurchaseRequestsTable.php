@@ -70,10 +70,17 @@ class PurchaseRequestsTable
                     ->alignEnd()
                     ->state(fn (PurchaseRequest $r) => self::pesos($r->loadMissing(['items', 'adjustments'])->recibidoEnPesos())),
 
+                // Cuándo, y a quién: «enviada» sin destinatario no decía nada.
                 TextColumn::make('submitted_at')
                     ->label('Enviada')
                     ->dateTime('d/m/Y')
+                    ->timezone(config('fabos.lab.timezone'))
                     ->placeholder('—')
+                    ->description(fn (PurchaseRequest $r) => match (true) {
+                        $r->sent_to_at !== null => 'a ' . $r->sent_to_name,
+                        $r->submitted_at !== null => 'no se le mandó a nadie',
+                        default => null,
+                    })
                     ->toggleable(),
             ])
             ->filters([
@@ -87,6 +94,7 @@ class PurchaseRequestsTable
                     AccionesDeCompartir::compartir(),
                     AccionesDeCompartir::dejarDeCompartir(),
                     self::enviar(),
+                    self::reenviarACompras(),
                     self::aprobar(),
                     self::rechazar(),
                     self::enCompra(),
@@ -122,9 +130,71 @@ class PurchaseRequestsTable
             ->label('Enviar')
             ->icon('heroicon-o-paper-airplane')
             ->requiresConfirmation()
-            ->modalDescription('Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
+            ->modalHeading('Enviar a compras')
+            ->modalDescription(fn () => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
+                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la adjuntaste. '
+                . 'Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
+            ->modalSubmitActionLabel('Enviar')
             ->visible(fn (PurchaseRequest $r) => $r->status === 'borrador')
-            ->action(fn (PurchaseRequest $r) => self::intentar(fn () => app(PurchasingService::class)->enviar($r), 'Solicitud enviada'));
+            ->action(function (PurchaseRequest $r) {
+                try {
+                    $r = app(PurchasingService::class)->enviar($r, auth()->user());
+                } catch (PurchasingException $e) {
+                    Notification::make()->title('No se pudo')->body($e->getMessage())->danger()->persistent()->send();
+
+                    return;
+                }
+
+                self::decirSiLlego($r);
+            });
+    }
+
+    /**
+     * Volver a mandársela a compras: porque el correo no salió, porque cambió
+     * la cotización, o porque se envió antes de que «enviar» mandara nada.
+     */
+    private static function reenviarACompras(): Action
+    {
+        return Action::make('reenviarACompras')
+            ->label(fn (PurchaseRequest $r) => $r->sent_to_at ? 'Volver a enviar a compras' : 'Enviar a compras por correo')
+            ->icon('heroicon-o-envelope')
+            ->requiresConfirmation()
+            ->modalHeading('Enviar a compras')
+            ->modalDescription(fn (PurchaseRequest $r) => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
+                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la hay.'
+                . ($r->sent_to_at
+                    ? ' Ya se le había enviado a ' . $r->sent_to_email . ' el ' . $r->sent_to_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') . '.'
+                    : ' Todavía no se le ha enviado a nadie.'))
+            ->modalSubmitActionLabel('Enviar')
+            ->visible(fn (PurchaseRequest $r) => in_array($r->status, ['enviada', 'aprobada'], true))
+            ->action(function (PurchaseRequest $r) {
+                try {
+                    app(PurchasingService::class)->enviarACompras($r, auth()->user());
+                } catch (PurchasingException $e) {
+                    Notification::make()->title('No se pudo')->body($e->getMessage())->danger()->persistent()->send();
+
+                    return;
+                }
+
+                self::decirSiLlego($r->refresh());
+            });
+    }
+
+    /** A quién le llegó, o que no salió: enviar sin decir a quién es lo que había. */
+    private static function decirSiLlego(PurchaseRequest $r): void
+    {
+        $r->sent_to_at
+            ? Notification::make()
+                ->title('Enviada a ' . $r->sent_to_name)
+                ->body('A ' . $r->sent_to_email . ', con la requisición en PDF adjunta.')
+                ->success()
+                ->send()
+            : Notification::make()
+                ->title('Quedó como enviada, pero el correo no salió')
+                ->body('No le llegó a ' . $r->sent_to_email . '. Revisa la bitácora de avisos y vuelve a enviarla desde el menú de la fila.')
+                ->danger()
+                ->persistent()
+                ->send();
     }
 
     private static function aprobar(): Action
