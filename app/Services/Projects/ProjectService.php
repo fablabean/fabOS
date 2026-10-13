@@ -587,6 +587,13 @@ class ProjectService
             'body'        => $texto,
         ]);
 
+        // Quien lo pidió respondió a un proyecto en pausa: vuelve a estar
+        // activo, y como lo último lo dijo él, queda esperando respuesta
+        // nuestra. Lo archivado no pasa por aquí: no se retoma respondiendo.
+        if (! $delLaboratorio && $proyecto->status === 'pausado') {
+            $this->reanudar($proyecto);
+        }
+
         // Al laboratorio solo se le avisa de lo que dice el cliente: avisarle
         // de lo que escribió él mismo es ruido.
         if (! $delLaboratorio && $proyecto->lead) {
@@ -1326,20 +1333,47 @@ class ProjectService
      * de cierre porque es el mismo campo donde vive «que paso con esto», y
      * tener dos sitios para lo mismo acaba dejando uno vacio.
      */
-    public function pausar(Project $proyecto, string $motivo, ?User $quien = null, bool $avisar = true): Project
-    {
+    /**
+     * @param  bool  $esperaAlCliente  la pausa espera una respuesta de quien
+     *                                 pidió el proyecto: tiene plazo, se le
+     *                                 recuerda y, si no responde, el proyecto se
+     *                                 cierra solo. Una pausa por algo del
+     *                                 laboratorio (una pieza, una firma) no.
+     */
+    public function pausar(
+        Project $proyecto,
+        string $motivo,
+        ?User $quien = null,
+        bool $avisar = true,
+        bool $esperaAlCliente = false,
+    ): Project {
         $proyecto->update([
-            'status'        => 'pausado',
-            'closing_notes' => $motivo,
+            'status'            => 'pausado',
+            'closing_notes'     => $motivo,
+            'paused_at'         => now(),
+            'awaits_client'     => $esperaAlCliente,
+            'pause_reminded_at' => null,
         ]);
 
         $proyecto->refresh();
 
+        // El plazo se dice desde el primer correo: enterarse de que había uno
+        // el día que se cumple no le sirve a nadie.
+        $plazo = $esperaAlCliente
+            ? ' Necesitamos tu respuesta: si no la recibimos antes del ' . $this->fechaLegible($proyecto->venceLaPausaEl())
+                . ', el proyecto se cerrará.'
+            : '';
+
         // Un proyecto parado sin explicación se lee como un proyecto olvidado,
         // y quien espera acaba preguntando por WhatsApp.
-        $aviso = $avisar ? $this->avisarDelProyecto($proyecto, 'proyecto.pausado', $motivo, $quien) : null;
+        $aviso = $avisar ? $this->avisarDelProyecto($proyecto, 'proyecto.pausado', $motivo . $plazo, $quien) : null;
 
-        $this->dejarConstancia($proyecto, 'El proyecto queda en pausa. Motivo: ' . $motivo, $aviso, $quien, $avisar);
+        $this->dejarConstancia(
+            $proyecto,
+            'El proyecto queda en pausa. Motivo: ' . $motivo
+                . ($esperaAlCliente ? ' Espera respuesta de quien lo pidió hasta el ' . $this->fechaLegible($proyecto->venceLaPausaEl()) . '.' : ''),
+            $aviso, $quien, $avisar,
+        );
 
         return $proyecto;
     }
@@ -1347,9 +1381,81 @@ class ProjectService
     /** Y volver: se limpia el motivo, que ya no describe donde esta. */
     public function reanudar(Project $proyecto): Project
     {
-        $proyecto->update(['status' => 'activo', 'closing_notes' => null]);
+        $proyecto->update([
+            'status' => 'activo', 'closing_notes' => null,
+            'paused_at' => null, 'awaits_client' => false, 'pause_reminded_at' => null,
+        ]);
 
         return $proyecto->refresh();
+    }
+
+    /**
+     * Le recuerda a quien pidió el proyecto que la pausa tiene plazo.
+     *
+     * Una sola vez, unos días antes: cerrar algo sin haber avisado que se iba
+     * a cerrar se lee como que el laboratorio se deshizo del encargo.
+     */
+    public function recordarPausa(Project $proyecto): ?NotificationLog
+    {
+        $aviso = $this->avisarDelProyecto(
+            $proyecto,
+            'proyecto.pausa_por_vencer',
+            (string) $proyecto->closing_notes,
+            deMas: ['fecha' => $this->fechaLegible($proyecto->venceLaPausaEl())],
+        );
+
+        $proyecto->update(['pause_reminded_at' => now()]);
+
+        $this->dejarConstancia(
+            $proyecto,
+            'Recordatorio: sigue en pausa esperando respuesta. Si no llega antes del '
+                . $this->fechaLegible($proyecto->venceLaPausaEl()) . ', el proyecto se cerrará.',
+            $aviso, null,
+        );
+
+        return $aviso;
+    }
+
+    /**
+     * Cierra y archiva un proyecto que esperaba una respuesta que no llegó.
+     *
+     * Con mensaje estándar, que dice por qué y qué hacer si quiere seguir:
+     * pedir otro o acercarse al laboratorio. Archivado no se retoma
+     * respondiendo; lo que haya que decir es otra conversación.
+     */
+    public function cerrarPorFaltaDeRespuesta(Project $proyecto): Project
+    {
+        $dias = (int) config('fabos.proyectos.dias_sin_respuesta');
+
+        $mensaje = 'Cerramos tu proyecto «' . $proyecto->name . '» porque no recibimos respuesta en '
+            . $dias . ' días desde que quedó en pausa.';
+
+        $proyecto->update([
+            'status'        => 'cerrado',
+            'closed_at'     => now(),
+            'closing_notes' => 'Cerrado por falta de respuesta de quien lo pidió, tras ' . $dias . ' días en pausa.'
+                . (filled($proyecto->closing_notes) ? ' Se esperaba: ' . $proyecto->closing_notes : ''),
+            'awaits_client' => false,
+        ]);
+
+        $proyecto->refresh();
+
+        $aviso = $this->avisarDelProyecto($proyecto, 'proyecto.cerrado_sin_respuesta', $mensaje);
+
+        $this->dejarConstancia(
+            $proyecto,
+            'El proyecto se cerró y se archivó por falta de respuesta: pasaron ' . $dias . ' días en pausa sin que quien lo pidió respondiera.',
+            $aviso, null,
+        );
+
+        return $proyecto;
+    }
+
+    private function fechaLegible(?\Carbon\CarbonInterface $fecha): string
+    {
+        return $fecha
+            ? $fecha->copy()->timezone(config('fabos.lab.timezone'))->locale('es')->isoFormat('D [de] MMMM')
+            : 'la fecha límite';
     }
 
     public function reabrir(Project $proyecto): Project

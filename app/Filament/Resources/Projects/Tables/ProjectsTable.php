@@ -47,8 +47,11 @@ class ProjectsTable
             //
             // Y lo que lleva más de un día hábil esperando una respuesta
             // nuestra, late: es lo único de la lista que se mueve, a propósito.
+            // Lo pausado, en gris: sigue en la lista porque no está muerto,
+            // pero no compite con lo que sí hay que mover hoy.
             ->recordClasses(fn (Project $r) => trim(
                 ($r->esAlianza() ? 'es-alianza ' : '')
+                . ($r->status === 'pausado' ? 'en-pausa ' : '')
                 . ($r->sinRespuesta() ? 'sin-respuesta ' : '')
                 . ($r->semaforo() ?? '')
             ) ?: null)
@@ -813,11 +816,34 @@ class ProjectsTable
                     ->label('Por qué se pausa')
                     ->required()
                     ->helperText('Lo que hace falta para volver a arrancarlo. Sin esto, dentro de dos meses nadie sabe qué se estaba esperando.'),
+
+                /*
+                 * Dos pausas distintas. Si lo que falta es de quien lo pidió
+                 * —que responda, que mande el archivo—, tiene plazo: se le
+                 * recuerda y, sin respuesta, se cierra solo. Si lo que falta es
+                 * nuestro —una pieza, una firma—, no: cerrarlo por eso sería
+                 * castigarlo por algo que no depende de él.
+                 */
+                \Filament\Forms\Components\Toggle::make('espera')
+                    ->label('Espera una respuesta de quien lo pidió')
+                    ->helperText(fn () => 'Si no responde en ' . config('fabos.proyectos.dias_sin_respuesta')
+                        . ' días, el proyecto se cierra y se archiva solo. Se le recuerda '
+                        . config('fabos.proyectos.dias_de_aviso_previo') . ' días antes, y si responde vuelve a estar activo. '
+                        . 'Déjalo apagado si lo que falta depende del laboratorio.')
+                    ->default(false),
             ])
             ->action(function (Project $record, array $data) {
-                app(ProjectService::class)->pausar($record, $data['motivo'], quien: auth()->user());
+                app(ProjectService::class)->pausar(
+                    $record, $data['motivo'], quien: auth()->user(), esperaAlCliente: (bool) ($data['espera'] ?? false),
+                );
 
-                Notification::make()->title('En pausa')->success()->send();
+                Notification::make()
+                    ->title('En pausa')
+                    ->body($record->fresh()->venceLaPausaEl()
+                        ? 'Se cerrará solo el ' . $record->fresh()->venceLaPausaEl()->timezone(config('fabos.lab.timezone'))->format('d/m/Y') . ' si no hay respuesta.'
+                        : null)
+                    ->success()
+                    ->send();
             });
     }
 
@@ -831,9 +857,12 @@ class ProjectsTable
             ->color('success')
             ->visible(fn (Project $r) => self::puedeManejar($r) && $r->status === 'pausado')
             ->requiresConfirmation()
-            ->modalDescription(fn (Project $r) => $r->closing_notes
+            ->modalDescription(fn (Project $r) => ($r->closing_notes
                 ? 'Se pausó por: ' . $r->closing_notes
                 : 'Vuelve a contarse como trabajo en curso.')
+                . ($r->venceLaPausaEl()
+                    ? ' Esperaba respuesta de quien lo pidió hasta el ' . $r->venceLaPausaEl()->timezone(config('fabos.lab.timezone'))->format('d/m/Y') . '.'
+                    : ''))
             ->action(function (Project $record) {
                 app(ProjectService::class)->reanudar($record);
 

@@ -22,6 +22,7 @@ class Project extends Model
         'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
         'modality', 'alliance_open', 'alliance_public', 'alliance_pitch', 'market_value',
+        'paused_at', 'awaits_client', 'pause_reminded_at',
     ];
 
     protected function casts(): array
@@ -36,6 +37,9 @@ class Project extends Model
             'closed_at'        => UtcDateTime::class,
             'proposal_sent_at' => UtcDateTime::class,
             'accepted_at'      => UtcDateTime::class,
+            'paused_at'         => UtcDateTime::class,
+            'awaits_client'     => 'boolean',
+            'pause_reminded_at' => UtcDateTime::class,
         ];
     }
 
@@ -912,6 +916,20 @@ class Project extends Model
                     ->where('projects.stage', 'idea')
                     ->whereNull('projects.proposal_sent_at')
                     ->where('projects.created_at', '<=', $corte)));
+    }
+
+    /**
+     * Cuándo se cierra sola esta pausa, si es de las que esperan a quien pidió
+     * el proyecto. Nulo en cualquier otro caso: una pausa por algo del
+     * laboratorio no tiene plazo.
+     */
+    public function venceLaPausaEl(): ?\Illuminate\Support\Carbon
+    {
+        if ($this->status !== 'pausado' || ! $this->awaits_client || ! $this->paused_at) {
+            return null;
+        }
+
+        return $this->paused_at->copy()->addDays((int) config('fabos.proyectos.dias_sin_respuesta'));
     }
 
     /** Estados que sacan a un proyecto de la mesa de quien lo lleva. */

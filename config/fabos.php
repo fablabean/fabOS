@@ -294,6 +294,15 @@ return [
         // avisarle a un area que pide antes de eso.
         'dias_presupuesto' => (int) env('PROYECTO_DIAS_PRESUPUESTO', 15),
 
+        /*
+         * Una pausa que espera la respuesta de quien pidió el proyecto: a los
+         * cuántos días sin respuesta se cierra y se archiva, y cuántos días
+         * antes se le recuerda. Las pausas por motivos del laboratorio —una
+         * pieza, una firma— no tienen plazo.
+         */
+        'dias_sin_respuesta' => (int) env('PROYECTO_DIAS_SIN_RESPUESTA', 7),
+        'dias_de_aviso_previo' => (int) env('PROYECTO_DIAS_DE_AVISO_PREVIO', 2),
+
         // El formulario de pedido con que arranca el traslado presupuestal.
         'formulario_venta_interna' => env('PROYECTO_FORMULARIO_VENTA_INTERNA'),
     ],

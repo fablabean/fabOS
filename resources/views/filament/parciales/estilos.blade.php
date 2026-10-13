@@ -21,6 +21,13 @@
     tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #2B6CB0; }
     .dark tr.es-alianza > td:first-child { box-shadow: inset 3px 0 0 #63B3ED; }
 
+    /* En pausa, en gris: sigue ahí porque no está muerto, pero no compite con
+       lo que hay que mover hoy. Las acciones no se apagan: reanudar es justo
+       lo que hay que poder pulsar. */
+    tr.en-pausa > td { background-color: color-mix(in srgb, #6B7280 9%, transparent); }
+    tr.en-pausa > td:not(:last-child) { opacity: .62; }
+    tr.en-pausa > td:first-child { box-shadow: inset 3px 0 0 #9CA3AF; }
+
     /* Sin respuesta hace más de un día hábil: la fila late. Es lo único del
        panel que se mueve, y por eso se ve; va lento y suave para que avise
        sin que la lista entera se vuelva ilegible. Gana al semáforo: una

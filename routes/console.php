@@ -13,6 +13,13 @@ Artisan::command('inspire', function () {
 // Red de seguridad para las reservas a las que nadie llegó (§10).
 Schedule::command('fabos:liberar-ausencias')->everyFifteenMinutes();
 
+// Las pausas que esperan a quien pidió el proyecto: se le recuerda, y si pasa
+// el plazo sin respuesta el proyecto se cierra y se archiva (§11). A media
+// mañana, que es cuando un correo así se lee.
+Schedule::command('fabos:pausas-sin-respuesta')
+    ->dailyAt('09:00')
+    ->timezone(config('fabos.lab.timezone'));
+
 // Los planes preventivos se vuelven órdenes reales cada madrugada (§8).
 Schedule::command('fabos:generar-preventivas')->dailyAt('05:00');
 

@@ -346,6 +346,19 @@
          el vectorial», «¿de qué grosor es el MDF?»— y quien pidió no tenía por
          dónde contestar salvo cuando había una propuesta que aceptar. Lo que
          adjunta se suma a los soportes del proyecto. --}}
+    {{-- Archivado no se retoma respondiendo: se dice, y se dice qué hacer. Sin
+         esto la página simplemente no tenía dónde escribir, y parecía rota. --}}
+    @if ($proyecto->estaCerrado())
+        <div class="panel" id="responder">
+            <h2 style="margin-top:0">Este proyecto está cerrado</h2>
+            <p class="help" style="margin:0">
+                Ya no se puede retomar respondiendo aquí. Si quieres continuar,
+                <a href="{{ route('proyectos.solicitar') }}">pide un proyecto nuevo</a>
+                o acércate al laboratorio y habla con alguien del equipo.
+            </p>
+        </div>
+    @endif
+
     @unless ($proyecto->estaCerrado())
         <div class="panel" id="responder">
             <h2 style="margin-top:0">Responder</h2>
