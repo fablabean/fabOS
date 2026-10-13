@@ -395,4 +395,45 @@ class ActasDeMovimientoTest extends TestCase
 
         $this->assertSame('enviada', $fuera->fresh()->status);
     }
+
+    // -------------------------------------------- completar el inventario
+
+    /**
+     * Lo que se escribe en el acta le queda al equipo en su ficha, si le
+     * faltaba: la primera acta completa el inventario y las siguientes ya
+     * salen llenas. Lo que el inventario ya decía no se toca.
+     */
+    public function test_el_acta_completa_la_ficha_del_equipo_sin_pisar_lo_que_tenia(): void
+    {
+        $erick = $this->persona('Erick', '80187390', User::ROL_ADMINISTRADOR);
+        $area = Area::firstOrCreate(['slug' => 'robots'], ['name' => 'Robots']);
+        $go2 = Asset::create([
+            'area_id' => $area->id, 'name' => 'Robot Unitree Go2', 'kind' => 'fijo', 'status' => 'operativo',
+            'brand' => 'Unitree', 'is_reservable' => true, 'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+
+        $acta = $this->acta($erick, $erick);
+        $acta->items()->create([
+            'asset_id' => $go2->id, 'descripcion' => 'Robot perro', 'placa' => '60777',
+            'marca' => 'OTRA MARCA', 'modelo' => 'GO2', 'serie' => 'SN-123', 'estado' => 'B',
+        ]);
+
+        $go2->refresh();
+        $this->assertSame('60777', $go2->asset_tag);
+        $this->assertSame('GO2', $go2->model);
+        $this->assertSame('SN-123', $go2->serial);
+        $this->assertSame('Unitree', $go2->brand, 'la marca ya estaba: no se pisa');
+
+        // La próxima acta de ese equipo ya sale llena.
+        $this->assertSame('60777', \App\Models\ActaItem::desdeElActivo($go2)['placa']);
+
+        // Y una placa que ya es de otro equipo no se copia.
+        $otro = Asset::create([
+            'area_id' => $area->id, 'name' => 'Otro robot', 'kind' => 'fijo', 'status' => 'operativo',
+            'is_reservable' => true, 'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+        $acta->items()->create(['asset_id' => $otro->id, 'descripcion' => 'Otro', 'placa' => '60777', 'estado' => 'B']);
+
+        $this->assertNull($otro->fresh()->asset_tag);
+    }
 }
