@@ -165,6 +165,76 @@ class Anuncio extends Model
             ->values();
     }
 
+    public function programaciones(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AnuncioProgramacion::class)->orderBy('hora');
+    }
+
+    /**
+     * Lo que tiene que sonar entre dos momentos, en orden (§3).
+     *
+     * Para la pantalla «Parlante», que se deja abierta en el equipo de los
+     * parlantes. Cada vez sale con su instante exacto en milisegundos —no con
+     * «17:50»—: así el navegador no tiene que saber en qué zona horaria está,
+     * y un equipo con el reloj en otra zona suena igual a la hora de Bogotá.
+     *
+     * Cuenta la vigencia —un anuncio de la feria deja de sonar cuando la feria
+     * pasa— pero no si sale en la portada: lo que se dice por los parlantes no
+     * tiene por qué publicarse en el sitio. Sin audio al día no hay nada que
+     * reproducir, y no sale.
+     *
+     * @return array<int,array{clave:string,anuncio:int,titulo:string,url:string,t:int,hora:string,hoy:bool,repeticiones:int,pausa:int}>
+     */
+    public static function agenda(\Carbon\CarbonInterface $desde, \Carbon\CarbonInterface $hasta): array
+    {
+        $tz = config('fabos.lab.timezone');
+        $eventos = [];
+
+        $anuncios = static::query()->has('programaciones')->with('programaciones')->get()
+            ->filter(fn (self $a) => $a->tieneAudioAlDia());
+
+        for ($dia = $desde->copy()->timezone($tz)->startOfDay(); $dia->lte($hasta); $dia = $dia->addDay()) {
+            foreach ($anuncios as $anuncio) {
+                foreach ($anuncio->programaciones as $p) {
+                    if (! in_array($dia->isoWeekday(), array_map('intval', $p->dias ?? []), true)) {
+                        continue;
+                    }
+
+                    [$h, $m] = array_map('intval', explode(':', $p->horaCorta()));
+                    $momento = $dia->copy()->setTime($h, $m);
+
+                    if ($momento->lt($desde) || $momento->gt($hasta)) {
+                        continue;
+                    }
+
+                    if (($anuncio->starts_at && $momento->lt($anuncio->starts_at))
+                        || ($anuncio->ends_at && $momento->gt($anuncio->ends_at))) {
+                        continue;
+                    }
+
+                    $eventos[] = [
+                        // Lo que identifica ESTE sonar: el mismo horario otro
+                        // día es otra clave. El navegador la recuerda para no
+                        // repetirlo si se recarga la pantalla.
+                        'clave' => $p->id . '@' . $momento->timestamp,
+                        'anuncio' => $anuncio->id,
+                        'titulo' => $anuncio->titulo,
+                        'url' => $anuncio->audioUrl(),
+                        't' => $momento->getTimestampMs(),
+                        'hora' => $momento->format('H:i'),
+                        'hoy' => $momento->isSameDay(now($tz)),
+                        'repeticiones' => max(1, $p->repeticiones),
+                        'pausa' => max(0, $p->pausa),
+                    ];
+                }
+            }
+        }
+
+        usort($eventos, fn ($a, $b) => $a['t'] <=> $b['t']);
+
+        return $eventos;
+    }
+
     /**
      * Los de la barra de arriba del panel.
      *

@@ -3,8 +3,13 @@
 namespace App\Filament\Resources\Anuncios\Schemas;
 
 use App\Models\Anuncio;
+use App\Models\AnuncioProgramacion;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
@@ -51,6 +56,53 @@ class AnuncioForm
                     Placeholder::make('estado_del_audio')
                         ->hiddenLabel()
                         ->content(fn (?Anuncio $record) => self::estado($record)),
+                ]),
+
+            Section::make('Horario fijo')
+                ->description('Para que suene solo, siempre a la misma hora. Suena en el equipo que tenga abierta la pantalla «Parlante» del panel. Respeta las fechas de abajo, pero no si sale en la portada.')
+                ->columnSpanFull()
+                ->collapsible()
+                ->schema([
+                    Repeater::make('programaciones')
+                        ->hiddenLabel()
+                        ->relationship()
+                        ->defaultItems(0)
+                        ->addActionLabel('Añadir un horario')
+                        ->columns(4)
+                        ->itemLabel(fn (array $state) => filled($state['hora'] ?? null) && filled($state['dias'] ?? null)
+                            ? (new AnuncioProgramacion($state))->resumen() : null)
+                        ->schema([
+                            CheckboxList::make('dias')
+                                ->label('Días')
+                                ->options(AnuncioProgramacion::DIAS)
+                                ->columns(7)
+                                ->required()
+                                ->bulkToggleable()
+                                ->columnSpanFull(),
+
+                            TimePicker::make('hora')
+                                ->label('Hora')
+                                ->seconds(false)
+                                ->required(),
+
+                            Select::make('repeticiones')
+                                ->label('Veces seguidas')
+                                ->options([1 => 'Una vez', 2 => 'Dos veces', 3 => 'Tres veces'])
+                                ->default(1)
+                                ->selectablePlaceholder(false)
+                                ->live()
+                                ->required(),
+
+                            TextInput::make('pausa')
+                                ->label('Pausa entre una y otra')
+                                ->numeric()
+                                ->minValue(0)
+                                ->maxValue(600)
+                                ->default(30)
+                                ->suffix('segundos')
+                                ->visible(fn ($get) => (int) $get('repeticiones') > 1)
+                                ->required(),
+                        ]),
                 ]),
 
             Section::make('Cuándo se oye')

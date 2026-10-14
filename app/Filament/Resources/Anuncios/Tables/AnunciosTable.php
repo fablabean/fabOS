@@ -18,6 +18,7 @@ class AnunciosTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('programaciones'))
             ->defaultSort('position')
             ->reorderable('position')
             // Mientras haya un audio en camino, la lista se refresca sola: así
@@ -46,8 +47,15 @@ class AnunciosTable
                     })
                     ->tooltip(fn (Anuncio $a) => $a->audio_estado === 'fallo' ? $a->audio_error : null),
 
+                TextColumn::make('horario')
+                    ->label('Horario fijo')
+                    ->state(fn (Anuncio $a) => $a->programaciones->map->resumen()->all())
+                    ->listWithLineBreaks()
+                    ->placeholder('—')
+                    ->color('gray'),
+
                 IconColumn::make('is_active')
-                    ->label('Sale')
+                    ->label('En la portada')
                     ->boolean(),
 
                 TextColumn::make('ends_at')

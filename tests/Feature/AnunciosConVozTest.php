@@ -241,6 +241,88 @@ class AnunciosConVozTest extends TestCase
         Livewire::test(AnunciosFavoritos::class)->assertDontSee('Cierre pronto');
     }
 
+    /**
+     * La agenda sale con el instante exacto, a la hora del laboratorio, solo
+     * los días marcados.
+     */
+    public function test_la_agenda_suena_los_dias_marcados_a_la_hora_del_laboratorio(): void
+    {
+        $this->servidorDeVoz();
+        $tz = config('fabos.lab.timezone');
+        $a = $this->anuncio(['titulo' => 'Cierre pronto', 'is_active' => false]);
+        $a->programaciones()->create(['dias' => [1, 2, 3, 4, 5], 'hora' => '17:50', 'repeticiones' => 2, 'pausa' => 20]);
+
+        // Del lunes 12 de octubre de 2026 al domingo 18, enteros.
+        $desde = \Carbon\Carbon::parse('2026-10-12 00:00', $tz);
+        $eventos = Anuncio::agenda($desde, $desde->copy()->endOfWeek());
+
+        $this->assertCount(5, $eventos);
+        $this->assertSame(
+            \Carbon\Carbon::parse('2026-10-12 17:50', $tz)->getTimestampMs(),
+            $eventos[0]['t'],
+        );
+        $this->assertSame('17:50', $eventos[0]['hora']);
+        $this->assertSame(2, $eventos[0]['repeticiones']);
+        $this->assertSame(20, $eventos[0]['pausa']);
+        $this->assertSame($a->fresh()->audioUrl(), $eventos[0]['url']);
+        $this->assertCount(5, array_unique(array_column($eventos, 'clave')));
+    }
+
+    /** La vigencia manda: el anuncio de la feria deja de sonar cuando la feria pasa. */
+    public function test_la_agenda_respeta_la_vigencia_y_pide_audio(): void
+    {
+        $this->servidorDeVoz();
+        $tz = config('fabos.lab.timezone');
+        $a = $this->anuncio(['ends_at' => \Carbon\Carbon::parse('2026-10-14 12:00', $tz)]);
+        $a->programaciones()->create(['dias' => [1, 2, 3, 4, 5, 6, 7], 'hora' => '09:00']);
+
+        $desde = \Carbon\Carbon::parse('2026-10-12 00:00', $tz);
+        $this->assertCount(3, Anuncio::agenda($desde, $desde->copy()->endOfWeek()));
+
+        // Con el texto cambiado y el audio sin generar, no hay qué reproducir.
+        Queue::fake();
+        $a->update(['texto' => 'Otro texto.']);
+        $this->assertSame([], Anuncio::agenda($desde, $desde->copy()->endOfWeek()));
+    }
+
+    public function test_los_horarios_se_guardan_desde_el_formulario(): void
+    {
+        Queue::fake();
+        $this->admin();
+
+        Livewire::test(CreateAnuncio::class)
+            ->fillForm([
+                'titulo' => 'Cierre pronto',
+                'texto' => 'El FabLab cierra en diez minutos.',
+                'voz' => 'hombre',
+                'programaciones' => [
+                    ['dias' => ['1', '2', '3', '4', '5'], 'hora' => '17:50', 'repeticiones' => 2, 'pausa' => 30],
+                    ['dias' => ['6'], 'hora' => '12:50', 'repeticiones' => 1],
+                ],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $a = Anuncio::where('titulo', 'Cierre pronto')->firstOrFail();
+        $this->assertSame(
+            // Por hora, que es como se leen.
+            ['Sáb · 12:50', 'Lun a Vie · 17:50 · 2 veces'],
+            $a->programaciones->map->resumen()->all(),
+        );
+    }
+
+    public function test_la_pantalla_del_parlante_carga_con_lo_que_viene(): void
+    {
+        $this->servidorDeVoz();
+        $this->admin();
+        $a = $this->anuncio(['titulo' => 'Cierre pronto']);
+        $a->programaciones()->create(['dias' => [1, 2, 3, 4, 5, 6, 7], 'hora' => now(config('fabos.lab.timezone'))->addHour()->format('H:i')]);
+
+        $this->get(\App\Filament\Pages\Parlante::getUrl())->assertOk()
+            ->assertSee('Encender el parlante')
+            ->assertSee('Cierre pronto');
+    }
+
     public function test_el_texto_no_pasa_de_cinco_mil_caracteres(): void
     {
         $this->admin();
