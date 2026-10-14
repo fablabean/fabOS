@@ -41,6 +41,9 @@ class PublicSiteController extends Controller
             // la franja de cifras: a quien llega le dice más un logo de la
             // Universidad que «79 libres ahora».
             'logos'     => \App\Models\Logo::paraLaPortada(),
+            // Solo los que ya tienen su audio: uno a medio generar esperaría
+            // en la portada con un reproductor mudo.
+            'anuncios'  => \App\Models\Anuncio::paraLaPortada(),
             'areas'     => $areas,
             'destacados' => $this->destacados(),
         ]);

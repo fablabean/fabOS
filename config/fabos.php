@@ -234,6 +234,22 @@ return [
         'timeout' => (int) env('GEMINI_TIMEOUT', 60),
     ],
 
+    /*
+     * Texto a voz: el servidor del FabLab (§3, anuncios con voz).
+     *
+     * Solo responde desde la red del laboratorio, y ahí no pide clave. Dentro
+     * de un contenedor el nombre `.local` suele no resolverse: entonces va la
+     * IP del servidor, que puede cambiar y hay que preguntarla. VACIA, los
+     * anuncios se guardan igual y esperan su audio.
+     *
+     * El tiempo de espera es largo a propósito: generar tarda la mitad de lo
+     * que dura el audio, y el servidor atiende una petición a la vez.
+     */
+    'voz' => [
+        'url' => env('FABLAB_VOZ_URL', 'http://spark-885a.local:8880'),
+        'timeout' => (int) env('FABLAB_VOZ_TIMEOUT', 300),
+    ],
+
     'asesorias' => [
         'minutos' => (int) env('ASESORIA_MINUTOS', 45),
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),

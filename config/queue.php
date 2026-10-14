@@ -29,6 +29,9 @@ return [
     |
     */
 
+    // `retry_after` en 360 y no en 90: el audio de un anuncio puede esperar
+    // cinco minutos al servidor de voz (GenerarAudioDelAnuncio). Con 90 la
+    // cola lo daba por perdido a mitad de camino y lo pedía otra vez.
     'connections' => [
 
         'sync' => [
@@ -40,7 +43,7 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 360),
             'after_commit' => false,
         ],
 
@@ -68,7 +71,7 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 360),
             'block_for' => null,
             'after_commit' => false,
         ],

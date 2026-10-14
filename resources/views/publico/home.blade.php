@@ -4,6 +4,14 @@
 @section('styles')
 @include('publico.banner-estilos')
 
+    .anuncio{
+        background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+        border-radius:6px;padding:.9rem 1rem;margin-bottom:.7rem;
+    }
+    .anuncio b{display:block;font-size:1rem;margin-bottom:.5rem}
+    .anuncio audio{width:100%;max-width:28rem;height:2.4rem;display:block}
+    .anuncio p{margin:.6rem 0 0;font-size:.9rem;color:var(--muted);white-space:pre-line}
+
     .areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
     .area{
         background:var(--surface);border:1px solid var(--rule);border-radius:6px;
@@ -86,6 +94,24 @@
 @include('publico.banner')
 
 <main>
+    {{-- Los anuncios con voz, lo primero: son lo que tiene fecha —un horario
+         especial, una feria—. El texto va escrito además de dicho: quien está
+         en una sala con el sonido apagado, o no oye, también tiene que
+         enterarse. Sin anuncios no se pinta nada. --}}
+    @if ($anuncios->isNotEmpty())
+        <section class="anuncios" style="padding-bottom:0">
+            <p class="rotulo">Anuncios</p>
+            @foreach ($anuncios as $anuncio)
+                <article class="anuncio">
+                    <b>{{ $anuncio->titulo }}</b>
+                    <audio controls preload="none" src="{{ $anuncio->audioUrl() }}"
+                           aria-label="Escuchar: {{ $anuncio->titulo }}"></audio>
+                    <p>{{ $anuncio->texto }}</p>
+                </article>
+            @endforeach
+        </section>
+    @endif
+
     {{-- La guía de reservas, también aquí: es la primera pregunta de quien
          llega —«¿y yo por dónde?»— y no debería tener que encontrar la
          página de reservas para hacerla. La respuesta lleva a reservas con

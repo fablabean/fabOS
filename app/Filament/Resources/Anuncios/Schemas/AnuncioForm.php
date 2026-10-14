@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Filament\Resources\Anuncios\Schemas;
+
+use App\Models\Anuncio;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+
+class AnuncioForm
+{
+    public static function configure(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('Lo que se dice')
+                ->description('El texto se convierte en voz con el servidor del FabLab. Se genera una sola vez al guardar, y otra vez solo si cambias el texto o la voz.')
+                ->columnSpanFull()
+                ->schema([
+                    TextInput::make('titulo')
+                        ->label('Título')
+                        ->placeholder('Horario de diciembre')
+                        ->required()
+                        ->maxLength(120)
+                        ->helperText('Se lee en pantalla encima del reproductor. No se locuta.'),
+
+                    Textarea::make('texto')
+                        ->label('Texto del anuncio')
+                        ->required()
+                        ->rows(6)
+                        ->maxLength(Anuncio::MAX_CARACTERES)
+                        ->helperText('Hasta 5.000 caracteres. Horas, cifras y precios se leen bien escritos con números: «10:00», «1.250», «$45.000».'),
+
+                    ToggleButtons::make('voz')
+                        ->label('Voz')
+                        ->options(Anuncio::VOCES)
+                        ->default('mujer')
+                        ->inline()
+                        ->required(),
+                ]),
+
+            Section::make('El audio')
+                ->columnSpanFull()
+                ->visible(fn (?Anuncio $record) => $record !== null)
+                ->schema([
+                    Placeholder::make('estado_del_audio')
+                        ->hiddenLabel()
+                        ->content(fn (?Anuncio $record) => self::estado($record)),
+                ]),
+
+            Section::make('Cuándo se oye')
+                ->columns(2)
+                ->columnSpanFull()
+                ->schema([
+                    Toggle::make('is_active')
+                        ->label('Sale en la portada')
+                        ->default(true)
+                        ->helperText('Apagado no sale, pero se conserva con su audio.')
+                        ->columnSpanFull(),
+
+                    DateTimePicker::make('starts_at')
+                        ->label('Empieza a oírse')
+                        ->helperText('Opcional. Se puede dejar escrito hoy y que aparezca solo el lunes.'),
+
+                    DateTimePicker::make('ends_at')
+                        ->label('Deja de oírse')
+                        ->after('starts_at')
+                        ->helperText('Opcional. El anuncio de un evento se apaga solo cuando el evento pasa.'),
+                ]),
+        ]);
+    }
+
+    /**
+     * En qué va el audio, con el reproductor si ya está.
+     *
+     * El reproductor va aquí y no solo en la portada: quien escribió el anuncio
+     * tiene que poder oírlo antes de que lo oiga todo el mundo. Una sigla mal
+     * leída o un número dicho al revés solo se descubren escuchando.
+     */
+    private static function estado(?Anuncio $anuncio): HtmlString
+    {
+        if ($anuncio === null) {
+            return new HtmlString('');
+        }
+
+        if ($anuncio->tieneAudioAlDia()) {
+            return new HtmlString(
+                '<audio controls preload="none" style="width:100%" src="' . e($anuncio->audioUrl()) . '"></audio>'
+            );
+        }
+
+        return new HtmlString(match ($anuncio->audio_estado) {
+            'fallo' => '<strong>No se pudo generar.</strong> ' . e($anuncio->audio_error ?? '')
+                . ' El servidor de voz solo responde desde la red del FabLab. Desde la lista, «Volver a generar».',
+            'generando' => '<strong>Generándose.</strong> Tarda más o menos la mitad de lo que dura el audio. Vuelve a abrir el anuncio en un momento.',
+            default => '<strong>En cola.</strong> El servidor de voz atiende una petición a la vez; en cuanto le toque, el audio aparece aquí.',
+        });
+    }
+}
