@@ -63,6 +63,11 @@ class AnuncioForm
                         ->helperText('Apagado no sale, pero se conserva con su audio.')
                         ->columnSpanFull(),
 
+                    Toggle::make('favorito')
+                        ->label('Favorito')
+                        ->helperText('Sale en la barra de arriba del panel, para lanzarlo a un clic. Sirve aunque no salga en la portada.')
+                        ->columnSpanFull(),
+
                     DateTimePicker::make('starts_at')
                         ->label('Empieza a oírse')
                         ->helperText('Opcional. Se puede dejar escrito hoy y que aparezca solo el lunes.'),

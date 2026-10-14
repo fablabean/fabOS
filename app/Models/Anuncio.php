@@ -33,7 +33,7 @@ class Anuncio extends Model
     protected $table = 'anuncios';
 
     protected $fillable = [
-        'position', 'is_active',
+        'position', 'is_active', 'favorito',
         'titulo', 'texto', 'voz',
         'starts_at', 'ends_at',
     ];
@@ -42,6 +42,7 @@ class Anuncio extends Model
     {
         return [
             'is_active' => 'boolean',
+            'favorito' => 'boolean',
             'position' => 'integer',
             'starts_at' => UtcDateTime::class,
             'ends_at' => UtcDateTime::class,
@@ -160,6 +161,22 @@ class Anuncio extends Model
     public static function paraLaPortada(): Collection
     {
         return static::query()->vigente()->orderBy('position')->orderBy('id')->get()
+            ->filter(fn (self $a) => $a->tieneAudioAlDia())
+            ->values();
+    }
+
+    /**
+     * Los de la barra de arriba del panel.
+     *
+     * No miran la vigencia ni si salen en la portada: «cerramos en diez
+     * minutos» no se publica en el sitio, se lanza por los parlantes. Sí hace
+     * falta el audio: un botón que no suena no sirve de acceso directo.
+     *
+     * @return Collection<int,static>
+     */
+    public static function favoritos(): Collection
+    {
+        return static::query()->where('favorito', true)->orderBy('position')->orderBy('id')->get()
             ->filter(fn (self $a) => $a->tieneAudioAlDia())
             ->values();
     }

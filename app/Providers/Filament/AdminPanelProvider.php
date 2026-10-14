@@ -133,6 +133,18 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('partials.compartir')->render(),
             )
+            // Los anuncios con voz: el reproductor compartido, y los favoritos
+            // a un clic junto al buscador. Solo para quien abre la sección.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => \App\Filament\Resources\Anuncios\AnuncioResource::canAccess()
+                    ? view('filament.parciales.reproductor-de-anuncios')->render() : '',
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn (): string => \App\Filament\Resources\Anuncios\AnuncioResource::canAccess()
+                    ? \Illuminate\Support\Facades\Blade::render('<livewire:anuncios-favoritos />') : '',
+            )
             // El laboratorio cerrado a las reservas: el equipo también lo ve,
             // que es quien recibe la llamada de «¿por qué no me deja?».
             ->renderHook(

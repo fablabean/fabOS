@@ -57,6 +57,28 @@ class AnunciosTable
                     ->color('gray'),
             ])
             ->recordActions([
+                // Suena en el navegador, sin ir al servidor: el audio ya está
+                // guardado. Usa el reproductor compartido del panel.
+                Action::make('escuchar')
+                    ->label('Escuchar')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->iconButton()
+                    ->tooltip('Escuchar / detener')
+                    ->visible(fn (Anuncio $a) => $a->tieneAudioAlDia())
+                    ->extraAttributes(fn (Anuncio $a) => ['data-anuncio-audio' => $a->audioUrl()])
+                    ->alpineClickHandler(fn (Anuncio $a) => 'window.fabosAnuncios.tocar(' . \Illuminate\Support\Js::from($a->audioUrl()) . ')'),
+                Action::make('favorito')
+                    ->label(fn (Anuncio $a) => $a->favorito ? 'Quitar de favoritos' : 'Añadir a favoritos')
+                    ->icon(fn (Anuncio $a) => $a->favorito ? 'heroicon-s-star' : 'heroicon-o-star')
+                    ->color(fn (Anuncio $a) => $a->favorito ? 'warning' : 'gray')
+                    ->iconButton()
+                    ->tooltip(fn (Anuncio $a) => $a->favorito ? 'Quitar de la barra de arriba' : 'Poner en la barra de arriba')
+                    ->action(function (Anuncio $a, $livewire) {
+                        $a->update(['favorito' => ! $a->favorito]);
+                        // La barra de arriba se vuelve a pintar sin recargar.
+                        $livewire->dispatch('anuncios-favoritos');
+                    }),
                 Action::make('volverAGenerar')
                     ->label('Volver a generar')
                     ->icon('heroicon-o-arrow-path')

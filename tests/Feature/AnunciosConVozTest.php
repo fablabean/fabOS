@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Anuncios\AnuncioResource;
 use App\Filament\Resources\Anuncios\Pages\CreateAnuncio;
+use App\Filament\Resources\Anuncios\Pages\ListAnuncios;
 use App\Jobs\GenerarAudioDelAnuncio;
+use App\Livewire\AnunciosFavoritos;
 use App\Models\Anuncio;
 use App\Models\User;
 use App\Models\UserCategory;
@@ -194,6 +197,48 @@ class AnunciosConVozTest extends TestCase
 
         $this->assertDatabaseHas('anuncios', ['titulo' => 'Feria de proyectos', 'audio_estado' => 'pendiente']);
         Queue::assertPushed(GenerarAudioDelAnuncio::class);
+    }
+
+    /** Cada fila con audio lleva su botón de escuchar, que suena en el navegador. */
+    public function test_la_lista_tiene_boton_de_escuchar(): void
+    {
+        $this->servidorDeVoz();
+        $this->admin();
+        $a = $this->anuncio();
+
+        Livewire::test(ListAnuncios::class)
+            ->assertTableActionVisible('escuchar', $a)
+            ->assertSee('data-anuncio-audio="' . $a->fresh()->audioUrl() . '"', false);
+    }
+
+    /** Un favorito sale en la barra de arriba aunque no salga en la portada. */
+    public function test_los_favoritos_salen_en_la_barra_de_arriba(): void
+    {
+        $this->servidorDeVoz();
+        $this->admin();
+        $a = $this->anuncio(['titulo' => 'Cierre pronto', 'is_active' => false]);
+
+        $this->get(AnuncioResource::getUrl())->assertOk()->assertDontSee('Lanzar: Cierre pronto');
+
+        Livewire::test(ListAnuncios::class)
+            ->callTableAction('favorito', $a)
+            ->assertDispatched('anuncios-favoritos');
+
+        $this->assertTrue($a->fresh()->favorito);
+        $this->get(AnuncioResource::getUrl())->assertOk()
+            ->assertSee('Lanzar: Cierre pronto')
+            ->assertSee('window.fabosAnuncios', false);
+        $this->get('/')->assertOk()->assertDontSee('Cierre pronto');
+    }
+
+    /** Un favorito sin audio todavía no ocupa sitio: un botón que no suena no sirve. */
+    public function test_un_favorito_sin_audio_no_sale_en_la_barra(): void
+    {
+        Queue::fake();
+        $this->admin();
+        $this->anuncio(['titulo' => 'Cierre pronto', 'favorito' => true]);
+
+        Livewire::test(AnunciosFavoritos::class)->assertDontSee('Cierre pronto');
     }
 
     public function test_el_texto_no_pasa_de_cinco_mil_caracteres(): void
