@@ -206,6 +206,8 @@ class ActaService
             ],
             $acta,
             [['ruta' => $ruta, 'nombre' => 'FRF-207-f7_' . $acta->code . '.pdf']],
+            array_keys($partes = $this->lasPartes($acta, sin: $correo)),
+            $partes,
         );
 
         $acta->update([
@@ -331,6 +333,8 @@ class ActaService
             ],
             $acta,
             [['ruta' => $this->guardarPdfDeLaDevolucion($devolucion), 'nombre' => 'Devolucion_' . $devolucion->code . '.pdf']],
+            array_keys($partes = $this->lasPartes($acta, sin: $correo)),
+            $partes,
         );
 
         if ($aviso->status === 'enviado') {
@@ -430,6 +434,25 @@ class ActaService
         return filled($ruta) && $disco->exists($ruta)
             ? 'data:image/png;base64,' . base64_encode($disco->get($ruta))
             : null;
+    }
+
+    /**
+     * Quien entrega y quien recibe, para el correo a Planta Física.
+     *
+     * Van en copia, y son a quienes les llega lo que conteste Planta Física:
+     * el correo sale de una dirección que nadie lee, y la pregunta sobre un
+     * préstamo la responden ellos, no un buzón. Una sola vez si son la misma
+     * persona, y nunca el propio destinatario.
+     *
+     * @return array<string,string> correo => nombre
+     */
+    private function lasPartes(Acta $acta, string $sin): array
+    {
+        return collect([$acta->entrega, $acta->recibe])
+            ->filter(fn (?User $u) => $u && filter_var($u->email, FILTER_VALIDATE_EMAIL))
+            ->reject(fn (User $u) => mb_strtolower($u->email) === mb_strtolower(trim($sin)))
+            ->mapWithKeys(fn (User $u) => [mb_strtolower($u->email) => $u->name])
+            ->all();
     }
 
     private function listaDeActivos(Acta $acta): string

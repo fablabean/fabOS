@@ -823,4 +823,33 @@ class ActasDeMovimientoTest extends TestCase
 
         $this->assertFalse($acta->fresh()->devolucionVencida());
     }
+
+    public function test_lo_que_responda_planta_fisica_les_llega_a_quien_entrega_y_a_quien_recibe(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Torres', '52123456');
+        $acta = $this->actaFirmada($erick, $ana);
+        Mail::fake();
+
+        $this->servicio()->enviarAPlantaFisica($acta, $erick);
+
+        // En copia los dos, y «Responder» les llega a los dos: no al buzón que nadie lee.
+        $alAutorizar = fn ($m) => $m->hasTo('wopalencia@universidadean.edu.co')
+            && $m->hasCc($erick->email) && $m->hasCc($ana->email)
+            && $m->hasReplyTo($erick->email, $erick->name) && $m->hasReplyTo($ana->email, $ana->name)
+            && ! $m->hasCc('wopalencia@universidadean.edu.co');
+
+        Mail::assertSent(\App\Mail\PlantillaMail::class, $alAutorizar);
+
+        // Y lo mismo cuando se le avisa que volvió.
+        Mail::fake();
+        $devolucion = $this->servicio()->registrarDevolucion(
+            $acta->fresh(), $erick,
+            $acta->items->mapWithKeys(fn ($i) => [$i->id => ['estado' => 'B']])->all(),
+            now(), null, $this->firma(),
+        );
+        $this->servicio()->enviarDevolucionAPlantaFisica($devolucion, $erick);
+
+        Mail::assertSent(\App\Mail\PlantillaMail::class, $alAutorizar);
+    }
 }
