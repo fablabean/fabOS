@@ -93,6 +93,7 @@ class PurchaseRequestsTable
                     self::descargarPdf(),
                     AccionesDeCompartir::compartir(),
                     AccionesDeCompartir::dejarDeCompartir(),
+                    self::firmar(),
                     self::enviar(),
                     self::reenviarACompras(),
                     self::aprobar(),
@@ -112,6 +113,18 @@ class PurchaseRequestsTable
             ->icon('heroicon-o-document-text')
             ->color('gray')
             ->url(fn (PurchaseRequest $r) => route('compras.requisicion', $r))
+            ->openUrlInNewTab();
+    }
+
+    /** La solicitud de cotización se firma en su hoja, y desde ahí se envía. */
+    private static function firmar(): Action
+    {
+        return Action::make('firmar')
+            ->label('Firmar y enviar')
+            ->icon('heroicon-o-pencil-square')
+            ->color('primary')
+            ->visible(fn (PurchaseRequest $r) => $r->pideCotizacion() && $r->status === 'borrador' && ! $r->estaFirmada())
+            ->url(fn (PurchaseRequest $r) => route('compras.requisicion', $r) . '#firmar')
             ->openUrlInNewTab();
     }
 
@@ -139,7 +152,8 @@ class PurchaseRequestsTable
                 . self::enCopia()
                 . ' Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
             ->modalSubmitActionLabel('Enviar')
-            ->visible(fn (PurchaseRequest $r) => $r->status === 'borrador')
+            // La de cotización sin firmar se envía al firmarla, desde su hoja.
+            ->visible(fn (PurchaseRequest $r) => $r->status === 'borrador' && ! ($r->pideCotizacion() && ! $r->estaFirmada()))
             ->action(function (PurchaseRequest $r) {
                 try {
                     $r = app(PurchasingService::class)->enviar($r, auth()->user());

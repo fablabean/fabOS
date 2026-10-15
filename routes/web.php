@@ -564,6 +564,8 @@ Route::middleware('auth')->group(function () {
         ->name('compras.requisicion.pdf');
     Route::get('/compras/{purchaseRequest}/cotizacion', [PurchaseRequestController::class, 'cotizacion'])
         ->name('compras.cotizacion');
+    Route::post('/compras/{purchaseRequest}/firmar', [PurchaseRequestController::class, 'firmar'])
+        ->name('compras.firmar');
 
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');

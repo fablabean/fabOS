@@ -121,7 +121,27 @@ class SolicitudDeCotizacionTest extends TestCase
         $this->seed(\Database\Seeders\NotificationTemplateSeeder::class);
 
         $michael = $this->administrador();
-        $s = app(PurchasingService::class)->enviar($this->porCotizar($michael), $michael);
+        $s = $this->porCotizar($michael);
+
+        // Sin firma no sale: el formato la lleva y compras no lo tramita sin ella.
+        try {
+            app(PurchasingService::class)->enviar($s, $michael);
+            $this->fail('se envió sin firma');
+        } catch (\App\Services\Purchasing\PurchasingException $e) {
+            $this->assertStringContainsString('firma', $e->getMessage());
+        }
+
+        // Se firma en su hoja, y se envía de una vez.
+        $this->get(route('compras.requisicion', $s))->assertOk()->assertSee('Firma del solicitante')->assertSee('Enviarla a compras al firmar');
+
+        $this->post(route('compras.firmar', $s), ['firma' => $this->firma(), 'enviar' => '1'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $s->refresh();
+        $this->assertTrue($s->estaFirmada());
+        $this->assertSame($michael->id, $s->signed_by);
+        Storage::disk('local')->assertExists($s->signature_path);
 
         $this->assertSame('enviada', $s->status);
         $this->assertNotNull($s->sent_to_at);
@@ -135,5 +155,43 @@ class SolicitudDeCotizacionTest extends TestCase
         $this->assertStringContainsString('ADF-228-f5', $aviso->body);
         $this->assertStringContainsString('Destornillador eléctrico inalámbrico (Bosch)', $aviso->body);
         $this->assertFalse(\App\Models\NotificationLog::where('key', 'compra.requisicion')->exists());
+
+        // La hoja ya enviada lleva la firma y no deja volver a firmar.
+        $this->get(route('compras.requisicion', $s))
+            ->assertOk()
+            ->assertSee('Firma de Michael Torres', false)
+            ->assertDontSee('Enviarla a compras al firmar');
+
+        $this->post(route('compras.firmar', $s), ['firma' => $this->firma()])->assertSessionHasErrors('firma');
+    }
+
+    public function test_firmar_sin_enviar_y_el_enlace_compartido_no_firma(): void
+    {
+        Storage::fake('local');
+        $michael = $this->administrador();
+        $s = $this->porCotizar($michael);
+
+        $this->post(route('compras.firmar', $s), ['firma' => $this->firma()])->assertSessionHasNoErrors();
+
+        $s->refresh();
+        $this->assertTrue($s->estaFirmada());
+        $this->assertSame('borrador', $s->status, 'sin la casilla no se envía');
+
+        // Un dibujo que no es una imagen no pasa.
+        $this->post(route('compras.firmar', $s), ['firma' => 'data:image/png;base64,' . base64_encode('nada')])
+            ->assertSessionHasErrors('firma');
+
+        // Quien abre el enlace compartido ve la hoja, pero no puede firmar.
+        $token = app(PurchasingService::class)->compartir($s);
+        $this->get(route('compras.compartida', basename(parse_url($token, PHP_URL_PATH))))
+            ->assertOk()
+            ->assertSee('ADF-228-f5')
+            ->assertDontSee('Enviarla a compras al firmar');
+    }
+
+    /** Un PNG de verdad, como el que manda el lienzo. */
+    private function firma(): string
+    {
+        return 'data:image/png;base64,' . base64_encode(\Illuminate\Http\UploadedFile::fake()->image('firma.png', 60, 20)->getContent());
     }
 }

@@ -25,6 +25,7 @@ class PurchaseRequest extends Model
         'quote_path', 'quote_name', 'supplier_id',
         'sent_to_email', 'sent_to_name', 'sent_to_at', 'sent_cc',
         'modalidad', 'supervisor', 'process_area', 'requires_art',
+        'signature_path', 'signed_at', 'signed_by',
     ];
 
     /**
@@ -47,6 +48,27 @@ class PurchaseRequest extends Model
     public function pideCotizacion(): bool
     {
         return $this->modalidad === self::POR_COTIZAR;
+    }
+
+    /** Quien firmó la solicitud de cotización. */
+    public function signedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'signed_by');
+    }
+
+    public function estaFirmada(): bool
+    {
+        return filled($this->signature_path) && $this->signed_at !== null;
+    }
+
+    /** La firma lista para la hoja: incrustada, porque el archivo es privado. */
+    public function firmaComoImagen(): ?string
+    {
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+
+        return filled($this->signature_path) && $disco->exists($this->signature_path)
+            ? 'data:image/png;base64,' . base64_encode($disco->get($this->signature_path))
+            : null;
     }
 
     /** Cómo se llama el documento que sale de ella. */
@@ -120,6 +142,7 @@ class PurchaseRequest extends Model
             'tax_rate' => 'decimal:4',
             'exchange_rate' => 'decimal:2',
             'requires_art' => 'boolean',
+            'signed_at'    => UtcDateTime::class,
             'submitted_at' => UtcDateTime::class,
             'decided_at'   => UtcDateTime::class,
             'closed_at'    => UtcDateTime::class,

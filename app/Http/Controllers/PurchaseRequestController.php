@@ -30,7 +30,41 @@ class PurchaseRequestController extends Controller
             $purchaseRequest,
             route('compras.requisicion.pdf', $purchaseRequest),
             route('compras.cotizacion', $purchaseRequest),
+            // Firmar solo desde el panel, nunca desde el enlace compartido.
+            puedeFirmar: $purchaseRequest->pideCotizacion() && $purchaseRequest->status === 'borrador'
+                && $request->user()->can('update', $purchaseRequest),
         );
+    }
+
+    /**
+     * La firma del solicitante, dibujada en la hoja. Si se pide, se envía de
+     * una vez: firmar es lo último antes de mandársela a compras.
+     */
+    public function firmar(Request $request, PurchaseRequest $purchaseRequest)
+    {
+        abort_unless($request->user()->can('update', $purchaseRequest), 403);
+
+        $datos = $request->validate(['firma' => ['required', 'string'], 'enviar' => ['nullable', 'boolean']], [
+            'firma.required' => 'Dibuja tu firma en el recuadro.',
+        ]);
+
+        $compras = app(\App\Services\Purchasing\PurchasingService::class);
+
+        try {
+            $s = $compras->firmar($purchaseRequest, $request->user(), $datos['firma']);
+
+            if (! empty($datos['enviar'])) {
+                $s = $compras->enviar($s, $request->user());
+
+                return back()->with('status', $s->sent_to_at
+                    ? 'Firmada y enviada a ' . $s->sent_to_name . ' (' . $s->sent_to_email . ').'
+                    : 'Firmada, pero el correo no salió: vuelve a enviarla desde la lista.');
+            }
+        } catch (\App\Services\Purchasing\PurchasingException $e) {
+            return back()->withErrors(['firma' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Firmada. Ya se puede enviar.');
     }
 
     public function pdf(Request $request, PurchaseRequest $purchaseRequest)
@@ -89,13 +123,14 @@ class PurchaseRequestController extends Controller
         return PurchaseRequest::where('share_token', $token)->firstOrFail();
     }
 
-    private function requisicion(PurchaseRequest $solicitud, string $enlacePdf, ?string $enlaceCotizacion = null)
+    private function requisicion(PurchaseRequest $solicitud, string $enlacePdf, ?string $enlaceCotizacion = null, bool $puedeFirmar = false)
     {
         return view(\App\Services\Purchasing\PurchasingService::vistaDe($solicitud), [
             'solicitud' => $this->cargada($solicitud),
             'enlacePdf' => $enlacePdf,
             'enlaceCotizacion' => filled($solicitud->quote_path) ? $enlaceCotizacion : null,
             'paraPdf'   => false,
+            'puedeFirmar' => $puedeFirmar,
         ]);
     }
 
@@ -109,6 +144,6 @@ class PurchaseRequestController extends Controller
 
     private function cargada(PurchaseRequest $solicitud): PurchaseRequest
     {
-        return $solicitud->load(['items.supply', 'adjustments', 'budget', 'area', 'project', 'requestedBy', 'approvedBy']);
+        return $solicitud->load(['items.supply', 'adjustments', 'budget', 'area', 'project', 'requestedBy', 'approvedBy', 'signedBy']);
     }
 }

@@ -156,6 +156,12 @@ class PurchasingService
             throw new PurchasingException('No se puede enviar una solicitud sin líneas.');
         }
 
+        // El formato de la Universidad lleva la firma del solicitante, y
+        // compras no lo tramita sin ella.
+        if ($solicitud->pideCotizacion() && ! $solicitud->estaFirmada()) {
+            throw new PurchasingException('Falta la firma del solicitante: abre «Ver solicitud de cotización», fírmala y se envía desde ahí.');
+        }
+
         $solicitud->update(['status' => 'enviada', 'submitted_at' => now()]);
 
         // Enviar es mandársela a alguien. Antes solo cambiaba el estado, y
@@ -267,6 +273,47 @@ class PurchasingService
             ->first(fn (?User $u) => $u && filter_var($u->email, FILTER_VALIDATE_EMAIL));
 
         return $persona ? [$persona->email => $persona->name] : [];
+    }
+
+    /**
+     * Firma la solicitud de cotización, dibujada en pantalla.
+     *
+     * Solo mientras es un borrador: lo que ya se envió se firmó como se
+     * envió. Volver a firmar reemplaza la firma anterior.
+     *
+     * @throws PurchasingException
+     */
+    public function firmar(PurchaseRequest $solicitud, User $quien, string $dataUrl): PurchaseRequest
+    {
+        if (! $solicitud->pideCotizacion()) {
+            throw new PurchasingException('Solo la solicitud de cotización lleva firma.');
+        }
+
+        if ($solicitud->status !== 'borrador') {
+            throw new PurchasingException('Ya se envió: se firmó como se envió.');
+        }
+
+        $prefijo = 'data:image/png;base64,';
+        $binario = str_starts_with($dataUrl, $prefijo) && strlen($dataUrl) <= 1_500_000
+            ? base64_decode(substr($dataUrl, strlen($prefijo)), true)
+            : false;
+
+        if ($binario === false || ! str_starts_with($binario, "\x89PNG\r\n\x1a\n")) {
+            throw new PurchasingException('La firma no llegó bien. Vuelve a dibujarla.');
+        }
+
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+        $anterior = $solicitud->signature_path;
+        $ruta = 'compras/firmas/' . $solicitud->code . '-' . Str::random(24) . '.png';
+        $disco->put($ruta, $binario);
+
+        $solicitud->update(['signature_path' => $ruta, 'signed_at' => now(), 'signed_by' => $quien->id]);
+
+        if ($anterior && $anterior !== $ruta) {
+            $disco->delete($anterior);
+        }
+
+        return $solicitud->refresh();
     }
 
     /** La hoja que le toca: la requisición, o el formato de cotización de la Universidad. */

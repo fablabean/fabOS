@@ -2,6 +2,10 @@
     /** @var \App\Models\PurchaseRequest $solicitud */
     $paraPdf = $paraPdf ?? false;
     $enlacePdf = $enlacePdf ?? null;
+    $puedeFirmar = ! $paraPdf && ($puedeFirmar ?? false);
+    $firma = $solicitud->firmaComoImagen();
+    // Quien firma es el solicitante; si firmó otra persona del equipo, es ella.
+    $firmante = $solicitud->signedBy ?? $solicitud->requestedBy;
     $tz = config('fabos.lab.timezone');
     $quien = $solicitud->requestedBy;
     $fecha = ($solicitud->submitted_at ?? now())->copy()->timezone($tz);
@@ -35,6 +39,8 @@
         .f .marca{display:inline-block;width:{{ $paraPdf ? '11px' : '15px' }};height:{{ $paraPdf ? '11px' : '15px' }};border:1px solid #111;text-align:center;line-height:{{ $paraPdf ? '10px' : '14px' }};font-weight:bold;margin-left:4px}
         .f .aviso{font-style:italic;text-align:center}
         .f .esp{font-size:.92em}
+        .f .firma{height:{{ $paraPdf ? '58px' : '80px' }};vertical-align:bottom;text-align:center}
+        .f .firma img{max-height:{{ $paraPdf ? '50px' : '70px' }};max-width:80%}
         @if ($paraPdf)
             @page{margin:1cm 1.1cm}
             body{margin:0}
@@ -167,15 +173,21 @@
 
     <table>
         <tr>
-            <td class="caja" style="width:50%"><span class="b">Solicitado Por:</span></td>
-            <td class="caja"></td>
+            <td class="caja" style="width:50%;height:auto"><span class="b">Solicitado Por:</span> {{ $firmante?->name }}</td>
+            <td class="caja" style="height:auto"></td>
+        </tr>
+        <tr>
+            <td class="firma">
+                @if ($firma)<img src="{{ $firma }}" alt="Firma de {{ $firmante?->name }}">@endif
+            </td>
+            <td></td>
         </tr>
         <tr>
             <td class="b">Firma del Solicitante</td>
             <td></td>
         </tr>
         <tr>
-            <td><span class="b">Nombre del Solicitante:</span> {{ $quien?->name }}</td>
+            <td><span class="b">Nombre del Solicitante:</span> {{ $firmante?->name }}</td>
             <td></td>
         </tr>
         <tr>
@@ -191,6 +203,97 @@
 </div>
 
 @unless ($paraPdf)
+    @if (session('status'))
+        <p class="barra" style="background:#d9efe9;padding:.8rem 1rem;border-radius:6px;display:block">{{ session('status') }}</p>
+    @endif
+    @if ($errors->any())
+        <p class="barra" style="background:#f3d9d9;padding:.8rem 1rem;border-radius:6px;display:block">{{ $errors->first() }}</p>
+    @endif
+
+    {{-- La firma del solicitante, dibujada aquí. Solo en el borrador y solo
+         desde el panel: el enlace compartido no firma nada. --}}
+    @if ($puedeFirmar)
+        <form method="POST" action="{{ route('compras.firmar', $solicitud) }}" id="firmar"
+              style="max-width:58rem;margin:1rem auto 0;background:#fff;padding:1.2rem 1.4rem;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.08)">
+            @csrf
+            <h2 style="margin:0 0 .3rem;font-size:1.1rem">{{ $firma ? 'Volver a firmar' : 'Firma del solicitante' }}</h2>
+            <p style="margin:0 0 .7rem;color:#555;font-size:.92rem">
+                Firmas como {{ auth()->user()->name }}. Dibújala con el dedo o con el mouse: es la que sale en el formato.
+            </p>
+            <canvas id="lienzo-firma" width="700" height="200" style="width:100%;height:auto;aspect-ratio:700/200;background:#fff;border:1px dashed #888;border-radius:6px;touch-action:none;cursor:crosshair;display:block"></canvas>
+            <p style="display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin:.6rem 0">
+                <button type="button" id="borrar-firma" style="font:inherit;padding:.45rem .9rem;border:1px solid #111;background:#fff;border-radius:4px;cursor:pointer">Borrar</button>
+                <span id="estado-firma" style="color:#555;font-size:.9rem">Todavía no has firmado.</span>
+            </p>
+            <input type="hidden" name="firma" id="campo-firma">
+            <label style="display:flex;gap:.5rem;align-items:center;margin:.4rem 0 .9rem;font-size:.95rem">
+                <input type="checkbox" name="enviar" value="1" checked>
+                Enviarla a compras al firmar ({{ \App\Support\ConfiguracionDeCompras::nombre() }})
+            </label>
+            <button type="submit" style="font:inherit;font-weight:600;padding:.7rem 1.3rem;border:0;background:#111;color:#fff;border-radius:4px;cursor:pointer">Firmar</button>
+        </form>
+
+        <script>
+            (function () {
+                const lienzo = document.getElementById('lienzo-firma');
+                const ctx = lienzo.getContext('2d');
+                const campo = document.getElementById('campo-firma');
+                const estado = document.getElementById('estado-firma');
+                let trazando = false, hayFirma = false;
+
+                function limpiar() {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+                    ctx.strokeStyle = '#111827';
+                    ctx.lineWidth = 2.6;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    hayFirma = false;
+                    campo.value = '';
+                    estado.textContent = 'Todavía no has firmado.';
+                    estado.style.color = '';
+                }
+
+                function punto(e) {
+                    const caja = lienzo.getBoundingClientRect();
+                    return { x: (e.clientX - caja.left) * (lienzo.width / caja.width), y: (e.clientY - caja.top) * (lienzo.height / caja.height) };
+                }
+
+                lienzo.addEventListener('pointerdown', function (e) {
+                    trazando = true;
+                    lienzo.setPointerCapture(e.pointerId);
+                    const p = punto(e);
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                });
+                lienzo.addEventListener('pointermove', function (e) {
+                    if (! trazando) return;
+                    const p = punto(e);
+                    ctx.lineTo(p.x, p.y);
+                    ctx.stroke();
+                    hayFirma = true;
+                    estado.textContent = 'Firma lista.';
+                });
+                ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+                    lienzo.addEventListener(ev, function () { trazando = false; });
+                });
+
+                document.getElementById('borrar-firma').addEventListener('click', limpiar);
+                document.getElementById('firmar').addEventListener('submit', function (e) {
+                    if (! hayFirma) {
+                        e.preventDefault();
+                        estado.textContent = 'Dibuja tu firma en el recuadro.';
+                        estado.style.color = '#b91c1c';
+                        return;
+                    }
+                    campo.value = lienzo.toDataURL('image/png');
+                });
+
+                limpiar();
+            })();
+        </script>
+    @endif
+
     <div class="barra">
         @if ($enlacePdf)
             <a class="principal" href="{{ $enlacePdf }}">Descargar PDF</a>
