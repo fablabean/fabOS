@@ -49,6 +49,9 @@ class RedactorConPlantillas implements Redactor
                 . 'Cada certificado es alguien que ya puede usar las máquinas del laboratorio por su cuenta. '
                 . '¿Quieres ser el próximo? Pregúntanos cómo.',
 
+            'fecha' => "Hoy es el {$d('nombre')} 🗓️\n\n"
+                . '[Cuéntalo desde el laboratorio: ' . ($d('idea') ?: 'qué tiene que ver con lo que hacemos') . ']',
+
             'hueco' => "Detrás de cámaras en el {$lab} 🎬\n\n"
                 . 'Una máquina, un proceso, una persona del equipo: cuéntale a la comunidad qué pasa esta semana.',
 

@@ -59,7 +59,11 @@ class PublicacionForm
 
                         CheckboxList::make('redes')
                             ->label('Dónde sale')
-                            ->options(fn () => Publicacion::redesDelLaboratorio())
+                            // Las del laboratorio, y las que ya tuviera: una red
+                            // que se quitó de la lista no puede borrarse sola
+                            // de lo que ya se planeó con ella.
+                            ->options(fn (?Publicacion $record) => Publicacion::redesDelLaboratorio()
+                                + array_intersect_key(Publicacion::redesPosibles(), array_flip($record?->redes ?? [])))
                             ->columns(4)
                             ->columnSpanFull(),
 

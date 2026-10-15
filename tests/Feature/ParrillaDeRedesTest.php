@@ -232,6 +232,111 @@ class ParrillaDeRedesTest extends TestCase
         $this->assertCount(3, $sugerencias->paraHoy()->where('tipo', 'hueco'));
     }
 
+    // ---------------------------------------------------------------- tareas
+
+    public function test_pasar_a_diseno_reparte_las_tareas_tipicas_del_formato(): void
+    {
+        $sale = now(config('fabos.lab.timezone'))->addDays(10)->setTime(10, 0);
+        $p = $this->publicacion(['formato' => 'reel', 'programada_para' => $sale->copy()->utc()]);
+
+        $p = app(FlujoDePublicacion::class)->aDiseno($p);
+
+        $tareas = $p->tareas()->get();
+        $this->assertSame(['Guion', 'Grabar', 'Editar el video', 'Escribir el texto'], $tareas->pluck('que')->all());
+        // Contadas hacia atrás desde el día en que sale: el guion, una semana antes.
+        $this->assertSame($sale->copy()->subDays(7)->toDateString(), $tareas->first()->vence_el->toDateString());
+        $this->assertSame('0/4', $p->fresh()->avanceDeTareas());
+
+        // Si ya tiene, no se duplican.
+        $this->assertSame(0, $p->ponerTareasTipicas());
+        $this->assertSame(4, $p->tareas()->count());
+    }
+
+    public function test_mis_tareas_se_marcan_hechas_desde_la_parrilla(): void
+    {
+        $yo = $this->conRol(User::ROL_ADMINISTRADOR);
+        $p = $this->publicacion(['formato' => 'post', 'responsable_id' => $yo->id, 'programada_para' => now()->addDays(5)]);
+        $p->ponerTareasTipicas();
+        $tarea = $p->tareas()->first();
+
+        Livewire::test(Parrilla::class)
+            ->assertSee('Mis tareas')
+            ->assertSee($tarea->que)
+            ->call('marcarHecha', $tarea->id);
+
+        $this->assertNotNull($tarea->fresh()->hecha_at);
+        $this->assertSame('1/2', $p->fresh()->avanceDeTareas());
+    }
+
+    public function test_la_ficha_muestra_sus_tareas_y_pone_las_tipicas(): void
+    {
+        $this->conRol(User::ROL_ADMINISTRADOR);
+        $p = $this->publicacion(['formato' => 'carrusel', 'programada_para' => now()->addDays(8)]);
+
+        $tareas = fn () => Livewire::test(\App\Filament\Resources\Publicaciones\RelationManagers\TareasRelationManager::class, [
+            'ownerRecord' => $p,
+            'pageClass'   => \App\Filament\Resources\Publicaciones\Pages\EditPublicacion::class,
+        ]);
+
+        $tareas()->assertSee('Sin tareas todavía')->callTableAction('tipicas');
+
+        $this->assertSame(3, $p->tareas()->count());
+        $tareas()->assertSee('Escoger las fotos')->assertSee('Diseñar las láminas');
+    }
+
+    // ------------------------------------------------------ fechas especiales
+
+    public function test_las_fechas_especiales_se_sugieren_un_mes_antes(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2027-02-20 08:00', 'America/Bogota'));
+
+        $s = app(Sugerencias::class)->paraHoy()->firstWhere('tipo', 'fecha');
+
+        $this->assertNotNull($s);
+        $this->assertSame('Día Internacional de la Mujer', $s['titulo']);
+        $this->assertSame('2027-03-08 09:00', $s['fecha']->format('Y-m-d H:i'));
+    }
+
+    public function test_las_fechas_especiales_se_ajustan(): void
+    {
+        \App\Services\Redes\FechasEspeciales::guardar([
+            ['dia' => '09-24', 'nombre' => 'Aniversario del laboratorio', 'pilar' => 'institucional', 'idea' => 'Cuántos años y qué se hizo.'],
+            ['dia' => '13-40', 'nombre' => 'Fecha imposible'],
+            ['dia' => '05-01', 'nombre' => ''],
+        ]);
+
+        $this->assertSame(['Aniversario del laboratorio'], array_column(\App\Services\Redes\FechasEspeciales::todas(), 'nombre'));
+
+        $this->travelTo(\Carbon\Carbon::parse('2027-09-10 08:00', 'America/Bogota'));
+        $this->assertSame(
+            ['Aniversario del laboratorio'],
+            app(Sugerencias::class)->paraHoy()->where('tipo', 'fecha')->pluck('titulo')->all(),
+        );
+    }
+
+    // ----------------------------------------------------------------- resumen
+
+    public function test_el_resumen_del_mes_cuenta_lo_que_salio_con_su_enlace(): void
+    {
+        $this->conRol(User::ROL_ADMINISTRADOR);
+        $mes = now(config('fabos.lab.timezone'))->format('Y-m');
+
+        $this->publicacion([
+            'titulo' => 'Reel de la cortadora', 'estado' => 'publicada', 'redes' => ['instagram', 'tiktok'],
+            'formato' => 'reel', 'pilar' => 'equipos', 'enlace' => 'https://www.instagram.com/p/xyz/',
+            'publicada_at' => now(), 'programada_para' => now(),
+        ]);
+        $this->publicacion(['titulo' => 'La que no salió', 'estado' => 'aprobada', 'programada_para' => now()->startOfMonth()->addDay()]);
+
+        $this->get(PublicacionResource::getUrl('resumen', ['mes' => $mes]))
+            ->assertOk()
+            ->assertSee('Reel de la cortadora')
+            ->assertSee('https://www.instagram.com/p/xyz/', false)
+            ->assertSee('Máquinas y procesos')
+            ->assertSee('Estaba previsto y no salió')
+            ->assertSee('La que no salió');
+    }
+
     // ------------------------------------------------------------ pantallas
 
     public function test_la_parrilla_la_lista_y_la_ficha_se_abren(): void

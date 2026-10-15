@@ -54,6 +54,7 @@ class Sugerencias
             ->merge($this->alianzasAbiertas())
             ->merge($this->materialNuevo($hoy))
             ->merge($this->habilitaciones($hoy))
+            ->merge($this->fechasEspeciales($hoy))
             ->merge($this->huecos($hoy))
             ->reject(fn (array $s) => isset($fuera[$s['clave']]))
             ->sortBy(fn (array $s) => $s['fecha']?->timestamp ?? PHP_INT_MAX)
@@ -304,6 +305,24 @@ class Sugerencias
             formato: 'post',
             datos: ['cuantas' => $cuantas],
         )];
+    }
+
+    /** Los días especiales del mes que viene: Día de la Mujer en la Ciencia, de la Tierra… */
+    private function fechasEspeciales(CarbonImmutable $hoy): array
+    {
+        return FechasEspeciales::entre($hoy->addDay(), $hoy->addDays(30))
+            ->flatten(1)
+            ->map(fn (array $f) => $this->sugerencia(
+                clave: 'fecha:' . $f['fecha']->toDateString() . ':' . md5($f['nombre']),
+                tipo: 'fecha',
+                titulo: $f['nombre'],
+                porque: 'Es el ' . $f['fecha']->locale('es')->isoFormat('D [de] MMMM') . '. ' . $f['idea'],
+                fecha: $f['fecha']->setTime(9, 0),
+                pilar: $f['pilar'],
+                formato: 'post',
+                datos: ['nombre' => $f['nombre'], 'idea' => $f['idea']],
+            ))
+            ->all();
     }
 
     /** Las semanas que vienen sin nada planeado. */

@@ -69,11 +69,17 @@ class PublicacionResource extends Resource
         return PublicacionesTable::configure($table);
     }
 
+    public static function getRelations(): array
+    {
+        return [RelationManagers\TareasRelationManager::class];
+    }
+
     public static function getPages(): array
     {
         return [
             'index'  => Parrilla::route('/'),
             'lista'  => ListPublicaciones::route('/lista'),
+            'resumen' => Pages\ResumenDelMes::route('/resumen'),
             'create' => CreatePublicacion::route('/create'),
             'edit'   => EditPublicacion::route('/{record}/edit'),
         ];

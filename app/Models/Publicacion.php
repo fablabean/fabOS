@@ -161,6 +161,45 @@ class Publicacion extends Model
         return $this->belongsToMany(Contenido::class, 'contenido_publicacion');
     }
 
+    public function tareas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TareaDePublicacion::class)->orderBy('orden')->orderBy('id');
+    }
+
+    /**
+     * Le pone las tareas que suele llevar su formato, con fecha contada hacia
+     * atrás desde el día en que sale. Si ya tiene, no toca nada: no se
+     * duplican ni se pisan las que alguien ajustó.
+     */
+    public function ponerTareasTipicas(): int
+    {
+        if ($this->tareas()->exists()) {
+            return 0;
+        }
+
+        $tipicas = TareaDePublicacion::TIPICAS[$this->formato] ?? TareaDePublicacion::TIPICAS['post'];
+        $sale = $this->programada_para?->timezone(config('fabos.lab.timezone'))->startOfDay();
+
+        foreach ($tipicas as $i => [$que, $diasAntes]) {
+            $this->tareas()->create([
+                'que'            => $que,
+                'responsable_id' => $this->responsable_id,
+                'vence_el'       => $sale?->copy()->subDays($diasAntes)->toDateString(),
+                'orden'          => $i,
+            ]);
+        }
+
+        return count($tipicas);
+    }
+
+    /** «2/4», o nada si no tiene tareas. */
+    public function avanceDeTareas(): ?string
+    {
+        $total = $this->tareas->count();
+
+        return $total ? $this->tareas->whereNotNull('hecha_at')->count() . '/' . $total : null;
+    }
+
     public function scopeAbiertas(Builder $q): Builder
     {
         return $q->whereNotIn('estado', self::CERRADOS);

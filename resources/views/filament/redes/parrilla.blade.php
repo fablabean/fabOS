@@ -58,13 +58,17 @@
                                 @endif
                             </div>
 
+                            @foreach ($dia['especiales'] as $f)
+                                <span class="pr-especial" title="{{ $f['idea'] }}">★ {{ $f['nombre'] }}</span>
+                            @endforeach
+
                             @foreach ($dia['piezas'] as $p)
                                 <a href="{{ \App\Filament\Resources\Publicaciones\PublicacionResource::getUrl('edit', ['record' => $p]) }}"
                                    class="pr-pieza estado-{{ $p->estado }} {{ $p->vaTarde() ? 'tarde' : '' }}"
                                    title="{{ $p->nombreDelEstado() }}{{ $p->nombresDeLasRedes() ? ' · ' . $p->nombresDeLasRedes() : '' }}">
                                     <span class="hora">{{ $p->programada_para->timezone($tz)->format('H:i') }}</span>
                                     {{ $p->titulo }}
-                                    <span class="redes">{{ collect($p->redes ?? [])->map(fn ($r) => $siglas[$r] ?? $r)->join(' · ') }}</span>
+                                    <span class="redes">{{ collect($p->redes ?? [])->map(fn ($r) => $siglas[$r] ?? $r)->join(' · ') }}@if ($p->avanceDeTareas()) · ✓ {{ $p->avanceDeTareas() }}@endif</span>
                                 </a>
                             @endforeach
                         </div>
@@ -80,6 +84,24 @@
         </div>
 
         <aside class="pr-lado">
+            @if ($misTareas->isNotEmpty())
+                <section class="pr-caja">
+                    <h3>Mis tareas</h3>
+                    @foreach ($misTareas as $t)
+                        <div class="pr-tarea" wire:key="t-{{ $t->id }}">
+                            <span>
+                                <strong>{{ $t->que }}</strong>
+                                <a href="{{ \App\Filament\Resources\Publicaciones\PublicacionResource::getUrl('edit', ['record' => $t->publicacion]) }}">{{ $t->publicacion->titulo }}</a>
+                                @if ($t->vence_el)
+                                    <em @class(['tarde' => $t->vaTarde()])>{{ $t->vaTarde() ? 'iba para el' : 'para el' }} {{ $t->vence_el->locale('es')->isoFormat('ddd D MMM') }}</em>
+                                @endif
+                            </span>
+                            <button type="button" class="pr-boton" wire:click="marcarHecha({{ $t->id }})" title="Marcar hecha">✓</button>
+                        </div>
+                    @endforeach
+                </section>
+            @endif
+
             <section class="pr-caja">
                 <h3>Sugerencias de fabOS</h3>
                 <p class="pr-ayuda">
@@ -187,5 +209,14 @@
         .pr-sugerencia summary { cursor:pointer; font-size:.72rem; color:#6b7280; }
         .pr-sugerencia pre { white-space:pre-wrap; font-family:inherit; font-size:.75rem; background:rgba(0,0,0,.04); padding:.5rem; border-radius:.4rem; margin-top:.3rem; }
         .pr-sugerencia .acciones { display:flex; gap:.4rem; margin-top:.3rem; }
+
+        .pr-especial { display:block; font-size:.66rem; line-height:1.2; color:#B7791F; font-weight:600; margin-bottom:.15rem; }
+        .dark .pr-especial { color:#F6E05E; }
+        .pr-tarea { display:flex; justify-content:space-between; align-items:center; gap:.5rem; border-top:1px solid rgba(0,0,0,.08); padding:.5rem 0; font-size:.8rem; }
+        .dark .pr-tarea { border-color:rgba(255,255,255,.1); }
+        .pr-tarea span { display:flex; flex-direction:column; min-width:0; }
+        .pr-tarea a { color:#6b7280; font-size:.74rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .pr-tarea em { font-style:normal; font-size:.7rem; color:#6b7280; }
+        .pr-tarea em.tarde { color:#C53030; font-weight:600; }
     </style>
 </x-filament-panels::page>

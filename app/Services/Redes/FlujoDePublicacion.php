@@ -29,7 +29,13 @@ class FlujoDePublicacion
     {
         $this->exigir(in_array($p->estado, ['idea', 'en_diseno'], true), 'Solo una idea pasa a diseño.');
 
-        return $this->guardar($p, ['estado' => 'en_diseno']);
+        $p = $this->guardar($p, ['estado' => 'en_diseno']);
+
+        // Empezar a hacerla es repartirla: las tareas que suele llevar su
+        // formato, si nadie ha puesto otras.
+        $p->ponerTareasTipicas();
+
+        return $p;
     }
 
     /** La manda a aprobación, con lo mínimo para poder mirarla. */
