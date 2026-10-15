@@ -61,11 +61,12 @@ class ActaItem extends Model
                 return;
             }
 
-            $faltan = array_filter([
+            // Recortado: lo pegado de una hoja de cálculo trae tabuladores.
+            $faltan = array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : $v, [
                 'brand'  => blank($activo->brand) ? $item->marca : null,
                 'model'  => blank($activo->model) ? $item->modelo : null,
                 'serial' => blank($activo->serial) ? $item->serie : null,
-            ], 'filled');
+            ]), 'filled');
 
             if (blank($activo->asset_tag) && filled($item->placa)
                 && Asset::where('asset_tag', $item->placa)->whereKeyNot($activo->id)->doesntExist()) {

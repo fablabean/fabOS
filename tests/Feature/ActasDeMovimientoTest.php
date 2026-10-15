@@ -742,4 +742,34 @@ class ActasDeMovimientoTest extends TestCase
         $this->assertSame(1, User::where('name', 'Laura Méndez')->count());
         $this->assertFalse(User::where('email', 'otra@test.co')->exists());
     }
+
+    public function test_la_ficha_del_activo_muestra_y_edita_lo_que_completa_el_acta(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $area = Area::firstOrCreate(['slug' => 'robots'], ['name' => 'Robots']);
+        $g1 = Asset::create([
+            'area_id' => $area->id, 'name' => 'Robot Unitree G1', 'kind' => 'herramienta', 'status' => 'operativo',
+            'is_reservable' => true, 'min_minutes' => 30, 'autonomous_minutes' => 60, 'max_minutes' => 720,
+        ]);
+
+        // Pegado de una hoja de cálculo, con su tabulador.
+        $this->acta($erick, $erick)->items()->create([
+            'asset_id' => $g1->id, 'descripcion' => 'Robot G1', 'marca' => 'Unitree ', 'modelo' => 'G1 EDU', 'serie' => "E21D6000Q4\t", 'estado' => 'B',
+        ]);
+
+        $this->assertSame('E21D6000Q4', $g1->fresh()->serial);
+
+        $this->entra($erick);
+
+        Livewire::test(\App\Filament\Resources\Assets\Pages\EditAsset::class, ['record' => $g1->id])
+            ->assertSet('data.brand', 'Unitree')
+            ->assertSet('data.model', 'G1 EDU')
+            ->assertSet('data.serial', 'E21D6000Q4')
+            ->assertSee('Modelo')
+            ->set('data.model', 'G1 EDU+ US')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('G1 EDU+ US', $g1->fresh()->model);
+    }
 }

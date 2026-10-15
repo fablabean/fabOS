@@ -181,18 +181,24 @@ class AssetForm
                                 ? 'Elige primero el espacio y aquí saldrán solo sus muebles.'
                                 : 'Los muebles de esa sala, con lo que cuelga de ellos.'),
 
+                        /*
+                         * La placa, la marca, el modelo y la serie, juntos y a
+                         * la vista: son lo que pide el acta de movimiento, y
+                         * plegados en «procedencia» parecía que no estaban.
+                         */
                         TextInput::make('asset_tag')
                             ->label('Placa')
                             ->maxLength(255),
+
+                        TextInput::make('brand')->label('Marca')->maxLength(255),
+                        TextInput::make('model')->label('Modelo')->maxLength(255),
+                        TextInput::make('serial')->label('Serie')->maxLength(255),
                     ]),
 
-                Section::make('Marca y procedencia')
+                Section::make('Compra y garantía')
                     ->columns(3)
                     ->collapsed()
                     ->schema([
-                        TextInput::make('brand')->label('Marca')->maxLength(255),
-                        TextInput::make('model')->label('Referencia')->maxLength(255),
-                        TextInput::make('serial')->label('Serie')->maxLength(255),
                         TextInput::make('purchase_cost')->label('Costo')->numeric()->prefix('$'),
                         DatePicker::make('purchased_at')->label('Fecha de compra'),
                         DatePicker::make('warranty_until')->label('Garantía hasta'),

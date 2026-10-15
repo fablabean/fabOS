@@ -148,6 +148,25 @@ class AssetsTable
                     ->tooltip('Hasta cuánto puede reservar quien tiene certifab, sin visto bueno del responsable')
                     ->toggleable(),
 
+                // Lo del acta de movimiento, a mano sin abrir la ficha.
+                TextColumn::make('brand')
+                    ->label('Marca')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('model')
+                    ->label('Modelo')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('serial')
+                    ->label('Serie')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('location.name')
                     ->label('Ubicación')
                     ->placeholder('sin asignar')
