@@ -95,7 +95,17 @@ class ActaResource extends Resource
                         ->label('Fecha del movimiento')
                         ->required()
                         ->default(fn () => now(config('fabos.lab.timezone'))->toDateString())
+                        ->live()
                         ->disabled($bloqueada),
+
+                    // No la pide el formato de Planta Física; el laboratorio sí.
+                    DatePicker::make('fecha_retorno')
+                        ->label('Fecha de retorno')
+                        ->afterOrEqual('fecha')
+                        ->validationMessages(['after_or_equal' => 'Debe ser el mismo día del movimiento o después.'])
+                        // Se puede poner o mover aunque el acta ya esté firmada:
+                        // los préstamos se alargan.
+                        ->helperText('Cuándo debe volver. No la exige el formato, pero el laboratorio la necesita: en la lista se marca si se pasa.'),
 
                     TextInput::make('tipo_otro')
                         ->label('Especificar')
@@ -304,9 +314,13 @@ class ActaResource extends Resource
                 TextColumn::make('devolucion')
                     ->label('Devolución')
                     ->state(fn (Acta $r) => $r->resumenDeDevolucion())
+                    ->description(fn (Acta $r) => $r->fecha_retorno
+                        ? ($r->devolucionVencida() ? 'Debía volver el ' : 'Vuelve el ') . $r->fecha_retorno->format('d/m/Y')
+                        : null)
                     ->badge()
-                    ->color(fn (?string $state) => match (true) {
+                    ->color(fn (?string $state, Acta $record) => match (true) {
                         $state === 'Devuelta'     => 'success',
+                        $record->devolucionVencida() => 'danger',
                         $state === 'Sin devolver' => 'warning',
                         default                   => 'info',
                     })

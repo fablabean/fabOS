@@ -32,6 +32,7 @@ class Acta extends Model
     {
         return [
             'fecha'               => 'date',
+            'fecha_retorno'       => 'date',
             'entrega_firmo_at'    => UtcDateTime::class,
             'recibe_firmo_at'     => UtcDateTime::class,
             'enviada_a_firma_at'  => UtcDateTime::class,
@@ -111,6 +112,20 @@ class Acta extends Model
     public function admiteDevolucion(): bool
     {
         return in_array($this->status, ['firmada', 'enviada'], true)
+            && $this->pendientesDeVolver()->exists();
+    }
+
+    /**
+     * Si ya pasó la fecha en que debía volver y todavía hay algo fuera.
+     *
+     * Hasta el final de ese día: lo que vuelve «el viernes» no está atrasado
+     * el viernes a mediodía.
+     */
+    public function devolucionVencida(): bool
+    {
+        return $this->fecha_retorno
+            && $this->fecha_retorno->copy()->endOfDay()->lt(now(config('fabos.lab.timezone'))->startOfDay())
+            && in_array($this->status, ['firmada', 'enviada'], true)
             && $this->pendientesDeVolver()->exists();
     }
 

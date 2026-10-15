@@ -168,6 +168,9 @@
         <tr>
             <td style="height:{{ $paraPdf ? '52px' : '74px' }};vertical-align:top">
                 <span class="b" style="font-style:italic">OBSERVACIONES:</span>
+                @if ($acta->fecha_retorno)
+                    Fecha prevista de retorno: {{ $acta->fecha_retorno->format('d/m/Y') }}.
+                @endif
                 {!! nl2br(e((string) $acta->observaciones)) !!}
             </td>
         </tr>

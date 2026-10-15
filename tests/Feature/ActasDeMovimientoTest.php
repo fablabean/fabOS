@@ -772,4 +772,55 @@ class ActasDeMovimientoTest extends TestCase
 
         $this->assertSame('G1 EDU+ US', $g1->fresh()->model);
     }
+
+    public function test_la_fecha_de_retorno_se_anota_sale_en_el_formato_y_se_nota_si_se_pasa(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $ana = $this->persona('Ana Torres', '52123456');
+        $this->entra($erick);
+
+        // Antes del movimiento no puede volver.
+        Livewire::test(CreateActa::class)
+            ->set('data.tipo', 'prestamo_fuera')
+            ->set('data.fecha', '2026-10-15')
+            ->set('data.fecha_retorno', '2026-10-10')
+            ->set('data.recibe_user_id', $ana->id)
+            ->set('data.items', ['a' => \App\Models\ActaItem::desdeElActivo($this->robot())])
+            ->call('create')
+            ->assertHasFormErrors(['fecha_retorno']);
+
+        $acta = $this->actaFirmada($erick, $ana);
+
+        // Firmada, lo demás ya no se toca; la fecha de retorno sí: los préstamos se alargan.
+        Livewire::test(\App\Filament\Resources\Actas\Pages\EditActa::class, ['record' => $acta->id])
+            ->set('data.fecha_retorno', now(config('fabos.lab.timezone'))->addDays(3)->toDateString())
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(now(config('fabos.lab.timezone'))->addDays(3)->toDateString(), $acta->fresh()->fecha_retorno->toDateString());
+        $this->assertSame('firmada', $acta->fresh()->status);
+        $this->assertSame('Ana Torres', $acta->fresh()->recibe_nombre);
+
+        $this->assertFalse($acta->fresh()->devolucionVencida());
+        $this->get(route('actas.ver', $acta))->assertOk()->assertSee('Fecha prevista de retorno: ' . $acta->fresh()->fecha_retorno->format('d/m/Y'));
+        Livewire::test(ListActas::class)->assertSee('Vuelve el ' . $acta->fresh()->fecha_retorno->format('d/m/Y'));
+
+        // El mismo día todavía no está atrasada; al día siguiente, sí.
+        $acta->update(['fecha_retorno' => now(config('fabos.lab.timezone'))->toDateString()]);
+        $this->assertFalse($acta->fresh()->devolucionVencida());
+
+        $acta->update(['fecha_retorno' => now(config('fabos.lab.timezone'))->subDay()->toDateString()]);
+        $this->assertTrue($acta->fresh()->devolucionVencida());
+        Livewire::test(ListActas::class)->assertSee('Debía volver el');
+        $this->get(route('actas.devolver', $acta))->assertOk()->assertSee('Debía volver el');
+
+        // Cuando vuelve todo, deja de estar atrasada.
+        $this->servicio()->registrarDevolucion(
+            $acta->fresh(), $erick,
+            $acta->items->mapWithKeys(fn ($i) => [$i->id => ['estado' => 'B']])->all(),
+            now(), null, $this->firma(),
+        );
+
+        $this->assertFalse($acta->fresh()->devolucionVencida());
+    }
 }

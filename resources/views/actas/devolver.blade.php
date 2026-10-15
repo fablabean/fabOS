@@ -32,6 +32,11 @@
     <h1>Registrar lo que volvió</h1>
     <p style="margin:0;color:var(--muted)">
         {{ $acta->tipoLegible() }} · salió el {{ $acta->fecha->format('d/m/Y') }} · lo tenía <strong>{{ $acta->recibe_nombre }}</strong>.
+        @if ($acta->fecha_retorno)
+            <span style="{{ $acta->devolucionVencida() ? 'color:#b91c1c;font-weight:600' : '' }}">
+                {{ $acta->devolucionVencida() ? 'Debía volver el' : 'Vuelve el' }} {{ $acta->fecha_retorno->format('d/m/Y') }}.
+            </span>
+        @endif
     </p>
 
     @if ($errors->any())
