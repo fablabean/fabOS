@@ -681,4 +681,35 @@ class ActasDeMovimientoTest extends TestCase
             ->assertActionHidden(TestAction::make('devolucion')->table($firmada))
             ->assertSee('Devuelta');
     }
+
+    public function test_quien_recibe_se_puede_crear_desde_el_acta_con_su_cedula(): void
+    {
+        $erick = $this->persona('Erick Hansen Gómez', '80187390', User::ROL_ADMINISTRADOR);
+        $categoria = \App\Models\UserCategory::create(['slug' => 'profesor', 'name' => 'Profesor', 'can_reserve' => true, 'rate_factor' => 0.5]);
+        $this->entra($erick);
+
+        $nueva = [
+            'name' => 'Laura Méndez', 'email' => 'Laura.Mendez@universidadean.edu.co',
+            'user_category_id' => $categoria->id, 'document_number' => '1015999888',
+        ];
+
+        Livewire::test(CreateActa::class)
+            ->callAction(TestAction::make('createOption')->schemaComponent('recibe_user_id', schema: 'form'), $nueva)
+            ->assertHasNoFormErrors()
+            ->assertSet('data.recibe_nombre', 'Laura Méndez')
+            ->assertSet('data.recibe_cedula', '1015999888');
+
+        $laura = User::where('email', 'laura.mendez@universidadean.edu.co')->sole();
+        $this->assertSame('1015999888', $laura->document_number);
+        $this->assertSame($categoria->id, $laura->user_category_id);
+
+        // Con un correo que ya tiene cuenta se usa esa, y una cédula ajena no pasa.
+        Livewire::test(CreateActa::class)
+            ->callAction(TestAction::make('createOption')->schemaComponent('recibe_user_id', schema: 'form'),
+                ['name' => 'Otra', 'email' => 'otra@test.co', 'user_category_id' => $categoria->id, 'document_number' => '80187390'])
+            ->assertHasActionErrors(['document_number' => 'unique']);
+
+        $this->assertSame(1, User::where('name', 'Laura Méndez')->count());
+        $this->assertFalse(User::where('email', 'otra@test.co')->exists());
+    }
 }

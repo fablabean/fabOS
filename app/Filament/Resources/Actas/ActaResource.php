@@ -191,6 +191,34 @@ class ActaResource extends Resource
                         ->mapWithKeys(fn (User $u) => [$u->id => $u->name . ' · ' . $u->email])
                         ->all())
                     ->getOptionLabelUsing(fn ($value) => ($u = User::find($value)) ? $u->name . ' · ' . $u->email : null)
+                    /*
+                     * Quien recibe un equipo prestado muchas veces no tiene
+                     * cuenta: un profesor de otra facultad, alguien de
+                     * mantenimiento. Se crea aquí, como en las reservas, y con
+                     * la cédula de una vez, que el formato la exige. Si el
+                     * correo ya tenía cuenta, se usa esa.
+                     */
+                    ->createOptionForm([
+                        ...\App\Filament\Componentes\NuevaPersona::formulario(),
+                        TextInput::make('document_number')
+                            ->label('Cédula')
+                            ->maxLength(40)
+                            ->unique(User::class, 'document_number')
+                            ->validationMessages(['unique' => 'Esa cédula ya es de otra persona: búscala en la lista.'])
+                            ->helperText('La pide el formato para poder enviarlo a firmar.'),
+                    ])
+                    ->createOptionModalHeading('Nueva persona')
+                    ->createOptionUsing(function (array $data): int {
+                        $persona = \App\Filament\Componentes\NuevaPersona::crear($data);
+
+                        // Si ya tenía cuenta sin cédula, se completa; la que
+                        // tenga no se pisa.
+                        if (filled($data['document_number'] ?? null) && blank($persona->document_number)) {
+                            $persona->update(['document_number' => trim($data['document_number'])]);
+                        }
+
+                        return $persona->id;
+                    })
                     ->default(fn () => $porDefecto ? auth()->id() : null)
                     ->live()
                     ->afterStateUpdated(function ($state, $set) use ($parte) {
