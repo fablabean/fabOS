@@ -58,7 +58,9 @@ class PublicacionesTable
             ->filters([
                 SelectFilter::make('estado')->label('Estado')->options(Publicacion::ESTADOS)->multiple(),
                 SelectFilter::make('pilar')->label('Tema')->options(Publicacion::PILARES),
-                SelectFilter::make('responsable_id')->label('Quién')->relationship('responsable', 'name'),
+                SelectFilter::make('responsable_id')->label('Quién')
+                    ->options(fn () => \App\Filament\Componentes\SelectorDePersona::paraComunicaciones())
+                    ->searchable(),
                 TernaryFilter::make('abiertas')
                     ->label('Pendientes')
                     ->placeholder('Todas')

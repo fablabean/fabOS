@@ -83,7 +83,7 @@ class Sugerencias
             'origen_id'       => $s['origen_id'],
             'sugerencia'      => $s['clave'],
             'creada_por'      => $quien?->id,
-            'responsable_id'  => $quien?->id,
+            'responsable_id'  => Publicacion::responsablePorDefecto($quien),
         ]);
 
         if ($s['contenidos']) {

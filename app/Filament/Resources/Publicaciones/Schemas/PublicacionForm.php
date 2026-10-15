@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Publicaciones\Schemas;
 
+use App\Filament\Componentes\SelectorDePersona;
 use App\Models\Contenido;
 use App\Models\Publicacion;
 use Filament\Forms\Components\CheckboxList;
@@ -52,10 +53,12 @@ class PublicacionForm
 
                         Select::make('responsable_id')
                             ->label('Quién la hace')
-                            ->relationship('responsable', 'name')
+                            ->options(fn () => SelectorDePersona::paraComunicaciones())
+                            // Quien ya la tenía y ya no es del equipo sigue
+                            // saliendo con su nombre, no con un número.
+                            ->getOptionLabelUsing(fn ($value) => \App\Models\User::find($value)?->name)
                             ->searchable()
-                            ->preload()
-                            ->default(fn () => auth()->id()),
+                            ->default(fn () => Publicacion::responsablePorDefecto(auth()->user())),
 
                         CheckboxList::make('redes')
                             ->label('Dónde sale')

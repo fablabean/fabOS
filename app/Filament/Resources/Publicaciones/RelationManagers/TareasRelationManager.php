@@ -42,9 +42,8 @@ class TareasRelationManager extends RelationManager
 
             Select::make('responsable_id')
                 ->label('Quién')
-                ->relationship('responsable', 'name')
+                ->options(fn () => \App\Filament\Componentes\SelectorDePersona::paraComunicaciones())
                 ->searchable()
-                ->preload()
                 ->default(fn () => $this->getOwnerRecord()->responsable_id),
 
             DatePicker::make('vence_el')

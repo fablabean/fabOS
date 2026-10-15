@@ -232,6 +232,38 @@ class ParrillaDeRedesTest extends TestCase
         $this->assertCount(3, $sugerencias->paraHoy()->where('tipo', 'hueco'));
     }
 
+    // ------------------------------------------------------- quién la hace
+
+    public function test_quien_la_hace_ofrece_primero_a_comunicaciones_y_nunca_a_estudiantes(): void
+    {
+        $ana = $this->conRol(User::ROL_COMUNICACIONES, entrar: false);
+        $jefa = $this->conRol(User::ROL_ADMINISTRADOR, entrar: false);
+        $estudiante = User::create(['name' => 'Estudiante sin rol', 'email' => uniqid() . '@lab.co', 'status' => 'activo']);
+
+        $opciones = \App\Filament\Componentes\SelectorDePersona::paraComunicaciones();
+
+        $this->assertSame(['Comunicaciones', 'Resto del equipo'], array_keys($opciones));
+        $this->assertArrayHasKey($ana->id, $opciones['Comunicaciones']);
+        $this->assertArrayHasKey($jefa->id, $opciones['Resto del equipo']);
+        $this->assertArrayNotHasKey($estudiante->id, $opciones['Comunicaciones'] + $opciones['Resto del equipo']);
+    }
+
+    public function test_por_defecto_la_hace_comunicaciones(): void
+    {
+        $ana = $this->conRol(User::ROL_COMUNICACIONES, entrar: false);
+        $jefa = $this->conRol(User::ROL_ADMINISTRADOR, entrar: false);
+
+        // Quien la crea, si es de Comunicaciones; si la crea la dirección y
+        // hay una sola persona de Comunicaciones, ella.
+        $this->assertSame($ana->id, Publicacion::responsablePorDefecto($ana));
+        $this->assertSame($ana->id, Publicacion::responsablePorDefecto($jefa));
+
+        // Con dos, no se adivina.
+        $this->conRol(User::ROL_COMUNICACIONES, entrar: false);
+        $this->assertNull(Publicacion::responsablePorDefecto($jefa));
+        $this->assertSame($ana->id, Publicacion::responsablePorDefecto($ana));
+    }
+
     // ---------------------------------------------------------------- tareas
 
     public function test_pasar_a_diseno_reparte_las_tareas_tipicas_del_formato(): void

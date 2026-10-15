@@ -49,6 +49,38 @@ class SelectorDePersona
      * @param  Collection<int,User>  $personas
      * @return array<int,string>
      */
+    /**
+     * Para la parrilla de redes: Comunicaciones primero, y el resto del equipo
+     * debajo.
+     *
+     * Quien hace las publicaciones casi siempre es de Comunicaciones; buscarlo
+     * entre todas las cuentas del sistema —estudiantes incluidos— era buscar
+     * una aguja. El resto del equipo sigue a mano: a veces el reel lo graba
+     * quien lleva el proyecto.
+     *
+     * @return array<string,array<int,string>>|array<int,string>
+     */
+    public static function paraComunicaciones(): array
+    {
+        $equipo = User::query()
+            ->whereHas('roles')
+            ->where('status', 'activo')
+            ->with(['roles', 'category'])
+            ->orderBy('name')
+            ->get();
+
+        [$deComunicaciones, $resto] = $equipo->partition(fn (User $u) => $u->hasRole(User::ROL_COMUNICACIONES));
+
+        if ($deComunicaciones->isEmpty()) {
+            return self::etiquetas($resto);
+        }
+
+        return array_filter([
+            'Comunicaciones'   => self::etiquetas($deComunicaciones),
+            'Resto del equipo' => self::etiquetas($resto),
+        ]);
+    }
+
     private static function etiquetas(Collection $personas): array
     {
         return $personas->mapWithKeys(fn (User $u) => [$u->id => $u->etiquetaConCargo()])->all();

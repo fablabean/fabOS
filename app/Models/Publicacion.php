@@ -136,6 +136,26 @@ class Publicacion extends Model
         });
     }
 
+    /**
+     * Quién la hace, si nadie dice otra cosa.
+     *
+     * Quien la crea, si es de Comunicaciones. Si no —la dirección anotando una
+     * idea—, la persona de Comunicaciones cuando hay una sola; con varias no
+     * se adivina: se elige.
+     */
+    public static function responsablePorDefecto(?User $quien): ?int
+    {
+        if ($quien?->hasRole(User::ROL_COMUNICACIONES)) {
+            return $quien->id;
+        }
+
+        // whereHas y no el scope `role()`: ese revienta si el rol no existe.
+        $deComunicaciones = User::whereHas('roles', fn ($q) => $q->where('name', User::ROL_COMUNICACIONES))
+            ->where('status', 'activo')->limit(2)->pluck('id');
+
+        return $deComunicaciones->count() === 1 ? $deComunicaciones->first() : null;
+    }
+
     public function responsable(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsable_id');
