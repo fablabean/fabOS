@@ -256,8 +256,8 @@ class Sugerencias
                 // guarda material de encargos que nadie ha autorizado contar.
                 $proyecto = $primera->project;
                 $tema = $proyecto && $proyecto->seMuestraEnElSitio()
-                    ? '«' . $proyecto->name . '»'
-                    : ($primera->area?->name ? 'el área de ' . $primera->area->name : 'el laboratorio');
+                    ? 'de «' . $proyecto->name . '»'
+                    : ($primera->area?->name ? 'del área de ' . $primera->area->name : 'del laboratorio');
 
                 $fotos = $grupo->where('kind', 'foto')->count();
                 $videos = $grupo->count() - $fotos;
@@ -265,7 +265,7 @@ class Sugerencias
                 return $this->sugerencia(
                     clave: 'material:' . $clave . ':' . $grupo->max('id'),
                     tipo: 'material',
-                    titulo: 'Material nuevo de ' . $tema,
+                    titulo: 'Material nuevo ' . $tema,
                     porque: trim(($fotos ? $fotos . ' ' . ($fotos === 1 ? 'foto' : 'fotos') : '')
                         . ($fotos && $videos ? ' y ' : '')
                         . ($videos ? $videos . ' ' . ($videos === 1 ? 'video' : 'videos') : ''))
