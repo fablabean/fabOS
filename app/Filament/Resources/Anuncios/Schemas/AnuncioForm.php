@@ -47,6 +47,30 @@ class AnuncioForm
                         ->default('mujer')
                         ->inline()
                         ->required(),
+
+                    // El tono que avisa de que viene algo. No toca la voz: cambiarlo
+                    // no vuelve a generar el audio.
+                    ToggleButtons::make('sonido_previo')
+                        ->label('Sonido antes del anuncio')
+                        ->options(Anuncio::SONIDOS)
+                        ->icons([
+                            'aeropuerto' => 'heroicon-o-paper-airplane',
+                            'noticia'    => 'heroicon-o-newspaper',
+                            'timbre'     => 'heroicon-o-bell',
+                            'ninguno'    => 'heroicon-o-speaker-x-mark',
+                        ])
+                        ->default('aeropuerto')
+                        ->inline()
+                        ->required()
+                        ->helperText(new \Illuminate\Support\HtmlString(
+                            'Suena por los parlantes antes de la voz, para que la gente preste atención. Escúchalos: '
+                            . collect(Anuncio::SONIDOS)->except('ninguno')
+                                ->map(fn (string $nombre, string $clave) => '<button type="button" class="text-primary-600 underline" '
+                                    . 'x-on:click="window.fabosAnuncios.tocar(' . e(\Illuminate\Support\Js::from(Anuncio::urlDelSonido($clave))) . ')">'
+                                    . e(mb_strtolower($nombre)) . '</button>')
+                                ->implode(' · ')
+                            . '.'
+                        )),
                 ]),
 
             Section::make('El audio')

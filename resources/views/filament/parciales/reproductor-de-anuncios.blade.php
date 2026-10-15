@@ -10,20 +10,40 @@
         audio: null,
         url: null,
 
-        tocar(url) {
-            if (this.url === url && this.audio && ! this.audio.paused) {
+        // Con el sonido previo —el tono de aeropuerto—, si el anuncio lo
+        // lleva: suena primero, y al terminar entra la voz.
+        tocar(url, previo = null) {
+            if (this.url === url && this.audio) {
                 this.parar();
                 return;
             }
 
             this.parar();
             this.url = url;
-            this.audio = new Audio(url);
-            this.audio.addEventListener('ended', () => this.parar());
             this.marcar(url, true);
-            // Si el navegador no deja sonar —sin permiso de audio, archivo
-            // borrado—, el botón no se queda marcado como si sonara.
-            this.audio.play().catch(() => this.parar());
+
+            const voz = () => {
+                if (this.url !== url) return;   // lo pararon mientras sonaba el tono
+                this.audio = new Audio(url);
+                this.audio.addEventListener('ended', () => this.parar());
+                // Si el navegador no deja sonar —sin permiso de audio, archivo
+                // borrado—, el botón no se queda marcado como si sonara.
+                this.audio.play().catch(() => this.parar());
+            };
+
+            if (! previo) {
+                voz();
+                return;
+            }
+
+            const tono = new Audio(previo);
+            this.audio = tono;
+            let siguio = false;
+            // Una sola vez: si el tono falla y además termina, la voz no entra dos veces.
+            const despues = () => { if (siguio || this.audio !== tono) return; siguio = true; voz(); };
+            tono.addEventListener('ended', despues);
+            tono.addEventListener('error', despues);
+            tono.play().catch(despues);
         },
 
         parar() {

@@ -332,4 +332,56 @@ class AnunciosConVozTest extends TestCase
             ->call('create')
             ->assertHasFormErrors(['texto' => 'max']);
     }
+
+    // ------------------------------------------------------ el sonido de antes
+
+    public function test_el_sonido_de_antes_se_elige_y_no_vuelve_a_pedir_la_voz(): void
+    {
+        $this->servidorDeVoz();
+        $a = $this->anuncio();
+
+        // Por defecto, el de aeropuerto; y el archivo existe.
+        $this->assertSame('aeropuerto', $a->fresh()->sonido_previo);
+        $this->assertStringEndsWith('/sonidos/anuncios/aeropuerto.mp3', $a->fresh()->sonidoPrevioUrl());
+
+        foreach (array_keys(Anuncio::SONIDOS) as $sonido) {
+            if ($sonido !== 'ninguno') {
+                $this->assertFileExists(public_path('sonidos/anuncios/' . $sonido . '.mp3'));
+            }
+        }
+
+        // Cambiarlo no toca la voz: no se le vuelve a pedir al servidor.
+        Http::assertSentCount(1);
+        $a->update(['sonido_previo' => 'noticia']);
+        Http::assertSentCount(1);
+        $this->assertStringEndsWith('/sonidos/anuncios/noticia.mp3', $a->fresh()->sonidoPrevioUrl());
+
+        $a->update(['sonido_previo' => 'ninguno']);
+        $this->assertNull($a->fresh()->sonidoPrevioUrl());
+    }
+
+    public function test_el_parlante_y_los_botones_tocan_el_sonido_antes_de_la_voz(): void
+    {
+        $this->servidorDeVoz();
+        $tz = config('fabos.lab.timezone');
+        $a = $this->anuncio(['titulo' => 'Cierre pronto', 'sonido_previo' => 'timbre', 'favorito' => true]);
+        $a->programaciones()->create(['dias' => [1], 'hora' => '17:50', 'repeticiones' => 1, 'pausa' => 0]);
+
+        $desde = \Carbon\Carbon::parse('2026-10-12 00:00', $tz);
+        $eventos = Anuncio::agenda($desde, $desde->copy()->endOfDay());
+
+        $this->assertSame($a->fresh()->sonidoPrevioUrl(), $eventos[0]['previo']);
+
+        $this->admin();
+
+        // La lista y la barra de arriba le pasan el tono al reproductor.
+        Livewire::test(AnunciosFavoritos::class)
+            ->assertSeeHtml('anuncios\/timbre.mp3');
+
+        // Y el formulario deja escucharlos antes de elegir.
+        Livewire::test(CreateAnuncio::class)
+            ->assertSee('Sonido antes del anuncio')
+            ->assertSeeHtml('anuncios\/aeropuerto.mp3')
+            ->assertSeeHtml('anuncios\/noticia.mp3');
+    }
 }

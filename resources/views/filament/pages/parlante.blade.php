@@ -144,6 +144,13 @@
                     if (! e) { this.sonando = null; return; }
 
                     this.sonando = e.titulo;
+
+                    // El tono, una vez antes de la primera vez que suena.
+                    if (e.previo && this.audio) {
+                        await this.reproducir(e.previo);
+                        await new Promise((r) => setTimeout(r, 300));
+                    }
+
                     for (let i = 0; i < e.repeticiones; i++) {
                         if (i > 0) await new Promise((r) => setTimeout(r, e.pausa * 1000));
                         if (! this.audio) break;

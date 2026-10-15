@@ -34,7 +34,7 @@ class Anuncio extends Model
 
     protected $fillable = [
         'position', 'is_active', 'favorito',
-        'titulo', 'texto', 'voz',
+        'titulo', 'texto', 'voz', 'sonido_previo',
         'starts_at', 'ends_at',
     ];
 
@@ -55,6 +55,33 @@ class Anuncio extends Model
         'mujer' => 'Voz de mujer',
         'hombre' => 'Voz de hombre',
     ];
+
+    /**
+     * El tono que suena antes de la voz (§3).
+     *
+     * Una voz que arranca de golpe se pierde las primeras palabras: la gente
+     * todavía no está escuchando. Los sonidos están en `public/sonidos/anuncios`
+     * y son del laboratorio —se generaron, no se descargaron—, así que no hay
+     * derechos que pagar.
+     */
+    public const SONIDOS = [
+        'aeropuerto' => 'Aeropuerto',
+        'noticia'    => 'Noticiero',
+        'timbre'     => 'Timbre',
+        'ninguno'    => 'Sin sonido',
+    ];
+
+    public static function urlDelSonido(?string $sonido): ?string
+    {
+        return $sonido && $sonido !== 'ninguno' && isset(self::SONIDOS[$sonido])
+            ? asset('sonidos/anuncios/' . $sonido . '.mp3')
+            : null;
+    }
+
+    public function sonidoPrevioUrl(): ?string
+    {
+        return self::urlDelSonido($this->sonido_previo);
+    }
 
     /** Lo más largo que el servidor convierte en un solo audio. */
     public const MAX_CARACTERES = 5000;
@@ -220,6 +247,7 @@ class Anuncio extends Model
                         'anuncio' => $anuncio->id,
                         'titulo' => $anuncio->titulo,
                         'url' => $anuncio->audioUrl(),
+                        'previo' => $anuncio->sonidoPrevioUrl(),
                         't' => $momento->getTimestampMs(),
                         'hora' => $momento->format('H:i'),
                         'hoy' => $momento->isSameDay(now($tz)),
