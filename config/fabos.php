@@ -208,6 +208,17 @@ return [
     | `max_por_dia` no es tacaneria: es el freno que evita que un fallo en bucle
     | o una racha de spam se conviertan en una factura.
     */
+    /*
+     * La parrilla de redes (§21).
+     *
+     * `redactor` es la clase que escribe los borradores de las sugerencias.
+     * Para conectar la IA propia del laboratorio basta una clase que cumpla
+     * App\Services\Redes\Redactor y ponerla aquí (o en REDES_REDACTOR).
+     */
+    'redes' => [
+        'redactor' => env('REDES_REDACTOR', \App\Services\Redes\RedactorConPlantillas::class),
+    ],
+
     'ia' => [
         'activa' => (bool) env('IA_ACTIVA', true),
         'clave' => env('ANTHROPIC_API_KEY'),

@@ -313,7 +313,12 @@ class Secciones
 
             // Comunicaciones viene a buscar material para divulgación, y a
             // nada más. Es el rol mas estrecho del sistema, a proposito.
-            User::ROL_COMUNICACIONES => ['contenido' => ['ver']],
+            // Y la parrilla de redes, que es su trabajo: planear, escribir y
+            // mover las publicaciones. Aprobar sigue siendo de la dirección.
+            User::ROL_COMUNICACIONES => array_intersect_key([
+                'contenido'   => ['ver'],
+                'publicacion' => ['ver', 'crear', 'editar'],
+            ], array_flip($todas)),
         ];
     }
 

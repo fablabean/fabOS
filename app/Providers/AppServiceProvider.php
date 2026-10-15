@@ -65,7 +65,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //
+        // Quien escribe los borradores de la parrilla de redes: las plantillas,
+        // o la IA del laboratorio cuando se conecte (§21).
+        $this->app->bind(
+            \App\Services\Redes\Redactor::class,
+            fn ($app) => $app->make(config('fabos.redes.redactor') ?: \App\Services\Redes\RedactorConPlantillas::class),
+        );
     }
 
     public function boot(): void

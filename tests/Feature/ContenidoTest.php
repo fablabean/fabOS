@@ -268,24 +268,26 @@ class ContenidoTest extends TestCase
     }
 
     /**
-     * Comunicaciones entra al banco y a nada más: viene a buscar material para
-     * divulgación, no a mirar reservas ni saldos.
+     * Comunicaciones entra a lo suyo —el banco y la parrilla de redes— y a nada
+     * más: viene a divulgar, no a mirar reservas ni saldos.
      */
-    public function test_comunicaciones_solo_ve_el_banco(): void
+    public function test_comunicaciones_solo_ve_lo_suyo(): void
     {
         $quien = $this->conRol(User::ROL_COMUNICACIONES);
 
-        // Al banco entra.
+        // Al banco y a la parrilla entra.
         $this->actingAs($quien)->get('/admin/contenidos')->assertOk();
+        $this->actingAs($quien)->get('/admin/parrilla-de-redes')->assertOk();
 
         // Y a lo demás, no: viene a buscar material, no a mirar el laboratorio.
         $this->actingAs($quien)->get('/admin/reservations')->assertForbidden();
         $this->actingAs($quien)->get('/admin/projects')->assertForbidden();
 
         // La puerta del panel le lleva a lo suyo: al no tener el tablero en su
-        // menu, Filament redirige a la primera entrada visible.
+        // menu, Filament redirige a la primera entrada visible, que es la
+        // parrilla.
         $this->assertSame(
-            ContenidoResource::getUrl(panel: 'admin'),
+            \App\Filament\Resources\Publicaciones\PublicacionResource::getUrl(panel: 'admin'),
             filament()->getPanel('admin')->getRedirectUrl(),
         );
     }

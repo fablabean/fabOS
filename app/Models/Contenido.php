@@ -60,6 +60,12 @@ class Contenido extends Model
         return $this->belongsTo(Area::class);
     }
 
+    /** Las publicaciones de la parrilla de redes que lo usan. */
+    public function publicaciones(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Publicacion::class, 'contenido_publicacion');
+    }
+
     /** Quien decidió reconocer el aporte. Emitir moneda lleva firma. */
     public function reconocidoPor(): BelongsTo
     {
