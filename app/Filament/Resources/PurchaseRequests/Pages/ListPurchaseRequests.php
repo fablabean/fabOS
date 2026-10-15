@@ -68,6 +68,14 @@ class ListPurchaseRequests extends ListRecords
 
             CreateAction::make()->label('Nuevo carrito'),
 
+            // Cuando no hay cotización: se le pide a la Universidad que la haga,
+            // con su formato. Abre el mismo formulario, ya en esa modalidad.
+            Action::make('pedirCotizacion')
+                ->label('Pedir cotización')
+                ->icon('heroicon-o-document-magnifying-glass')
+                ->color('gray')
+                ->url(fn () => PurchaseRequestResource::getUrl('create', ['modalidad' => PurchaseRequest::POR_COTIZAR])),
+
             // Atajo para el caso más frecuente: reponer lo que se está acabando.
             Action::make('reposicion')
                 ->label('Carrito de reposición')

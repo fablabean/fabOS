@@ -191,7 +191,34 @@ class PurchasingService
         $ruta = 'compras/requisiciones/' . $solicitud->code . '-' . Str::random(16) . '.pdf';
         $disco->put($ruta, $this->pdfDeLaRequisicion($solicitud)->output());
 
-        $adjuntos = [['ruta' => $ruta, 'nombre' => $solicitud->code . '.pdf']];
+        $adjuntos = [['ruta' => $ruta, 'nombre' => $solicitud->nombreDelPdf()]];
+
+        /*
+         * Si lo que se pide es que la Universidad cotice, va su formato —el
+         * ADF-228-f5— y un correo que dice eso: no hay total ni proveedor que
+         * contar, porque eso es justo lo que se les pide.
+         */
+        if ($solicitud->pideCotizacion()) {
+            $aviso = $this->avisos->enviarSinCuenta('compra.solicitud_cotizacion', $correo, $nombre, [
+                'codigo'   => $solicitud->code,
+                'para_que' => $solicitud->justification ?: 'Sin especificar',
+                'lineas'   => $solicitud->items
+                    ->map(fn ($i) => '· ' . rtrim(rtrim(number_format((float) $i->quantity, 2, ',', '.'), '0'), ',') . ' ' . ($i->unit ?: 'unidad') . ' — ' . $i->description
+                        . ($i->brand ? ' (' . $i->brand . ')' : ''))
+                    ->implode("\n"),
+                'enlace'   => $enlace,
+                'quien'    => $quien?->name ?: $solicitud->requestedBy?->name ?: config('fabos.lab.name'),
+            ], $solicitud, $adjuntos, $copias = \App\Support\ConfiguracionDeCompras::copias(), $this->aQuienResponder($solicitud, $quien));
+
+            $solicitud->update([
+                'sent_to_email' => $correo,
+                'sent_to_name'  => $nombre,
+                'sent_to_at'    => $aviso->status === 'enviado' ? now() : null,
+                'sent_cc'       => $copias ? implode(', ', $copias) : null,
+            ]);
+
+            return $aviso;
+        }
         $hayCotizacion = filled($solicitud->quote_path) && $disco->exists($solicitud->quote_path);
 
         if ($hayCotizacion) {
@@ -242,10 +269,16 @@ class PurchasingService
         return $persona ? [$persona->email => $persona->name] : [];
     }
 
+    /** La hoja que le toca: la requisición, o el formato de cotización de la Universidad. */
+    public static function vistaDe(PurchaseRequest $solicitud): string
+    {
+        return $solicitud->pideCotizacion() ? 'compras.solicitud-cotizacion' : 'compras.requisicion';
+    }
+
     /** La requisición en PDF: la misma hoja que se ve en pantalla. */
     public function pdfDeLaRequisicion(PurchaseRequest $solicitud): \Barryvdh\DomPDF\PDF
     {
-        return \Barryvdh\DomPDF\Facade\Pdf::loadView('compras.requisicion', [
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView(self::vistaDe($solicitud), [
             'solicitud' => $solicitud->load(['items.supply', 'adjustments', 'budget', 'area', 'project', 'requestedBy', 'approvedBy']),
             'enlacePdf' => null,
             'paraPdf'   => true,

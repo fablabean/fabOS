@@ -11,6 +11,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -31,6 +32,33 @@ class PurchaseRequestForm
             // quedaba apretada en media pantalla.
             ->columns(1)
             ->components([
+                /*
+                 * Lo primero: si ya hay cotización o se le pide a la
+                 * Universidad que la haga. Cambia lo que se pregunta —precios
+                 * y proveedor, o especificaciones y marca— y el formato con el
+                 * que sale.
+                 */
+                Section::make('Qué tipo de solicitud es')
+                    ->schema([
+                        ToggleButtons::make('modalidad')
+                            ->label('')
+                            ->options(PurchaseRequest::MODALIDADES)
+                            ->icons([
+                                PurchaseRequest::COTIZADA    => 'heroicon-o-document-check',
+                                PurchaseRequest::POR_COTIZAR => 'heroicon-o-document-magnifying-glass',
+                            ])
+                            ->default(fn () => request()->query('modalidad') === PurchaseRequest::POR_COTIZAR
+                                ? PurchaseRequest::POR_COTIZAR
+                                : PurchaseRequest::COTIZADA)
+                            ->required()
+                            ->inline()
+                            ->live()
+                            ->disabled(fn (?PurchaseRequest $record) => $record && ! $record->esEditable())
+                            ->helperText(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR
+                                ? 'Sale en el formato de la Universidad, ADF-228-f5 «Términos de referencia para solicitud de cotización»: con especificaciones técnicas y marca, sin precios. Compras cotiza con sus proveedores.'
+                                : 'Sale en la requisición, con el proveedor, los precios y la cotización adjunta.'),
+                    ]),
+
                 Section::make('Para qué es')
                     ->columns(2)
                     ->schema([
@@ -43,6 +71,7 @@ class PurchaseRequestForm
                                 '0.19' => '19%',
                             ])
                             ->default('')
+                            ->visible(fn (Get $get) => $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                             /*
                              * La base guarda 0.0000 y las opciones dicen «0»:
                              * sin traducir, al abrir una solicitud sin
@@ -68,6 +97,7 @@ class PurchaseRequestForm
                             ->default('COP')
                             ->required()
                             ->live()
+                            ->visible(fn (Get $get) => $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                             ->helperText('Los precios se escriben en esta moneda. El presupuesto sigue en pesos.'),
 
                         TextInput::make('exchange_rate')
@@ -81,8 +111,8 @@ class PurchaseRequestForm
                             // esto; quien no la corregia comparaba contra el
                             // presupuesto con la tasa del ano pasado.
                             ->default(fn () => round(\App\Support\Dinero::tasaUsd()))
-                            ->visible(fn (Get $get) => $get('currency') === 'USD')
-                            ->required(fn (Get $get) => $get('currency') === 'USD')
+                            ->visible(fn (Get $get) => $get('currency') === 'USD' && $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
+                            ->required(fn (Get $get) => $get('currency') === 'USD' && $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                             ->helperText(fn () => 'Llega con la TRM del día. Cámbiala si compras usa otra.'),
 
                         Select::make('budget_id')
@@ -115,7 +145,33 @@ class PurchaseRequestForm
                             ->placeholder('Reposición de filamento para el curso kilo del segundo semestre')
                             ->helperText('Una línea. Es lo primero que lee quien aprueba.'),
 
-                        Textarea::make('notes')->label('Notas')->columnSpanFull(),
+                        // Lo que el formato de cotización pide y la requisición no.
+                        TextInput::make('supervisor')
+                            ->label('Supervisor')
+                            ->maxLength(160)
+                            ->visible(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR)
+                            // El de la última que pidió esta persona: casi siempre es el mismo.
+                            ->default(fn () => PurchaseRequest::where('requested_by', auth()->id())
+                                ->whereNotNull('supervisor')->latest('id')->value('supervisor'))
+                            ->helperText('Quien responde por la solicitud en el área.'),
+
+                        TextInput::make('process_area')
+                            ->label('Proceso solicitante y/o área')
+                            ->maxLength(160)
+                            ->visible(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR)
+                            ->default(fn () => \App\Support\ConfiguracionDeActas::valor('proceso')),
+
+                        Toggle::make('requires_art')
+                            ->label('Requiere arte')
+                            ->visible(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR)
+                            ->helperText('Si lo que se cotiza lleva un diseño: impresos, lanyards, señalética.'),
+
+                        Textarea::make('notes')
+                            ->label(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR ? 'Observaciones generales' : 'Notas')
+                            ->helperText(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR
+                                ? 'Información adicional o aclaraciones relevantes. Sale en el formato.'
+                                : null)
+                            ->columnSpanFull(),
                     ]),
 
                 /*
@@ -126,6 +182,8 @@ class PurchaseRequestForm
                  */
                 Section::make('Proveedor')
                     ->description('A quién se le compra y con qué cotización. Sale en la requisición que se le entrega a compras.')
+                    // Si se pide cotizar, el proveedor es justo lo que no se sabe.
+                    ->visible(fn (Get $get) => $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                     ->columns(2)
                     ->schema([
                         /*
@@ -210,12 +268,15 @@ class PurchaseRequestForm
                     ]),
 
                 Section::make('Qué se pide')
-                    ->description('Cada línea lleva su cantidad y su precio estimado. El total con impuesto es lo que se compara contra el presupuesto.')
+                    ->description(fn (Get $get) => $get('modalidad') === PurchaseRequest::POR_COTIZAR
+                        ? 'Los términos de referencia: qué se necesita, con sus especificaciones técnicas, para que compras lo cotice. Sin precios.'
+                        : 'Cada línea lleva su cantidad y su precio estimado. El total con impuesto es lo que se compara contra el presupuesto.')
                     ->schema([
                         // Cuando la compra va por Amazon -o cualquier tienda con
                         // carrito- se deja armado antes de pedir: a compras le
                         // queda mas facil copiar un enlace que buscar cada cosa.
                         TextInput::make('cart_url')
+                            ->visible(fn (Get $get) => $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                             ->label('Enlace del carrito')
                             ->url()
                             ->maxLength(2000)
@@ -251,7 +312,7 @@ class PurchaseRequestForm
                                     }),
 
                                 TextInput::make('description')
-                                    ->label('Qué')
+                                    ->label(fn (Get $get) => $get('../../modalidad') === PurchaseRequest::POR_COTIZAR ? 'Descripción' : 'Qué')
                                     ->required()
                                     ->columnSpan(3)
                                     ->placeholder('Sensor de temperatura DS18B20')
@@ -273,7 +334,16 @@ class PurchaseRequestForm
                                     ->default('unidad')
                                     ->columnSpan(1),
 
+                                // Del formato de cotización: la marca, si se prefiere una.
+                                TextInput::make('brand')
+                                    ->label('Marca')
+                                    ->maxLength(160)
+                                    ->placeholder('Cualquiera')
+                                    ->visible(fn (Get $get) => $get('../../modalidad') === PurchaseRequest::POR_COTIZAR)
+                                    ->columnSpan(2),
+
                                 TextInput::make('unit_price')
+                                    ->visible(fn (Get $get) => $get('../../modalidad') !== PurchaseRequest::POR_COTIZAR)
                                     ->label('Precio unitario')
                                     ->numeric()
                                     ->step(0.01)
@@ -285,9 +355,27 @@ class PurchaseRequestForm
 
                                 TextInput::make('supplier')
                                     ->label('Proveedor')
+                                    ->visible(fn (Get $get) => $get('../../modalidad') !== PurchaseRequest::POR_COTIZAR)
                                     ->columnSpan(1),
 
+                                // Lo que pide el formato de cotización en cada ítem.
+                                Textarea::make('specs')
+                                    ->label('Especificaciones técnicas')
+                                    ->rows(2)
+                                    ->maxLength(2000)
+                                    ->placeholder('Material, medidas, potencia, compatibilidad…')
+                                    ->visible(fn (Get $get) => $get('../../modalidad') === PurchaseRequest::POR_COTIZAR)
+                                    ->columnSpan(7),
+
+                                Textarea::make('notes')
+                                    ->label('Observaciones')
+                                    ->rows(2)
+                                    ->maxLength(1000)
+                                    ->visible(fn (Get $get) => $get('../../modalidad') === PurchaseRequest::POR_COTIZAR)
+                                    ->columnSpan(5),
+
                                 TextInput::make('reference_url')
+                                    ->visible(fn (Get $get) => $get('../../modalidad') !== PurchaseRequest::POR_COTIZAR)
                                     ->label('Enlace')
                                     ->url()
                                     ->maxLength(2000)
@@ -304,6 +392,7 @@ class PurchaseRequestForm
                  * fueran era mentir para que cuadrara.
                  */
                 Section::make('Descuentos y cobros adicionales')
+                    ->visible(fn (Get $get) => $get('modalidad') !== PurchaseRequest::POR_COTIZAR)
                     ->description('Lo que el proveedor resta o suma sobre el pedido entero: el descuento de Amazon, el envío, un cargo de importación. Se escriben en positivo; el tipo pone el signo.')
                     ->collapsible()
                     ->collapsed(fn (?PurchaseRequest $record) => ! $record || $record->adjustments()->doesntExist())

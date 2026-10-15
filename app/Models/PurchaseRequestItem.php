@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PurchaseRequestItem extends Model
 {
     protected $fillable = [
-        'purchase_request_id', 'supply_id', 'description', 'unit', 'quantity',
+        'purchase_request_id', 'supply_id', 'description', 'specs', 'brand', 'unit', 'quantity',
         'unit_price', 'received_quantity', 'supplier', 'reference_url', 'notes',
     ];
 

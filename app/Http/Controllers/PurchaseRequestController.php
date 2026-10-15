@@ -91,7 +91,7 @@ class PurchaseRequestController extends Controller
 
     private function requisicion(PurchaseRequest $solicitud, string $enlacePdf, ?string $enlaceCotizacion = null)
     {
-        return view('compras.requisicion', [
+        return view(\App\Services\Purchasing\PurchasingService::vistaDe($solicitud), [
             'solicitud' => $this->cargada($solicitud),
             'enlacePdf' => $enlacePdf,
             'enlaceCotizacion' => filled($solicitud->quote_path) ? $enlaceCotizacion : null,
@@ -104,7 +104,7 @@ class PurchaseRequestController extends Controller
         // El mismo PDF que se adjunta al enviarla a compras: una sola plantilla.
         return app(\App\Services\Purchasing\PurchasingService::class)
             ->pdfDeLaRequisicion($solicitud)
-            ->download($solicitud->code . '.pdf');
+            ->download($solicitud->nombreDelPdf());
     }
 
     private function cargada(PurchaseRequest $solicitud): PurchaseRequest

@@ -24,7 +24,42 @@ class PurchaseRequest extends Model
         'supplier_name', 'supplier_tax_id', 'supplier_address', 'supplier_contact',
         'quote_path', 'quote_name', 'supplier_id',
         'sent_to_email', 'sent_to_name', 'sent_to_at', 'sent_cc',
+        'modalidad', 'supervisor', 'process_area', 'requires_art',
     ];
+
+    /**
+     * De cuál de las dos es (§13).
+     *
+     * · **Cotizada**: llega con la cotización hecha —proveedor, precios, el
+     *   PDF— y se procesa. Sale en la requisición.
+     * · **Por cotizar**: se le pide a la Universidad que cotice con sus
+     *   proveedores. Sale en su formato, el ADF-228-f5, con especificaciones
+     *   técnicas y marca en vez de precios.
+     */
+    public const COTIZADA = 'cotizada';
+    public const POR_COTIZAR = 'por_cotizar';
+
+    public const MODALIDADES = [
+        self::COTIZADA    => 'Ya tengo la cotización: procesar la compra',
+        self::POR_COTIZAR => 'Que la Universidad cotice',
+    ];
+
+    public function pideCotizacion(): bool
+    {
+        return $this->modalidad === self::POR_COTIZAR;
+    }
+
+    /** Cómo se llama el documento que sale de ella. */
+    public function nombreDelDocumento(): string
+    {
+        return $this->pideCotizacion() ? 'Solicitud de cotización' : 'Requisición';
+    }
+
+    /** Y el PDF, con el código del formato delante cuando es el de la Universidad. */
+    public function nombreDelPdf(): string
+    {
+        return ($this->pideCotizacion() ? 'ADF-228-f5_' : '') . $this->code . '.pdf';
+    }
 
     /**
      * El proveedor de la solicitud queda en la lista de proveedores.
@@ -84,6 +119,7 @@ class PurchaseRequest extends Model
         return [
             'tax_rate' => 'decimal:4',
             'exchange_rate' => 'decimal:2',
+            'requires_art' => 'boolean',
             'submitted_at' => UtcDateTime::class,
             'decided_at'   => UtcDateTime::class,
             'closed_at'    => UtcDateTime::class,

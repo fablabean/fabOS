@@ -30,7 +30,7 @@ class PurchaseRequestsTable
                     ->label('Código')
                     ->searchable()
                     ->weight('bold')
-                    ->description(fn (PurchaseRequest $r) => $r->justification),
+                    ->description(fn (PurchaseRequest $r) => ($r->pideCotizacion() ? 'Por cotizar · ' : '') . $r->justification),
 
                 TextColumn::make('status')
                     ->label('Estado')
@@ -108,7 +108,7 @@ class PurchaseRequestsTable
     private static function verRequisicion(): Action
     {
         return Action::make('requisicion')
-            ->label('Ver requisición')
+            ->label(fn (PurchaseRequest $r) => 'Ver ' . mb_strtolower($r->nombreDelDocumento()))
             ->icon('heroicon-o-document-text')
             ->color('gray')
             ->url(fn (PurchaseRequest $r) => route('compras.requisicion', $r))
@@ -131,8 +131,11 @@ class PurchaseRequestsTable
             ->icon('heroicon-o-paper-airplane')
             ->requiresConfirmation()
             ->modalHeading('Enviar a compras')
-            ->modalDescription(fn () => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
-                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), con la requisición en PDF y la cotización si la adjuntaste.'
+            ->modalDescription(fn (PurchaseRequest $r) => 'Se le envía por correo a ' . \App\Support\ConfiguracionDeCompras::nombre()
+                . ' (' . \App\Support\ConfiguracionDeCompras::correo() . '), '
+                . ($r->pideCotizacion()
+                    ? 'con la solicitud de cotización en el formato ADF-228-f5, en PDF.'
+                    : 'con la requisición en PDF y la cotización si la adjuntaste.')
                 . self::enCopia()
                 . ' Queda con fecha de envío y deja de ser un borrador editable a la ligera.')
             ->modalSubmitActionLabel('Enviar')
