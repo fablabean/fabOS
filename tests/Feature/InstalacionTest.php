@@ -195,11 +195,39 @@ class InstalacionTest extends TestCase
         $admin = $this->persona(User::ROL_SUPERADMIN);
         $this->entra($admin);
 
+        // Con un nombre ya puesto: borrarlo en blanco no lo deja sin nombre.
+        // (Antes se comprobaba que no hubiera ninguno guardado, y una
+        // instalación puede traerlo desde el primer día.)
+        Setting::put('lab.name', 'Fab Lab Ciudad', 'laboratorio');
+
         Livewire::test(Instalacion::class)
             ->set('datos.name', '   ')
             ->call('guardar');
 
+        $this->assertSame('Fab Lab Ciudad', Setting::get('lab.name'));
+    }
+
+    /** El nombre de la marca es de este laboratorio: no se le pone a la instalación de otro. */
+    public function test_la_marca_de_este_laboratorio_no_bautiza_a_otro(): void
+    {
+        $migracion = require database_path('migrations/2026_09_25_210000_el_nombre_como_lo_dice_la_marca.php');
+
+        // Otro laboratorio, recién instalado: su nombre está en .env y no hay nada guardado.
+        Setting::whereIn('key', ['lab.name', 'lab.short_name'])->delete();
+        Setting::olvidarCache();
+        config(['fabos.lab.name' => 'Fab Lab Medellín', 'fabos.lab.short_name' => 'FL Medellín']);
+
+        $migracion->up();
+
         $this->assertNull(Setting::get('lab.name'));
+        $this->assertNull(Setting::get('lab.short_name'));
+
+        // Este, con el nombre escrito a la vieja en .env: sí se alinea con el logo.
+        config(['fabos.lab.name' => 'Fablab Ean', 'fabos.lab.short_name' => 'Fablab Ean']);
+
+        $migracion->up();
+
+        $this->assertSame('FABLAB EAN', Setting::get('lab.name'));
     }
 
     public function test_configurar_la_instancia_es_del_superadmin(): void

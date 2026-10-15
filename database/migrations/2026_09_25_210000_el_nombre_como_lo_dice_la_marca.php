@@ -28,12 +28,14 @@ return new class extends Migration
     public function up(): void
     {
         foreach (['lab.name', 'lab.short_name'] as $clave) {
-            $actual = trim((string) Setting::get($clave, ''));
+            // Vacío es «lo que diga .env». Solo cuenta si ese es este
+            // laboratorio escrito a la vieja: en la instalación de otro, el
+            // nombre es el suyo, y ponerle FABLAB EAN sería bautizarlo con el
+            // nombre de otro. Y si alguien ya escribió otra cosa, esa manda:
+            // no es asunto de una migración deshacer una decisión posterior.
+            $actual = trim((string) Setting::get($clave, '')) ?: trim((string) config('fabos.' . $clave));
 
-            // Vacío es «lo que diga .env», que es una de las grafías viejas.
-            // Y si alguien ya escribió otra cosa, esa manda: no es asunto de
-            // una migración deshacer una decisión posterior.
-            if ($actual === '' || in_array($actual, self::COMO_SE_ESCRIBIA, true)) {
+            if (in_array($actual, self::COMO_SE_ESCRIBIA, true)) {
                 Setting::put($clave, self::COMO_SE_ESCRIBE, 'laboratorio');
             }
         }
