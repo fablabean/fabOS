@@ -243,7 +243,7 @@ class ActaResource extends Resource
                     ->maxLength(40)
                     ->default(fn () => $porDefecto ? auth()->user()?->document_number : null)
                     ->disabled($bloqueada)
-                    ->helperText('El formato la exige: sin ella no se puede enviar a firmar.'),
+                    ->helperText('Si no la tienes a mano, déjala vacía: se la pedimos a quien firma.'),
 
                 TextInput::make("{$parte}_proceso")
                     ->label('Proceso')

@@ -161,17 +161,47 @@ class ActasDeMovimientoTest extends TestCase
         $this->assertTrue(NotificationLog::where('key', 'acta.firmar')->where('to', $ana->email)->exists());
     }
 
-    public function test_sin_cedula_o_sin_activos_no_se_envia_a_firma(): void
+    public function test_sin_cedula_se_envia_y_la_pide_la_pagina_de_firma(): void
     {
         $erick = $this->persona('Erick', '80187390', User::ROL_ADMINISTRADOR);
-        $sinCedula = $this->persona('Ana', null);
+        $ana = $this->persona('Ana Torres', null);
 
-        try {
-            $this->servicio()->enviarAFirma($this->acta($erick, $sinCedula));
-            $this->fail('Se envió a firma sin la cédula de quien recibe');
-        } catch (ActaException $e) {
-            $this->assertStringContainsString('cédula', $e->getMessage());
-        }
+        // Quien prepara el acta no la tiene a mano: se envía igual.
+        $acta = $this->servicio()->enviarAFirma($this->acta($erick, $ana), $erick);
+        $this->assertSame('por_firmar', $acta->status);
+
+        // A quien recibe se la pide su página; a quien entrega, que ya la tiene, no.
+        $this->get(route('actas.firmar', $acta->recibe_token))->assertOk()->assertSee('Tu número de documento');
+        $this->get(route('actas.firmar', $acta->entrega_token))->assertOk()->assertDontSee('Tu número de documento');
+
+        // Sin escribirla no se firma.
+        $this->from(route('actas.firmar', $acta->recibe_token))
+            ->post(route('actas.firmar.guardar', $acta->recibe_token), ['firma' => $this->firma(), 'acepto' => '1'])
+            ->assertSessionHasErrors('cedula');
+        $this->assertFalse($acta->fresh()->firmo('recibe'));
+
+        // Con ella, queda en el acta y en su cuenta.
+        $this->post(route('actas.firmar.guardar', $acta->recibe_token), ['firma' => $this->firma(), 'acepto' => '1', 'cedula' => ' 52.123.456 '])
+            ->assertSessionHasNoErrors();
+
+        $acta->refresh();
+        $this->assertTrue($acta->firmo('recibe'));
+        $this->assertSame('52.123.456', $acta->recibe_cedula);
+        $this->assertSame('52.123.456', $ana->fresh()->document_number);
+        $this->assertSame('80187390', $acta->entrega_cedula, 'la de la otra parte no se toca');
+
+        // El PDF la lleva una vez firmada por los dos.
+        $this->post(route('actas.firmar.guardar', $acta->entrega_token), ['firma' => $this->firma(), 'acepto' => '1'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('firmada', $acta->fresh()->status);
+
+        $this->entra($erick);
+        $this->get(route('actas.ver', $acta))->assertOk()->assertSee('52.123.456');
+    }
+
+    public function test_sin_activos_no_se_envia_a_firma(): void
+    {
+        $erick = $this->persona('Erick', '80187390', User::ROL_ADMINISTRADOR);
 
         $vacia = $this->acta($erick, $erick);
         $vacia->items()->delete();

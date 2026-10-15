@@ -43,15 +43,19 @@ class ActaController extends Controller
         $datos = $request->validate([
             'firma'   => ['required', 'string'],
             'acepto'  => ['accepted'],
+            // Solo si el acta no la traía: entonces es obligatoria.
+            'cedula'  => [blank($acta->{"{$parte}_cedula"}) ? 'required' : 'nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9.\- ]+$/'],
         ], [
             'firma.required'  => 'Dibuja tu firma en el recuadro.',
             'acepto.accepted' => 'Marca la casilla para confirmar que revisaste el acta.',
+            'cedula.required' => 'Escribe tu número de documento: el formato lo exige.',
+            'cedula.regex'    => 'El número de documento solo lleva números, letras, puntos o guiones.',
         ]);
 
         try {
-            $this->actas->firmar($acta, $parte, $datos['firma'], $request->ip());
+            $this->actas->firmar($acta, $parte, $datos['firma'], $request->ip(), $datos['cedula'] ?? null);
         } catch (ActaException $e) {
-            return back()->withErrors(['firma' => $e->getMessage()]);
+            return back()->withInput($request->only('cedula'))->withErrors(['firma' => $e->getMessage()]);
         }
 
         return redirect()->route('actas.firmar', $token)->with('firmada', true);

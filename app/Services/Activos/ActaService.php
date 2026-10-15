@@ -47,9 +47,9 @@ class ActaService
                 throw new ActaException('Falta ' . $rol . ', o no tiene correo: sin él no le llega el enlace para firmar.');
             }
 
-            if (blank($acta->{"{$parte}_cedula"})) {
-                throw new ActaException('Falta la cédula de ' . $rol . ': el formato la exige.');
-            }
+            // La cédula no se exige aquí: quien prepara el acta casi nunca
+            // la tiene a mano. Se la pide la página de firma a quien firma,
+            // que es quien presenta el documento al retirar el activo.
         }
 
         $acta->update([
@@ -96,7 +96,7 @@ class ActaService
      *
      * @throws ActaException si el dibujo no vale o el acta ya no admite firmas
      */
-    public function firmar(Acta $acta, string $parte, string $dataUrl, ?string $ip = null): Acta
+    public function firmar(Acta $acta, string $parte, string $dataUrl, ?string $ip = null, ?string $cedula = null): Acta
     {
         if ($acta->status !== 'por_firmar') {
             throw new ActaException($acta->status === 'anulada'
@@ -108,13 +108,30 @@ class ActaService
             throw new ActaException('Ya habías firmado esta acta.');
         }
 
+        /*
+         * El documento, si el acta no lo traía.
+         *
+         * El formato lo exige y quien prepara el acta casi nunca lo tiene a
+         * mano; quien firma, sí: lo presenta al retirar el activo. Lo que
+         * escriba queda en el acta y, si su cuenta no tenía, también ahí.
+         */
+        $cedula = filled($cedula) ? mb_substr(trim($cedula), 0, 40) : null;
+
+        if (blank($acta->{"{$parte}_cedula"}) && blank($cedula)) {
+            throw new ActaException('Escribe tu número de documento: el formato lo exige.');
+        }
+
         $binario = $this->pngDe($dataUrl);
 
-        return DB::transaction(function () use ($acta, $parte, $binario, $ip) {
+        return DB::transaction(function () use ($acta, $parte, $binario, $ip, $cedula) {
             // Una sola persona en las dos casillas: una firma para las dos.
             $partes = $acta->esUnaSolaPersona() ? ['entrega', 'recibe'] : [$parte];
 
             foreach ($partes as $p) {
+                if ($cedula && blank($acta->{"{$p}_cedula"})) {
+                    $acta->{"{$p}_cedula"} = $cedula;
+                }
+
                 $ruta = 'actas/firmas/' . $acta->code . '-' . $p . '-' . Str::random(24) . '.png';
                 Storage::disk('local')->put($ruta, $binario);
 
@@ -130,6 +147,15 @@ class ActaService
             }
 
             $acta->save();
+
+            // A su cuenta, si no tenía y nadie más la usa: la próxima acta ya
+            // sale con ella.
+            $persona = $acta->{$parte};
+
+            if ($cedula && $persona && blank($persona->document_number)
+                && User::where('document_number', $cedula)->doesntExist()) {
+                $persona->forceFill(['document_number' => $cedula])->save();
+            }
 
             if ($acta->status === 'firmada') {
                 $this->guardarPdf($acta);

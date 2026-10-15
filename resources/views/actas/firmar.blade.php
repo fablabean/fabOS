@@ -65,6 +65,15 @@
 
             <input type="hidden" name="firma" id="campo-firma">
 
+            {{-- El documento lo trae quien firma, no quien prepara el acta. --}}
+            @if (blank($acta->{$parte . '_cedula'}))
+                <label for="cedula" style="display:block;font-weight:600;margin:0 0 .3rem">Tu número de documento</label>
+                <input id="cedula" name="cedula" type="text" required maxlength="40" inputmode="numeric" autocomplete="off"
+                       value="{{ old('cedula') }}" placeholder="Cédula, tarjeta de identidad o pasaporte"
+                       style="width:100%;max-width:20rem;padding:.6rem .7rem;font:inherit;border:1px solid var(--rule);border-radius:4px;background:var(--ground);color:var(--ink)">
+                <p style="margin:.3rem 0 1rem;color:var(--muted);font-size:.88rem">El formato lo exige. Queda en el acta junto a tu firma.</p>
+            @endif
+
             <label class="casilla">
                 <input type="checkbox" name="acepto" value="1" required>
                 <span>
