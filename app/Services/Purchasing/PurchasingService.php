@@ -213,7 +213,7 @@ class PurchasingService
                 : 'Va adjunta la requisición en PDF.',
             'enlace'    => $enlace,
             'quien'     => $quien?->name ?: $solicitud->requestedBy?->name ?: config('fabos.lab.name'),
-        ], $solicitud, $adjuntos, $copias = \App\Support\ConfiguracionDeCompras::copias());
+        ], $solicitud, $adjuntos, $copias = \App\Support\ConfiguracionDeCompras::copias(), $this->aQuienResponder($solicitud, $quien));
 
         $solicitud->update([
             'sent_to_email' => $correo,
@@ -223,6 +223,23 @@ class PurchasingService
         ]);
 
         return $aviso;
+    }
+
+    /**
+     * A quién le llega lo que conteste compras: a quien pidió la compra.
+     *
+     * El correo sale de una dirección que nadie lee, y «Responder» —lo que se
+     * pulsa casi siempre— se quedaba ahí. Si quien la pidió no tiene correo,
+     * a quien la envió.
+     *
+     * @return array<string,string>
+     */
+    private function aQuienResponder(PurchaseRequest $solicitud, ?User $quien): array
+    {
+        $persona = collect([$solicitud->requestedBy, $quien])
+            ->first(fn (?User $u) => $u && filter_var($u->email, FILTER_VALIDATE_EMAIL));
+
+        return $persona ? [$persona->email => $persona->name] : [];
     }
 
     /** La requisición en PDF: la misma hoja que se ve en pantalla. */

@@ -317,7 +317,9 @@ class RequisicionCompartidaTest extends TestCase
 
         \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('scpaguay@universidadean.edu.co')
             && count($m->adjuntos) === 1
-            && $m->adjuntos[0]['nombre'] === $s->code . '.pdf');
+            && $m->adjuntos[0]['nombre'] === $s->code . '.pdf'
+            // «Responder» le llega a quien la pidió, no al buzón que nadie lee.
+            && $m->hasReplyTo($admin->email, $admin->name));
 
         $aviso = \App\Models\NotificationLog::where('key', 'compra.requisicion')->sole();
         $this->assertStringContainsString($s->code, $aviso->subject);

@@ -20,11 +20,13 @@ class PlantillaMail extends Mailable
 
     /**
      * @param  list<array{ruta:string,nombre:string}>  $adjuntos  archivos del disco privado que van dentro del correo
+     * @param  array<string,string>  $responderA  correo => nombre de a quién le llega la respuesta
      */
     public function __construct(
         public string $asunto,
         public string $cuerpo,
         public array $adjuntos = [],
+        public array $responderA = [],
     ) {}
 
     /** @return list<\Illuminate\Mail\Mailables\Attachment> */
@@ -38,7 +40,18 @@ class PlantillaMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->asunto);
+        /*
+         * Sale de una dirección que nadie lee. Si hay una persona detrás —quien
+         * pidió la compra—, «Responder» le llega a ella y no a ese buzón.
+         */
+        return new Envelope(
+            subject: $this->asunto,
+            replyTo: array_map(
+                fn (string $correo, string $nombre) => new \Illuminate\Mail\Mailables\Address($correo, $nombre),
+                array_keys($this->responderA),
+                array_values($this->responderA),
+            ),
+        );
     }
 
     public function content(): Content
