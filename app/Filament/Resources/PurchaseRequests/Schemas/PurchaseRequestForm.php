@@ -255,6 +255,7 @@ class PurchaseRequestForm
                                     ->required()
                                     ->columnSpan(3)
                                     ->placeholder('Sensor de temperatura DS18B20')
+                                    ->maxLength(1000)
                                     // Lo que no esta en el catalogo se escribe
                                     // aqui tal cual: la ficha, si hace falta,
                                     // se crea cuando llegue.
@@ -289,6 +290,7 @@ class PurchaseRequestForm
                                 TextInput::make('reference_url')
                                     ->label('Enlace')
                                     ->url()
+                                    ->maxLength(2000)
                                     ->columnSpan(1)
                                     ->helperText('Del producto'),
                             ]),

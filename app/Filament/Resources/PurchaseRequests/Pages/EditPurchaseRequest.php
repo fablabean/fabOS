@@ -11,6 +11,14 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditPurchaseRequest extends EditRecord
 {
+    /**
+     * La requisición y sus líneas se guardan juntas o no se guardan.
+     *
+     * Una línea que fallaba —un título de Amazon más largo que la columna—
+     * dejaba la requisición creada y vacía, y quien reintentaba creaba otra.
+     */
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected static string $resource = PurchaseRequestResource::class;
 
     protected function getHeaderActions(): array

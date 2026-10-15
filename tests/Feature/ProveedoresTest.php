@@ -259,4 +259,25 @@ class ProveedoresTest extends TestCase
         $this->assertSame($perfil->id, $p->professional_profile_id);
         $this->assertSame(1, Supplier::count());
     }
+
+    /** El título de Amazon tal cual, con su enlace: no cabía en 255. */
+    public function test_una_linea_con_el_titulo_largo_de_la_tienda_se_guarda(): void
+    {
+        $s = $this->solicitud($this->administrador());
+
+        $titulo = 'Creality Official K2 Plus Nozzles, 0.4/0.6/0.8mm 4PCS Quick-Swap 3D Printer Hotend Nozzle Kit, '
+            . 'Copper Alloy and Hardened Steel, 3D Printer Accessories for K2 Plus, K2, K2 Pro, Creality Hi, '
+            . 'K1 Max, K1C, K1 SE, Ender-3 V3 Plus, Ender-3 V3 KE, Ender-3 V3, CR-10 SE, compatible with high speed printing';
+        $enlace = 'https://www.amazon.com/dp/B0D1234567/?' . str_repeat('ref=sr_1_3&crid=ABC&keywords=nozzle&', 8);
+
+        $this->assertGreaterThan(255, mb_strlen($titulo));
+
+        $linea = $s->items()->create([
+            'description' => $titulo, 'quantity' => 2, 'unit' => 'unidad', 'unit_price' => 0,
+            'supplier' => 'Amazon', 'reference_url' => $enlace,
+        ]);
+
+        $this->assertSame($titulo, $linea->fresh()->description);
+        $this->assertSame($enlace, $linea->fresh()->reference_url);
+    }
 }
