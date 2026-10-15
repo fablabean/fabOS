@@ -9,7 +9,7 @@ class UserCategory extends Model
 {
     protected $fillable = [
         'slug', 'name', 'position', 'rate_factor',
-        'max_hours_per_week', 'max_days_ahead', 'can_reserve', 'is_institutional',
+        'max_hours_per_week', 'max_days_ahead', 'can_reserve', 'requires_approval', 'is_institutional',
         'client_kind', 'welcome_minor', 'weekly_benefit',
     ];
 
@@ -18,6 +18,7 @@ class UserCategory extends Model
         return [
             'rate_factor'      => 'decimal:3',
             'can_reserve'      => 'boolean',
+            'requires_approval' => 'boolean',
             'is_institutional' => 'boolean',
             'weekly_benefit'   => 'boolean',
         ];

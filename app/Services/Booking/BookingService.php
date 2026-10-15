@@ -177,6 +177,15 @@ class BookingService
         // exigir más, nunca menos.
         $modoDelEquipo = $asset->booking_mode ?: 'directa';
 
+        // Lo que pide por su cuenta alguien de fuera espera el visto bueno,
+        // aunque el equipo se reserve directo.
+        if ($estado === 'confirmada' && \App\Support\ReservaConAprobacion::para($user)) {
+            $estado = 'solicitada';
+            $modo = 'con_aprobacion';
+            $motivo = \App\Support\ReservaConAprobacion::MOTIVO;
+            $supervisor = null;
+        }
+
         if ($estado === 'confirmada' && $modoDelEquipo !== 'directa') {
             $estado = 'solicitada';
             $modo = $modoDelEquipo;

@@ -120,6 +120,8 @@ class Instalar extends Command
                 'rate_factor'      => $factor,
                 'is_institutional' => $institucional,
                 'can_reserve'      => $reserva,
+                // Lo que reserva por su cuenta alguien de fuera lo confirma la coordinación.
+                'requires_approval' => ! $institucional,
                 'max_days_ahead'   => $institucional ? 30 : 14,
             ]);
         }

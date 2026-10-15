@@ -487,6 +487,15 @@ class EspacioBookingService
         $estado = $cubierta ? 'confirmada' : 'solicitada';
         $motivo = $cubierta ? null : self::FUERA_DE_JORNADA;
 
+        // Y lo que pide por su cuenta alguien de fuera lo confirma una persona,
+        // aunque caiga en jornada: recibir un grupo de otra institución es
+        // una decisión, no un hueco en la agenda.
+        if ($estado === 'confirmada' && \App\Support\ReservaConAprobacion::para($user)) {
+            $estado = 'solicitada';
+            $cubierta = false;
+            $motivo = \App\Support\ReservaConAprobacion::MOTIVO;
+        }
+
         // La nota del aforo va con el motivo: es lo que quien lo lea tiene que
         // saber para organizar la actividad.
         if ($nota) {

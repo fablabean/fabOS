@@ -42,6 +42,10 @@ class UserCategoryForm
                             ->default(true)
                             ->helperText('Los invitados existen para trazabilidad, pero no reservan.'),
 
+                        Toggle::make('requires_approval')
+                            ->label('Sus reservas pasan por aprobación')
+                            ->helperText('Lo que reserve por su cuenta —un equipo, un espacio, un recorrido— queda pendiente hasta que la coordinación lo apruebe. Lo que el equipo le reserve desde el panel, no.'),
+
                         TextInput::make('max_days_ahead')
                             ->label('Anticipación máxima (días)')
                             ->numeric()
