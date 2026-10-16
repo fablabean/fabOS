@@ -382,6 +382,7 @@ class AnunciosConVozTest extends TestCase
         Livewire::test(CreateAnuncio::class)
             ->assertSee('Sonido antes del anuncio')
             ->assertSeeHtml('anuncios\/aeropuerto.mp3')
-            ->assertSeeHtml('anuncios\/noticia.mp3');
+            ->assertSeeHtml('anuncios\/noticia.mp3')
+            ->assertSeeHtml('anuncios\/emergencia.mp3');
     }
 }

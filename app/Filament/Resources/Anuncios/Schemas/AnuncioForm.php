@@ -57,9 +57,11 @@ class AnuncioForm
                             'aeropuerto' => 'heroicon-o-paper-airplane',
                             'noticia'    => 'heroicon-o-newspaper',
                             'timbre'     => 'heroicon-o-bell',
+                            'emergencia' => 'heroicon-o-exclamation-triangle',
                             'ninguno'    => 'heroicon-o-speaker-x-mark',
                         ])
                         ->default('aeropuerto')
+                        ->colors(['emergencia' => 'danger'])
                         ->inline()
                         ->required()
                         ->helperText(new \Illuminate\Support\HtmlString(

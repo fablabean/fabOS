@@ -68,6 +68,9 @@ class Anuncio extends Model
         'aeropuerto' => 'Aeropuerto',
         'noticia'    => 'Noticiero',
         'timbre'     => 'Timbre',
+        // Corto y urgente: alto-bajo tres veces, como una alarma. Que no se
+        // confunda con ninguno de los otros.
+        'emergencia' => 'Emergencia',
         'ninguno'    => 'Sin sonido',
     ];
 
