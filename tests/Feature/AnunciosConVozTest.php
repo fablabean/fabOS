@@ -423,6 +423,13 @@ class AnunciosConVozTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertSame(35, \App\Support\MusicaDelParlante::volumen());
+        $this->assertTrue(\App\Support\MusicaDelParlante::aleatoria(), 'en desorden, salvo que se diga otra cosa');
+
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->callAction('musica', ['url' => 'https://music.youtube.com/playlist?list=OLAK5uy_kXv0ZqY8a3', 'volumen' => 35, 'aleatoria' => false])
+            ->assertHasNoActionErrors();
+
+        $this->assertFalse(\App\Support\MusicaDelParlante::paraElReproductor()['aleatoria']);
 
         Livewire::test(\App\Filament\Pages\Parlante::class)
             ->assertSee('Música de fondo')

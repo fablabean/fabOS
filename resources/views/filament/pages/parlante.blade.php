@@ -52,7 +52,7 @@
                             Con música
                         </label>
                         <p class="text-gray-600 dark:text-gray-300" x-text="estadoMusica"></p>
-                        <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> %.</p>
+                        <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</p>
                     </div>
                 </div>
             </x-filament::section>
@@ -92,6 +92,7 @@
                 reproductor: null,
                 conMusica: true,
                 otroSonando: false,
+                yaArranco: false,
                 estadoMusica: 'Esperando a que se encienda el parlante.',
                 encendido: false,
                 sonando: null,
@@ -177,6 +178,7 @@
                             events: {
                                 onReady: () => {
                                     this.reproductor.setVolume(m.volumen);
+                                    if (m.lista && m.aleatoria) this.reproductor.setShuffle(true);
                                     this.estadoMusica = 'Lista. Suena al encender el parlante.';
                                     if (this.encendido) this.sonarMusica();
                                 },
@@ -210,6 +212,18 @@
                 sonarMusica() {
                     if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica || this.sonando || this.otroSonando) return;
                     this.reproductor.setVolume(this.musica.volumen);
+
+                    // La primera vez, en aleatorio, se arranca en una canción
+                    // al azar: mezclar no basta, la primera sería siempre la
+                    // misma. Después se retoma donde iba.
+                    const lista = this.reproductor.getPlaylist?.() || [];
+                    if (this.musica.aleatoria && ! this.yaArranco && lista.length > 1) {
+                        this.yaArranco = true;
+                        this.reproductor.playVideoAt(Math.floor(Math.random() * lista.length));
+                        return;
+                    }
+
+                    this.yaArranco = true;
                     this.reproductor.playVideo();
                 },
 

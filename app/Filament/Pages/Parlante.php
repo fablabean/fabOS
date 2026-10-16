@@ -83,6 +83,7 @@ class Parlante extends Page
                 ->fillForm(fn () => [
                     'url'     => \App\Support\MusicaDelParlante::url(),
                     'volumen' => \App\Support\MusicaDelParlante::volumen(),
+                    'aleatoria' => \App\Support\MusicaDelParlante::aleatoria(),
                 ])
                 ->schema([
                     \Filament\Forms\Components\TextInput::make('url')
@@ -104,9 +105,13 @@ class Parlante extends Page
                         ->default(\App\Support\MusicaDelParlante::VOLUMEN_POR_DEFECTO)
                         ->required()
                         ->helperText('Más bajo que los anuncios: es de fondo. 40 % suele ir bien.'),
+                    \Filament\Forms\Components\Toggle::make('aleatoria')
+                        ->label('Aleatorio')
+                        ->default(true)
+                        ->helperText('La lista se mezcla y empieza en una canción al azar cada vez que se enciende el parlante.'),
                 ])
                 ->action(function (array $data) {
-                    \App\Support\MusicaDelParlante::guardar($data['url'] ?? null, (int) $data['volumen']);
+                    \App\Support\MusicaDelParlante::guardar($data['url'] ?? null, (int) $data['volumen'], (bool) ($data['aleatoria'] ?? true));
 
                     \Filament\Notifications\Notification::make()
                         ->title('Música guardada')

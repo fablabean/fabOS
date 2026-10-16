@@ -17,6 +17,7 @@ class MusicaDelParlante
 {
     public const URL = 'parlante.musica_url';
     public const VOLUMEN = 'parlante.musica_volumen';
+    public const ALEATORIA = 'parlante.musica_aleatoria';
 
     public const VOLUMEN_POR_DEFECTO = 40;
 
@@ -32,17 +33,23 @@ class MusicaDelParlante
         return max(0, min(100, (int) Setting::get(self::VOLUMEN, self::VOLUMEN_POR_DEFECTO)));
     }
 
+    /** En desorden, salvo que se diga otra cosa: la misma lista en el mismo orden cansa. */
+    public static function aleatoria(): bool
+    {
+        return (bool) Setting::get(self::ALEATORIA, true);
+    }
+
     /**
      * Lo que el reproductor necesita: una lista o un video, con su
      * identificador. Nulo si no hay nada puesto o el enlace no es de YouTube.
      *
-     * @return array{lista:?string, video:?string, volumen:int}|null
+     * @return array{lista:?string, video:?string, volumen:int, aleatoria:bool}|null
      */
     public static function paraElReproductor(): ?array
     {
         $partes = self::leer(self::url());
 
-        return $partes ? $partes + ['volumen' => self::volumen()] : null;
+        return $partes ? $partes + ['volumen' => self::volumen(), 'aleatoria' => self::aleatoria()] : null;
     }
 
     /**
@@ -80,9 +87,10 @@ class MusicaDelParlante
         return $lista || $video ? ['lista' => $lista, 'video' => $video] : null;
     }
 
-    public static function guardar(?string $url, int $volumen): void
+    public static function guardar(?string $url, int $volumen, bool $aleatoria = true): void
     {
         Setting::put(self::URL, $url ? trim($url) : '', 'parlante');
         Setting::put(self::VOLUMEN, max(0, min(100, $volumen)), 'parlante');
+        Setting::put(self::ALEATORIA, $aleatoria, 'parlante');
     }
 }
