@@ -96,16 +96,15 @@ class PaginasDelSitioTest extends TestCase
             ->assertSee('class="nav"', false)
             ->assertSee('powered by', false);
 
-        // Limpia: solo los módulos. El título sigue en la pestaña del navegador.
+        // Limpia: sin menú ni pie, pero con su título, su resumen y sus módulos.
         Pagina::where('slug', 'la-feria')->update(['plantilla' => 'limpia']);
 
         $this->get('/p/la-feria')->assertOk()
             ->assertSee('Ven a verlo.')
-            ->assertSee('<title>Nos vemos en la feria', false)
+            ->assertSee('<h1>Nos vemos en la feria</h1>', false)
+            ->assertSee('Tres días de laboratorio abierto.')
             ->assertDontSee('class="nav"', false)
-            ->assertDontSee('powered by', false)
-            ->assertDontSee('<h1>Nos vemos en la feria</h1>', false)
-            ->assertDontSee('Tres días de laboratorio abierto.</p>', false);
+            ->assertDontSee('powered by', false);
 
         // Y lo demás del sitio sigue con su marco.
         $this->get('/')->assertOk()->assertSee('class="nav"', false);

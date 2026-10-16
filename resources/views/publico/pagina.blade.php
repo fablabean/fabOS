@@ -12,7 +12,7 @@
 
 @section('title', $pagina->titulo . ' · ' . config('fabos.lab.name'))
 
-{{-- Limpia: el layout deja fuera el menú y el pie, y aquí se deja fuera el título. --}}
+{{-- Limpia: el layout deja fuera el menú y el pie. El título, el resumen y la portada se quedan. --}}
 @if ($pagina->esLimpia())
     @section('sin-marco', '1')
 @endif
@@ -139,7 +139,6 @@
 @endif
 
 <main @class(['limpia' => $pagina->esLimpia()])>
-    @unless ($pagina->esLimpia())
     <header class="cabecera">
         @if ($pagina->portadaUrl())
             <img class="portada" src="{{ $pagina->portadaUrl() }}" alt="">
@@ -155,7 +154,6 @@
             <p class="lead">{{ $pagina->resumen }}</p>
         @endif
     </header>
-    @endunless
 
     <section style="padding-top:0">
         @foreach ($bloques as $bloque)

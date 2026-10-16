@@ -79,7 +79,7 @@ class PaginaForm
                             ->inline()
                             ->required()
                             ->columnSpanFull()
-                            ->helperText('Limpia: sin el menú de arriba, sin el pie y sin el título ni la portada; solo los módulos. Para una pantalla en un evento o para incrustarla en otro sitio.'),
+                            ->helperText('Limpia: sin el menú de arriba ni el pie del sitio; se ven el título, el resumen, la portada y los módulos. Para una pantalla en un evento o para incrustarla en otro sitio.'),
 
                         TextInput::make('rotulo')
                             ->label('Rótulo')

@@ -39,13 +39,13 @@ class Pagina extends Model
     /**
      * Cómo se enmarca la página (§3).
      *
-     * Con el marco del sitio —menú arriba, pie abajo, título— o limpia: solo
-     * sus módulos, para una pantalla de un evento o para incrustarla en otro
-     * sitio.
+     * Con el marco del sitio —menú arriba, pie abajo— o limpia: sin ellos,
+     * con su título, su resumen, su portada y sus módulos. Para una pantalla
+     * de un evento o para incrustarla en otro sitio.
      */
     public const PLANTILLAS = [
         'sitio'  => 'Con el marco del sitio',
-        'limpia' => 'Limpia: solo los módulos',
+        'limpia' => 'Limpia: sin menú ni pie',
     ];
 
     public function esLimpia(): bool
