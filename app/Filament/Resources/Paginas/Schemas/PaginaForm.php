@@ -458,7 +458,16 @@ class PaginaForm
                         ->options([2 => '2', 3 => '3', 4 => '4'])
                         ->default(3)
                         ->inline()
-                        ->helperText('En el celular van de una en una.'),
+                        ->helperText('En computador.'),
+
+                    // Dos en el celular sirve cuando las tarjetas son cortas
+                    // —una foto, un nombre, un botón—; con textos largos se aprietan.
+                    ToggleButtons::make('columnas_movil')
+                        ->label('En el celular')
+                        ->options([1 => '1 por fila', 2 => '2 por fila'])
+                        ->default(1)
+                        ->inline()
+                        ->helperText('Con 2, el texto y el botón se achican un poco. Va mejor con títulos cortos.'),
 
                     Repeater::make('tarjetas')
                         ->hiddenLabel()

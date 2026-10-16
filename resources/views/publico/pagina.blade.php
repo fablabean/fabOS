@@ -141,6 +141,16 @@
     .tarjeta-cuerpo p{margin:0;color:var(--ink-soft);font-size:.93rem}
     /* El botón al pie de cada tarjeta, a la misma altura en toda la fila. */
     .tarjeta-cuerpo .btn{margin-top:auto;align-self:flex-start}
+
+    /* Dos por fila en el celular: tarjetas angostas, todo un poco más chico y
+       el botón a lo ancho, que es más fácil de pulsar con el pulgar. */
+    @media (max-width:560px){
+        .tarjetas.dos-en-celular{grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+        .dos-en-celular .tarjeta-cuerpo{padding:.7rem .75rem .8rem;gap:.35rem}
+        .dos-en-celular .tarjeta-cuerpo h3{font-size:.95rem;line-height:1.25}
+        .dos-en-celular .tarjeta-cuerpo p{font-size:.82rem;line-height:1.4}
+        .dos-en-celular .tarjeta-cuerpo .btn{align-self:stretch;text-align:center;padding:.5rem .4rem;font-size:.85rem}
+    }
 @endsection
 
 @section('content')

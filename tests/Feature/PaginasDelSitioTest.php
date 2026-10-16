@@ -105,7 +105,15 @@ class PaginasDelSitioTest extends TestCase
             // Sin texto para el botón, dice «Ver más».
             ->assertSeeInOrder(['Diseño', 'Ver más'])
             ->assertDontSee('Sin enlace')
-            ->assertSee('data-bloque="tarjetas-1"', false);
+            ->assertSee('data-bloque="tarjetas-1"', false)
+            ->assertSee('class="tarjetas"', false);
+
+        // Dos por fila en el celular, si se pide.
+        $p = Pagina::where('slug', 'la-feria')->first();
+        $bloques = $p->bloques;
+        $bloques[0]['data']['columnas_movil'] = 2;
+        $p->update(['bloques' => $bloques]);
+        $this->get('/p/la-feria')->assertOk()->assertSee('class="tarjetas dos-en-celular"', false);
 
         // Un módulo de tarjetas sin ninguna completa no se publica.
         Pagina::where('slug', 'la-feria')->update(['bloques' => [
