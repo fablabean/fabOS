@@ -104,6 +104,16 @@ class PaginasTable
                     ->url(fn (Pagina $p) => $p->enlace())
                     ->openUrlInNewTab(),
 
+                // Las cifras, para entregárselas a quien pidió la página.
+                Action::make('metricas')
+                    ->label('Métricas')
+                    ->iconButton()
+                    ->tooltip('Visitas y clics en sus botones')
+                    ->icon('heroicon-o-chart-bar')
+                    ->color('gray')
+                    ->url(fn (Pagina $p) => route('paginas.metricas', $p))
+                    ->openUrlInNewTab(),
+
                 // Casi toda pagina nueva es «la anterior, con otro contenido».
                 // Duplicar ahorra volver a montar los bloques, que es donde se
                 // va el rato.

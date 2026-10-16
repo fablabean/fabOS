@@ -21,6 +21,19 @@
         }
         avisar({t: 'v', p: location.pathname, q: location.search, r: document.referrer, w: window.innerWidth, n: @json(request()->route()?->getName())});
 
+        // Un clic en un botón o enlace de un módulo de una página del sitio:
+        // lo que el cliente de esa página quiere saber —cuántos fueron al
+        // formulario—. Con el texto del botón y a dónde lleva; nada de quién.
+        document.addEventListener('click', function (ev) {
+            var el = ev.target.closest && ev.target.closest('[data-bloque] a, [data-bloque] button');
+            if (!el) { return; }
+            avisar({t: 'e', e: 'clic', p: location.pathname, d: {
+                texto: (el.textContent || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 120),
+                destino: (el.getAttribute('href') || '').slice(0, 500),
+                bloque: el.closest('[data-bloque]').getAttribute('data-bloque').slice(0, 40)
+            }});
+        }, true);
+
         // Empezar a llenar un formulario: el paso del embudo entre «vio la
         // página» e «se inscribió». Una vez por página.
         var avisado = false;

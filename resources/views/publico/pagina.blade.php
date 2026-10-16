@@ -156,8 +156,12 @@
     </header>
 
     <section style="padding-top:0">
+        {{-- Cada módulo se marca para la analítica: un clic en un botón o un
+             enlace de dentro se cuenta con su texto y su destino. --}}
         @foreach ($bloques as $bloque)
-            @include('publico.bloques.' . $bloque['tipo'], ['datos' => $bloque['datos']])
+            <div data-bloque="{{ $bloque['tipo'] }}-{{ $loop->iteration }}">
+                @include('publico.bloques.' . $bloque['tipo'], ['datos' => $bloque['datos']])
+            </div>
         @endforeach
     </section>
 </main>

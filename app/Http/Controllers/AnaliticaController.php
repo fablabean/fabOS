@@ -33,7 +33,7 @@ class AnaliticaController extends Controller
             $evento = (string) ($datos['e'] ?? '');
 
             if (in_array($evento, Analitica::EVENTOS_DEL_CLIENTE, true)) {
-                $this->analitica->evento($evento, origen: 'cliente', ruta: $datos['p'], request: $request);
+                $this->analitica->evento($evento, detalle: $this->detalleDelClic($evento, $datos['d'] ?? null), origen: 'cliente', ruta: $datos['p'], request: $request);
             }
 
             return response()->noContent();
@@ -48,5 +48,27 @@ class AnaliticaController extends Controller
         ]);
 
         return response()->noContent();
+    }
+
+    /**
+     * Lo que se guarda de un clic: el texto del botón, a dónde lleva y en qué
+     * módulo estaba. Recortado y solo esas tres cosas: lo manda el navegador,
+     * y nada de lo que llegue de más se guarda.
+     *
+     * @return array<string,string>
+     */
+    private function detalleDelClic(string $evento, mixed $d): array
+    {
+        if ($evento !== 'clic' || ! is_array($d)) {
+            return [];
+        }
+
+        $texto = fn ($v, int $max) => is_string($v) ? mb_substr(trim(preg_replace('/\s+/u', ' ', $v)), 0, $max) : '';
+
+        return array_filter([
+            'texto'   => $texto($d['texto'] ?? null, 120),
+            'destino' => $texto($d['destino'] ?? null, 500),
+            'bloque'  => preg_replace('/[^a-z0-9_-]/i', '', $texto($d['bloque'] ?? null, 40)),
+        ], fn ($v) => $v !== '');
     }
 }

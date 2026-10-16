@@ -572,6 +572,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/parlante/spotify/vuelta', [\App\Http\Controllers\SpotifyDelParlanteController::class, 'vuelta'])->name('parlante.spotify.vuelta');
     Route::get('/parlante/spotify/acceso', [\App\Http\Controllers\SpotifyDelParlanteController::class, 'acceso'])->name('parlante.spotify.acceso');
 
+    // Las cifras de una página del sitio, para el cliente que la pidió.
+    Route::get('/paginas/{pagina}/metricas', [\App\Http\Controllers\MetricasDePaginaController::class, 'ver'])->name('paginas.metricas');
+    Route::get('/paginas/{pagina}/metricas.pdf', [\App\Http\Controllers\MetricasDePaginaController::class, 'pdf'])->name('paginas.metricas.pdf');
+
     // La rocola: cualquiera con FabCoins pone una canción en el Parlante.
     Route::get('/rocola', [\App\Http\Controllers\RocolaController::class, 'show'])->name('rocola');
     Route::post('/rocola', [\App\Http\Controllers\RocolaController::class, 'pedir'])->middleware('throttle:20,1')->name('rocola.pedir');

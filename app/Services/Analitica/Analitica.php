@@ -29,7 +29,7 @@ use Illuminate\Support\Str;
 class Analitica
 {
     /** Los eventos que el navegador puede anotar. Los demás, solo el servidor. */
-    public const EVENTOS_DEL_CLIENTE = ['formulario'];
+    public const EVENTOS_DEL_CLIENTE = ['formulario', 'clic'];
 
     public const CONVERSIONES = [
         'inscripcion'   => 'Inscripción a una actividad',
