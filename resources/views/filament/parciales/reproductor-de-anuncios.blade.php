@@ -22,7 +22,10 @@
             this.url = url;
             this.marcar(url, true);
             // Quien tenga música sonando —el Parlante— se calla mientras tanto.
-            window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: { sonando: true } }));
+            // Y si es una emergencia —por su timbre—, la música se apaga del todo.
+            window.dispatchEvent(new CustomEvent('fabos-anuncio', {
+                detail: { sonando: true, emergencia: /\/emergencia\.mp3(\?|$)/.test(previo || '') },
+            }));
 
             const voz = () => {
                 if (this.url !== url) return;   // lo pararon mientras sonaba el tono

@@ -91,7 +91,8 @@
                 musica: musica,
                 reproductor: null,
                 conMusica: true,
-                otroSonando: false,
+                hablando: false,
+                deslizando: null,
                 yaArranco: false,
                 estadoMusica: 'Esperando a que se encienda el parlante.',
                 encendido: false,
@@ -110,9 +111,8 @@
                     // suenan por otro reproductor: avisan, y la música se
                     // calla mientras hablan.
                     window.addEventListener('fabos-anuncio', (ev) => {
-                        this.otroSonando = ev.detail.sonando;
-                        if (this.otroSonando) { this.callarMusica(); this.estadoMusica = 'En pausa: está hablando un anuncio.'; }
-                        else this.sonarMusica();
+                        if (ev.detail.sonando) this.bajarMusica(ev.detail.emergencia);
+                        else this.subirMusica();
                     });
                     this.vuelta();
                     // Cada segundo. En una pestaña de fondo el navegador lo
@@ -184,7 +184,6 @@
                                 },
                                 onStateChange: (ev) => {
                                     if (ev.data === YT.PlayerState.PLAYING) this.estadoMusica = 'Sonando.';
-                                    if (ev.data === YT.PlayerState.PAUSED && this.sonando) this.estadoMusica = 'En pausa: está hablando un anuncio.';
                                 },
                                 // Hay canciones que su dueño no deja poner fuera
                                 // de YouTube: se salta a la siguiente.
@@ -210,8 +209,8 @@
                 },
 
                 sonarMusica() {
-                    if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica || this.sonando || this.otroSonando) return;
-                    this.reproductor.setVolume(this.musica.volumen);
+                    if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica) return;
+                    this.reproductor.setVolume(this.hablando ? this.volumenBajo() : this.musica.volumen);
 
                     // La primera vez, en aleatorio, se arranca en una canción
                     // al azar: mezclar no basta, la primera sería siempre la
@@ -229,6 +228,53 @@
 
                 callarMusica() {
                     this.reproductor?.pauseVideo?.();
+                },
+
+                /*
+                 * Mientras habla un anuncio la música no se detiene: baja.
+                 * Detenerla y retomarla dependía de que YouTube obedeciera al
+                 * volver, y a veces no volvía. Bajar y subir el volumen no se
+                 * pierde. Solo una emergencia la apaga, y queda apagada: no
+                 * vuelve sola después de una evacuación.
+                 */
+                volumenBajo() {
+                    return Math.max(4, Math.round(this.musica.volumen * 0.2));
+                },
+
+                bajarMusica(emergencia = false) {
+                    this.hablando = true;
+                    if (! this.reproductor?.setVolume) return;
+
+                    if (emergencia) {
+                        this.callarMusica();
+                        this.conMusica = false;
+                        this.estadoMusica = 'Apagada por un anuncio de emergencia. Marca «Con música» para volver a ponerla.';
+                        return;
+                    }
+
+                    this.deslizar(this.volumenBajo());
+                    if (this.conMusica) this.estadoMusica = 'Más baja: está hablando un anuncio.';
+                },
+
+                subirMusica() {
+                    this.hablando = false;
+                    if (! this.reproductor?.setVolume || ! this.conMusica) return;
+                    this.deslizar(this.musica.volumen);
+                    this.estadoMusica = 'Sonando.';
+                },
+
+                /** Del volumen de ahora al pedido, en medio segundo: sin saltos. */
+                deslizar(hasta) {
+                    clearInterval(this.deslizando);
+                    let ahora = this.reproductor.getVolume?.() ?? this.musica.volumen;
+                    const paso = (hasta - ahora) / 10;
+
+                    this.deslizando = setInterval(() => {
+                        ahora += paso;
+                        const listo = paso === 0 || (paso < 0 ? ahora <= hasta : ahora >= hasta);
+                        this.reproductor.setVolume(Math.round(listo ? hasta : ahora));
+                        if (listo) clearInterval(this.deslizando);
+                    }, 50);
                 },
 
                 cambiarMusica() {
@@ -263,14 +309,14 @@
                 async siguiente() {
                     const e = this.cola.shift();
                     if (! e) {
-                        // Terminó lo que había que decir: vuelve la música.
+                        // Terminó lo que había que decir: la música vuelve a su volumen.
                         this.sonando = null;
-                        this.sonarMusica();
+                        this.subirMusica();
                         return;
                     }
 
-                    // La música se calla antes de hablar.
-                    this.callarMusica();
+                    // La música baja antes de hablar; con una emergencia, se apaga.
+                    this.bajarMusica(/\/emergencia\.mp3(\?|$)/.test(e.previo || ''));
                     this.sonando = e.titulo;
 
                     // El tono, una vez antes de la primera vez que suena.
