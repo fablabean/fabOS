@@ -91,6 +91,7 @@
                 musica: musica,
                 reproductor: null,
                 conMusica: true,
+                otroSonando: false,
                 estadoMusica: 'Esperando a que se encienda el parlante.',
                 encendido: false,
                 sonando: null,
@@ -103,6 +104,15 @@
                     try { this.hechos = JSON.parse(localStorage.getItem(MEMORIA) || '{}'); } catch (e) { this.hechos = {}; }
                     try { this.conMusica = localStorage.getItem(CON_MUSICA) !== 'no'; } catch (e) {}
                     if (this.musica) this.prepararMusica();
+
+                    // Los favoritos de la barra y el «Escuchar» de la lista
+                    // suenan por otro reproductor: avisan, y la música se
+                    // calla mientras hablan.
+                    window.addEventListener('fabos-anuncio', (ev) => {
+                        this.otroSonando = ev.detail.sonando;
+                        if (this.otroSonando) { this.callarMusica(); this.estadoMusica = 'En pausa: está hablando un anuncio.'; }
+                        else this.sonarMusica();
+                    });
                     this.vuelta();
                     // Cada segundo. En una pestaña de fondo el navegador lo
                     // frena a una vez por minuto, y por eso la gracia es de
@@ -198,7 +208,7 @@
                 },
 
                 sonarMusica() {
-                    if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica || this.sonando) return;
+                    if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica || this.sonando || this.otroSonando) return;
                     this.reproductor.setVolume(this.musica.volumen);
                     this.reproductor.playVideo();
                 },

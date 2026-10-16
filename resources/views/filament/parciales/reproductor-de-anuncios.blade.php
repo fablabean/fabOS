@@ -21,6 +21,8 @@
             this.parar();
             this.url = url;
             this.marcar(url, true);
+            // Quien tenga música sonando —el Parlante— se calla mientras tanto.
+            window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: { sonando: true } }));
 
             const voz = () => {
                 if (this.url !== url) return;   // lo pararon mientras sonaba el tono
@@ -48,9 +50,12 @@
 
         parar() {
             this.audio?.pause();
+            const sonaba = this.url !== null;
             if (this.url) this.marcar(this.url, false);
             this.audio = null;
             this.url = null;
+            // Y vuelve la música, si la había.
+            if (sonaba) window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: { sonando: false } }));
         },
 
         marcar(url, sonando) {
