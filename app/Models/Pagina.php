@@ -32,9 +32,26 @@ class Pagina extends Model
     protected $table = 'paginas';
 
     protected $fillable = [
-        'slug', 'titulo', 'rotulo', 'resumen', 'portada_path',
+        'slug', 'plantilla', 'titulo', 'rotulo', 'resumen', 'portada_path',
         'bloques', 'project_id', 'is_active', 'starts_at', 'ends_at', 'created_by',
     ];
+
+    /**
+     * Cómo se enmarca la página (§3).
+     *
+     * Con el marco del sitio —menú arriba, pie abajo, título— o limpia: solo
+     * sus módulos, para una pantalla de un evento o para incrustarla en otro
+     * sitio.
+     */
+    public const PLANTILLAS = [
+        'sitio'  => 'Con el marco del sitio',
+        'limpia' => 'Limpia: solo los módulos',
+    ];
+
+    public function esLimpia(): bool
+    {
+        return $this->plantilla === 'limpia';
+    }
 
     protected function casts(): array
     {

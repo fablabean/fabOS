@@ -11,6 +11,11 @@
 @extends('layouts.publico')
 
 @section('title', $pagina->titulo . ' · ' . config('fabos.lab.name'))
+
+{{-- Limpia: el layout deja fuera el menú y el pie, y aquí se deja fuera el título. --}}
+@if ($pagina->esLimpia())
+    @section('sin-marco', '1')
+@endif
 @section('description', $pagina->resumen ?: $pagina->titulo)
 
 @section('styles')
@@ -24,6 +29,9 @@
     .borrador b{color:#fff}
 
     .cabecera{padding:3rem 0 1.6rem}
+
+    /* Sin el marco del sitio, el primer módulo no arranca pegado al borde. */
+    main.limpia{padding-top:2rem}
     .cabecera .portada{
         width:100%;aspect-ratio:21/9;object-fit:cover;display:block;
         border-radius:8px;border:1px solid var(--rule);background:var(--surface);
@@ -130,7 +138,8 @@
     </div>
 @endif
 
-<main>
+<main @class(['limpia' => $pagina->esLimpia()])>
+    @unless ($pagina->esLimpia())
     <header class="cabecera">
         @if ($pagina->portadaUrl())
             <img class="portada" src="{{ $pagina->portadaUrl() }}" alt="">
@@ -146,6 +155,7 @@
             <p class="lead">{{ $pagina->resumen }}</p>
         @endif
     </header>
+    @endunless
 
     <section style="padding-top:0">
         @foreach ($bloques as $bloque)

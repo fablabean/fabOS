@@ -86,6 +86,31 @@ class PaginasDelSitioTest extends TestCase
      * está preparando para anunciar el lunes no tiene por qué ser adivinable
      * el viernes.
      */
+    public function test_la_plantilla_limpia_muestra_solo_los_modulos(): void
+    {
+        // Con el marco del sitio: menú, pie y título.
+        $this->pagina();
+        $this->get('/p/la-feria')->assertOk()
+            ->assertSee('Nos vemos en la feria')
+            ->assertSee('Ven a verlo.')
+            ->assertSee('class="nav"', false)
+            ->assertSee('powered by', false);
+
+        // Limpia: solo los módulos. El título sigue en la pestaña del navegador.
+        Pagina::where('slug', 'la-feria')->update(['plantilla' => 'limpia']);
+
+        $this->get('/p/la-feria')->assertOk()
+            ->assertSee('Ven a verlo.')
+            ->assertSee('<title>Nos vemos en la feria', false)
+            ->assertDontSee('class="nav"', false)
+            ->assertDontSee('powered by', false)
+            ->assertDontSee('<h1>Nos vemos en la feria</h1>', false)
+            ->assertDontSee('Tres días de laboratorio abierto.</p>', false);
+
+        // Y lo demás del sitio sigue con su marco.
+        $this->get('/')->assertOk()->assertSee('class="nav"', false);
+    }
+
     public function test_un_borrador_no_existe_para_quien_llega_de_fuera(): void
     {
         $this->pagina(['is_active' => false]);

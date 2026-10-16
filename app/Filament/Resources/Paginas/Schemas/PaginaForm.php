@@ -71,6 +71,16 @@ class PaginaForm
                             ->prefix(rtrim(config('app.url'), '/').'/p/')
                             ->helperText('Esto es lo que se dice en voz alta y lo que va en el QR. Una vez publicada, cambiarla rompe los enlaces que ya circulan.'),
 
+                        ToggleButtons::make('plantilla')
+                            ->label('Plantilla')
+                            ->options(Pagina::PLANTILLAS)
+                            ->icons(['sitio' => 'heroicon-o-window', 'limpia' => 'heroicon-o-square-2-stack'])
+                            ->default('sitio')
+                            ->inline()
+                            ->required()
+                            ->columnSpanFull()
+                            ->helperText('Limpia: sin el menú de arriba, sin el pie y sin el título ni la portada; solo los módulos. Para una pantalla en un evento o para incrustarla en otro sitio.'),
+
                         TextInput::make('rotulo')
                             ->label('Rótulo')
                             ->maxLength(80)

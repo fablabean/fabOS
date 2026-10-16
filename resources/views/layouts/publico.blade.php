@@ -108,6 +108,10 @@
     @include('partials.color-de-la-barra')
 </head>
 <body>
+{{-- Una página puede pedir ir sin marco: solo su contenido (Pagina::PLANTILLAS). --}}
+@php $sinMarco = View::hasSection('sin-marco'); @endphp
+
+@unless ($sinMarco)
 @include('partials.aviso-bloqueo')
 
 <div class="nav">
@@ -123,9 +127,11 @@
         @include('partials.menu')
     </nav>
 </div>
+@endunless
 
 @yield('content')
 
+@unless ($sinMarco)
 <footer>
     <div class="in">
         <span>
@@ -143,6 +149,7 @@
         <span style="margin-left:auto">powered by <strong style="color:var(--accent)">fabOS</strong></span>
     </div>
 </footer>
+@endunless
 
 </body>
 </html>
