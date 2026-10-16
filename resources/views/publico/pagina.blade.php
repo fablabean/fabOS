@@ -146,6 +146,7 @@
     @media (max-width:560px){.tarjetas{grid-template-columns:minmax(0,1fr)}}
     .tarjeta{min-width:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
     .tarjeta-imagen{display:block;aspect-ratio:4/3;overflow:hidden;background:var(--rule)}
+    .tarjetas.cuadradas .tarjeta-imagen{aspect-ratio:1/1}
     .tarjeta-imagen img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
     .tarjeta:hover .tarjeta-imagen img{transform:scale(1.03)}
     .tarjeta-cuerpo{display:flex;flex-direction:column;gap:.5rem;padding:1rem 1.1rem 1.15rem;flex:1}

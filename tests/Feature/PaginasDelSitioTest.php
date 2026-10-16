@@ -115,6 +115,11 @@ class PaginasDelSitioTest extends TestCase
         $p->update(['bloques' => $bloques]);
         $this->get('/p/la-feria')->assertOk()->assertSee('class="tarjetas dos-en-celular"', false);
 
+        // Y con imagen cuadrada.
+        $bloques[0]['data']['proporcion'] = 'cuadrada';
+        $p->update(['bloques' => $bloques]);
+        $this->get('/p/la-feria')->assertOk()->assertSee('class="tarjetas dos-en-celular cuadradas"', false);
+
         // Un módulo de tarjetas sin ninguna completa no se publica.
         Pagina::where('slug', 'la-feria')->update(['bloques' => [
             ['type' => 'tarjetas', 'data' => ['titulo' => 'Vacío', 'tarjetas' => [['titulo' => 'Sin enlace']]]],

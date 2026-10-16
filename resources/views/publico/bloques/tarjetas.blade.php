@@ -6,6 +6,7 @@
     $columnas = (int) ($datos['columnas'] ?? 3);
     $columnas = in_array($columnas, [2, 3, 4], true) ? $columnas : 3;
     $enCelular = (int) ($datos['columnas_movil'] ?? 1) === 2 ? 2 : 1;
+    $cuadrada = ($datos['proporcion'] ?? 'apaisada') === 'cuadrada';
 @endphp
 
 <div class="bloque">
@@ -13,7 +14,7 @@
         <h2>{{ $datos['titulo'] }}</h2>
     @endif
 
-    <div @class(['tarjetas', 'dos-en-celular' => $enCelular === 2]) style="--columnas: {{ $columnas }}">
+    <div @class(['tarjetas', 'dos-en-celular' => $enCelular === 2, 'cuadradas' => $cuadrada]) style="--columnas: {{ $columnas }}">
         @foreach ($tarjetas as $t)
             <article class="tarjeta">
                 @if (filled($t['imagen'] ?? null))

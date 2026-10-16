@@ -469,6 +469,14 @@ class PaginaForm
                         ->inline()
                         ->helperText('Con 2, el texto y el botón se achican un poco. Va mejor con títulos cortos.'),
 
+                    // Cuadrada para íconos y logos, que en 4:3 se cortan arriba y abajo.
+                    ToggleButtons::make('proporcion')
+                        ->label('Forma de la imagen')
+                        ->options(['apaisada' => 'Apaisada (4:3)', 'cuadrada' => 'Cuadrada'])
+                        ->default('apaisada')
+                        ->inline()
+                        ->helperText('Cuadrada para íconos y logos; apaisada para fotos. Igual en computador y celular.'),
+
                     Repeater::make('tarjetas')
                         ->hiddenLabel()
                         ->addActionLabel('Añadir una tarjeta')
@@ -480,7 +488,7 @@ class PaginaForm
                         ->schema([
                             self::imagen('imagen')
                                 ->label('Imagen')
-                                ->helperText('Apaisada, se recorta a 4:3. Opcional, pero es lo que más se mira.')
+                                ->helperText('Se recorta a la forma elegida arriba: 4:3 o cuadrada. Opcional, pero es lo que más se mira.')
                                 ->columnSpanFull(),
 
                             TextInput::make('titulo')
