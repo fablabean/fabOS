@@ -127,6 +127,20 @@
         background:transparent;color:var(--accent);border:1px solid var(--rule);
     }
     .botones .btn.secundario:hover{border-color:var(--accent)}
+
+    /* ---------- tarjetas ---------- */
+    .tarjetas{display:grid;gap:1.2rem;grid-template-columns:repeat(var(--columnas,3),minmax(0,1fr))}
+    @media (max-width:900px){.tarjetas{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.tarjetas{grid-template-columns:minmax(0,1fr)}}
+    .tarjeta{min-width:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+    .tarjeta-imagen{display:block;aspect-ratio:4/3;overflow:hidden;background:var(--rule)}
+    .tarjeta-imagen img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+    .tarjeta:hover .tarjeta-imagen img{transform:scale(1.03)}
+    .tarjeta-cuerpo{display:flex;flex-direction:column;gap:.5rem;padding:1rem 1.1rem 1.15rem;flex:1}
+    .tarjeta-cuerpo h3{margin:0;font-size:1.1rem}
+    .tarjeta-cuerpo p{margin:0;color:var(--ink-soft);font-size:.93rem}
+    /* El botón al pie de cada tarjeta, a la misma altura en toda la fila. */
+    .tarjeta-cuerpo .btn{margin-top:auto;align-self:flex-start}
 @endsection
 
 @section('content')

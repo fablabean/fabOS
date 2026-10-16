@@ -190,6 +190,7 @@ class PaginaForm
                 'datos'   => $cuantos('filas', 'dato', 'datos'),
                 'hitos'   => $cuantos('hitos', 'hito', 'hitos'),
                 'botones' => collect((array) ($estado['botones'] ?? []))->pluck('texto')->filter()->implode(', '),
+                'tarjetas' => collect((array) ($estado['tarjetas'] ?? []))->pluck('titulo')->filter()->implode(', '),
                 default   => '',
             };
 
@@ -435,6 +436,68 @@ class PaginaForm
                                 ->label('Destacado')
                                 ->default(true)
                                 ->helperText('El de color. Si hay varios destacados, ninguno lo está.'),
+                        ]),
+                ]),
+
+            // Tarjetas: imagen, título, un texto corto y su botón. Para llevar a
+            // varios sitios a la vez —facultades, formularios— con una foto
+            // que diga a dónde va cada uno.
+            Block::make('tarjetas')
+                ->label(fn (?array $state): string => self::rotuloDe('tarjetas', $state))
+                ->icon('heroicon-o-rectangle-group')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('titulo')
+                        ->label('Título del módulo')
+                        ->maxLength(120)
+                        ->placeholder('Facultades')
+                        ->helperText('Opcional. Va encima de las tarjetas.'),
+
+                    ToggleButtons::make('columnas')
+                        ->label('Tarjetas por fila')
+                        ->options([2 => '2', 3 => '3', 4 => '4'])
+                        ->default(3)
+                        ->inline()
+                        ->helperText('En el celular van de una en una.'),
+
+                    Repeater::make('tarjetas')
+                        ->hiddenLabel()
+                        ->addActionLabel('Añadir una tarjeta')
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => $state['titulo'] ?? null)
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->minItems(1)
+                        ->schema([
+                            self::imagen('imagen')
+                                ->label('Imagen')
+                                ->helperText('Apaisada, se recorta a 4:3. Opcional, pero es lo que más se mira.')
+                                ->columnSpanFull(),
+
+                            TextInput::make('titulo')
+                                ->label('Título')
+                                ->required()
+                                ->maxLength(80)
+                                ->placeholder('Facultad de Ingeniería'),
+
+                            TextInput::make('boton')
+                                ->label('Qué dice el botón')
+                                ->maxLength(40)
+                                ->placeholder('Ver más'),
+
+                            Textarea::make('texto')
+                                ->label('Texto')
+                                ->rows(2)
+                                ->maxLength(300)
+                                ->helperText('Opcional. Una o dos frases.')
+                                ->columnSpanFull(),
+
+                            TextInput::make('url')
+                                ->label('A dónde lleva')
+                                ->required()
+                                ->maxLength(2000)
+                                ->placeholder('https://…')
+                                ->columnSpanFull(),
                         ]),
                 ]),
 

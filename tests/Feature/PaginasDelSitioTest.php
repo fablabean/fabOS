@@ -86,6 +86,34 @@ class PaginasDelSitioTest extends TestCase
      * está preparando para anunciar el lunes no tiene por qué ser adivinable
      * el viernes.
      */
+    public function test_las_tarjetas_llevan_imagen_titulo_texto_y_boton(): void
+    {
+        $this->pagina(['bloques' => [
+            ['type' => 'tarjetas', 'data' => ['titulo' => 'Facultades', 'columnas' => 3, 'tarjetas' => [
+                ['imagen' => 'paginas/ingenieria.webp', 'titulo' => 'Ingeniería', 'texto' => 'Proyectos con el laboratorio.', 'boton' => 'Inscríbete', 'url' => 'https://forms.office.com/r/ing'],
+                ['titulo' => 'Diseño', 'url' => 'https://forms.office.com/r/dis'],
+                // Sin destino no lleva a ningún lado: no se pinta.
+                ['titulo' => 'Sin enlace'],
+            ]]],
+        ]]);
+
+        $this->get('/p/la-feria')->assertOk()
+            ->assertSee('Facultades')
+            ->assertSeeInOrder(['Ingeniería', 'Proyectos con el laboratorio.', 'Inscríbete'])
+            ->assertSee('storage/paginas/ingenieria.webp', false)
+            ->assertSee('href="https://forms.office.com/r/ing"', false)
+            // Sin texto para el botón, dice «Ver más».
+            ->assertSeeInOrder(['Diseño', 'Ver más'])
+            ->assertDontSee('Sin enlace')
+            ->assertSee('data-bloque="tarjetas-1"', false);
+
+        // Un módulo de tarjetas sin ninguna completa no se publica.
+        Pagina::where('slug', 'la-feria')->update(['bloques' => [
+            ['type' => 'tarjetas', 'data' => ['titulo' => 'Vacío', 'tarjetas' => [['titulo' => 'Sin enlace']]]],
+        ]]);
+        $this->get('/p/la-feria')->assertOk()->assertDontSee('Vacío');
+    }
+
     public function test_la_plantilla_limpia_muestra_solo_los_modulos(): void
     {
         // Con el marco del sitio: menú, pie y título.

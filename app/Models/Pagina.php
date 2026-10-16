@@ -81,6 +81,7 @@ class Pagina extends Model
         'datos' => 'Ficha de datos',
         'hitos' => 'Hitos',
         'botones' => 'Botones',
+        'tarjetas' => 'Tarjetas con botón',
         'dispositivo' => 'Activar un dispositivo',
     ];
 
@@ -215,6 +216,8 @@ class Pagina extends Model
             'datos' => filled($datos['filas'] ?? null),
             'hitos' => filled($datos['hitos'] ?? null),
             'botones' => filled($datos['botones'] ?? null),
+            // Una tarjeta sin título o sin destino no lleva a ningún lado.
+            'tarjetas' => collect($datos['tarjetas'] ?? [])->contains(fn ($t) => filled($t['titulo'] ?? null) && filled($t['url'] ?? null)),
             'dispositivo' => filled($datos['dispositivo_id'] ?? null),
             default => false,
         };
