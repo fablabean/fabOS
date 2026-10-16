@@ -30,6 +30,9 @@ use Illuminate\Support\Facades\Http;
  */
 class Rocola
 {
+    /** Lo más que Spotify entrega en una página de búsqueda. */
+    private const POR_PAGINA = 10;
+
     public function __construct(private LedgerService $libro) {}
 
     /** Lo que cuesta poner una canción, en unidades menores: 1 FabCoin. */
@@ -57,11 +60,27 @@ class Rocola
             return [];
         }
 
-        $r = $this->spotify('get', '/search', ['q' => mb_substr($texto, 0, 100), 'type' => 'track', 'limit' => 20, 'market' => 'from_token']);
+        // Spotify entrega como mucho 10 por página ('Invalid limit' con más).
+        // Si al quitar las explícitas quedan pocas, se pide la siguiente.
+        $limpias = collect();
 
-        return collect($r->json('tracks.items') ?? [])
-            ->reject(fn (array $t) => ! empty($t['explicit']))
+        foreach ([0, 10] as $desde) {
+            $r = $this->spotify('get', '/search', [
+                'q' => mb_substr($texto, 0, 100), 'type' => 'track', 'limit' => self::POR_PAGINA,
+                'offset' => $desde, 'market' => 'from_token',
+            ]);
+
+            $pagina = collect($r->json('tracks.items') ?? []);
+            $limpias = $limpias->merge($pagina->reject(fn (array $t) => ! empty($t['explicit'])));
+
+            if ($limpias->count() >= 6 || $pagina->count() < self::POR_PAGINA) {
+                break;
+            }
+        }
+
+        return $limpias
             ->map(fn (array $t) => self::cancion($t))
+            ->unique('id')
             ->take(12)
             ->values()
             ->all();

@@ -81,6 +81,10 @@ class RocolaTest extends TestCase
         $this->assertCount(1, $resultados);
         $this->assertSame('De música ligera', $resultados[0]['titulo']);
         $this->assertSame('Soda Stereo', $resultados[0]['artista']);
+
+        // Nunca más de 10 por página: Spotify responde «Invalid limit» con más.
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/v1/search') && ($r->data()['limit'] ?? null) === 10);
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/v1/search') && ($r->data()['limit'] ?? 0) > 10);
     }
 
     public function test_poner_una_cancion_cuesta_un_fabcoin_y_entra_a_la_cola(): void
