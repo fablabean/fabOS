@@ -18,13 +18,13 @@ class SpotifyDelParlanteController extends Controller
         abort_unless(Parlante::canAccess(), 403);
 
         if (! SpotifyDelParlante::configurada()) {
-            return redirect(Parlante::getUrl())->with('spotify', 'Antes de conectar, pega el identificador y el secreto de la app de Spotify en «Música».');
+            return redirect(Parlante::getUrl())->with('spotify_aviso', 'Antes de conectar, pega el identificador y el secreto de la app de Spotify en «Música».');
         }
 
         // Para comprobar a la vuelta que la respuesta es de este pedido y no
         // de un enlace que alguien armó.
         $estado = Str::random(40);
-        $request->session()->put('spotify.estado', $estado);
+        $request->session()->put('spotify_estado', $estado);
 
         return redirect()->away(SpotifyDelParlante::urlDeAutorizacion($estado));
     }
@@ -33,23 +33,23 @@ class SpotifyDelParlanteController extends Controller
     {
         abort_unless(Parlante::canAccess(), 403);
 
-        $esperado = $request->session()->pull('spotify.estado');
+        $esperado = $request->session()->pull('spotify_estado');
 
         if (! $esperado || ! hash_equals($esperado, (string) $request->query('state'))) {
-            return redirect(Parlante::getUrl())->with('spotify', 'La respuesta de Spotify no corresponde a este pedido. Vuelve a pulsar «Conectar Spotify».');
+            return redirect(Parlante::getUrl())->with('spotify_aviso', 'La respuesta de Spotify no corresponde a este pedido. Vuelve a pulsar «Conectar Spotify».');
         }
 
         if ($request->query('error')) {
-            return redirect(Parlante::getUrl())->with('spotify', 'No se conectó: ' . ($request->query('error') === 'access_denied' ? 'se canceló en Spotify.' : $request->query('error') . '.'));
+            return redirect(Parlante::getUrl())->with('spotify_aviso', 'No se conectó: ' . ($request->query('error') === 'access_denied' ? 'se canceló en Spotify.' : $request->query('error') . '.'));
         }
 
         try {
             SpotifyDelParlante::canjear((string) $request->query('code'));
         } catch (\Throwable $e) {
-            return redirect(Parlante::getUrl())->with('spotify', $e->getMessage());
+            return redirect(Parlante::getUrl())->with('spotify_aviso', $e->getMessage());
         }
 
-        return redirect(Parlante::getUrl())->with('spotify', 'Spotify conectado: ' . SpotifyDelParlante::cuenta() . '. Recarga y enciende el parlante.');
+        return redirect(Parlante::getUrl())->with('spotify_aviso', 'Spotify conectado: ' . SpotifyDelParlante::cuenta() . '. Recarga y enciende el parlante.');
     }
 
     /** El acceso del momento, para el reproductor web de Spotify. */

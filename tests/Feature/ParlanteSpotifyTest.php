@@ -112,7 +112,7 @@ class ParlanteSpotifyTest extends TestCase
         $this->spotifyResponde();
         $this->get(route('parlante.spotify.vuelta', ['code' => 'CODIGO', 'state' => $estado]))
             ->assertRedirect(Parlante::getUrl())
-            ->assertSessionHas('spotify', fn ($m) => str_contains($m, 'FABLAB EAN'));
+            ->assertSessionHas('spotify_aviso', fn ($m) => str_contains($m, 'FABLAB EAN'));
 
         Http::assertSent(fn ($r) => $r->url() === 'https://accounts.spotify.com/api/token'
             && ($r->data()['grant_type'] ?? null) === 'authorization_code' && ($r->data()['code'] ?? null) === 'CODIGO'
@@ -125,7 +125,7 @@ class ParlanteSpotifyTest extends TestCase
         // Una vuelta que no es de un pedido nuestro —un enlace armado— no hace nada.
         $this->get(route('parlante.spotify.vuelta', ['code' => 'OTRO', 'state' => 'inventado']))
             ->assertRedirect(Parlante::getUrl())
-            ->assertSessionHas('spotify', fn ($m) => str_contains($m, 'no corresponde'));
+            ->assertSessionHas('spotify_aviso', fn ($m) => str_contains($m, 'no corresponde'));
         Http::assertNotSent(fn ($r) => ($r->data()['code'] ?? null) === 'OTRO');
 
         // Y el Parlante ya tiene qué tocar.

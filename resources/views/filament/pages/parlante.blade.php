@@ -8,9 +8,9 @@
     </div>
 
     <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6">
-        @if (session('spotify'))
+        @if (session('spotify_aviso'))
             <x-filament::section>
-                <p class="text-sm font-medium">{{ session('spotify') }}</p>
+                <p class="text-sm font-medium">{{ session('spotify_aviso') }}</p>
             </x-filament::section>
         @endif
 
