@@ -3,7 +3,8 @@
      la gente pulsa primero. --}}
 @php
     $tarjetas = collect($datos['tarjetas'] ?? [])->filter(fn ($t) => filled($t['titulo'] ?? null) && filled($t['url'] ?? null));
-    $columnas = in_array((int) ($datos['columnas'] ?? 3), [2, 3, 4], true) ? (int) $datos['columnas'] : 3;
+    $columnas = (int) ($datos['columnas'] ?? 3);
+    $columnas = in_array($columnas, [2, 3, 4], true) ? $columnas : 3;
     $enCelular = (int) ($datos['columnas_movil'] ?? 1) === 2 ? 2 : 1;
 @endphp
 

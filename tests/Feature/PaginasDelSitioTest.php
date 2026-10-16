@@ -89,7 +89,7 @@ class PaginasDelSitioTest extends TestCase
     public function test_las_tarjetas_llevan_imagen_titulo_texto_y_boton(): void
     {
         $this->pagina(['bloques' => [
-            ['type' => 'tarjetas', 'data' => ['titulo' => 'Facultades', 'columnas' => 3, 'tarjetas' => [
+            ['type' => 'tarjetas', 'data' => ['titulo' => 'Facultades', 'tarjetas' => [
                 ['imagen' => 'paginas/ingenieria.webp', 'titulo' => 'Ingeniería', 'texto' => 'Proyectos con el laboratorio.', 'boton' => 'Inscríbete', 'url' => 'https://forms.office.com/r/ing'],
                 ['titulo' => 'Diseño', 'url' => 'https://forms.office.com/r/dis'],
                 // Sin destino no lleva a ningún lado: no se pinta.

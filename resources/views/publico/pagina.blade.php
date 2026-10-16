@@ -32,6 +32,18 @@
 
     /* Sin el marco del sitio, el primer módulo no arranca pegado al borde. */
     main.limpia{padding-top:2rem}
+
+    /* En el celular la portada va de borde a borde: sin el margen de la
+       página a los lados, sin aire arriba y sin esquinas. En una pantalla
+       angosta ese marco se come la imagen. */
+    @media (max-width:640px){
+        main.con-portada{padding-top:0}
+        main.con-portada .cabecera{padding-top:0}
+        main .cabecera img.portada{
+            width:calc(100% + 2.8rem);max-width:none;margin:0 -1.4rem 1.6rem;
+            border-radius:0;border:0;
+        }
+    }
     .cabecera .portada{
         width:100%;aspect-ratio:21/9;object-fit:cover;display:block;
         border-radius:8px;border:1px solid var(--rule);background:var(--surface);
@@ -162,7 +174,7 @@
     </div>
 @endif
 
-<main @class(['limpia' => $pagina->esLimpia()])>
+<main @class(['limpia' => $pagina->esLimpia(), 'con-portada' => (bool) $pagina->portadaUrl()])>
     <header class="cabecera">
         @if ($pagina->portadaUrl())
             <img class="portada" src="{{ $pagina->portadaUrl() }}" alt="">
