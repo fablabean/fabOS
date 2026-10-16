@@ -149,8 +149,10 @@
     .tarjeta-imagen img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
     .tarjeta:hover .tarjeta-imagen img{transform:scale(1.03)}
     .tarjeta-cuerpo{display:flex;flex-direction:column;gap:.5rem;padding:1rem 1.1rem 1.15rem;flex:1}
-    .tarjeta-cuerpo h3{margin:0;font-size:1.1rem}
-    .tarjeta-cuerpo p{margin:0;color:var(--ink-soft);font-size:.93rem}
+    /* Interlineado de título, no de párrafo: los nombres largos de dos o tres
+       líneas se leen como uno solo. */
+    .tarjeta-cuerpo h3{margin:0;font-size:1.1rem;line-height:1.2}
+    .tarjeta-cuerpo p{margin:0;color:var(--ink-soft);font-size:.93rem;line-height:1.45}
     /* El botón al pie de cada tarjeta, a la misma altura en toda la fila. */
     .tarjeta-cuerpo .btn{margin-top:auto;align-self:flex-start}
 
@@ -159,7 +161,7 @@
     @media (max-width:560px){
         .tarjetas.dos-en-celular{grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
         .dos-en-celular .tarjeta-cuerpo{padding:.7rem .75rem .8rem;gap:.35rem}
-        .dos-en-celular .tarjeta-cuerpo h3{font-size:.95rem;line-height:1.25}
+        .dos-en-celular .tarjeta-cuerpo h3{font-size:.95rem;line-height:1.2}
         .dos-en-celular .tarjeta-cuerpo p{font-size:.82rem;line-height:1.4}
         .dos-en-celular .tarjeta-cuerpo .btn{align-self:stretch;text-align:center;padding:.5rem .4rem;font-size:.85rem}
     }
