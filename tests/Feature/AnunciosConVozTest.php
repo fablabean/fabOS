@@ -385,4 +385,56 @@ class AnunciosConVozTest extends TestCase
             ->assertSeeHtml('anuncios\/noticia.mp3')
             ->assertSeeHtml('anuncios\/emergencia.mp3');
     }
+
+    // ------------------------------------------------------ la música de fondo
+
+    public function test_lee_los_enlaces_de_youtube_y_de_youtube_music(): void
+    {
+        $leer = fn (string $url) => \App\Support\MusicaDelParlante::leer($url);
+
+        $this->assertSame(['lista' => 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG', 'video' => null],
+            $leer('https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG'));
+        $this->assertSame(['lista' => 'OLAK5uy_kXv0ZqY8a3', 'video' => null],
+            $leer('https://music.youtube.com/playlist?list=OLAK5uy_kXv0ZqY8a3&si=abc'));
+        $this->assertSame(['lista' => 'PLabcdef12', 'video' => 'dQw4w9WgXcQ'],
+            $leer('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLabcdef12&index=3'));
+        $this->assertSame(['lista' => null, 'video' => 'dQw4w9WgXcQ'], $leer('https://youtu.be/dQw4w9WgXcQ?si=x'));
+
+        // Lo que no es de YouTube, o no trae ni lista ni video, no vale.
+        $this->assertNull($leer('https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M'));
+        $this->assertNull($leer('https://www.youtube.com/@fablab'));
+        $this->assertNull($leer('https://youtube.com.evil.co/playlist?list=PLabcdef12'));
+    }
+
+    public function test_la_musica_se_configura_en_el_parlante_y_suena_ahi(): void
+    {
+        $this->admin();
+
+        // Sin música puesta, la pantalla no la muestra.
+        Livewire::test(\App\Filament\Pages\Parlante::class)->assertDontSee('Música de fondo');
+
+        // Un enlace que no es de YouTube no se guarda.
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->callAction('musica', ['url' => 'https://open.spotify.com/playlist/37i9dQ', 'volumen' => 40])
+            ->assertHasActionErrors(['url']);
+
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->callAction('musica', ['url' => 'https://music.youtube.com/playlist?list=OLAK5uy_kXv0ZqY8a3', 'volumen' => 35])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(35, \App\Support\MusicaDelParlante::volumen());
+
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->assertSee('Música de fondo')
+            ->assertSee('Con música')
+            ->assertSeeHtml('OLAK5uy_kXv0ZqY8a3')
+            ->assertSeeHtml('musica-del-parlante');
+
+        // Vaciarlo la quita.
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->callAction('musica', ['url' => '', 'volumen' => 35])
+            ->assertHasNoActionErrors();
+
+        $this->assertNull(\App\Support\MusicaDelParlante::paraElReproductor());
+    }
 }

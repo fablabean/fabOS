@@ -64,4 +64,56 @@ class Parlante extends Page
     {
         return Anuncio::agenda(now()->subMinutes(2), now()->addDay());
     }
+
+    /** La lista de YouTube que suena de fondo, si hay una puesta. */
+    public function musica(): ?array
+    {
+        return \App\Support\MusicaDelParlante::paraElReproductor();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('musica')
+                ->label('Música')
+                ->icon('heroicon-o-musical-note')
+                ->color('gray')
+                ->modalHeading('Música de fondo')
+                ->modalDescription('Una lista de YouTube que suena en esta pantalla mientras está encendida. Se pausa sola cuando habla un anuncio y vuelve al terminar.')
+                ->fillForm(fn () => [
+                    'url'     => \App\Support\MusicaDelParlante::url(),
+                    'volumen' => \App\Support\MusicaDelParlante::volumen(),
+                ])
+                ->schema([
+                    \Filament\Forms\Components\TextInput::make('url')
+                        ->label('Enlace de la lista de YouTube')
+                        ->placeholder('https://www.youtube.com/playlist?list=PL…')
+                        ->maxLength(500)
+                        ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                            if (filled($value) && ! \App\Support\MusicaDelParlante::leer($value)) {
+                                $fail('Ese enlace no es de una lista ni de un video de YouTube.');
+                            }
+                        })
+                        ->helperText('Sirve el de YouTube o el de YouTube Music: «Compartir» → «Copiar vínculo». La lista tiene que ser pública o no listada. Vacío: sin música.'),
+                    \Filament\Forms\Components\TextInput::make('volumen')
+                        ->label('Volumen de la música')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->suffix('%')
+                        ->default(\App\Support\MusicaDelParlante::VOLUMEN_POR_DEFECTO)
+                        ->required()
+                        ->helperText('Más bajo que los anuncios: es de fondo. 40 % suele ir bien.'),
+                ])
+                ->action(function (array $data) {
+                    \App\Support\MusicaDelParlante::guardar($data['url'] ?? null, (int) $data['volumen']);
+
+                    \Filament\Notifications\Notification::make()
+                        ->title('Música guardada')
+                        ->body('Recarga esta pantalla en el equipo de los parlantes para que la tome.')
+                        ->success()
+                        ->send();
+                }),
+        ];
+    }
 }

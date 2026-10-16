@@ -7,7 +7,7 @@
         <script type="application/json" id="agenda-del-parlante">@json($this->eventos())</script>
     </div>
 
-    <div x-data="parlanteDelLaboratorio()" x-init="iniciar()" class="space-y-6">
+    <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6">
         <x-filament::section>
             <div class="flex flex-wrap items-center gap-4">
                 <template x-if="! encendido">
@@ -35,6 +35,29 @@
             </div>
         </x-filament::section>
 
+        {{-- La música de fondo: una lista de YouTube, que se calla sola
+             mientras habla un anuncio. --}}
+        @if ($this->musica())
+            <x-filament::section>
+                <x-slot name="heading">Música de fondo</x-slot>
+                <x-slot name="description">Suena mientras el parlante está encendido y se pausa durante cada anuncio. Se cambia en «Música», arriba.</x-slot>
+
+                <div class="flex flex-wrap items-start gap-6">
+                    <div wire:ignore class="overflow-hidden rounded-lg" style="width:320px;height:180px;background:#000">
+                        <div id="musica-del-parlante"></div>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" x-model="conMusica" x-on:change="cambiarMusica()" class="rounded">
+                            Con música
+                        </label>
+                        <p class="text-gray-600 dark:text-gray-300" x-text="estadoMusica"></p>
+                        <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> %.</p>
+                    </div>
+                </div>
+            </x-filament::section>
+        @endif
+
         <x-filament::section>
             <x-slot name="heading">Lo que viene</x-slot>
             <x-slot name="description">De ahora hasta mañana a esta hora, en hora del laboratorio. Los horarios se ponen en cada anuncio, en «Anuncios con voz».</x-slot>
@@ -59,11 +82,16 @@
     </div>
 
     <script>
-        function parlanteDelLaboratorio() {
+        function parlanteDelLaboratorio(musica) {
             const GRACIA = 90 * 1000;
             const MEMORIA = 'fabos-parlante-hechos';
+            const CON_MUSICA = 'fabos-parlante-musica';
 
             return {
+                musica: musica,
+                reproductor: null,
+                conMusica: true,
+                estadoMusica: 'Esperando a que se encienda el parlante.',
                 encendido: false,
                 sonando: null,
                 proximos: [],
@@ -73,6 +101,8 @@
 
                 iniciar() {
                     try { this.hechos = JSON.parse(localStorage.getItem(MEMORIA) || '{}'); } catch (e) { this.hechos = {}; }
+                    try { this.conMusica = localStorage.getItem(CON_MUSICA) !== 'no'; } catch (e) {}
+                    if (this.musica) this.prepararMusica();
                     this.vuelta();
                     // Cada segundo. En una pestaña de fondo el navegador lo
                     // frena a una vez por minuto, y por eso la gracia es de
@@ -114,6 +144,72 @@
                     // acepta como permiso para sonar después sin otro clic.
                     this.audio = new Audio();
                     this.encendido = true;
+                    this.sonarMusica();
+                },
+
+                // ---------------------------------------------- la música
+
+                /** El reproductor oficial de YouTube: lo único que se deja controlar. */
+                prepararMusica() {
+                    const crear = () => {
+                        const m = this.musica;
+                        const vars = { controls: 1, rel: 0, playsinline: 1, loop: 1 };
+
+                        if (m.lista) { vars.listType = 'playlist'; vars.list = m.lista; }
+                        // Un video suelto se repite: para eso YouTube pide
+                        // que el video sea también su propia lista.
+                        else { vars.playlist = m.video; }
+
+                        this.reproductor = new YT.Player('musica-del-parlante', {
+                            width: 320, height: 180,
+                            videoId: m.lista ? (m.video || undefined) : m.video,
+                            playerVars: vars,
+                            events: {
+                                onReady: () => {
+                                    this.reproductor.setVolume(m.volumen);
+                                    this.estadoMusica = 'Lista. Suena al encender el parlante.';
+                                    if (this.encendido) this.sonarMusica();
+                                },
+                                onStateChange: (ev) => {
+                                    if (ev.data === YT.PlayerState.PLAYING) this.estadoMusica = 'Sonando.';
+                                    if (ev.data === YT.PlayerState.PAUSED && this.sonando) this.estadoMusica = 'En pausa: está hablando un anuncio.';
+                                },
+                                // Hay canciones que su dueño no deja poner fuera
+                                // de YouTube: se salta a la siguiente.
+                                onError: () => {
+                                    this.estadoMusica = 'Una canción no se deja reproducir aquí: se salta.';
+                                    if (this.musica.lista) this.reproductor.nextVideo();
+                                },
+                            },
+                        });
+                    };
+
+                    if (window.YT && window.YT.Player) { crear(); return; }
+
+                    const antes = window.onYouTubeIframeAPIReady;
+                    window.onYouTubeIframeAPIReady = () => { antes?.(); crear(); };
+
+                    if (! document.getElementById('youtube-iframe-api')) {
+                        const s = document.createElement('script');
+                        s.id = 'youtube-iframe-api';
+                        s.src = 'https://www.youtube.com/iframe_api';
+                        document.head.appendChild(s);
+                    }
+                },
+
+                sonarMusica() {
+                    if (! this.reproductor?.playVideo || ! this.encendido || ! this.conMusica || this.sonando) return;
+                    this.reproductor.setVolume(this.musica.volumen);
+                    this.reproductor.playVideo();
+                },
+
+                callarMusica() {
+                    this.reproductor?.pauseVideo?.();
+                },
+
+                cambiarMusica() {
+                    try { localStorage.setItem(CON_MUSICA, this.conMusica ? 'si' : 'no'); } catch (e) {}
+                    if (this.conMusica) { this.sonarMusica(); } else { this.callarMusica(); this.estadoMusica = 'Sin música.'; }
                 },
 
                 apagar() {
@@ -127,6 +223,7 @@
                     audio?.pause();
                     audio?.onended?.();
                     this.sonando = null;
+                    this.callarMusica();
                 },
 
                 /**
@@ -141,8 +238,15 @@
 
                 async siguiente() {
                     const e = this.cola.shift();
-                    if (! e) { this.sonando = null; return; }
+                    if (! e) {
+                        // Terminó lo que había que decir: vuelve la música.
+                        this.sonando = null;
+                        this.sonarMusica();
+                        return;
+                    }
 
+                    // La música se calla antes de hablar.
+                    this.callarMusica();
                     this.sonando = e.titulo;
 
                     // El tono, una vez antes de la primera vez que suena.
