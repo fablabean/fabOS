@@ -65,6 +65,13 @@ class Parlante extends Page
         return Anuncio::agenda(now()->subMinutes(2), now()->addDay());
     }
 
+    /** Lo que se pidió en la rocola en las últimas tres horas. */
+    public function pedidas(): \Illuminate\Support\Collection
+    {
+        return \App\Models\CancionPedida::with('user')->where('estado', 'en_cola')
+            ->where('created_at', '>=', now()->subHours(3))->latest('id')->limit(8)->get();
+    }
+
     /** La lista de YouTube que suena de fondo, si hay una puesta. */
     public function musica(): ?array
     {

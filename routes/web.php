@@ -572,6 +572,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/parlante/spotify/vuelta', [\App\Http\Controllers\SpotifyDelParlanteController::class, 'vuelta'])->name('parlante.spotify.vuelta');
     Route::get('/parlante/spotify/acceso', [\App\Http\Controllers\SpotifyDelParlanteController::class, 'acceso'])->name('parlante.spotify.acceso');
 
+    // La rocola: cualquiera con FabCoins pone una canción en el Parlante.
+    Route::get('/rocola', [\App\Http\Controllers\RocolaController::class, 'show'])->name('rocola');
+    Route::post('/rocola', [\App\Http\Controllers\RocolaController::class, 'pedir'])->middleware('throttle:20,1')->name('rocola.pedir');
+
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');
     Route::get('/actas/{acta}/formato.pdf', [\App\Http\Controllers\ActaController::class, 'pdf'])->name('actas.pdf');

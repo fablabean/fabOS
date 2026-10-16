@@ -69,8 +69,32 @@
                         </label>
                         <p class="text-gray-600 dark:text-gray-300" x-text="estadoMusica"></p>
                         <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</p>
+                        @if ($this->musica()['fuente'] === 'spotify')
+                            <x-filament::button size="sm" color="gray" icon="heroicon-o-forward" x-on:click="reproductor?.saltar?.()">
+                                Saltar la que suena
+                            </x-filament::button>
+                            <p class="text-gray-500">Rocola: {{ route('rocola') }}</p>
+                        @endif
                     </div>
                 </div>
+            </x-filament::section>
+        @endif
+
+        {{-- Quién puso qué en la rocola: el equipo responde por lo que suena. --}}
+        @if (($this->musica()['fuente'] ?? null) === 'spotify')
+            <x-filament::section wire:poll.60s>
+                <x-slot name="heading">Pedidas en la rocola</x-slot>
+                <x-slot name="description">Las de las últimas tres horas. Si alguna no va, «Saltar la que suena» cuando le toque.</x-slot>
+
+                @forelse ($this->pedidas() as $p)
+                    <div class="flex items-center gap-3 py-1 text-sm">
+                        @if ($p->portada_url)<img src="{{ $p->portada_url }}" alt="" width="32" height="32" class="rounded">@endif
+                        <span class="flex-1"><strong>{{ $p->titulo }}</strong> · {{ $p->artista }}</span>
+                        <span class="text-gray-500">{{ $p->user?->name }} · {{ $p->created_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}</span>
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-500">Nadie ha pedido canciones en las últimas tres horas.</p>
+                @endforelse
             </x-filament::section>
         @endif
 
@@ -213,6 +237,7 @@
 
                         const adaptador = {
                             activar: () => player.activateElement?.(),
+                            saltar: () => player.nextTrack(),
                             setVolume: (v) => { volumen = v; player.setVolume(Math.max(0, Math.min(1, v / 100))); },
                             getVolume: () => volumen,
                             getPlaylist: () => [],

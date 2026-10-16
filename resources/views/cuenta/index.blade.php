@@ -21,7 +21,13 @@
                     <span class="pill warn" style="margin-left:.4rem">pendiente de confirmar</span>
                 @endunless
             </p>
-            <p style="margin:.4rem 0 0;font-size:.85rem"><a href="{{ route('cuenta.perfil') }}"><x-icono nombre="editar"/>Editar perfil</a></p>
+            <p style="margin:.4rem 0 0;font-size:.85rem">
+                <a href="{{ route('cuenta.perfil') }}"><x-icono nombre="editar"/>Editar perfil</a>
+                {{-- La rocola, solo cuando el Parlante está tocando Spotify. --}}
+                @if (\App\Services\Musica\Rocola::abierta())
+                    · <a href="{{ route('rocola') }}">♪ Pon una canción en el laboratorio</a>
+                @endif
+            </p>
         </div>
     </div>
     <style>
