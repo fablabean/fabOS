@@ -18,6 +18,14 @@ class MusicaDelParlante
     public const URL = 'parlante.musica_url';
     public const VOLUMEN = 'parlante.musica_volumen';
     public const ALEATORIA = 'parlante.musica_aleatoria';
+    public const FUENTE = 'parlante.musica_fuente';
+
+    public const FUENTES = ['youtube' => 'YouTube', 'spotify' => 'Spotify'];
+
+    public static function fuente(): string
+    {
+        return Setting::get(self::FUENTE) === 'spotify' ? 'spotify' : 'youtube';
+    }
 
     public const VOLUMEN_POR_DEFECTO = 40;
 
@@ -47,9 +55,21 @@ class MusicaDelParlante
      */
     public static function paraElReproductor(): ?array
     {
+        $comun = ['volumen' => self::volumen(), 'aleatoria' => self::aleatoria()];
+
+        // Spotify, si es la fuente elegida y la cuenta está conectada.
+        if (self::fuente() === 'spotify') {
+            $lista = SpotifyDelParlante::leerLista(SpotifyDelParlante::lista());
+
+            return $lista && SpotifyDelParlante::conectada()
+                ? ['fuente' => 'spotify', 'lista' => $lista, 'video' => null,
+                   'acceso' => route('parlante.spotify.acceso'), 'nombre' => 'Parlante · ' . config('fabos.lab.name')] + $comun
+                : null;
+        }
+
         $partes = self::leer(self::url());
 
-        return $partes ? $partes + ['volumen' => self::volumen(), 'aleatoria' => self::aleatoria()] : null;
+        return $partes ? ['fuente' => 'youtube'] + $partes + $comun : null;
     }
 
     /**

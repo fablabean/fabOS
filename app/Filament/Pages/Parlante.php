@@ -79,14 +79,65 @@ class Parlante extends Page
                 ->icon('heroicon-o-musical-note')
                 ->color('gray')
                 ->modalHeading('Música de fondo')
-                ->modalDescription('Una lista de YouTube que suena en esta pantalla mientras está encendida. Se pausa sola cuando habla un anuncio y vuelve al terminar.')
+                ->modalDescription('Una lista de YouTube o de Spotify que suena en esta pantalla mientras está encendida. Baja sola cuando habla un anuncio y vuelve al terminar.')
                 ->fillForm(fn () => [
+                    'fuente'  => \App\Support\MusicaDelParlante::fuente(),
+                    'spotify_lista'   => \App\Support\SpotifyDelParlante::lista(),
+                    'spotify_cliente' => \App\Support\SpotifyDelParlante::cliente(),
                     'url'     => \App\Support\MusicaDelParlante::url(),
                     'volumen' => \App\Support\MusicaDelParlante::volumen(),
                     'aleatoria' => \App\Support\MusicaDelParlante::aleatoria(),
                 ])
                 ->schema([
+                    \Filament\Forms\Components\ToggleButtons::make('fuente')
+                        ->label('De dónde sale')
+                        ->options(\App\Support\MusicaDelParlante::FUENTES)
+                        ->default('youtube')
+                        ->inline()
+                        ->live()
+                        ->required(),
+
+                    // --- Spotify
+                    \Filament\Forms\Components\TextInput::make('spotify_lista')
+                        ->label('Enlace de la lista de Spotify')
+                        ->placeholder('https://open.spotify.com/playlist/…')
+                        ->maxLength(500)
+                        ->visible(fn ($get) => $get('fuente') === 'spotify')
+                        ->required(fn ($get) => $get('fuente') === 'spotify')
+                        ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                            if (filled($value) && ! \App\Support\SpotifyDelParlante::leerLista($value)) {
+                                $fail('Ese enlace no es de una lista de Spotify.');
+                            }
+                        })
+                        ->helperText('En Spotify: la lista → «…» → «Compartir» → «Copiar enlace de la lista».'),
+                    \Filament\Forms\Components\TextInput::make('spotify_cliente')
+                        ->label('Client ID de la app de Spotify')
+                        ->maxLength(100)
+                        ->visible(fn ($get) => $get('fuente') === 'spotify')
+                        ->required(fn ($get) => $get('fuente') === 'spotify'),
+                    \Filament\Forms\Components\TextInput::make('spotify_secreto')
+                        ->label('Client secret')
+                        ->password()
+                        ->revealable()
+                        ->maxLength(100)
+                        ->visible(fn ($get) => $get('fuente') === 'spotify')
+                        ->placeholder(fn () => \App\Support\SpotifyDelParlante::secreto() ? 'Guardado: déjalo vacío para no cambiarlo' : null)
+                        ->required(fn ($get) => $get('fuente') === 'spotify' && ! \App\Support\SpotifyDelParlante::secreto())
+                        ->helperText(fn () => new \Illuminate\Support\HtmlString(
+                            'De developer.spotify.com → Dashboard → tu app → Settings. En esa misma pantalla, en «Redirect URIs», '
+                            . 'registra exactamente: <code>' . e(\App\Support\SpotifyDelParlante::direccionDeVuelta()) . '</code>. '
+                            . 'Se guarda cifrado.'
+                        )),
+                    \Filament\Forms\Components\Placeholder::make('spotify_estado')
+                        ->label('Cuenta')
+                        ->visible(fn ($get) => $get('fuente') === 'spotify')
+                        ->content(fn () => \App\Support\SpotifyDelParlante::conectada()
+                            ? 'Conectada: ' . \App\Support\SpotifyDelParlante::cuenta() . '.'
+                            : 'Sin conectar. Guarda esto y pulsa «Conectar Spotify», arriba.'),
+
+                    // --- YouTube
                     \Filament\Forms\Components\TextInput::make('url')
+                        ->visible(fn ($get) => $get('fuente') !== 'spotify')
                         ->label('Enlace de la lista de YouTube')
                         ->placeholder('https://www.youtube.com/playlist?list=PL…')
                         ->maxLength(500)
@@ -111,14 +162,30 @@ class Parlante extends Page
                         ->helperText('La lista se mezcla y empieza en una canción al azar cada vez que se enciende el parlante.'),
                 ])
                 ->action(function (array $data) {
-                    \App\Support\MusicaDelParlante::guardar($data['url'] ?? null, (int) $data['volumen'], (bool) ($data['aleatoria'] ?? true));
+                    // La de YouTube solo se toca si su campo estaba a la vista: vaciarlo es quitarla.
+                    \App\Support\MusicaDelParlante::guardar(array_key_exists('url', $data) ? $data['url'] : \App\Support\MusicaDelParlante::url(), (int) $data['volumen'], (bool) ($data['aleatoria'] ?? true));
+                    \App\Models\Setting::put(\App\Support\MusicaDelParlante::FUENTE, $data['fuente'] ?? 'youtube', 'parlante');
+
+                    if (($data['fuente'] ?? null) === 'spotify') {
+                        \App\Support\SpotifyDelParlante::guardar($data['spotify_lista'] ?? null, $data['spotify_cliente'] ?? null, $data['spotify_secreto'] ?? null);
+                    }
 
                     \Filament\Notifications\Notification::make()
                         ->title('Música guardada')
-                        ->body('Recarga esta pantalla en el equipo de los parlantes para que la tome.')
+                        ->body(($data['fuente'] ?? null) === 'spotify' && ! \App\Support\SpotifyDelParlante::conectada()
+                            ? 'Ahora pulsa «Conectar Spotify», arriba, e inicia sesión con la cuenta Premium del laboratorio.'
+                            : 'Recarga esta pantalla en el equipo de los parlantes para que la tome.')
                         ->success()
                         ->send();
                 }),
+
+            // Una vez: iniciar sesión en Spotify con la cuenta del laboratorio.
+            \Filament\Actions\Action::make('conectarSpotify')
+                ->label(fn () => \App\Support\SpotifyDelParlante::conectada() ? 'Reconectar Spotify' : 'Conectar Spotify')
+                ->icon('heroicon-o-link')
+                ->color(fn () => \App\Support\SpotifyDelParlante::conectada() ? 'gray' : 'success')
+                ->visible(fn () => \App\Support\MusicaDelParlante::fuente() === 'spotify' && \App\Support\SpotifyDelParlante::configurada())
+                ->url(fn () => route('parlante.spotify.conectar')),
         ];
     }
 }

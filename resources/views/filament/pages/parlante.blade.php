@@ -8,6 +8,12 @@
     </div>
 
     <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6">
+        @if (session('spotify'))
+            <x-filament::section>
+                <p class="text-sm font-medium">{{ session('spotify') }}</p>
+            </x-filament::section>
+        @endif
+
         <x-filament::section>
             <div class="flex flex-wrap items-center gap-4">
                 <template x-if="! encendido">
@@ -43,9 +49,19 @@
                 <x-slot name="description">Suena mientras el parlante está encendido y se pausa durante cada anuncio. Se cambia en «Música», arriba.</x-slot>
 
                 <div class="flex flex-wrap items-start gap-6">
-                    <div wire:ignore class="overflow-hidden rounded-lg" style="width:320px;height:180px;background:#000">
-                        <div id="musica-del-parlante"></div>
-                    </div>
+                    @if ($this->musica()['fuente'] === 'spotify')
+                        <div class="flex items-center gap-3 rounded-lg px-4 py-3" style="background:#191414;color:#fff;min-width:240px">
+                            <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1DB954"/><path d="M17.3 16.6a.75.75 0 0 1-1 .25c-2.8-1.7-6.3-2.1-10.4-1.1a.75.75 0 1 1-.33-1.46c4.5-1 8.4-.6 11.5 1.3.35.2.46.66.24 1Zm1.4-3.2a.94.94 0 0 1-1.3.3c-3.2-2-8.1-2.5-11.9-1.4a.94.94 0 1 1-.54-1.8c4.3-1.3 9.7-.7 13.4 1.6.44.27.58.85.31 1.3Zm.13-3.3C15 7.8 8.6 7.6 4.9 8.7a1.1 1.1 0 1 1-.66-2.15c4.3-1.3 11.4-1.05 15.8 1.6a1.1 1.1 0 0 1-1.15 1.94Z" fill="#191414"/></svg>
+                            <div>
+                                <p class="text-sm font-semibold">Spotify</p>
+                                <p class="text-xs" style="opacity:.75">{{ \App\Support\SpotifyDelParlante::cuenta() }}</p>
+                            </div>
+                        </div>
+                    @else
+                        <div wire:ignore class="overflow-hidden rounded-lg" style="width:320px;height:180px;background:#000">
+                            <div id="musica-del-parlante"></div>
+                        </div>
+                    @endif
                     <div class="space-y-3 text-sm">
                         <label class="flex items-center gap-2">
                             <input type="checkbox" x-model="conMusica" x-on:change="cambiarMusica()" class="rounded">
@@ -155,13 +171,104 @@
                     // acepta como permiso para sonar después sin otro clic.
                     this.audio = new Audio();
                     this.encendido = true;
+                    this.reproductor?.activar?.();
                     this.sonarMusica();
                 },
 
                 // ---------------------------------------------- la música
 
-                /** El reproductor oficial de YouTube: lo único que se deja controlar. */
                 prepararMusica() {
+                    if (this.musica.fuente === 'spotify') this.prepararSpotify();
+                    else this.prepararYouTube();
+                },
+
+                /*
+                 * Spotify, con su reproductor web: la pantalla se vuelve un
+                 * dispositivo de la cuenta del laboratorio. Se envuelve para
+                 * que hable como el de YouTube —volumen de 0 a 100, sonar,
+                 * callar—, y así bajar en los anuncios y apagar en una
+                 * emergencia es exactamente lo mismo con los dos.
+                 */
+                prepararSpotify() {
+                    const m = this.musica;
+                    const acceso = async () => {
+                        const r = await fetch(m.acceso, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                        const d = await r.json().catch(() => ({}));
+                        if (! r.ok || ! d.token) throw new Error(d.error || 'Sin acceso a Spotify.');
+                        return d.token;
+                    };
+                    const api = async (metodo, ruta, cuerpo) => fetch('https://api.spotify.com/v1' + ruta, {
+                        method: metodo,
+                        headers: { Authorization: 'Bearer ' + await acceso(), 'Content-Type': 'application/json' },
+                        body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+                    });
+
+                    const crear = () => {
+                        const player = new Spotify.Player({
+                            name: m.nombre,
+                            volume: m.volumen / 100,
+                            getOAuthToken: (cb) => acceso().then(cb).catch((e) => { this.estadoMusica = e.message + ' Revisa la conexión en «Música».'; }),
+                        });
+                        let dispositivo = null, arranco = false, volumen = m.volumen;
+
+                        const adaptador = {
+                            activar: () => player.activateElement?.(),
+                            setVolume: (v) => { volumen = v; player.setVolume(Math.max(0, Math.min(1, v / 100))); },
+                            getVolume: () => volumen,
+                            getPlaylist: () => [],
+                            pauseVideo: () => player.pause(),
+                            playVideo: async () => {
+                                if (arranco) { player.resume(); return; }
+                                arranco = true;
+                                try {
+                                    // En aleatorio, arranca en una canción al azar de la lista.
+                                    let desde = 0;
+                                    if (m.aleatoria) {
+                                        const info = await (await api('GET', '/playlists/' + m.lista + '?fields=tracks.total')).json();
+                                        desde = Math.floor(Math.random() * Math.max(1, info?.tracks?.total || 1));
+                                    }
+                                    const r = await api('PUT', '/me/player/play?device_id=' + dispositivo, {
+                                        context_uri: 'spotify:playlist:' + m.lista, offset: { position: desde },
+                                    });
+                                    if (! r.ok && r.status !== 204) throw new Error('Spotify no empezó la lista (' + r.status + ').');
+                                    await api('PUT', '/me/player/shuffle?state=' + (m.aleatoria ? 'true' : 'false') + '&device_id=' + dispositivo);
+                                    await api('PUT', '/me/player/repeat?state=context&device_id=' + dispositivo);
+                                } catch (e) {
+                                    arranco = false;
+                                    this.estadoMusica = e.message;
+                                }
+                            },
+                        };
+
+                        player.addListener('ready', ({ device_id }) => {
+                            dispositivo = device_id;
+                            this.reproductor = adaptador;
+                            this.estadoMusica = 'Lista. Suena al encender el parlante.';
+                            if (this.encendido) this.sonarMusica();
+                        });
+                        player.addListener('not_ready', () => { this.estadoMusica = 'Spotify perdió la conexión: se reintenta solo.'; });
+                        player.addListener('account_error', () => { this.estadoMusica = 'La cuenta de Spotify no es Premium: su reproductor web no suena sin ella.'; });
+                        player.addListener('authentication_error', () => { this.estadoMusica = 'Spotify no aceptó el acceso. Vuelve a conectar la cuenta en «Conectar Spotify».'; });
+                        player.addListener('initialization_error', () => { this.estadoMusica = 'Este navegador no puede tocar Spotify. Usa Chrome o Edge en un computador.'; });
+                        player.addListener('player_state_changed', (s) => {
+                            if (s && ! s.paused && this.conMusica) this.estadoMusica = this.hablando ? 'Más baja: está hablando un anuncio.' : 'Sonando.';
+                        });
+                        player.connect();
+                    };
+
+                    if (window.Spotify?.Player) { crear(); return; }
+
+                    window.onSpotifyWebPlaybackSDKReady = crear;
+                    if (! document.getElementById('spotify-sdk')) {
+                        const s = document.createElement('script');
+                        s.id = 'spotify-sdk';
+                        s.src = 'https://sdk.scdn.co/spotify-player.js';
+                        document.head.appendChild(s);
+                    }
+                },
+
+                /** El reproductor oficial de YouTube: lo único que se deja controlar. */
+                prepararYouTube() {
                     const crear = () => {
                         const m = this.musica;
                         const vars = { controls: 1, rel: 0, playsinline: 1, loop: 1 };
