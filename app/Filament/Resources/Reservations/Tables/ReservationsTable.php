@@ -56,6 +56,17 @@ class ReservationsTable
             // seria una consulta por fila solo para escribir un nombre.
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'reservable', 'madre.reservable']))
             ->columns([
+                // El número de la reserva: con él se habla de «la 789» por
+                // chat o por correo sin describirla. Se busca con o sin «#».
+                TextColumn::make('id')
+                    ->label('#')
+                    ->formatStateUsing(fn ($state) => '#' . $state)
+                    ->color('gray')
+                    ->sortable()
+                    ->searchable(query: fn (Builder $query, string $search) => ctype_digit($n = ltrim(trim($search), '#'))
+                        ? $query->whereKey((int) $n)
+                        : $query->whereRaw('false')),
+
                 TextColumn::make('starts_at')
                     ->label('Cuándo')
                     // Una hija no repite la franja de su madre: es la misma, y

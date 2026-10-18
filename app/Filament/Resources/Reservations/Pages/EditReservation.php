@@ -12,6 +12,12 @@ class EditReservation extends EditRecord
 {
     protected static string $resource = ReservationResource::class;
 
+    /** Con su número, el mismo de la lista: «la reserva 789». */
+    public function getTitle(): string
+    {
+        return 'Reserva #' . $this->record->getKey();
+    }
+
     protected function getHeaderActions(): array
     {
         return [

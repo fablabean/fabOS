@@ -199,4 +199,25 @@ class ReservasAnidadasEnLaListaTest extends TestCase
             ->assertSee('Lab electrónica')
             ->assertDontSee('↳');
     }
+
+    public function test_cada_reserva_muestra_su_numero_y_se_busca_por_el(): void
+    {
+        $this->entraComoAdmin();
+        $madre = $this->reservaConHerramienta();
+        $otra = Reservation::where('id', '<>', $madre->id)->first();
+
+        Livewire::test(ListReservations::class)
+            ->removeTableFilter('mias')
+            ->assertSee('#' . $madre->id)
+            ->searchTable('#' . $madre->id)
+            ->assertCanSeeTableRecords([$madre])
+            ->assertCanNotSeeTableRecords([$otra])
+            // Sin «#» también.
+            ->searchTable((string) $madre->id)
+            ->assertCanSeeTableRecords([$madre]);
+
+        $this->get(\App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $madre]))
+            ->assertOk()
+            ->assertSee('Reserva #' . $madre->id);
+    }
 }
