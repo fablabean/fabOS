@@ -220,6 +220,28 @@ class RocolaTest extends TestCase
         $this->assertEquals(now()->addSeconds(155), app(Rocola::class)->cuandoSuena($pedido));
     }
 
+    /**
+     * La segunda vez sale de la caché, que en producción serializa y no deja
+     * pasar objetos: guardar fechas ahí devolvía objetos rotos (error 500).
+     */
+    public function test_el_estado_sale_bien_tambien_desde_la_cache(): void
+    {
+        config(['cache.default' => 'array', 'cache.stores.array.serialize' => true, 'cache.serializable_classes' => false]);
+        \Illuminate\Support\Facades\Cache::forgetDriver('array');
+        $this->spotify();
+        $this->actingAs($this->persona(1));
+
+        $primera = app(Rocola::class)->estado();
+        $segunda = app(Rocola::class)->estado();
+
+        $this->assertInstanceOf(\Carbon\CarbonInterface::class, $segunda['actual']['termina']);
+        $this->assertInstanceOf(\Carbon\CarbonInterface::class, $segunda['siguientes'][0]['empieza']);
+        $this->assertEquals($primera['actual']['termina'], $segunda['actual']['termina']);
+
+        $this->get(route('rocola'))->assertOk()->assertSee('Persiana americana');
+        $this->get(route('rocola'))->assertOk()->assertSee('Persiana americana');
+    }
+
     public function test_quien_pone_una_cancion_sabe_cuando_sonara_y_la_pagina_muestra_la_cola(): void
     {
         $this->spotify();

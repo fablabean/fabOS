@@ -196,7 +196,9 @@ class Rocola
             \Illuminate\Support\Facades\Cache::forget(self::ESTADO_EN_CACHE);
         }
 
-        return \Illuminate\Support\Facades\Cache::remember(self::ESTADO_EN_CACHE, 10, function () {
+        // En la caché van números y no fechas: la caché no guarda objetos
+        // (cache.serializable_classes), y una fecha volvía rota.
+        $crudo = \Illuminate\Support\Facades\Cache::remember(self::ESTADO_EN_CACHE, 10, function () {
             try {
                 $reproductor = $this->spotify('get', '/me/player', lanzar: false);
                 $cola = $this->spotify('get', '/me/player/queue', lanzar: false);
@@ -240,9 +242,9 @@ class Rocola
                     'progreso_ms' => $progreso,
                     'sonando'     => $sonando,
                     'pidio'       => $quien,
-                    'termina'     => $ahora->copy()->addMilliseconds($restante),
+                    'termina'     => $ahora->copy()->addMilliseconds($restante)->getTimestampMs(),
                 ];
-                $cuando = $enCurso['termina']->copy();
+                $cuando = $ahora->copy()->addMilliseconds($restante);
             }
 
             $siguientes = [];
@@ -253,12 +255,27 @@ class Rocola
                 }
 
                 [$pedidoId, $quien] = $marcar($pista);
-                $siguientes[] = self::cancion($pista) + ['empieza' => $cuando->copy(), 'pidio' => $quien, 'pedido_id' => $pedidoId];
+                $siguientes[] = self::cancion($pista) + ['empieza' => $cuando->getTimestampMs(), 'pidio' => $quien, 'pedido_id' => $pedidoId];
                 $cuando->addMilliseconds((int) ($pista['duration_ms'] ?? 0));
             }
 
             return ['actual' => $enCurso, 'siguientes' => $siguientes];
         });
+
+        if ($crudo === null) {
+            return null;
+        }
+
+        // Y de vuelta a fechas, para quien lo pinta.
+        $fecha = fn (int $ms) => \Illuminate\Support\Carbon::createFromTimestampMs($ms);
+
+        if ($crudo['actual']) {
+            $crudo['actual']['termina'] = $fecha($crudo['actual']['termina']);
+        }
+
+        $crudo['siguientes'] = array_map(fn (array $s) => ['empieza' => $fecha($s['empieza'])] + $s, $crudo['siguientes']);
+
+        return $crudo;
     }
 
     /** A qué hora, más o menos, suena una canción pedida. Nulo si ya no está en la cola. */
