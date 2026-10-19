@@ -444,4 +444,41 @@ class AnunciosConVozTest extends TestCase
 
         $this->assertNull(\App\Support\MusicaDelParlante::paraElReproductor());
     }
+
+    public function test_se_guardan_varias_listas_y_se_cambia_en_vivo(): void
+    {
+        $this->admin();
+        $parlante = \App\Filament\Pages\Parlante::class;
+
+        // Un enlace que no es de YouTube no se guarda como lista.
+        Livewire::test($parlante)
+            ->callAction('musica', ['fuente' => 'youtube', 'url' => 'https://www.youtube.com/playlist?list=PLmanana01', 'volumen' => 40, 'aleatoria' => true,
+                'listas_youtube' => [['nombre' => 'Mala', 'enlace' => 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M']]])
+            ->assertHasActionErrors();
+
+        Livewire::test($parlante)
+            ->callAction('musica', ['fuente' => 'youtube', 'url' => 'https://www.youtube.com/playlist?list=PLmanana01', 'volumen' => 40, 'aleatoria' => true,
+                'listas_youtube' => [
+                    ['nombre' => 'Mañana tranquila', 'enlace' => 'https://www.youtube.com/playlist?list=PLmanana01'],
+                    ['nombre' => 'Viernes', 'enlace' => 'https://music.youtube.com/playlist?list=OLAKviernes9'],
+                ]])
+            ->assertHasNoActionErrors();
+
+        $this->assertCount(2, \App\Support\MusicaDelParlante::listas('youtube'));
+
+        // La pantalla ofrece las dos, con la que suena elegida.
+        Livewire::test($parlante)
+            ->assertSee('Poner esta lista')
+            ->assertSee('Mañana tranquila')
+            ->assertSee('Viernes')
+            // Y se cambia en vivo: queda como principal y el reproductor se entera.
+            ->call('ponerLista', 1)
+            ->assertDispatched('parlante-cambiar-lista', fuente: 'youtube', nombre: 'Viernes', lista: 'OLAKviernes9');
+
+        $this->assertSame('https://music.youtube.com/playlist?list=OLAKviernes9', \App\Support\MusicaDelParlante::url());
+        $this->assertSame('OLAKviernes9', \App\Support\MusicaDelParlante::paraElReproductor()['lista']);
+
+        // Un índice que no existe no cambia nada.
+        Livewire::test($parlante)->call('ponerLista', 7)->assertNotDispatched('parlante-cambiar-lista');
+    }
 }

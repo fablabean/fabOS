@@ -78,6 +78,75 @@ class Parlante extends Page
             ->where('created_at', '>=', now()->subHours(3))->latest('id')->limit(8)->get();
     }
 
+    /** Las listas guardadas de la fuente elegida, para el selector de la pantalla. */
+    public function listas(): array
+    {
+        return \App\Support\MusicaDelParlante::listas();
+    }
+
+    /** El índice de la lista guardada que suena ahora, si es una de ellas. */
+    public function listaActual(): ?int
+    {
+        $principal = \App\Support\MusicaDelParlante::principal();
+
+        foreach ($this->listas() as $i => $l) {
+            if ($l['enlace'] === $principal) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
+    /** Cambia la música a otra lista guardada, sin recargar la pantalla. */
+    public function ponerLista(int $indice): void
+    {
+        $cambio = \App\Support\MusicaDelParlante::ponerLista($indice);
+
+        if (! $cambio) {
+            \Filament\Notifications\Notification::make()->title('Esa lista no se pudo poner')
+                ->body('Revisa su enlace en «Música».')->danger()->send();
+
+            return;
+        }
+
+        $this->dispatch('parlante-cambiar-lista', ...$cambio);
+    }
+
+    private static function listasGuardadas(string $fuente): \Filament\Forms\Components\Repeater
+    {
+        return \Filament\Forms\Components\Repeater::make('listas_' . $fuente)
+            ->label('Otras listas a mano')
+            ->visible(fn ($get) => ($get('fuente') === 'spotify') === ($fuente === 'spotify'))
+            ->addActionLabel('Añadir una lista')
+            ->defaultItems(0)
+            ->columns(2)
+            ->collapsible()
+            ->itemLabel(fn (array $state) => $state['nombre'] ?? null)
+            ->helperText('Se cambian en vivo desde el Parlante, con el selector de «Música de fondo».')
+            ->schema([
+                \Filament\Forms\Components\TextInput::make('nombre')
+                    ->label('Nombre')
+                    ->required()
+                    ->maxLength(60)
+                    ->placeholder('Mañana tranquila'),
+                \Filament\Forms\Components\TextInput::make('enlace')
+                    ->label('Enlace')
+                    ->required()
+                    ->maxLength(500)
+                    ->placeholder($fuente === 'spotify' ? 'https://open.spotify.com/playlist/…' : 'https://www.youtube.com/playlist?list=…')
+                    ->rule(fn () => function (string $attribute, $value, \Closure $fail) use ($fuente) {
+                        $vale = $fuente === 'spotify'
+                            ? \App\Support\SpotifyDelParlante::leerLista($value)
+                            : \App\Support\MusicaDelParlante::leer($value);
+
+                        if (filled($value) && ! $vale) {
+                            $fail($fuente === 'spotify' ? 'Ese enlace no es de una lista de Spotify.' : 'Ese enlace no es de una lista ni de un video de YouTube.');
+                        }
+                    }),
+            ]);
+    }
+
     /** La lista de YouTube que suena de fondo, si hay una puesta. */
     public function musica(): ?array
     {
@@ -98,6 +167,8 @@ class Parlante extends Page
                     'spotify_lista'   => \App\Support\SpotifyDelParlante::lista(),
                     'spotify_cliente' => \App\Support\SpotifyDelParlante::cliente(),
                     'url'     => \App\Support\MusicaDelParlante::url(),
+                    'listas_spotify' => \App\Support\MusicaDelParlante::listas('spotify'),
+                    'listas_youtube' => \App\Support\MusicaDelParlante::listas('youtube'),
                     'volumen' => \App\Support\MusicaDelParlante::volumen(),
                     'aleatoria' => \App\Support\MusicaDelParlante::aleatoria(),
                 ])
@@ -160,6 +231,11 @@ class Parlante extends Page
                             }
                         })
                         ->helperText('Sirve el de YouTube o el de YouTube Music: «Compartir» → «Copiar vínculo». La lista tiene que ser pública o no listada. Vacío: sin música.'),
+                    // Otras listas a mano, con nombre: se cambian desde el
+                    // Parlante sin volver aquí ni recargar.
+                    self::listasGuardadas('spotify'),
+                    self::listasGuardadas('youtube'),
+
                     \Filament\Forms\Components\TextInput::make('volumen')
                         ->label('Volumen de la música')
                         ->numeric()
@@ -181,6 +257,12 @@ class Parlante extends Page
 
                     if (($data['fuente'] ?? null) === 'spotify') {
                         \App\Support\SpotifyDelParlante::guardar($data['spotify_lista'] ?? null, $data['spotify_cliente'] ?? null, $data['spotify_secreto'] ?? null);
+                    }
+
+                    foreach (['spotify', 'youtube'] as $f) {
+                        if (array_key_exists('listas_' . $f, $data)) {
+                            \App\Support\MusicaDelParlante::guardarListas($f, $data['listas_' . $f] ?? []);
+                        }
                     }
 
                     \Filament\Notifications\Notification::make()

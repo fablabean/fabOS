@@ -7,7 +7,8 @@
         <script type="application/json" id="agenda-del-parlante">@json($this->eventos())</script>
     </div>
 
-    <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6">
+    <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6"
+         x-on:parlante-cambiar-lista.window="cambiarLista($event.detail)">
         @if (session('spotify_aviso'))
             <x-filament::section>
                 <p class="text-sm font-medium">{{ session('spotify_aviso') }}</p>
@@ -69,6 +70,20 @@
                         </label>
                         <p class="text-gray-600 dark:text-gray-300" x-text="estadoMusica"></p>
                         <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</p>
+
+                        {{-- Cambiar de lista en vivo: sin recargar ni apagar. --}}
+                        @if ($this->listas() !== [])
+                            <div class="flex flex-wrap items-center gap-2" x-data="{ elegida: @js($this->listaActual() ?? 0) }">
+                                <select x-model.number="elegida" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
+                                    @foreach ($this->listas() as $i => $l)
+                                        <option value="{{ $i }}">{{ $l['nombre'] }}</option>
+                                    @endforeach
+                                </select>
+                                <x-filament::button size="sm" icon="heroicon-o-arrows-right-left" x-on:click="$wire.ponerLista(elegida)">
+                                    Poner esta lista
+                                </x-filament::button>
+                            </div>
+                        @endif
                         @if ($this->musica()['fuente'] === 'spotify')
                             <x-filament::button size="sm" color="gray" icon="heroicon-o-forward" x-on:click="reproductor?.saltar?.()">
                                 Saltar la que suena
@@ -241,6 +256,8 @@
                         const adaptador = {
                             activar: () => player.activateElement?.(),
                             saltar: () => player.nextTrack(),
+                            // La lista nueva ya está en m.lista: se arranca de cero.
+                            cambiarLista: (sonar) => { arranco = false; if (sonar) adaptador.playVideo(); },
                             setVolume: (v) => { volumen = v; player.setVolume(Math.max(0, Math.min(1, v / 100))); },
                             getVolume: () => volumen,
                             getPlaylist: () => [],
@@ -419,6 +436,32 @@
                         this.reproductor.setVolume(Math.round(listo ? hasta : ahora));
                         if (listo) clearInterval(this.deslizando);
                     }, 50);
+                },
+
+                /**
+                 * Otra lista, en vivo. Spotify arranca la nueva en una
+                 * canción al azar; YouTube la carga y sigue en aleatorio. Si
+                 * el parlante está apagado, queda lista para cuando se encienda.
+                 */
+                cambiarLista(d) {
+                    if (! this.musica || d.fuente !== this.musica.fuente) { location.reload(); return; }
+
+                    this.musica.lista = d.lista;
+                    this.musica.video = d.video;
+                    this.estadoMusica = 'Lista: ' + d.nombre + '.';
+                    const sonar = this.encendido && this.conMusica;
+
+                    if (d.fuente === 'spotify') {
+                        this.reproductor?.cambiarLista?.(sonar);
+                        return;
+                    }
+
+                    const yt = this.reproductor;
+                    if (! yt?.loadPlaylist) return;
+                    const cargar = sonar ? 'load' : 'cue';
+                    if (d.lista) yt[cargar + 'Playlist']({ list: d.lista, listType: 'playlist', index: 0 });
+                    else yt[cargar + 'VideoById'](d.video);
+                    if (d.lista && this.musica.aleatoria) setTimeout(() => yt.setShuffle?.(true), 800);
                 },
 
                 cambiarMusica() {

@@ -107,6 +107,77 @@ class MusicaDelParlante
         return $lista || $video ? ['lista' => $lista, 'video' => $video] : null;
     }
 
+    /**
+     * Las listas guardadas con nombre, de una fuente: para cambiar de una a
+     * otra desde el Parlante sin volver a la configuración. La que suena es
+     * la principal; estas son las que están a mano.
+     *
+     * @return list<array{nombre:string, enlace:string}>
+     */
+    public static function listas(?string $fuente = null): array
+    {
+        $fuente ??= self::fuente();
+        $valor = Setting::get('parlante.listas_' . $fuente, []);
+
+        return collect(is_array($valor) ? $valor : [])
+            ->filter(fn ($l) => is_array($l) && filled($l['nombre'] ?? null) && filled($l['enlace'] ?? null))
+            ->map(fn (array $l) => ['nombre' => trim((string) $l['nombre']), 'enlace' => trim((string) $l['enlace'])])
+            ->values()
+            ->all();
+    }
+
+    /** @param  list<array{nombre:?string, enlace:?string}>  $listas */
+    public static function guardarListas(string $fuente, array $listas): void
+    {
+        Setting::put('parlante.listas_' . $fuente, collect($listas)
+            ->filter(fn ($l) => filled($l['nombre'] ?? null) && filled($l['enlace'] ?? null))
+            ->map(fn ($l) => ['nombre' => trim($l['nombre']), 'enlace' => trim($l['enlace'])])
+            ->values()->all(), 'parlante');
+    }
+
+    /** El enlace de la lista que suena ahora, de la fuente elegida. */
+    public static function principal(): ?string
+    {
+        return self::fuente() === 'spotify' ? SpotifyDelParlante::lista() : self::url();
+    }
+
+    /**
+     * Pone a sonar una de las listas guardadas: queda como principal, y se
+     * devuelve lo que el reproductor necesita para cambiar en vivo.
+     *
+     * @return array{fuente:string, nombre:string, lista:?string, video:?string}|null
+     */
+    public static function ponerLista(int $indice): ?array
+    {
+        $lista = self::listas()[$indice] ?? null;
+
+        if (! $lista) {
+            return null;
+        }
+
+        if (self::fuente() === 'spotify') {
+            $id = SpotifyDelParlante::leerLista($lista['enlace']);
+
+            if (! $id) {
+                return null;
+            }
+
+            Setting::put(SpotifyDelParlante::LISTA, $lista['enlace'], 'parlante');
+
+            return ['fuente' => 'spotify', 'nombre' => $lista['nombre'], 'lista' => $id, 'video' => null];
+        }
+
+        $partes = self::leer($lista['enlace']);
+
+        if (! $partes) {
+            return null;
+        }
+
+        Setting::put(self::URL, $lista['enlace'], 'parlante');
+
+        return ['fuente' => 'youtube', 'nombre' => $lista['nombre']] + $partes;
+    }
+
     public static function guardar(?string $url, int $volumen, bool $aleatoria = true): void
     {
         Setting::put(self::URL, $url ? trim($url) : '', 'parlante');
