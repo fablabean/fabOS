@@ -34,8 +34,7 @@ class RocolaController extends Controller
             'aviso'      => $aviso,
             'saldo'      => $this->libro->saldoDe($request->user()),
             'precio'     => Rocola::precioMenor(),
-            'ultimas'    => CancionPedida::with('user')->where('estado', 'en_cola')
-                ->where('created_at', '>=', now()->subHours(3))->latest('id')->limit(10)->get(),
+            'estado'     => Rocola::abierta() ? $this->rocola->estado() : null,
         ]);
     }
 
@@ -49,6 +48,21 @@ class RocolaController extends Controller
             return back()->withErrors(['cancion' => $e->getMessage()]);
         }
 
-        return back()->with('status', '«' . $pedido->titulo . '» entró a la cola del Parlante. Se te descontó 1 FabCoin.');
+        // Cuándo suena, si Spotify ya la muestra en la cola.
+        $cuando = $this->rocola->cuandoSuena($pedido);
+        $minutos = $cuando ? max(0, (int) round(now()->diffInSeconds($cuando) / 60)) : null;
+
+        return back()->with('status', '«' . $pedido->titulo . '» entró a la cola del Parlante'
+            . ($cuando
+                ? ': sonará hacia las ' . $cuando->copy()->timezone(config('fabos.lab.timezone'))->format('H:i')
+                    . ($minutos > 0 ? ' (en unos ' . $minutos . ' min)' : ' (ya casi)')
+                : '')
+            . '. Se te descontó 1 FabCoin.');
+    }
+
+    /** Lo que suena y lo que viene, para refrescar la página sin recargarla. */
+    public function estado()
+    {
+        return view('rocola._estado', ['estado' => $this->rocola->estado()]);
     }
 }

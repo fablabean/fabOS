@@ -82,10 +82,13 @@
 
         {{-- Quién puso qué en la rocola: el equipo responde por lo que suena. --}}
         @if (($this->musica()['fuente'] ?? null) === 'spotify')
-            <x-filament::section wire:poll.60s>
-                <x-slot name="heading">Pedidas en la rocola</x-slot>
-                <x-slot name="description">Las de las últimas tres horas. Si alguna no va, «Saltar la que suena» cuando le toque.</x-slot>
+            <x-filament::section wire:poll.20s>
+                <x-slot name="heading">Sonando y lo que viene</x-slot>
+                <x-slot name="description">Con la hora aproximada de cada canción y quién la pidió en la rocola. Si alguna no va, «Saltar la que suena» cuando le toque.</x-slot>
 
+                @include('rocola._estado', ['estado' => $this->estadoDeLaRocola()])
+
+                <p class="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Pedidas en las últimas tres horas</p>
                 @forelse ($this->pedidas() as $p)
                     <div class="flex items-center gap-3 py-1 text-sm">
                         @if ($p->portada_url)<img src="{{ $p->portada_url }}" alt="" width="32" height="32" class="rounded">@endif
@@ -315,7 +318,10 @@
                                     if (this.encendido) this.sonarMusica();
                                 },
                                 onStateChange: (ev) => {
-                                    if (ev.data === YT.PlayerState.PLAYING) this.estadoMusica = 'Sonando.';
+                                    if (ev.data === YT.PlayerState.PLAYING) {
+                                        const titulo = this.reproductor.getVideoData?.()?.title;
+                                        this.estadoMusica = titulo ? 'Sonando: ' + titulo : 'Sonando.';
+                                    }
                                 },
                                 // Hay canciones que su dueño no deja poner fuera
                                 // de YouTube: se salta a la siguiente.
@@ -392,7 +398,13 @@
                     this.hablando = false;
                     if (! this.reproductor?.setVolume || ! this.conMusica) return;
                     this.deslizar(this.musica.volumen);
-                    this.estadoMusica = 'Sonando.';
+                    this.estadoMusica = this.queSuena();
+                },
+
+                /** «Sonando: <título>» con YouTube; con Spotify lo dice la lista de abajo. */
+                queSuena() {
+                    const titulo = this.musica?.fuente !== 'spotify' && this.reproductor?.getVideoData?.()?.title;
+                    return titulo ? 'Sonando: ' + titulo : 'Sonando.';
                 },
 
                 /** Del volumen de ahora al pedido, en medio segundo: sin saltos. */

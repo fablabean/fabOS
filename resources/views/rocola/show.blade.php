@@ -68,21 +68,24 @@
         @endif
     @endif
 
-    @if ($ultimas->isNotEmpty())
-        <div class="panel">
-            <h2 style="margin-top:0">Lo último que se pidió</h2>
-            @foreach ($ultimas as $p)
-                <div class="rocola-fila">
-                    @if ($p->portada_url)
-                        <img src="{{ $p->portada_url }}" alt="" width="40" height="40" loading="lazy">
-                    @endif
-                    <div class="rocola-datos">
-                        <strong>{{ $p->titulo }}</strong>
-                        <span class="help">{{ $p->artista }} · la puso {{ str($p->user?->name)->before(' ') }}, {{ $p->created_at->timezone(config('fabos.lab.timezone'))->format('H:i') }}</span>
-                    </div>
-                </div>
-            @endforeach
+    {{-- Lo que suena y lo que viene, con su hora. Se refresca solo cada
+         20 segundos sin recargar la página (y sin borrar lo que se busca). --}}
+    @if ($abierta)
+        <div class="panel" id="rocola-estado" data-url="{{ route('rocola.estado') }}">
+            @include('rocola._estado', ['estado' => $estado])
         </div>
+        <script>
+            (function () {
+                var caja = document.getElementById('rocola-estado');
+                setInterval(function () {
+                    if (document.hidden) { return; }
+                    fetch(caja.dataset.url, {headers: {'X-Requested-With': 'XMLHttpRequest'}, credentials: 'same-origin'})
+                        .then(function (r) { return r.ok ? r.text() : null; })
+                        .then(function (html) { if (html) { caja.innerHTML = html; } })
+                        .catch(function () {});
+                }, 20000);
+            })();
+        </script>
     @endif
 
     <style>

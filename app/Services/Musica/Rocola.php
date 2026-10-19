@@ -173,6 +173,108 @@ class Rocola
         return $pedido;
     }
 
+    /**
+     * Lo que suena ahora y lo que viene, con la hora aproximada de cada una.
+     *
+     * Spotify dice qué suena, cuánto le falta y la cola —primero lo pedido,
+     * después la lista—. La hora sale de sumar duraciones desde ahora: es una
+     * estimación, porque alguien puede saltar una canción. Las pedidas en la
+     * rocola se marcan con quién las pidió, en el orden en que entraron.
+     *
+     * Se guarda unos segundos: la página y el Parlante preguntan a menudo, y
+     * la cola no cambia a ese ritmo.
+     *
+     * @return array{actual: ?array, siguientes: array<int, array>}|null  nulo si no hay rocola o Spotify no responde
+     */
+    public function estado(bool $fresco = false): ?array
+    {
+        if (! self::abierta()) {
+            return null;
+        }
+
+        if ($fresco) {
+            \Illuminate\Support\Facades\Cache::forget(self::ESTADO_EN_CACHE);
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember(self::ESTADO_EN_CACHE, 10, function () {
+            try {
+                $reproductor = $this->spotify('get', '/me/player', lanzar: false);
+                $cola = $this->spotify('get', '/me/player/queue', lanzar: false);
+            } catch (\Throwable) {
+                return null;
+            }
+
+            if (! $cola->successful()) {
+                return null;
+            }
+
+            $ahora = now();
+            $actual = $cola->json('currently_playing');
+            $progreso = $reproductor->status() === 200 ? (int) $reproductor->json('progress_ms') : 0;
+            $sonando = $reproductor->status() === 200 && (bool) $reproductor->json('is_playing');
+
+            // Las pedidas que siguen en espera, de la más vieja a la más
+            // nueva: la cola de Spotify las tiene en ese mismo orden.
+            $pedidas = CancionPedida::with('user')->where('estado', 'en_cola')
+                ->where('created_at', '>=', now()->subHours(6))->orderBy('id')->get();
+
+            $marcar = function (array $pista) use (&$pedidas): array {
+                $i = $pedidas->search(fn (CancionPedida $p) => $p->spotify_id === ($pista['id'] ?? null));
+
+                if ($i === false) {
+                    return [null, null];
+                }
+
+                $p = $pedidas->pull($i);
+
+                return [$p->id, str($p->user?->name)->before(' ')->title()->value()];
+            };
+
+            $enCurso = null;
+            $cuando = $ahora->copy();
+
+            if (! empty($actual['id'])) {
+                $restante = max(0, (int) ($actual['duration_ms'] ?? 0) - $progreso);
+                [, $quien] = $marcar($actual);
+                $enCurso = self::cancion($actual) + [
+                    'progreso_ms' => $progreso,
+                    'sonando'     => $sonando,
+                    'pidio'       => $quien,
+                    'termina'     => $ahora->copy()->addMilliseconds($restante),
+                ];
+                $cuando = $enCurso['termina']->copy();
+            }
+
+            $siguientes = [];
+
+            foreach (array_slice($cola->json('queue') ?? [], 0, 12) as $pista) {
+                if (empty($pista['id'])) {
+                    continue;
+                }
+
+                [$pedidoId, $quien] = $marcar($pista);
+                $siguientes[] = self::cancion($pista) + ['empieza' => $cuando->copy(), 'pidio' => $quien, 'pedido_id' => $pedidoId];
+                $cuando->addMilliseconds((int) ($pista['duration_ms'] ?? 0));
+            }
+
+            return ['actual' => $enCurso, 'siguientes' => $siguientes];
+        });
+    }
+
+    /** A qué hora, más o menos, suena una canción pedida. Nulo si ya no está en la cola. */
+    public function cuandoSuena(CancionPedida $pedido): ?\Carbon\CarbonInterface
+    {
+        foreach ($this->estado(fresco: true)['siguientes'] ?? [] as $s) {
+            if ($s['pedido_id'] === $pedido->id) {
+                return $s['empieza'];
+            }
+        }
+
+        return null;
+    }
+
+    private const ESTADO_EN_CACHE = 'rocola.estado';
+
     private function devolver(CancionPedida $pedido, string $motivo): void
     {
         $this->libro->transferir(

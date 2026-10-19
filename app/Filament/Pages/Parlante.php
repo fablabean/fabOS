@@ -65,6 +65,12 @@ class Parlante extends Page
         return Anuncio::agenda(now()->subMinutes(2), now()->addDay());
     }
 
+    /** Lo que suena en Spotify y lo que viene, con su hora. */
+    public function estadoDeLaRocola(): ?array
+    {
+        return app(\App\Services\Musica\Rocola::class)->estado();
+    }
+
     /** Lo que se pidió en la rocola en las últimas tres horas. */
     public function pedidas(): \Illuminate\Support\Collection
     {

@@ -578,6 +578,7 @@ Route::middleware('auth')->group(function () {
 
     // La rocola: cualquiera con FabCoins pone una canción en el Parlante.
     Route::get('/rocola', [\App\Http\Controllers\RocolaController::class, 'show'])->name('rocola');
+    Route::get('/rocola/estado', [\App\Http\Controllers\RocolaController::class, 'estado'])->name('rocola.estado');
     Route::post('/rocola', [\App\Http\Controllers\RocolaController::class, 'pedir'])->middleware('throttle:20,1')->name('rocola.pedir');
 
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
