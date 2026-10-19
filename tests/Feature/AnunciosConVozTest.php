@@ -435,7 +435,9 @@ class AnunciosConVozTest extends TestCase
             ->assertSee('Música de fondo')
             ->assertSee('Con música')
             ->assertSeeHtml('OLAK5uy_kXv0ZqY8a3')
-            ->assertSeeHtml('musica-del-parlante');
+            ->assertSeeHtml('musica-del-parlante')
+            // Sin listas guardadas, dice cómo agregarlas.
+            ->assertSee('Otras listas a mano');
 
         // Vaciarlo la quita.
         Livewire::test(\App\Filament\Pages\Parlante::class)

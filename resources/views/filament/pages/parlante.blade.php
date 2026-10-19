@@ -47,49 +47,79 @@
         @if ($this->musica())
             <x-filament::section>
                 <x-slot name="heading">Música de fondo</x-slot>
-                <x-slot name="description">Suena mientras el parlante está encendido y se pausa durante cada anuncio. Se cambia en «Música», arriba.</x-slot>
+                <x-slot name="description">Suena mientras el parlante está encendido y baja de volumen durante cada anuncio; una emergencia la apaga. Se configura en «Música», arriba.</x-slot>
 
-                <div class="flex flex-wrap items-start gap-6">
+                {{-- Con estilos propios: el panel no trae las clases de utilidad
+                     que no usa él mismo, y la sección salía desarmada. --}}
+                <style>
+                    .pl-musica{display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start}
+                    .pl-spotify{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:.6rem;background:#191414;color:#fff;width:15rem;flex:none}
+                    .pl-spotify b{display:block;font-size:.9rem}
+                    .pl-spotify small{display:block;font-size:.78rem;opacity:.75}
+                    .pl-video{overflow:hidden;border-radius:.6rem;width:320px;height:180px;background:#000;flex:none}
+                    .pl-controles{display:flex;flex-direction:column;gap:.7rem;font-size:.9rem;min-width:16rem;flex:1}
+                    .pl-fila{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+                    .pl-gris{color:#6b7280}
+                    .pl-estado{font-weight:500}
+                    .pl-select{border:1px solid #d1d5db;border-radius:.5rem;padding:.4rem 2rem .4rem .6rem;font-size:.88rem;background-color:transparent;min-width:13rem}
+                    .dark .pl-select{border-color:rgba(255,255,255,.15)}
+                    .pl-listas{border-top:1px solid rgba(128,128,128,.2);padding-top:.7rem}
+                    .pl-rotulo{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;margin-bottom:.35rem}
+                </style>
+
+                <div class="pl-musica">
                     @if ($this->musica()['fuente'] === 'spotify')
-                        <div class="flex items-center gap-3 rounded-lg px-4 py-3" style="background:#191414;color:#fff;min-width:240px">
-                            <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1DB954"/><path d="M17.3 16.6a.75.75 0 0 1-1 .25c-2.8-1.7-6.3-2.1-10.4-1.1a.75.75 0 1 1-.33-1.46c4.5-1 8.4-.6 11.5 1.3.35.2.46.66.24 1Zm1.4-3.2a.94.94 0 0 1-1.3.3c-3.2-2-8.1-2.5-11.9-1.4a.94.94 0 1 1-.54-1.8c4.3-1.3 9.7-.7 13.4 1.6.44.27.58.85.31 1.3Zm.13-3.3C15 7.8 8.6 7.6 4.9 8.7a1.1 1.1 0 1 1-.66-2.15c4.3-1.3 11.4-1.05 15.8 1.6a1.1 1.1 0 0 1-1.15 1.94Z" fill="#191414"/></svg>
-                            <div>
-                                <p class="text-sm font-semibold">Spotify</p>
-                                <p class="text-xs" style="opacity:.75">{{ \App\Support\SpotifyDelParlante::cuenta() }}</p>
-                            </div>
+                        <div class="pl-spotify">
+                            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="12" fill="#1DB954"/><path d="M17.3 16.6a.75.75 0 0 1-1 .25c-2.8-1.7-6.3-2.1-10.4-1.1a.75.75 0 1 1-.33-1.46c4.5-1 8.4-.6 11.5 1.3.35.2.46.66.24 1Zm1.4-3.2a.94.94 0 0 1-1.3.3c-3.2-2-8.1-2.5-11.9-1.4a.94.94 0 1 1-.54-1.8c4.3-1.3 9.7-.7 13.4 1.6.44.27.58.85.31 1.3Zm.13-3.3C15 7.8 8.6 7.6 4.9 8.7a1.1 1.1 0 1 1-.66-2.15c4.3-1.3 11.4-1.05 15.8 1.6a1.1 1.1 0 0 1-1.15 1.94Z" fill="#191414"/></svg>
+                            <div><b>Spotify</b><small>{{ \App\Support\SpotifyDelParlante::cuenta() }}</small></div>
                         </div>
                     @else
-                        <div wire:ignore class="overflow-hidden rounded-lg" style="width:320px;height:180px;background:#000">
+                        <div wire:ignore class="pl-video">
                             <div id="musica-del-parlante"></div>
                         </div>
                     @endif
-                    <div class="space-y-3 text-sm">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" x-model="conMusica" x-on:change="cambiarMusica()" class="rounded">
+
+                    <div class="pl-controles">
+                        <label class="pl-fila">
+                            <input type="checkbox" x-model="conMusica" x-on:change="cambiarMusica()">
                             Con música
                         </label>
-                        <p class="text-gray-600 dark:text-gray-300" x-text="estadoMusica"></p>
-                        <p class="text-gray-500">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</p>
+                        <div class="pl-estado" x-text="estadoMusica"></div>
+                        <div class="pl-gris">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</div>
 
-                        {{-- Cambiar de lista en vivo: sin recargar ni apagar. --}}
-                        @if ($this->listas() !== [])
-                            <div class="flex flex-wrap items-center gap-2" x-data="{ elegida: @js($this->listaActual() ?? 0) }">
-                                <select x-model.number="elegida" class="rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5">
-                                    @foreach ($this->listas() as $i => $l)
-                                        <option value="{{ $i }}">{{ $l['nombre'] }}</option>
-                                    @endforeach
-                                </select>
-                                <x-filament::button size="sm" icon="heroicon-o-arrows-right-left" x-on:click="$wire.ponerLista(elegida)">
-                                    Poner esta lista
+                        @if ($this->musica()['fuente'] === 'spotify')
+                            <div class="pl-fila">
+                                <x-filament::button size="sm" color="gray" icon="heroicon-o-forward" x-on:click="reproductor?.saltar?.()">
+                                    Saltar la que suena
                                 </x-filament::button>
+                                <span class="pl-gris">Rocola: {{ route('rocola') }}</span>
                             </div>
                         @endif
-                        @if ($this->musica()['fuente'] === 'spotify')
-                            <x-filament::button size="sm" color="gray" icon="heroicon-o-forward" x-on:click="reproductor?.saltar?.()">
-                                Saltar la que suena
-                            </x-filament::button>
-                            <p class="text-gray-500">Rocola: {{ route('rocola') }}</p>
-                        @endif
+
+                        {{-- Cambiar de lista en vivo: sin recargar ni apagar. --}}
+                        <div class="pl-listas">
+                            <div class="pl-rotulo">Lista</div>
+                            @if ($this->listas() !== [])
+                                <div class="pl-fila" x-data="{ elegida: @js($this->listaActual() ?? 0) }">
+                                    <select x-model.number="elegida" class="pl-select">
+                                        @foreach ($this->listas() as $i => $l)
+                                            <option value="{{ $i }}">{{ $l['nombre'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <x-filament::button size="sm" icon="heroicon-o-arrows-right-left" x-on:click="$wire.ponerLista(elegida)">
+                                        Poner esta lista
+                                    </x-filament::button>
+                                </div>
+                                @if ($this->listaActual() === null)
+                                    <div class="pl-gris" style="margin-top:.35rem">Ahora suena la lista principal, que no está entre las guardadas.</div>
+                                @endif
+                            @else
+                                <div class="pl-gris">
+                                    Suena la lista principal. Para cambiar de lista aquí mismo, en vivo, guarda otras en
+                                    «Música» (arriba) → «Otras listas a mano»; después recarga esta pantalla una vez.
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </x-filament::section>
