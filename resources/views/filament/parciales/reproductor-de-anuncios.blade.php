@@ -87,7 +87,7 @@
             this.marcar(url, true);
             // Quien tenga música sonando —el Parlante— se calla mientras tanto.
             // Y si es una emergencia —por su timbre—, la música se apaga del todo.
-            window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: { sonando: true, emergencia: alerta } }));
+            this.avisar({ sonando: true, emergencia: alerta });
 
             const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
             const sonar = (src) => new Promise((listo) => {
@@ -120,7 +120,21 @@
             if (this.url) this.marcar(this.url, false);
             this.url = null;
             // Y vuelve la música, si la había.
-            if (sonaba) window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: { sonando: false } }));
+            if (sonaba) this.avisar({ sonando: false });
+        },
+
+        /*
+         * A la música del Parlante, esté en esta pestaña o en otra del mismo
+         * navegador: el anuncio se lanza a menudo desde la lista o desde otra
+         * ventana, y la música tiene que bajar igual. Otro computador no se
+         * entera: suena por sus propios parlantes.
+         */
+        pestana: Math.random().toString(36).slice(2),
+        canal: 'BroadcastChannel' in window ? new BroadcastChannel('fabos-anuncio') : null,
+
+        avisar(detalle) {
+            window.dispatchEvent(new CustomEvent('fabos-anuncio', { detail: detalle }));
+            try { this.canal?.postMessage({ ...detalle, pestana: this.pestana }); } catch (e) {}
         },
 
         marcar(url, sonando) {
@@ -129,6 +143,9 @@
             });
         },
     };
+
+    // Si se cierra la pestaña a mitad de un anuncio, la música no se queda baja.
+    window.addEventListener('pagehide', () => window.fabosAnuncios.parar());
 </script>
 <style>
     @keyframes anuncio-sonando { 50% { opacity: .45; } }

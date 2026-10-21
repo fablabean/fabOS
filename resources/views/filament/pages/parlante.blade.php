@@ -209,10 +209,20 @@
                     // Los favoritos de la barra y el «Escuchar» de la lista
                     // suenan por otro reproductor: avisan, y la música se
                     // calla mientras hablan.
-                    window.addEventListener('fabos-anuncio', (ev) => {
-                        if (ev.detail.sonando) this.bajarMusica(ev.detail.emergencia);
-                        else this.subirMusica();
-                    });
+                    const aviso = (d) => {
+                        if (! d) return;
+                        if (d.sonando) this.bajarMusica(d.emergencia);
+                        // Si la cola del Parlante sigue hablando, que no suba todavía.
+                        else if (! this.sonando) this.subirMusica();
+                    };
+                    window.addEventListener('fabos-anuncio', (ev) => aviso(ev.detail));
+                    // Y los de otras pestañas del mismo navegador.
+                    if ('BroadcastChannel' in window) {
+                        new BroadcastChannel('fabos-anuncio').addEventListener('message', (ev) => {
+                            // Lo de esta misma pestaña ya llegó por el evento de arriba.
+                            if (ev.data?.pestana !== window.fabosAnuncios?.pestana) aviso(ev.data);
+                        });
+                    }
                     this.vuelta();
                     // Cada segundo. En una pestaña de fondo el navegador lo
                     // frena a una vez por minuto, y por eso la gracia es de
