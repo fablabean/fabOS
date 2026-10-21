@@ -91,8 +91,8 @@
                         <label class="pl-fila">
                             <span>Volumen de la música</span>
                             <input type="range" min="0" max="100" step="1" class="pl-volumen"
-                                   x-model.number="musica.volumen"
-                                   x-on:input="cambiarVolumen()"
+                                   :value="musica.volumen"
+                                   x-on:input="cambiarVolumen(+$event.target.value)"
                                    x-on:change="$wire.guardarVolumen(musica.volumen)">
                             <span class="pl-gris"><span x-text="musica.volumen"></span> %</span>
                         </label>
@@ -424,11 +424,18 @@
                     this.reproductor.playVideo();
                 },
 
-                /** Con el deslizador: se oye al momento, salvo mientras habla un anuncio. */
-                cambiarVolumen() {
-                    if (! this.reproductor?.setVolume || this.hablando || ! this.conMusica) return;
+                /**
+                 * Con el deslizador: es el volumen de la música sola, y se oye
+                 * al momento. Si justo habla un anuncio, la música sigue baja
+                 * —a su parte del volumen nuevo— y al terminar sube a este.
+                 */
+                cambiarVolumen(v) {
+                    this.musica.volumen = Math.max(0, Math.min(100, Math.round(v)));
+                    // Que no se quede creyendo que habla un anuncio si ya no suena ninguno.
+                    this.hablando = !! (this.sonando || window.fabosAnuncios?.url);
+                    if (! this.reproductor?.setVolume) return;
                     clearInterval(this.deslizando);
-                    this.reproductor.setVolume(this.musica.volumen);
+                    this.reproductor.setVolume(this.hablando ? this.volumenBajo() : this.musica.volumen);
                 },
 
                 callarMusica() {
