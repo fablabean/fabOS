@@ -491,17 +491,29 @@
                     return titulo ? 'Sonando: ' + titulo : 'Sonando.';
                 },
 
-                /** Del volumen de ahora al pedido, en medio segundo: sin saltos. */
+                /**
+                 * Del volumen de ahora al pedido, en medio segundo: sin saltos.
+                 *
+                 * Con la pestaña oculta —el anuncio se lanzó desde otra—, el
+                 * navegador frena los temporizadores a uno por segundo, o por
+                 * minuto: el deslizado tardaba más que el anuncio y la música
+                 * no llegaba a bajar. Oculta, salta de una. Y a la vista, cada
+                 * paso se calcula por el reloj y no por cuántos pasos van.
+                 */
                 deslizar(hasta) {
                     clearInterval(this.deslizando);
-                    let ahora = this.reproductor.getVolume?.() ?? this.musica.volumen;
-                    const paso = (hasta - ahora) / 10;
+                    const desde = this.reproductor.getVolume?.() ?? this.musica.volumen;
 
+                    if (document.hidden || desde === hasta) {
+                        this.reproductor.setVolume(hasta);
+                        return;
+                    }
+
+                    const inicio = Date.now();
                     this.deslizando = setInterval(() => {
-                        ahora += paso;
-                        const listo = paso === 0 || (paso < 0 ? ahora <= hasta : ahora >= hasta);
-                        this.reproductor.setVolume(Math.round(listo ? hasta : ahora));
-                        if (listo) clearInterval(this.deslizando);
+                        const f = Math.min(1, (Date.now() - inicio) / 500);
+                        this.reproductor.setVolume(Math.round(desde + (hasta - desde) * f));
+                        if (f >= 1) clearInterval(this.deslizando);
                     }, 50);
                 },
 
