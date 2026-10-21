@@ -144,7 +144,28 @@ class AnuncioForm
                     Toggle::make('favorito')
                         ->label('Favorito')
                         ->helperText('Sale en la barra de arriba del panel, para lanzarlo a un clic. Sirve aunque no salga en la portada.')
+                        ->live()
                         ->columnSpanFull(),
+
+                    // Al lanzarlo desde la barra. El horario fijo tiene las suyas.
+                    Select::make('repeticiones')
+                        ->label('Al lanzarlo, veces seguidas')
+                        ->options([1 => 'Una vez', 2 => 'Dos veces', 3 => 'Tres veces', 4 => 'Cuatro veces', 5 => 'Cinco veces'])
+                        ->default(1)
+                        ->selectablePlaceholder(false)
+                        ->visible(fn ($get) => (bool) $get('favorito'))
+                        ->live()
+                        ->required(),
+
+                    TextInput::make('pausa')
+                        ->label('Pausa entre una y otra')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(600)
+                        ->default(30)
+                        ->suffix('segundos')
+                        ->visible(fn ($get) => (bool) $get('favorito') && (int) $get('repeticiones') > 1)
+                        ->required(),
 
                     DateTimePicker::make('starts_at')
                         ->label('Empieza a oírse')

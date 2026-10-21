@@ -6,7 +6,7 @@
         <button type="button"
                 class="anuncio-favorito"
                 data-anuncio-audio="{{ $anuncio->audioUrl() }}"
-                x-on:click="window.fabosAnuncios.tocar(@js($anuncio->audioUrl()), @js($anuncio->sonidoPrevioUrl()))"
+                x-on:click="window.fabosAnuncios.tocar(@js($anuncio->audioUrl()), @js($anuncio->sonidoPrevioUrl()), @js($anuncio->frecuencia() + ['alerta' => $anuncio->esAlerta()]))"
                 title="Lanzar: {{ $anuncio->titulo }}"
                 aria-label="Lanzar el anuncio {{ $anuncio->titulo }}">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.3 2.84A1.5 1.5 0 0 0 4 4.11v11.78a1.5 1.5 0 0 0 2.3 1.27l9.34-5.89a1.5 1.5 0 0 0 0-2.54L6.3 2.84Z"/></svg>

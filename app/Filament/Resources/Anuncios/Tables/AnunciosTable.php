@@ -76,7 +76,8 @@ class AnunciosTable
                     ->visible(fn (Anuncio $a) => $a->tieneAudioAlDia())
                     ->extraAttributes(fn (Anuncio $a) => ['data-anuncio-audio' => $a->audioUrl()])
                     ->alpineClickHandler(fn (Anuncio $a) => 'window.fabosAnuncios.tocar(' . \Illuminate\Support\Js::from($a->audioUrl())
-                        . ', ' . \Illuminate\Support\Js::from($a->sonidoPrevioUrl()) . ')'),
+                        . ', ' . \Illuminate\Support\Js::from($a->sonidoPrevioUrl())
+                        . ', ' . \Illuminate\Support\Js::from(['alerta' => $a->esAlerta()]) . ')'),
                 Action::make('favorito')
                     ->label(fn (Anuncio $a) => $a->favorito ? 'Quitar de favoritos' : 'Añadir a favoritos')
                     ->icon(fn (Anuncio $a) => $a->favorito ? 'heroicon-s-star' : 'heroicon-o-star')

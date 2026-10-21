@@ -242,6 +242,37 @@ class AnunciosConVozTest extends TestCase
     }
 
     /**
+     * Lanzado desde la barra, un favorito suena las veces que diga, con su
+     * pausa; y si lleva el timbre de emergencia, va como alerta.
+     */
+    public function test_el_favorito_suena_con_su_frecuencia_y_la_alerta_al_maximo(): void
+    {
+        $this->servidorDeVoz();
+        $a = $this->anuncio(['titulo' => 'Evacuación', 'sonido_previo' => 'emergencia', 'favorito' => true,
+            'repeticiones' => 3, 'pausa' => 15]);
+        $a->programaciones()->create(['dias' => [1], 'hora' => '09:00', 'repeticiones' => 1, 'pausa' => 0]);
+        $a = $a->fresh();
+
+        $this->assertTrue($a->esAlerta());
+        $this->assertSame(['repeticiones' => 3, 'pausa' => 15], $a->frecuencia());
+
+        // Lo programado sigue con la frecuencia de su horario, y va como alerta.
+        $desde = \Carbon\Carbon::parse('2026-10-12 00:00', config('fabos.lab.timezone'));
+        $evento = Anuncio::agenda($desde, $desde->copy()->endOfDay())[0];
+        $this->assertTrue($evento['alerta']);
+        $this->assertSame(1, $evento['repeticiones']);
+
+        $this->admin();
+        Livewire::test(AnunciosFavoritos::class)
+            ->assertSeeHtml((string) \Illuminate\Support\Js::from(['repeticiones' => 3, 'pausa' => 15, 'alerta' => true]));
+
+        // Por defecto suena una vez, y sin timbre de emergencia no es alerta.
+        $b = $this->anuncio(['titulo' => 'Cierre', 'sonido_previo' => 'timbre'])->fresh();
+        $this->assertSame(1, $b->frecuencia()['repeticiones']);
+        $this->assertFalse($b->esAlerta());
+    }
+
+    /**
      * La agenda sale con el instante exacto, a la hora del laboratorio, solo
      * los días marcados.
      */
@@ -404,6 +435,22 @@ class AnunciosConVozTest extends TestCase
         $this->assertNull($leer('https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M'));
         $this->assertNull($leer('https://www.youtube.com/@fablab'));
         $this->assertNull($leer('https://youtube.com.evil.co/playlist?list=PLabcdef12'));
+    }
+
+    /** El deslizador del Parlante guarda el volumen de la música, y nada más. */
+    public function test_el_volumen_de_la_musica_se_cambia_desde_la_pantalla(): void
+    {
+        $this->admin();
+        \App\Support\MusicaDelParlante::guardar('https://www.youtube.com/playlist?list=PLmanana01', 40);
+
+        Livewire::test(\App\Filament\Pages\Parlante::class)
+            ->assertSee('Volumen de la música')
+            ->call('guardarVolumen', 65);
+        $this->assertSame(65, \App\Support\MusicaDelParlante::volumen());
+
+        Livewire::test(\App\Filament\Pages\Parlante::class)->call('guardarVolumen', 300);
+        $this->assertSame(100, \App\Support\MusicaDelParlante::volumen());
+        $this->assertSame('https://www.youtube.com/playlist?list=PLmanana01', \App\Support\MusicaDelParlante::url());
     }
 
     public function test_la_musica_se_configura_en_el_parlante_y_suena_ahi(): void

@@ -98,6 +98,17 @@ class Parlante extends Page
         return null;
     }
 
+    /**
+     * El volumen de la música, desde el deslizador de la pantalla.
+     *
+     * Es solo el de la música: los anuncios —y las alertas, que van al
+     * máximo— suenan por su lado y no lo miran.
+     */
+    public function guardarVolumen(int $volumen): int
+    {
+        return \App\Support\MusicaDelParlante::guardarVolumen($volumen);
+    }
+
     /** Cambia la música a otra lista guardada, sin recargar la pantalla. */
     public function ponerLista(int $indice): void
     {

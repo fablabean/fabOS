@@ -64,6 +64,7 @@
                     .pl-select{border:1px solid #d1d5db;border-radius:.5rem;padding:.4rem 2rem .4rem .6rem;font-size:.88rem;background-color:transparent;min-width:13rem}
                     .dark .pl-select{border-color:rgba(255,255,255,.15)}
                     .pl-listas{border-top:1px solid rgba(128,128,128,.2);padding-top:.7rem}
+                    .pl-volumen{flex:1;min-width:8rem;max-width:16rem;accent-color:rgb(var(--primary-600,217 119 6))}
                     .pl-rotulo{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;margin-bottom:.35rem}
                 </style>
 
@@ -85,7 +86,17 @@
                             Con música
                         </label>
                         <div class="pl-estado" x-text="estadoMusica"></div>
-                        <div class="pl-gris">Volumen <span x-text="musica.volumen"></span> % · <span x-text="musica.aleatoria ? 'en orden aleatorio' : 'en orden'"></span>.</div>
+                        {{-- El volumen de la música, solo de ella: los anuncios y las
+                             alertas suenan por su lado, a su propio volumen. --}}
+                        <label class="pl-fila">
+                            <span>Volumen de la música</span>
+                            <input type="range" min="0" max="100" step="1" class="pl-volumen"
+                                   x-model.number="musica.volumen"
+                                   x-on:input="cambiarVolumen()"
+                                   x-on:change="$wire.guardarVolumen(musica.volumen)">
+                            <span class="pl-gris"><span x-text="musica.volumen"></span> %</span>
+                        </label>
+                        <div class="pl-gris" x-text="musica.aleatoria ? 'En orden aleatorio.' : 'En orden.'"></div>
 
                         @if ($this->musica()['fuente'] === 'spotify')
                             <div class="pl-fila">
@@ -242,6 +253,8 @@
                     // El elemento se crea con el clic: es lo que el navegador
                     // acepta como permiso para sonar después sin otro clic.
                     this.audio = new Audio();
+                    // Y el motor de audio que sube las alertas: también con el clic.
+                    window.fabosVolumen?.despertar();
                     this.encendido = true;
                     this.reproductor?.activar?.();
                     this.sonarMusica();
@@ -411,6 +424,13 @@
                     this.reproductor.playVideo();
                 },
 
+                /** Con el deslizador: se oye al momento, salvo mientras habla un anuncio. */
+                cambiarVolumen() {
+                    if (! this.reproductor?.setVolume || this.hablando || ! this.conMusica) return;
+                    clearInterval(this.deslizando);
+                    this.reproductor.setVolume(this.musica.volumen);
+                },
+
                 callarMusica() {
                     this.reproductor?.pauseVideo?.();
                 },
@@ -533,8 +553,10 @@
                     }
 
                     // La música baja antes de hablar; con una emergencia, se apaga.
-                    this.bajarMusica(/\/emergencia\.mp3(\?|$)/.test(e.previo || ''));
+                    this.bajarMusica(e.alerta);
                     this.sonando = e.titulo;
+                    // Una alerta, lo más fuerte que dé el audio sin romperse.
+                    if (this.audio) window.fabosVolumen?.ajustar(this.audio, e.alerta);
 
                     // El tono, una vez antes de la primera vez que suena.
                     if (e.previo && this.audio) {

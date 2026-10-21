@@ -178,6 +178,15 @@ class MusicaDelParlante
         return ['fuente' => 'youtube', 'nombre' => $lista['nombre']] + $partes;
     }
 
+    /** Solo el volumen: el deslizador del Parlante lo cambia en vivo. */
+    public static function guardarVolumen(int $volumen): int
+    {
+        $volumen = max(0, min(100, $volumen));
+        Setting::put(self::VOLUMEN, $volumen, 'parlante');
+
+        return $volumen;
+    }
+
     public static function guardar(?string $url, int $volumen, bool $aleatoria = true): void
     {
         Setting::put(self::URL, $url ? trim($url) : '', 'parlante');

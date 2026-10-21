@@ -34,7 +34,7 @@ class Anuncio extends Model
 
     protected $fillable = [
         'position', 'is_active', 'favorito',
-        'titulo', 'texto', 'voz', 'sonido_previo',
+        'titulo', 'texto', 'voz', 'sonido_previo', 'repeticiones', 'pausa',
         'starts_at', 'ends_at',
     ];
 
@@ -44,6 +44,8 @@ class Anuncio extends Model
             'is_active' => 'boolean',
             'favorito' => 'boolean',
             'position' => 'integer',
+            'repeticiones' => 'integer',
+            'pausa' => 'integer',
             'starts_at' => UtcDateTime::class,
             'ends_at' => UtcDateTime::class,
             'audio_generado_el' => UtcDateTime::class,
@@ -84,6 +86,34 @@ class Anuncio extends Model
     public function sonidoPrevioUrl(): ?string
     {
         return self::urlDelSonido($this->sonido_previo);
+    }
+
+    /**
+     * Si es una alerta: la que lleva el timbre de emergencia.
+     *
+     * Una alerta suena lo más fuerte que dé el audio —el navegador la sube y
+     * la pasa por un limitador para que no se rompa— y apaga la música.
+     */
+    public function esAlerta(): bool
+    {
+        return $this->sonido_previo === 'emergencia';
+    }
+
+    /**
+     * Cuántas veces seguidas suena al lanzarlo a mano, y con qué pausa.
+     *
+     * Para el favorito de la barra de arriba. El horario fijo lleva las suyas,
+     * en cada programación: lo que suena solo y lo que se lanza a mano no
+     * tienen por qué repetirse igual.
+     *
+     * @return array{repeticiones:int,pausa:int}
+     */
+    public function frecuencia(): array
+    {
+        return [
+            'repeticiones' => max(1, (int) ($this->repeticiones ?? 1)),
+            'pausa' => max(0, (int) ($this->pausa ?? 0)),
+        ];
     }
 
     /** Lo más largo que el servidor convierte en un solo audio. */
@@ -213,7 +243,7 @@ class Anuncio extends Model
      * tiene por qué publicarse en el sitio. Sin audio al día no hay nada que
      * reproducir, y no sale.
      *
-     * @return array<int,array{clave:string,anuncio:int,titulo:string,url:string,t:int,hora:string,hoy:bool,repeticiones:int,pausa:int}>
+     * @return array<int,array{clave:string,anuncio:int,titulo:string,url:string,previo:?string,alerta:bool,t:int,hora:string,hoy:bool,repeticiones:int,pausa:int}>
      */
     public static function agenda(\Carbon\CarbonInterface $desde, \Carbon\CarbonInterface $hasta): array
     {
@@ -251,6 +281,7 @@ class Anuncio extends Model
                         'titulo' => $anuncio->titulo,
                         'url' => $anuncio->audioUrl(),
                         'previo' => $anuncio->sonidoPrevioUrl(),
+                        'alerta' => $anuncio->esAlerta(),
                         't' => $momento->getTimestampMs(),
                         'hora' => $momento->format('H:i'),
                         'hoy' => $momento->isSameDay(now($tz)),
