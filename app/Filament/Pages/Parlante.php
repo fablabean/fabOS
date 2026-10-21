@@ -102,8 +102,10 @@ class Parlante extends Page
      * El volumen de la música, desde el deslizador de la pantalla.
      *
      * Es solo el de la música: los anuncios —y las alertas, que van al
-     * máximo— suenan por su lado y no lo miran.
+     * máximo— suenan por su lado y no lo miran. Sin repintar: la pantalla ya
+     * tiene el volumen nuevo, y repintarla mientras suena no aporta nada.
      */
+    #[\Livewire\Attributes\Renderless]
     public function guardarVolumen(int $volumen): int
     {
         return \App\Support\MusicaDelParlante::guardarVolumen($volumen);

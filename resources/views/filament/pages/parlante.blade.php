@@ -7,7 +7,13 @@
         <script type="application/json" id="agenda-del-parlante">@json($this->eventos())</script>
     </div>
 
-    <div x-data="parlanteDelLaboratorio(@js($this->musica()))" x-init="iniciar()" class="space-y-6"
+    {{-- La música, igual: aparte y leída una sola vez. Si fuera en x-data,
+         cualquier cambio —el volumen, otra lista— haría que Alpine reiniciara
+         la pantalla al repintar: el botón volvía a «Encender» y el Spotify de
+         antes seguía sonando por su cuenta. --}}
+    <script type="application/json" id="musica-del-parlante-datos" wire:ignore>@json($this->musica())</script>
+
+    <div x-data="parlanteDelLaboratorio(JSON.parse(document.getElementById('musica-del-parlante-datos')?.textContent || 'null'))" x-init="iniciar()" class="space-y-6"
          x-on:parlante-cambiar-lista.window="cambiarLista($event.detail)">
         @if (session('spotify_aviso'))
             <x-filament::section>
