@@ -126,8 +126,9 @@ class AnuncioForm
                                 ->maxValue(600)
                                 ->default(30)
                                 ->suffix('segundos')
-                                ->visible(fn ($get) => (int) $get('repeticiones') > 1)
-                                ->required(),
+                                ->helperText('Cuenta cuando suena más de una vez.')
+                                // Vacía es sin pausa: con una sola vez no hace falta escribirla.
+                                ->dehydrateStateUsing(fn ($state) => (int) ($state ?? 0)),
                         ]),
                 ]),
 
@@ -154,7 +155,6 @@ class AnuncioForm
                         ->default(1)
                         ->selectablePlaceholder(false)
                         ->visible(fn ($get) => (bool) $get('favorito'))
-                        ->live()
                         ->required(),
 
                     TextInput::make('pausa')
@@ -164,8 +164,9 @@ class AnuncioForm
                         ->maxValue(600)
                         ->default(30)
                         ->suffix('segundos')
-                        ->visible(fn ($get) => (bool) $get('favorito') && (int) $get('repeticiones') > 1)
-                        ->required(),
+                        ->visible(fn ($get) => (bool) $get('favorito'))
+                        ->helperText('Cuenta cuando suena más de una vez.')
+                        ->dehydrateStateUsing(fn ($state) => (int) ($state ?? 0)),
 
                     DateTimePicker::make('starts_at')
                         ->label('Empieza a oírse')

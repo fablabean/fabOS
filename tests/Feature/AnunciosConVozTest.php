@@ -437,6 +437,24 @@ class AnunciosConVozTest extends TestCase
         $this->assertNull($leer('https://youtube.com.evil.co/playlist?list=PLabcdef12'));
     }
 
+    /** La pausa entre repeticiones se ve y se guarda, junto a la cantidad. */
+    public function test_la_pausa_al_lanzarlo_se_ve_y_se_guarda(): void
+    {
+        Queue::fake();
+        $this->admin();
+
+        Livewire::test(CreateAnuncio::class)
+            ->fillForm(['favorito' => true])
+            ->assertFormFieldVisible('repeticiones')
+            ->assertFormFieldVisible('pausa')
+            ->fillForm(['titulo' => 'Evacuación', 'texto' => 'Salgan con calma.', 'voz' => 'mujer',
+                'sonido_previo' => 'emergencia', 'repeticiones' => 3, 'pausa' => 12])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(['repeticiones' => 3, 'pausa' => 12], Anuncio::where('titulo', 'Evacuación')->first()->frecuencia());
+    }
+
     /** El deslizador del Parlante guarda el volumen de la música, y nada más. */
     public function test_el_volumen_de_la_musica_se_cambia_desde_la_pantalla(): void
     {
