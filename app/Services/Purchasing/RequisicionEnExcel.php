@@ -23,9 +23,9 @@ use OpenSpout\Writer\XLSX\Writer;
  * no—, y las cantidades y los valores van como números, no como texto: así se
  * pueden sumar y corregir en Excel.
  *
- * Lo único que no viaja es el dibujo de la firma: el generador no pone
- * imágenes. En su lugar dice quién firmó y cuándo; la firma dibujada está en
- * el PDF.
+ * La firma dibujada del solicitante va encajada en su casilla, como en el
+ * PDF. OpenSpout no pone imágenes, así que se mete en el archivo ya cerrado
+ * (ver `firmaEnLaCelda`).
  */
 class RequisicionEnExcel
 {
@@ -34,6 +34,12 @@ class RequisicionEnExcel
     private Writer $hoja;
 
     private int $fila = 0;
+
+    /** La fila donde va la firma dibujada, si la hay. */
+    private ?int $filaDeFirma = null;
+
+    /** El PNG de la firma del solicitante. */
+    private ?string $firma = null;
 
     /** Escribe el archivo y devuelve dónde quedó. */
     public function guardar(PurchaseRequest $solicitud): string
@@ -45,6 +51,8 @@ class RequisicionEnExcel
         $ruta = $base . '.xlsx';
         $this->opciones = new Options();
         $this->fila = 0;
+        $this->filaDeFirma = null;
+        $this->firma = $solicitud->pideCotizacion() ? self::pngDeLaFirma($solicitud) : null;
 
         $cotizacion = $solicitud->pideCotizacion();
         foreach ($cotizacion ? [6, 30, 32, 14, 11, 13, 30] : [6, 48, 11, 12, 16, 16] as $i => $ancho) {
@@ -58,6 +66,10 @@ class RequisicionEnExcel
         $cotizacion ? $this->cotizacion($solicitud) : $this->requisicion($solicitud);
 
         $this->hoja->close();
+
+        if ($this->firma !== null && $this->filaDeFirma !== null) {
+            self::firmaEnLaCelda($ruta, $this->firma, $this->filaDeFirma);
+        }
 
         return $ruta;
     }
@@ -130,9 +142,10 @@ class RequisicionEnExcel
 
         $this->vacia();
         $this->firma('Solicitado Por: ' . $firmante?->name);
-        $this->firma($s->estaFirmada()
-            ? 'Firmada en fabOS el ' . $s->signed_at->copy()->timezone($tz)->format('d/m/Y H:i') . ' (la firma dibujada va en el PDF)'
-            : 'Sin firmar', 45);
+        // La firma dibujada se encaja en esta casilla al cerrar el archivo. Con
+        // un espacio y no vacía: OpenSpout no escribe las filas sin nada.
+        $this->firma($this->firma !== null ? ' ' : 'Sin firmar', 60, $this->estilo(centro: true));
+        $this->filaDeFirma = $this->firma !== null ? $this->fila : null;
         $this->firma('Firma del Solicitante', estilo: $this->estilo(negrita: true));
         $this->firma('Nombre del Solicitante: ' . $firmante?->name);
         $this->firma('Fecha: ' . $fecha->format('d/m/Y'));
@@ -163,7 +176,9 @@ class RequisicionEnExcel
         $g = $this->estilo(gris: true);
         $t = $this->estilo();
 
-        $this->fila([[$r1, $g], null, [$v1, $t], $r2 !== null ? [$r2, $g] : null, $r2 !== null ? [$v2, $t] : null, null, null], 20);
+        // Sin segunda pareja, el resto de la fila va sin recuadro, como en el formato.
+        $this->fila([[$r1, $g], null, [$v1, $t], $r2 !== null ? [$r2, $g] : [null, $this->estilo(borde: false)],
+            $r2 !== null ? [$v2, $t] : null, null, null], 28);
         $this->unir(0, $this->fila, 1, $this->fila);
         if ($r2 !== null) {
             $this->unir(4, $this->fila, 6, $this->fila);
@@ -272,6 +287,108 @@ class RequisicionEnExcel
         $this->vacia();
         $this->nota('Los valores unitarios son estimados de referencia tomados del último costo conocido o de la cotización consultada; '
             . 'el valor definitivo lo fija el proveedor. Documento generado por fabOS el ' . now()->timezone($tz)->format('d/m/Y H:i') . '.', 6);
+    }
+
+    // ------------------------------------------------------------ la firma
+
+    private static function pngDeLaFirma(PurchaseRequest $s): ?string
+    {
+        $disco = \Illuminate\Support\Facades\Storage::disk('local');
+
+        if (! $s->estaFirmada() || ! $disco->exists($s->signature_path)) {
+            return null;
+        }
+
+        $png = $disco->get($s->signature_path);
+
+        return $png !== null && @getimagesizefromstring($png) !== false ? $png : null;
+    }
+
+    /**
+     * Encaja el dibujo de la firma en su casilla (A:C de la fila dada).
+     *
+     * Va anclado a la casilla —se mueve y cambia de tamaño con ella—, no
+     * suelto encima. Meterla como VALOR de la celda («Colocar en celda») solo
+     * lo entiende Excel de Microsoft 365: el Excel 2021 del laboratorio la
+     * muestra como #¡DESCONOCIDO!. Anclada se ve igual en cualquier versión.
+     *
+     * Una imagen en un .xlsx son: el PNG en xl/media, un dibujo que dice entre
+     * qué casillas va, la relación del dibujo con el PNG y la de la hoja con
+     * el dibujo, más sus tipos en [Content_Types].xml. La etiqueta <drawing>
+     * va antes de <legacyDrawing> —la que OpenSpout usa para comentarios—:
+     * Excel exige ese orden, y si no, pide «reparar» el archivo.
+     */
+    private static function firmaEnLaCelda(string $ruta, string $png, int $fila): void
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($ruta) !== true) {
+            return;
+        }
+
+        $hoja = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $tipos = $zip->getFromName('[Content_Types].xml');
+        if ($hoja === false || $tipos === false || str_contains($hoja, '<drawing ')) {
+            $zip->close();
+
+            return;
+        }
+
+        // Las columnas A, B y C en píxeles (ancho en caracteres × 7 + 5), y la
+        // fila de 60 puntos = 80 px. La firma, centrada y con su proporción.
+        $columnas = array_map(fn ($c) => $c * 7 + 5, [6, 30, 32]);
+        [$w, $h] = getimagesizefromstring($png);
+        $alto = 70;
+        $ancho = min(array_sum($columnas) - 10, (int) round($alto * $w / max(1, $h)));
+        $izquierda = (int) round((array_sum($columnas) - $ancho) / 2);
+        $donde = function (int $x) use ($columnas): array {
+            foreach ($columnas as $i => $c) {
+                if ($x < $c || $i === count($columnas) - 1) {
+                    return [$i, min($x, $c)];
+                }
+                $x -= $c;
+            }
+        };
+        [$c1, $x1] = $donde($izquierda);
+        [$c2, $x2] = $donde($izquierda + $ancho);
+        $emu = 9525;
+        $punto = fn (int $col, int $x, int $y) => '<xdr:col>' . $col . '</xdr:col><xdr:colOff>' . ($x * $emu) . '</xdr:colOff>'
+            . '<xdr:row>' . ($fila - 1) . '</xdr:row><xdr:rowOff>' . ($y * $emu) . '</xdr:rowOff>';
+
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
+
+        $zip->addFromString('xl/media/firma1.png', $png);
+        $zip->addFromString('xl/drawings/drawing1.xml', $xml
+            . '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<xdr:twoCellAnchor editAs="twoCell">'
+            . '<xdr:from>' . $punto($c1, $x1, 5) . '</xdr:from>'
+            . '<xdr:to>' . $punto($c2, $x2, 5 + $alto) . '</xdr:to>'
+            . '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Firma del solicitante" descr="Firma del solicitante"/>'
+            . '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+            . '<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+            . '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . ($ancho * $emu) . '" cy="' . ($alto * $emu) . '"/></a:xfrm>'
+            . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
+            . '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>');
+        $zip->addFromString('xl/drawings/_rels/drawing1.xml.rels', $xml
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/firma1.png"/>'
+            . '</Relationships>');
+
+        $relacion = '<Relationship Id="rId_firma1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>';
+        $rels = $zip->getFromName('xl/worksheets/_rels/sheet1.xml.rels');
+        $zip->addFromString('xl/worksheets/_rels/sheet1.xml.rels', $rels !== false
+            ? str_replace('</Relationships>', $relacion . '</Relationships>', $rels)
+            : $xml . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' . $relacion . '</Relationships>');
+
+        $etiqueta = '<drawing r:id="rId_firma1"/>';
+        $zip->addFromString('xl/worksheets/sheet1.xml', str_contains($hoja, '<legacyDrawing')
+            ? preg_replace('/<legacyDrawing/', $etiqueta . '<legacyDrawing', $hoja, 1)
+            : str_replace('</worksheet>', $etiqueta . '</worksheet>', $hoja));
+
+        $zip->addFromString('[Content_Types].xml', str_replace('</Types>',
+            (str_contains($tipos, 'Extension="png"') ? '' : '<Default ContentType="image/png" Extension="png"/>')
+            . '<Override ContentType="application/vnd.openxmlformats-officedocument.drawing+xml" PartName="/xl/drawings/drawing1.xml"/></Types>', $tipos));
+
+        $zip->close();
     }
 
     // ------------------------------------------------------------ las piezas

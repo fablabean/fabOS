@@ -140,6 +140,47 @@ class SolicitudDeCotizacionTest extends TestCase
         $this->assertNotNull(collect($filas)->first(fn ($f) => ($f[0] ?? null) === 10));
     }
 
+    /** La firma dibujada va encajada en su casilla, anclada a ella. */
+    public function test_en_excel_la_firma_va_en_su_casilla(): void
+    {
+        Storage::fake('local');
+        $michael = $this->administrador();
+        $s = $this->porCotizar($michael);
+        $png = \Illuminate\Http\UploadedFile::fake()->image('firma.png', 70, 20)->getContent();
+        app(PurchasingService::class)->firmar($s, $michael, 'data:image/png;base64,' . base64_encode($png));
+
+        $ruta = $this->get(route('compras.requisicion.excel', $s))->assertOk()->baseResponse->getFile()->getPathname();
+
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($ruta));
+        $hoja = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $dibujo = $zip->getFromName('xl/drawings/drawing1.xml');
+        $this->assertNotFalse($zip->getFromName('xl/media/firma1.png'));
+        $this->assertStringContainsString('../drawings/drawing1.xml', $zip->getFromName('xl/worksheets/_rels/sheet1.xml.rels'));
+        $this->assertStringContainsString('/xl/drawings/drawing1.xml', $zip->getFromName('[Content_Types].xml'));
+        $zip->close();
+
+        // Antes de <legacyDrawing>, o Excel pide reparar el archivo.
+        $this->assertMatchesRegularExpression('#<drawing r:id="rId_firma1"/><legacyDrawing#', $hoja);
+
+        // Anclada a la fila que está justo encima de «Firma del Solicitante».
+        $this->assertSame(1, preg_match('#editAs="twoCell"><xdr:from>.*?<xdr:row>(\d+)</xdr:row>#', $dibujo, $m));
+        $this->assertMatchesRegularExpression('#<c r="A' . ((int) $m[1] + 2) . '"[^>]*><is><t>Firma del Solicitante</t>#', $hoja);
+    }
+
+    /** Sin firma, la casilla lo dice y no hay dibujo. */
+    public function test_en_excel_sin_firma_no_hay_dibujo(): void
+    {
+        $s = $this->porCotizar($this->administrador());
+        $ruta = $this->get(route('compras.requisicion.excel', $s))->assertOk()->baseResponse->getFile()->getPathname();
+
+        $zip = new \ZipArchive();
+        $zip->open($ruta);
+        $this->assertFalse($zip->getFromName('xl/drawings/drawing1.xml'));
+        $this->assertStringContainsString('Sin firmar', $zip->getFromName('xl/worksheets/sheet1.xml'));
+        $zip->close();
+    }
+
     public function test_al_enviarla_le_llega_a_compras_con_el_formato_de_cotizacion(): void
     {
         Mail::fake();
