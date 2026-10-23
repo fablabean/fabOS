@@ -562,6 +562,8 @@ Route::middleware('auth')->group(function () {
         ->name('compras.requisicion');
     Route::get('/compras/{purchaseRequest}/requisicion.pdf', [PurchaseRequestController::class, 'pdf'])
         ->name('compras.requisicion.pdf');
+    Route::get('/compras/{purchaseRequest}/requisicion.xlsx', [PurchaseRequestController::class, 'excel'])
+        ->name('compras.requisicion.excel');
     Route::get('/compras/{purchaseRequest}/cotizacion', [PurchaseRequestController::class, 'cotizacion'])
         ->name('compras.cotizacion');
     Route::post('/compras/{purchaseRequest}/firmar', [PurchaseRequestController::class, 'firmar'])
@@ -625,6 +627,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/compras/compartida/{token}/pdf', [PurchaseRequestController::class, 'compartidaPdf'])
         ->where('token', '[A-Za-z0-9]{32,64}')
         ->name('compras.compartida.pdf');
+    Route::get('/compras/compartida/{token}/excel', [PurchaseRequestController::class, 'compartidaExcel'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('compras.compartida.excel');
     Route::get('/compras/compartida/{token}/cotizacion', [PurchaseRequestController::class, 'compartidaCotizacion'])
         ->where('token', '[A-Za-z0-9]{32,64}')
         ->name('compras.compartida.cotizacion');

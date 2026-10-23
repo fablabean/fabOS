@@ -126,12 +126,55 @@ class RequisicionCompartidaTest extends TestCase
         $this->assertStringStartsWith('%PDF', $respuesta->getContent());
     }
 
+    /** Y en Excel: la misma hoja, con cantidades y valores como números. */
+    public function test_el_enlace_deja_bajar_el_excel(): void
+    {
+        $s = $this->solicitud();
+        $this->compras()->compartir($s);
+
+        $this->get(route('compras.compartida', $s->fresh()->share_token))->assertSee('Descargar Excel');
+
+        $respuesta = $this->get(route('compras.compartida.excel', $s->fresh()->share_token))
+            ->assertOk()
+            ->assertDownload($s->code . '.xlsx');
+
+        $filas = self::leerExcel($respuesta->baseResponse->getFile()->getPathname());
+        $texto = collect($filas)->flatten()->implode(' | ');
+
+        $this->assertStringContainsString($s->code, $texto);
+        $this->assertStringContainsString('Sensor de temperatura DS18B20', $texto);
+        $this->assertStringContainsString('Carrito ya armado', $texto);
+
+        $linea = collect($filas)->first(fn ($f) => str_starts_with((string) ($f[1] ?? ''), 'Sensor de temperatura'));
+        $this->assertEquals(10, $linea[2]);
+        $this->assertEquals(12_000, $linea[4]);
+        $this->assertEquals(120_000, $linea[5]);
+    }
+
+    /** @return list<list<mixed>> */
+    public static function leerExcel(string $ruta): array
+    {
+        $lector = new \OpenSpout\Reader\XLSX\Reader();
+        $lector->open($ruta);
+        $filas = [];
+        foreach ($lector->getSheetIterator() as $hoja) {
+            foreach ($hoja->getRowIterator() as $fila) {
+                $filas[] = $fila->toArray();
+            }
+            break;
+        }
+        $lector->close();
+
+        return $filas;
+    }
+
     public function test_un_enlace_inventado_no_abre_nada(): void
     {
         $this->solicitud();
 
         $this->get(route('compras.compartida', str_repeat('x', 40)))->assertNotFound();
         $this->get(route('compras.compartida.pdf', str_repeat('x', 40)))->assertNotFound();
+        $this->get(route('compras.compartida.excel', str_repeat('x', 40)))->assertNotFound();
     }
 
     public function test_dejar_de_compartir_apaga_el_enlace_y_el_siguiente_es_otro(): void

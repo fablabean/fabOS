@@ -235,6 +235,9 @@
 
 @unless ($paraPdf)
     <p class="noimprimir" style="margin-top:2rem">
+        @if ($enlaceExcel ?? null)
+            <a class="boton" href="{{ $enlaceExcel }}">Descargar Excel</a>
+        @endif
         @if ($enlacePdf)
             <a class="boton principal" href="{{ $enlacePdf }}">Descargar PDF</a>
         @endif

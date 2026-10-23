@@ -295,6 +295,9 @@
     @endif
 
     <div class="barra">
+        @if ($enlaceExcel ?? null)
+            <a href="{{ $enlaceExcel }}">Descargar Excel</a>
+        @endif
         @if ($enlacePdf)
             <a class="principal" href="{{ $enlacePdf }}">Descargar PDF</a>
         @endif

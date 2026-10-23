@@ -114,6 +114,32 @@ class SolicitudDeCotizacionTest extends TestCase
             ->assertDownload('ADF-228-f5_' . $s->code . '.pdf');
     }
 
+    public function test_se_baja_en_excel_con_las_casillas_del_formato(): void
+    {
+        $s = $this->porCotizar($this->administrador());
+
+        $this->get(route('compras.requisicion', $s))->assertSee('Descargar Excel');
+
+        $respuesta = $this->get(route('compras.requisicion.excel', $s))
+            ->assertOk()
+            ->assertDownload('ADF-228-f5_' . $s->code . '.xlsx');
+
+        $filas = RequisicionCompartidaTest::leerExcel($respuesta->baseResponse->getFile()->getPathname());
+        $texto = collect($filas)->flatten()->implode(' | ');
+
+        foreach (['Código: ADF-228-f5', 'INFORMACION DEL SOLICITANTE', 'Michael Torres', 'mstorres@lab.co', '3001234567',
+            'Erick Hansen', 'Unidad de desarrollo FABLAB', 'SI [X]', 'TERMINOS DE REFERENCIA', 'Batería de litio 4V',
+            'Bosch', 'Con estuche', 'Entregar en la sede El Nogal.', 'Firma del Solicitante'] as $esperado) {
+            $this->assertStringContainsString($esperado, $texto);
+        }
+
+        // La línea, con la cantidad como número; y los diez renglones del formato.
+        $linea = collect($filas)->first(fn ($f) => ($f[1] ?? null) === 'Destornillador eléctrico inalámbrico');
+        $this->assertSame(1, $linea[0]);
+        $this->assertEquals(2, $linea[4]);
+        $this->assertNotNull(collect($filas)->first(fn ($f) => ($f[0] ?? null) === 10));
+    }
+
     public function test_al_enviarla_le_llega_a_compras_con_el_formato_de_cotizacion(): void
     {
         Mail::fake();

@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
  *   precios y quién aprobó, así que el enlace no existe hasta que alguien
  *   decide compartir, es largo y aleatorio, y se puede revocar.
  *
- * Por las dos se puede bajar en PDF. El mismo documento: lo que se ve en
+ * Por las dos se puede bajar en PDF, y en Excel. El mismo documento: lo que se ve en
  * pantalla es lo que se baja, sin una plantilla aparte que se desfase.
  */
 class PurchaseRequestController extends Controller
@@ -30,6 +30,7 @@ class PurchaseRequestController extends Controller
             $purchaseRequest,
             route('compras.requisicion.pdf', $purchaseRequest),
             route('compras.cotizacion', $purchaseRequest),
+            route('compras.requisicion.excel', $purchaseRequest),
             // Firmar solo desde el panel, nunca desde el enlace compartido.
             puedeFirmar: $purchaseRequest->pideCotizacion() && $purchaseRequest->status === 'borrador'
                 && $request->user()->can('update', $purchaseRequest),
@@ -74,6 +75,28 @@ class PurchaseRequestController extends Controller
         return $this->documento($purchaseRequest);
     }
 
+    /** La misma hoja en Excel, para quien tiene que pasarla a su sistema. */
+    public function excel(Request $request, PurchaseRequest $purchaseRequest)
+    {
+        abort_unless($request->user()->can('view', $purchaseRequest), 403);
+
+        return $this->hojaDeCalculo($purchaseRequest);
+    }
+
+    public function compartidaExcel(string $token)
+    {
+        return $this->hojaDeCalculo($this->compartidaPor($token));
+    }
+
+    private function hojaDeCalculo(PurchaseRequest $solicitud)
+    {
+        $excel = app(\App\Services\Purchasing\RequisicionEnExcel::class);
+
+        return response()->download($excel->guardar($solicitud), $excel::nombre($solicitud), [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend();
+    }
+
     public function compartida(string $token)
     {
         $solicitud = $this->compartidaPor($token);
@@ -82,6 +105,7 @@ class PurchaseRequestController extends Controller
             $solicitud,
             route('compras.compartida.pdf', $token),
             route('compras.compartida.cotizacion', $token),
+            route('compras.compartida.excel', $token),
         );
     }
 
@@ -123,12 +147,13 @@ class PurchaseRequestController extends Controller
         return PurchaseRequest::where('share_token', $token)->firstOrFail();
     }
 
-    private function requisicion(PurchaseRequest $solicitud, string $enlacePdf, ?string $enlaceCotizacion = null, bool $puedeFirmar = false)
+    private function requisicion(PurchaseRequest $solicitud, string $enlacePdf, ?string $enlaceCotizacion = null, ?string $enlaceExcel = null, bool $puedeFirmar = false)
     {
         return view(\App\Services\Purchasing\PurchasingService::vistaDe($solicitud), [
             'solicitud' => $this->cargada($solicitud),
             'enlacePdf' => $enlacePdf,
             'enlaceCotizacion' => filled($solicitud->quote_path) ? $enlaceCotizacion : null,
+            'enlaceExcel' => $enlaceExcel,
             'paraPdf'   => false,
             'puedeFirmar' => $puedeFirmar,
         ]);
