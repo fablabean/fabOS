@@ -20,6 +20,23 @@
         </p>
     </div>
 
+    @if ($partida->esPorJornadas() && $partida->estado !== 'terminada')
+        @php $jornada = $partida->jornadaDe(); $proxima = $jornada ? null : $partida->proximaJornada(); @endphp
+        <div class="tarjeta" style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem 1.5rem">
+            @if ($jornada)
+                <div style="background:#fff;padding:.4rem;border-radius:8px;line-height:0">{!! app(\App\Services\Qr\QrRenderer::class)->svg($partida->urlDeInscripcion(), 120) !!}</div>
+                <div>
+                    <div style="font-size:1.3rem;font-weight:700">¿Llegaron? Escaneen e inscriban a su equipo</div>
+                    <div class="muted">Cada equipo arranca su reloj cuando está listo. La jornada cierra a las {{ $jornada['fin']->copy()->timezone(config('fabos.lab.timezone'))->format('g:i a') }}.</div>
+                </div>
+            @elseif ($proxima)
+                <div class="muted">Próxima jornada: {{ \App\Services\Recorrido\Juego::fecha($proxima['inicio']) }}.</div>
+            @else
+                <div class="muted">Las jornadas terminaron.</div>
+            @endif
+        </div>
+    @endif
+
     @if ($equipos->isEmpty())
         <div class="tarjeta">Todavía no hay equipos.</div>
     @endif
@@ -33,7 +50,7 @@
                 <div>
                     <div style="font-size:1.25rem;font-weight:700">{{ $e->nombre }}</div>
                     <div class="muted">
-                        {{ \App\Models\Recorrido\Equipo::ESTADOS[$e->estado] ?? $e->estado }}
+                        {{ $e->seLeAcaboLaJornada() ? 'Se le acabó la jornada' : (\App\Models\Recorrido\Equipo::ESTADOS[$e->estado] ?? $e->estado) }}
                         @if ($lider = $e->avances->firstWhere('etapa', $e->etapa)?->lider)
                             · líder: {{ $lider->nombre }}
                         @endif

@@ -647,6 +647,10 @@ Route::middleware('throttle:120,1')->prefix('juego')->name('juego.')->group(func
         ->where('token', '[A-Za-z0-9]{40}')->name('equipo');
     Route::get('/q/{codigo}', [\App\Http\Controllers\JuegoController::class, 'qr'])
         ->where('codigo', '[a-z0-9]{6,12}')->name('qr');
+    Route::get('/inscribir/{codigo}', [\App\Http\Controllers\JuegoController::class, 'inscripcion'])
+        ->where('codigo', '[a-z0-9]{6,12}')->name('inscribir');
+    Route::post('/inscribir/{codigo}', [\App\Http\Controllers\JuegoController::class, 'inscribir'])
+        ->where('codigo', '[a-z0-9]{6,12}')->middleware('throttle:30,1')->name('inscribirse');
     Route::get('/tablero/{codigo}', [\App\Http\Controllers\JuegoController::class, 'tablero'])
         ->where('codigo', '[a-z0-9]{6,12}')->name('tablero');
     Route::get('/visor/{equipo}', [\App\Http\Controllers\JuegoController::class, 'visor'])

@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Una respuesta o una secuencia equivocada suma la penalización de la
  * partida. Escanear el QR de otro lugar no penaliza: buscar es el juego.
+ *
+ * Una partida simultánea arranca para todos a la vez. Una por jornadas no se
+ * inicia: los equipos se inscriben en el horario de la partida y cada uno
+ * arranca su reloj cuando está listo.
  */
 class Juego
 {
@@ -35,6 +39,10 @@ class Juego
     {
         if ($partida->estado !== 'preparada') {
             throw new JuegoException('La partida ya empezó.');
+        }
+
+        if ($partida->esPorJornadas()) {
+            throw new JuegoException('Esta partida es por jornadas: cada equipo arranca cuando llega.');
         }
 
         $estaciones = $partida->circuito->estaciones()->pluck('id')->all();
@@ -75,10 +83,80 @@ class Juego
         $equipo->update([
             'orden' => array_values($estaciones), 'etapa' => 1, 'estado' => 'buscando',
             'secuencia' => null, 'fallos' => 0, 'penalizacion' => 0, 'terminado_at' => null,
+            'iniciado_at' => $partida->esPorJornadas() ? now() : $partida->iniciada_at,
         ]);
 
         $equipo->avances()->delete();
         $this->abrirEtapa($equipo);
+    }
+
+    /**
+     * Un equipo que llega a una partida por jornadas se inscribe solo, desde
+     * su celular. Queda esperando hasta que decida empezar: antes tiene que
+     * recibir las gafas y emparejarlas.
+     *
+     * @param  array<int,string>  $integrantes
+     */
+    public function inscribir(Partida $partida, string $nombre, array $integrantes = []): Equipo
+    {
+        $this->exigirJornadaAbierta($partida);
+
+        $nombre = trim($nombre);
+
+        if ($partida->equipos()->whereRaw('lower(nombre) = ?', [mb_strtolower($nombre)])->exists()) {
+            throw new JuegoException('Ya hay un equipo con ese nombre en esta partida. Elijan otro.');
+        }
+
+        return DB::transaction(function () use ($partida, $nombre, $integrantes) {
+            $cuantos = $partida->equipos()->count();
+
+            $equipo = $partida->equipos()->create([
+                'nombre' => $nombre,
+                'color' => Equipo::COLORES[$cuantos % count(Equipo::COLORES)],
+                'posicion' => $cuantos + 1,
+            ]);
+
+            foreach (array_filter(array_map('trim', $integrantes)) as $persona) {
+                $equipo->integrantes()->create(['nombre' => mb_substr($persona, 0, 80)]);
+            }
+
+            return $equipo;
+        });
+    }
+
+    /**
+     * El equipo dice «¡empezamos!»: desde aquí corre su reloj. La primera vez
+     * que arranca un equipo, la partida queda en curso.
+     */
+    public function empezar(Equipo $equipo): void
+    {
+        $partida = $equipo->partida;
+
+        if (! $partida->esPorJornadas()) {
+            throw new JuegoException('Esperen la señal de inicio: esta partida arranca para todos a la vez.');
+        }
+
+        $this->exigirJornadaAbierta($partida);
+
+        $estaciones = $partida->circuito->estaciones()->pluck('id')->all();
+
+        if ($estaciones === []) {
+            throw new JuegoException('El circuito no tiene estaciones todavía.');
+        }
+
+        $this->conElEquipo($equipo, function (Equipo $e) use ($partida, $estaciones) {
+            if ($e->estado !== 'esperando') {
+                return;
+            }
+
+            Partida::whereKey($partida->id)->where('estado', 'preparada')
+                ->update(['estado' => 'en_curso', 'iniciada_at' => now()]);
+
+            // Rotan por orden de llegada: el que arranca después del tercero
+            // empieza en la cuarta estación, aunque se haya inscrito antes.
+            $yaArrancaron = $partida->equipos()->whereNotNull('iniciado_at')->count();
+            $this->arrancarEquipo($partida, $e, $estaciones, $yaArrancaron);
+        });
     }
 
     public function terminar(Partida $partida): void
@@ -233,7 +311,12 @@ class Juego
             'partida' => [
                 'nombre' => $equipo->partida->nombre,
                 'estado' => $equipo->partida->estado,
-                'iniciada_at' => $equipo->partida->iniciada_at?->toIso8601String(),
+                'modo' => $equipo->partida->modo,
+                // Cuándo arrancó el reloj de ESTE equipo. En una partida
+                // simultánea es el de todos; por jornadas, el suyo.
+                'iniciada_at' => $equipo->inicio()?->toIso8601String(),
+                // Por jornadas: a qué hora se le acaba el tiempo para jugar.
+                'cierra_at' => $equipo->cierre()?->toIso8601String(),
             ],
             'equipo' => [
                 'id' => $equipo->id,
@@ -308,6 +391,10 @@ class Juego
 
     private function exigirEnJuego(Equipo $equipo): void
     {
+        if ($equipo->estado === 'esperando' && $equipo->partida->esPorJornadas() && $equipo->partida->estado !== 'terminada') {
+            throw new JuegoException('Todavía no han empezado: toquen «Empezar» en el celular del equipo.');
+        }
+
         if (! $equipo->partida->enCurso()) {
             throw new JuegoException($equipo->partida->estado === 'preparada'
                 ? 'La partida todavía no empieza.'
@@ -317,6 +404,36 @@ class Juego
         if ($equipo->terminado()) {
             throw new JuegoException('Su equipo ya terminó el recorrido.');
         }
+
+        if ($equipo->seLeAcaboLaJornada()) {
+            throw new JuegoException('La jornada ya cerró: su equipo quedó con lo que alcanzó.');
+        }
+    }
+
+    private function exigirJornadaAbierta(Partida $partida): void
+    {
+        if ($partida->estado === 'terminada') {
+            throw new JuegoException('Esta partida ya terminó.');
+        }
+
+        if (! $partida->esPorJornadas()) {
+            throw new JuegoException('A esta partida no se inscriben los equipos: los arma quien guía el recorrido.');
+        }
+
+        if (! $partida->abiertaAhora()) {
+            $proxima = $partida->proximaJornada();
+
+            throw new JuegoException($proxima
+                ? 'Todavía no abre. La próxima jornada empieza el ' . self::fecha($proxima['inicio']) . '.'
+                : 'Las jornadas de esta partida ya pasaron.');
+        }
+    }
+
+    /** «viernes 31 de octubre a las 8:00 a. m.», en la hora del laboratorio. */
+    public static function fecha(\Carbon\CarbonInterface $momento): string
+    {
+        return $momento->copy()->timezone(config('fabos.lab.timezone'))->locale('es')
+            ->translatedFormat('l j \d\e F \a \l\a\s g:i a');
     }
 
     /** Con la fila del equipo bloqueada mientras se decide. */

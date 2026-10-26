@@ -86,6 +86,46 @@ class JuegoController extends Controller
         return redirect()->route('juego.equipo', $equipo->token);
     }
 
+    /**
+     * Partidas por jornadas: el equipo que llega se inscribe solo, con el QR
+     * del cartel de la entrada o el del tablero.
+     */
+    public function inscripcion(Request $request, string $codigo)
+    {
+        $partida = Partida::where('codigo', $codigo)->firstOrFail();
+        abort_unless($partida->esPorJornadas(), 404);
+
+        // Este celular ya es de un equipo de esta partida: no se inscribe dos veces.
+        $suyo = $this->equipoDelCelular($request);
+
+        return view('juego.inscribir', [
+            'partida' => $partida,
+            'suyo' => $suyo?->partida_id === $partida->id ? $suyo : null,
+        ]);
+    }
+
+    public function inscribir(Request $request, string $codigo, Juego $juego)
+    {
+        $partida = Partida::where('codigo', $codigo)->firstOrFail();
+        abort_unless($partida->esPorJornadas(), 404);
+
+        $datos = $request->validate([
+            'nombre' => ['required', 'string', 'max:80'],
+            'integrantes' => ['nullable', 'string', 'max:1200'],
+        ], [], ['nombre' => 'nombre del equipo']);
+
+        $integrantes = array_slice(preg_split('/\R/', (string) ($datos['integrantes'] ?? '')), 0, 12);
+
+        try {
+            $equipo = $juego->inscribir($partida, $datos['nombre'], $integrantes);
+        } catch (JuegoException $e) {
+            return back()->withInput()->withErrors(['nombre' => $e->getMessage()]);
+        }
+
+        return redirect()->route('juego.equipo', $equipo->token)
+            ->withCookie(cookie(self::COOKIE, $equipo->token, 60 * 24));
+    }
+
     /** Para proyectar: dónde va cada equipo. Sin datos de nadie más que el nombre. */
     public function tablero(string $codigo)
     {

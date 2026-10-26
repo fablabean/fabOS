@@ -19,10 +19,12 @@ class EditPartida extends EditRecord
     /**
      * Un equipo que se arma con la partida ya en curso entra a jugar al
      * guardar, con el reloj de todos: el que llegó tarde, llegó tarde.
+     *
+     * Por jornadas no: cada equipo arranca desde su celular, cuando está listo.
      */
     protected function afterSave(): void
     {
-        if (! $this->record->enCurso()) {
+        if (! $this->record->enCurso() || $this->record->esPorJornadas()) {
             return;
         }
 
@@ -38,7 +40,7 @@ class EditPartida extends EditRecord
                 ->label('Iniciar la partida')
                 ->icon('heroicon-o-play')
                 ->color('success')
-                ->visible(fn () => $this->record->estado === 'preparada')
+                ->visible(fn () => $this->record->estado === 'preparada' && ! $this->record->esPorJornadas())
                 ->requiresConfirmation()
                 ->modalHeading('¿Iniciar la partida?')
                 ->modalDescription('Arranca el reloj para todos los equipos a la vez y cada líder recibe su primera pista.')
@@ -59,16 +61,26 @@ class EditPartida extends EditRecord
                 ->label('Terminar')
                 ->icon('heroicon-o-flag')
                 ->color('danger')
-                ->visible(fn () => $this->record->enCurso())
+                ->visible(fn () => $this->record->enCurso() || ($this->record->esPorJornadas() && $this->record->estado === 'preparada'))
                 ->requiresConfirmation()
-                ->modalDescription('Detiene el reloj de los equipos que no han terminado. Sus tiempos quedan como están.')
+                ->modalDescription(fn () => $this->record->esPorJornadas()
+                    ? 'Cierra las inscripciones aunque queden jornadas y detiene el reloj de los equipos que estén jugando. Sus tiempos quedan como están.'
+                    : 'Detiene el reloj de los equipos que no han terminado. Sus tiempos quedan como están.')
                 ->action(function (): void {
                     app(Juego::class)->terminar($this->record);
                     Notification::make()->success()->title('Partida terminada')->send();
                 }),
 
+            Action::make('inscripcion')
+                ->label('Enlace de inscripción')
+                ->icon('heroicon-o-user-plus')
+                ->color('gray')
+                ->visible(fn () => $this->record->esPorJornadas())
+                ->url(fn () => $this->record->urlDeInscripcion())
+                ->openUrlInNewTab(),
+
             Action::make('equipos')
-                ->label('Códigos de los equipos')
+                ->label(fn () => $this->record->esPorJornadas() ? 'Cartel y códigos' : 'Códigos de los equipos')
                 ->icon('heroicon-o-qr-code')
                 ->color('gray')
                 ->url(fn () => route('recorridos.equipos', $this->record))

@@ -14,6 +14,8 @@
         .tarjeta h2{margin:.2rem 0 .4rem;font-size:1.3rem}
         .codigo{font-size:1.8rem;font-weight:800;letter-spacing:.2em;font-family:ui-monospace,Consolas,monospace;margin:.3rem 0}
         .muted{color:#666;font-size:.85rem}
+        .cartel{text-align:center;padding:2rem 1rem;border-bottom:1px solid #ddd;break-after:page}
+        .cartel h1{font-size:2.4rem;margin:0}
         @media print{.barra,.solo-pantalla{display:none}}
     </style>
 </head>
@@ -23,6 +25,19 @@
         <span class="muted">{{ $partida->circuito->nombre }} · entrar a mano: {{ route('juego.unirse') }}</span>
         <button onclick="window.print()">Imprimir</button>
     </div>
+
+    @if ($partida->esPorJornadas())
+        {{-- El cartel de la entrada: con este QR se inscribe cada equipo que llega. --}}
+        <div class="cartel">
+            <h1>{{ $partida->nombre }}</h1>
+            <p style="font-size:1.3rem;margin:.2rem 0 1rem">Escanea para inscribir a tu equipo</p>
+            {!! $qr->svg($partida->urlDeInscripcion(), 320) !!}
+            <p class="muted">{{ $partida->urlDeInscripcion() }}</p>
+            @foreach ($partida->horarios() as $j)
+                <p style="margin:.2rem 0">{{ ucfirst(\App\Services\Recorrido\Juego::fecha($j['inicio'])) }} a {{ $j['fin']->copy()->timezone(config('fabos.lab.timezone'))->format('g:i a') }}</p>
+            @endforeach
+        </div>
+    @endif
 
     <div class="rejilla">
         @forelse ($partida->equipos as $e)

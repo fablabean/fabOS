@@ -15,10 +15,12 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -31,6 +33,9 @@ use Filament\Tables\Table;
  *
  * Se arma antes de que llegue el grupo —o en la puerta, con los nombres que
  * vayan dando—, se inicia para todos a la vez y se sigue en el tablero.
+ *
+ * O por jornadas: se abre en uno o varios horarios, los equipos van llegando,
+ * se inscriben solos con el QR de la entrada y cada uno arranca su reloj.
  */
 class PartidaResource extends Resource
 {
@@ -87,6 +92,41 @@ class PartidaResource extends Resource
                         ->disabled(fn (?Partida $record) => $record && $record->estado !== 'preparada'),
                 ]),
 
+            Section::make('Cómo se juega')
+                ->schema([
+                    ToggleButtons::make('modo')
+                        ->hiddenLabel()
+                        ->options(Partida::MODOS)
+                        ->icons(['simultanea' => 'heroicon-o-play', 'jornadas' => 'heroicon-o-calendar-days'])
+                        ->inline()
+                        ->default('simultanea')
+                        ->required()
+                        ->live()
+                        ->helperText(fn ($get) => $get('modo') === 'jornadas'
+                            ? 'Los equipos llegan cuando quieran dentro de las jornadas, se inscriben con el QR de la partida y cada uno arranca su propio reloj. Quien no termina antes del cierre de su jornada queda con lo que alcanzó.'
+                            : 'Todos los equipos arrancan a la vez, cuando inicias la partida.')
+                        ->disabled(fn (?Partida $record) => $record && $record->estado !== 'preparada'),
+                    Repeater::make('jornadas')
+                        ->visible(fn ($get) => $get('modo') === 'jornadas')
+                        ->addActionLabel('Agregar jornada')
+                        ->minItems(1)
+                        ->defaultItems(1)
+                        ->columns(2)
+                        ->schema([
+                            DateTimePicker::make('inicio')
+                                ->label('Abre')
+                                ->seconds(false)
+                                ->timezone(config('fabos.lab.timezone'))
+                                ->required(),
+                            DateTimePicker::make('fin')
+                                ->label('Cierra')
+                                ->seconds(false)
+                                ->timezone(config('fabos.lab.timezone'))
+                                ->after('inicio')
+                                ->required(),
+                        ]),
+                ]),
+
             Section::make('Equipos')
                 ->description('Al guardar, cada equipo recibe un código: con él entra su celular y se emparejan sus gafas.')
                 ->schema([
@@ -97,6 +137,8 @@ class PartidaResource extends Resource
                         ->reorderableWithButtons()
                         ->collapsible()
                         ->addActionLabel('Agregar equipo')
+                        // Por jornadas los equipos se inscriben solos: nada que llenar de entrada.
+                        ->defaultItems(0)
                         ->itemLabel(fn (array $state): string => ($state['nombre'] ?? 'Equipo nuevo')
                             . (filled($state['codigo'] ?? null) ? ' · código ' . $state['codigo'] : ''))
                         ->columns(3)
@@ -154,6 +196,9 @@ class PartidaResource extends Resource
                     ->color(fn (string $state) => match ($state) {
                         'en_curso' => 'success', 'terminada' => 'gray', default => 'warning',
                     }),
+                TextColumn::make('modo')
+                    ->formatStateUsing(fn (string $state) => Partida::MODOS[$state] ?? $state)
+                    ->color('gray'),
                 TextColumn::make('equipos_count')->counts('equipos')->label('Equipos'),
                 TextColumn::make('iniciada_at')->label('Inició')->dateTime('d/m/Y H:i', config('fabos.lab.timezone'))->placeholder('—'),
             ])

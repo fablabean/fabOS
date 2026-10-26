@@ -16,7 +16,7 @@ Cada equipo repite este ciclo una vez por estación (normalmente 5):
 | 4 | — | El líder marca la secuencia → `POST /secuencia` | Correcta: se abre la etapa siguiente (vuelve a `buscando`) o el equipo termina (`terminado`) |
 
 También pueden aparecer estos estados:
-- `esperando`: la partida todavía no ha empezado.
+- `esperando`: la partida todavía no ha empezado o, en una partida por jornadas, el equipo todavía no ha tocado «Empezar» en su celular.
 - `terminado`: el equipo terminó el recorrido.
 
 En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafas nunca reciben la secuencia correcta.** El equipo la trae desde el celular, y ese es el juego.
@@ -70,7 +70,7 @@ Content-Type: application/json
     { "id": 19, "numero": 3, "imagen": null }
   ],
   "estado": {
-    "partida": { "nombre": "Colegio San José", "estado": "preparada", "iniciada_at": null },
+    "partida": { "nombre": "Colegio San José", "estado": "preparada", "modo": "simultanea", "iniciada_at": null, "cierra_at": null },
     "equipo": {
       "id": 6, "nombre": "Equipo Rojo", "color": "#E5484D",
       "integrantes": [ { "id": 17, "nombre": "Ana" }, { "id": 18, "nombre": "Luis" } ]
@@ -147,7 +147,7 @@ Authorization: Bearer <token>
 ```json
 {
   "estado": {
-    "partida": { "nombre": "Colegio San José", "estado": "en_curso", "iniciada_at": "2026-10-02T14:00:03-05:00" },
+    "partida": { "nombre": "Colegio San José", "estado": "en_curso", "modo": "simultanea", "iniciada_at": "2026-10-02T14:00:03-05:00", "cierra_at": null },
     "equipo": {
       "id": 12, "nombre": "Rojos", "color": "#E5484D",
       "integrantes": [ { "id": 31, "nombre": "Ana" }, { "id": 32, "nombre": "Luis" } ]
@@ -180,6 +180,9 @@ Qué significa cada campo:
 - El nombre y el lugar de la estación **no se mandan**, y es a propósito: la pista está escrita en acertijo y mandar «Cortadora láser» al lado la resolvería sola. El código del QR tampoco: eso es lo que el equipo va a buscar.
 - `lider` es `null` mientras el equipo no lo haya elegido.
 - `segundos` es el tiempo de juego del equipo, ya con la penalización sumada. Es `null` si la partida no ha empezado.
+- `partida.modo` es `simultanea` (todos los equipos arrancan a la vez) o `jornadas` (cada equipo llega en el horario de la partida y arranca su propio reloj).
+- `partida.iniciada_at` es cuándo arrancó **el reloj de este equipo**: en una simultánea es el de todos; por jornadas, el suyo.
+- `partida.cierra_at` solo viene en las partidas por jornadas, una vez el equipo arrancó: a esa hora se le acaba el tiempo para jugar y el servidor deja de aceptarle pasos. En las simultáneas es `null`.
 - `botones` es la lista de botones que deben dibujarse, en ese orden, con esos colores. Úsenla en vez de fijar los colores en la app.
 
 **Consulten este endpoint cada 2 segundos.** Por ahora no hay notificaciones en tiempo real. El cambio de `buscando` a `resolviendo` y de `resolviendo` a `secuencia` ocurre en el celular del equipo, y las gafas solo se enteran consultando. El límite es de 120 llamadas por minuto por gafas.

@@ -34,6 +34,30 @@
             <p class="muted">Llegaron hasta la etapa {{ $equipo->etapa }}. ¡Gracias por jugar!</p>
         </div>
 
+    @elseif ($equipo->seLeAcaboLaJornada())
+        <div class="tarjeta">
+            <h2>La jornada cerró</h2>
+            <p class="muted">Llegaron hasta la etapa {{ $equipo->etapa }}. ¡Gracias por jugar!</p>
+        </div>
+
+    @elseif ($equipo->estado === 'esperando' && $equipo->partida->esPorJornadas())
+        <div class="tarjeta">
+            <h2>Ya están inscritos</h2>
+            <p>Antes de empezar, pidan las gafas a quien guía el recorrido y emparéjenlas con este código:</p>
+            <p style="font-size:2rem;font-weight:800;letter-spacing:.2em;text-align:center;margin:.4rem 0;font-family:ui-monospace,Consolas,monospace">{{ $equipo->codigo }}</p>
+            <p class="muted">Integrantes: {{ $equipo->integrantes->pluck('nombre')->implode(', ') ?: '—' }}</p>
+            @if ($equipo->partida->abiertaAhora())
+                <p>Cuando estén listos, toquen «Empezar»: desde ese momento corre su reloj.</p>
+                <button class="boton" type="button" wire:click="empezar" wire:loading.attr="disabled"
+                        wire:confirm="¿Empezamos? El reloj arranca ya.">Empezar</button>
+                @if ($cierre = $equipo->partida->jornadaDe()['fin'] ?? null)
+                    <p class="muted" style="margin-top:.6rem">La jornada cierra a las {{ $cierre->copy()->timezone(config('fabos.lab.timezone'))->format('g:i a') }}: lo que no alcancen a hacer para entonces, no cuenta.</p>
+                @endif
+            @else
+                <p class="muted">La jornada no está abierta en este momento.</p>
+            @endif
+        </div>
+
     @elseif ($equipo->estado === 'esperando')
         <div class="tarjeta">
             <h2>Ya están dentro</h2>

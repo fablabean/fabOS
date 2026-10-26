@@ -55,6 +55,20 @@ class Celular extends Component
         }
     }
 
+    /** Por jornadas: el equipo está listo y arranca su reloj. */
+    public function empezar(Juego $juego): void
+    {
+        try {
+            $juego->empezar($this->equipo());
+        } catch (JuegoException $e) {
+            $this->avisar($e->getMessage(), false);
+
+            return;
+        }
+
+        $this->avisar('¡A jugar! Su reloj ya corre.', true);
+    }
+
     public function responder(Juego $juego): void
     {
         $equipo = $this->equipo();

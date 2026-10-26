@@ -5,6 +5,7 @@ namespace App\Models\Recorrido;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -43,7 +44,7 @@ class Equipo extends Model
     protected $fillable = [
         'partida_id', 'nombre', 'color', 'posicion', 'codigo', 'token',
         'visor_token_hash', 'visor_visto_at', 'orden', 'etapa', 'estado',
-        'secuencia', 'fallos', 'penalizacion', 'terminado_at',
+        'secuencia', 'fallos', 'penalizacion', 'iniciado_at', 'terminado_at',
     ];
 
     protected $hidden = ['token', 'visor_token_hash', 'secuencia'];
@@ -54,6 +55,7 @@ class Equipo extends Model
             'orden'          => 'array',
             'secuencia'      => 'array',
             'visor_visto_at' => 'datetime',
+            'iniciado_at'    => 'datetime',
             'terminado_at'   => 'datetime',
         ];
     }
@@ -110,18 +112,45 @@ class Equipo extends Model
         return $this->estado === 'terminado';
     }
 
+    /** Cuándo arrancó su reloj: el suyo, o el de la partida si es simultánea. */
+    public function inicio(): ?Carbon
+    {
+        return $this->iniciado_at ?? ($this->partida->esPorJornadas() ? null : $this->partida->iniciada_at);
+    }
+
+    /**
+     * Por jornadas, hasta cuándo puede jugar: el cierre de la jornada en la
+     * que arrancó. Quien no terminó queda con lo que alcanzó, y su reloj no
+     * sigue corriendo toda la noche hasta la jornada siguiente.
+     */
+    public function cierre(): ?Carbon
+    {
+        if (! $this->partida->esPorJornadas() || ! $this->iniciado_at) {
+            return null;
+        }
+
+        // Si después movieron las jornadas y ya no cae en ninguna, sin tope.
+        return $this->partida->jornadaDe($this->iniciado_at)['fin'] ?? null;
+    }
+
+    /** Si su jornada ya cerró sin que terminara. */
+    public function seLeAcaboLaJornada(): bool
+    {
+        return ! $this->terminado() && ($this->cierre()?->isPast() ?? false);
+    }
+
     /** Segundos de juego, con la penalización sumada. */
     public function segundos(): ?int
     {
-        $inicio = $this->partida->iniciada_at;
+        $inicio = $this->inicio();
 
         if (! $inicio) {
             return null;
         }
 
-        $fin = $this->terminado_at ?? $this->partida->terminada_at ?? now();
+        $fin = $this->terminado_at ?? collect([$this->partida->terminada_at, $this->cierre(), now()])->filter()->min();
 
-        return (int) $inicio->diffInSeconds($fin) + $this->penalizacion;
+        return (int) $inicio->diffInSeconds(max($inicio, $fin)) + $this->penalizacion;
     }
 
     public function urlDelCelular(): string

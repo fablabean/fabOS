@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Auth\TwoFactorService;
 use App\Services\Recorrido\Corrector;
 use App\Services\Recorrido\Juego;
+use App\Services\Recorrido\JuegoException;
 use App\Support\FactoresDeSesion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -517,6 +518,164 @@ class RecorridoGamificadoTest extends TestCase
 
         $this->assertSame(['numero', 'id', 'texto', 'imagen'], array_keys($pista));
         $this->assertSame($c->estaciones()->first()->id, $pista['id']);
+    }
+
+    // ------------------------------------------------------- por jornadas
+
+    /** Una partida por jornadas abierta ahora, por ocho horas, y otra en tres días. */
+    private function partidaPorJornadas(Circuito $c): Partida
+    {
+        return Partida::create([
+            'circuito_id' => $c->id, 'nombre' => 'Halloween', 'modo' => 'jornadas', 'penalizacion_segundos' => 30,
+            'jornadas' => [
+                ['inicio' => now()->subHour()->toDateTimeString(), 'fin' => now()->addHours(7)->toDateTimeString()],
+                ['inicio' => now()->addDays(3)->toDateTimeString(), 'fin' => now()->addDays(3)->addHours(8)->toDateTimeString()],
+            ],
+        ]);
+    }
+
+    public function test_por_jornadas_cada_equipo_arranca_su_propio_reloj(): void
+    {
+        $c = $this->circuito(3);
+        $p = $this->partidaPorJornadas($c);
+
+        $uno = $this->juego()->inscribir($p, 'Vampiros', ['Ana', 'Luis', '']);
+        $this->assertSame(['Ana', 'Luis'], $uno->integrantes->pluck('nombre')->all());
+        $this->assertSame('esperando', $uno->estado);
+        $this->assertNull($uno->segundos());
+
+        $this->juego()->empezar($uno);
+        $this->assertSame('en_curso', $p->fresh()->estado);
+
+        $this->travel(10)->minutes();
+        $dos = $this->juego()->inscribir($p->fresh(), 'Brujas');
+        $this->juego()->empezar($dos);
+
+        $uno->refresh();
+        $dos->refresh();
+        $this->assertSame(600, $uno->segundos());
+        $this->assertSame(0, $dos->segundos());
+        // Rotan por orden de llegada: el segundo arranca en otra estación.
+        $this->assertNotSame($uno->orden[0], $dos->orden[0]);
+        $this->assertSame($dos->iniciado_at->toIso8601String(), $this->juego()->estado($dos)['partida']['iniciada_at']);
+
+        $this->avanzarUnaEtapa($dos);
+        $this->assertSame(2, $dos->etapa);
+
+        // No se inicia para todos: no hay «todos».
+        $this->expectException(JuegoException::class);
+        $this->juego()->iniciar(Partida::create(['circuito_id' => $c->id, 'nombre' => 'Otra', 'modo' => 'jornadas']));
+    }
+
+    public function test_por_jornadas_fuera_del_horario_no_se_inscribe_ni_arranca(): void
+    {
+        $p = $this->partidaPorJornadas($this->circuito(2));
+        $e = $this->juego()->inscribir($p, 'Momias');
+
+        $this->travel(8)->hours();
+
+        try {
+            $this->juego()->inscribir($p->fresh(), 'Zombis');
+            $this->fail('Se inscribió fuera de la jornada.');
+        } catch (JuegoException $ex) {
+            $this->assertStringContainsString('próxima jornada', $ex->getMessage());
+        }
+
+        try {
+            $this->juego()->empezar($e->fresh());
+            $this->fail('Arrancó fuera de la jornada.');
+        } catch (JuegoException) {
+        }
+
+        // En la jornada siguiente, sí.
+        $this->travel(71)->hours();
+        $this->juego()->empezar($e->fresh());
+        $this->assertSame('buscando', $e->fresh()->estado);
+    }
+
+    public function test_por_jornadas_el_nombre_del_equipo_no_se_repite(): void
+    {
+        $p = $this->partidaPorJornadas($this->circuito(1));
+        $this->juego()->inscribir($p, 'Fantasmas');
+
+        $this->expectException(JuegoException::class);
+        $this->juego()->inscribir($p, ' fantasmas ');
+    }
+
+    /** Al cierre de su jornada, el reloj se detiene y no se juega más. */
+    public function test_por_jornadas_el_cierre_detiene_el_reloj_del_que_no_termino(): void
+    {
+        $p = $this->partidaPorJornadas($this->circuito(2));
+        $e = $this->juego()->inscribir($p, 'Calabazas');
+        $this->juego()->empezar($e);
+        $e->refresh();
+
+        $this->juego()->escanear($e, $e->estacionActual());
+        $this->juego()->responder($e->fresh(), 'mal');   // +30 s
+
+        $this->travel(10)->hours();
+        $e->refresh();
+
+        $this->assertTrue($e->seLeAcaboLaJornada());
+        $this->assertSame(7 * 3600 + 30, $e->segundos());   // de que empezó al cierre, más la penalización
+
+        $this->expectException(JuegoException::class);
+        $this->juego()->responder($e, 'laser');
+    }
+
+    public function test_por_jornadas_el_equipo_se_inscribe_y_empieza_desde_el_celular(): void
+    {
+        $p = $this->partidaPorJornadas($this->circuito(2));
+
+        $this->get(route('juego.inscribir', $p->codigo))->assertOk()->assertSee('Inscriban a su equipo');
+
+        $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => "Ana\nLuis"]);
+        $e = Equipo::where('nombre', 'Lobos')->firstOrFail();
+        $r->assertRedirect(route('juego.equipo', $e->token))->assertCookie(JuegoController::COOKIE);
+        $this->assertSame(['Ana', 'Luis'], $e->integrantes->pluck('nombre')->all());
+
+        Livewire::test(Celular::class, ['equipoId' => $e->id])
+            ->assertSee($e->codigo)
+            ->call('empezar')
+            ->assertSee('Su reloj ya corre');
+
+        $this->assertSame('buscando', $e->fresh()->estado);
+
+        // Con la cookie del equipo, la inscripción lo manda de vuelta al juego.
+        $this->withCookie(JuegoController::COOKIE, $e->token)
+            ->get(route('juego.inscribir', $p->codigo))->assertSee('Volver al juego');
+
+        $this->get(route('juego.tablero', $p->codigo))->assertOk()->assertSee('Lobos')->assertSee('inscriban a su equipo');
+
+        // A una simultánea no se inscribe nadie por su cuenta.
+        $simultanea = $this->partida($this->circuito(1), 1);
+        $this->get(route('juego.inscribir', $simultanea->codigo))->assertNotFound();
+    }
+
+    public function test_desde_el_panel_se_arma_una_partida_por_jornadas(): void
+    {
+        $this->superadmin();
+        $c = $this->circuito(2);
+
+        Livewire::test(CreatePartida::class)
+            ->fillForm([
+                'nombre' => 'Halloween', 'circuito_id' => $c->id, 'penalizacion_segundos' => 30, 'rotar_orden' => true,
+                'modo' => 'jornadas',
+                'jornadas' => [['inicio' => '2026-10-30 08:00', 'fin' => '2026-10-30 16:00']],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $p = Partida::firstOrFail();
+        $this->assertTrue($p->esPorJornadas());
+        // Se escribe en la hora del laboratorio; se guarda en la de la aplicación.
+        $this->assertSame('2026-10-30 13:00:00', $p->horarios()->first()['inicio']->toDateTimeString());
+
+        Livewire::test(EditPartida::class, ['record' => $p->getRouteKey()])
+            ->assertActionHidden('iniciar')
+            ->assertActionVisible('inscripcion');
+
+        $this->get(route('recorridos.equipos', $p))->assertOk()->assertSee('inscribir a tu equipo');
     }
 
     /** Pasa de etapa como lo hace el juego: escanear, responder, secuencia. */
