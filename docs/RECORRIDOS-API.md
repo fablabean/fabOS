@@ -206,7 +206,7 @@ Content-Type: application/json
 
 - **Si es correcta:** `estado.etapa` sube y `estado.estado` vuelve a `buscando` con la pista nueva. Si era la última etapa, `estado.estado` pasa a `terminado`.
 - **Si es incorrecta:** `"correcta": false`. Se suma la penalización al equipo y el estado sigue en `secuencia`. Muestren el `mensaje` y limpien el tablero para que el líder lo intente otra vez.
-- **`409` (`no_permitido`):** todavía no hay secuencia que marcar, por ejemplo porque el equipo no ha resuelto la prueba o la partida terminó. La respuesta trae `mensaje` y `estado` para que la app se ponga al día.
+- **`409` (`no_permitido`):** todavía no hay secuencia que marcar, por ejemplo porque el equipo no ha resuelto la prueba o la partida terminó. En una partida por jornadas también llega si el equipo todavía no ha tocado «Empezar» en el celular, o si ya pasó su `cierra_at`. La respuesta trae `mensaje` y `estado` para que la app se ponga al día.
 - **`422`:** el formato es incorrecto. Tienen que ser exactamente 4 enteros entre 1 y 4.
 
 ### Elegir el líder (opcional)
@@ -231,7 +231,7 @@ Todas las respuestas de error son JSON con `error` (un código fijo para el prog
 |---|---|---|
 | 401 | `visor_no_emparejado` | Volver a la pantalla de emparejar |
 | 404 | `codigo_invalido` | Código mal escrito o partida terminada |
-| 409 | `no_permitido` | Mostrar `mensaje` y usar el `estado` que viene en la respuesta |
+| 409 | `no_permitido` | Mostrar `mensaje` y usar el `estado` que viene en la respuesta. Incluye, por jornadas, al equipo que no ha empezado o cuya jornada ya cerró |
 | 422 | — | Error de la app: revisar lo que se envió |
 | 429 | — | Demasiadas llamadas: esperar unos segundos |
 
