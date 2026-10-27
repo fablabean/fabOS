@@ -226,6 +226,10 @@ class RecorridoGamificadoTest extends TestCase
         // Las gafas no ven la secuencia: esa la lleva el equipo.
         $estado = $this->getJson('/api/recorridos/visor/estado', $auth)->assertOk()->json('estado');
         $this->assertArrayNotHasKey('secuencia', $estado);
+        // Cada color con su forma: las Quest 2 no ven colores.
+        $this->assertSame(['triangulo', 'cubo', 'gota', 'estrella'], array_column($estado['botones'], 'forma'));
+        $this->assertStringEndsWith('/img/recorridos/formas/estrella.png', $estado['botones'][3]['icono']);
+        $this->assertFileExists(public_path('img/recorridos/formas/estrella.png'));
 
         $this->postJson('/api/recorridos/visor/secuencia', ['botones' => [1, 2, 3, 4]], $auth)->assertStatus(409);
         $this->postJson('/api/recorridos/visor/secuencia', ['botones' => [1, 2]], $auth)->assertUnprocessable();
@@ -273,7 +277,9 @@ class RecorridoGamificadoTest extends TestCase
             ->assertSee('¿Qué máquina es?')
             ->set('texto', 'Cortadora laser')
             ->call('responder')
-            ->assertSee('Lleven esta secuencia a su líder');
+            ->assertSee('Lleven esta secuencia a su líder')
+            ->assertSee('Cada color tiene su forma')
+            ->assertSeeHtml('viewBox="0 0 100 100"');
     }
 
     public function test_entrar_con_el_codigo_y_volver_al_qr(): void

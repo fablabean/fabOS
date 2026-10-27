@@ -28,13 +28,25 @@ class Equipo extends Model
         'terminado'   => 'Terminó',
     ];
 
-    /** Los cuatro botones del tablero virtual. */
+    /**
+     * Los cuatro botones del tablero virtual: nombre, color y forma. Cada
+     * color va con su forma para quien no distingue colores, y para las
+     * Quest 2, que ven el mundo en blanco y negro.
+     */
     public const BOTONES = [
-        1 => ['Rojo', '#E5484D'],
-        2 => ['Azul', '#3E63DD'],
-        3 => ['Verde', '#30A46C'],
-        4 => ['Amarillo', '#F5C400'],
+        1 => ['Rojo', '#E5484D', 'triangulo'],
+        2 => ['Azul', '#3E63DD', 'cubo'],
+        3 => ['Verde', '#30A46C', 'gota'],
+        4 => ['Amarillo', '#F5C400', 'estrella'],
     ];
+
+    public const FORMAS = ['triangulo' => 'Triángulo', 'cubo' => 'Cubo', 'gota' => 'Gota', 'estrella' => 'Estrella'];
+
+    /** El ícono de la forma, el mismo que dibujan las gafas. */
+    public static function iconoDeForma(string $forma): string
+    {
+        return asset("img/recorridos/formas/{$forma}.png");
+    }
 
     /** Colores para distinguir los equipos en el tablero. */
     public const COLORES = ['#0D6E63', '#3E63DD', '#E5484D', '#F76B15', '#8E4EC6', '#30A46C', '#D6409F', '#A18072'];

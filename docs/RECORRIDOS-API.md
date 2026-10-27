@@ -12,7 +12,7 @@ Cada equipo repite este ciclo una vez por estación (normalmente 5):
 |---|---|---|---|
 | 1 | `buscando` | El equipo busca el lugar de la pista | La **pista** (texto y, si hay, imagen) |
 | 2 | `resolviendo` | Escanearon el QR correcto; resuelven la prueba en su celular | La pista y un aviso de que están resolviendo |
-| 3 | `secuencia` | Resolvieron; el celular les muestra 4 colores en orden | El **tablero de 4 botones** |
+| 3 | `secuencia` | Resolvieron; el celular les muestra 4 colores, cada uno con su forma, en orden | El **tablero de 4 botones** |
 | 4 | — | El líder marca la secuencia → `POST /secuencia` | Correcta: se abre la etapa siguiente (vuelve a `buscando`) o el equipo termina (`terminado`) |
 
 También pueden aparecer estos estados:
@@ -82,10 +82,10 @@ Content-Type: application/json
     "lider": null,
     "pista": null,
     "botones": [
-      { "valor": 1, "nombre": "Rojo",     "color": "#E5484D" },
-      { "valor": 2, "nombre": "Azul",     "color": "#3E63DD" },
-      { "valor": 3, "nombre": "Verde",    "color": "#30A46C" },
-      { "valor": 4, "nombre": "Amarillo", "color": "#F5C400" }
+      { "valor": 1, "nombre": "Rojo",     "color": "#E5484D", "forma": "triangulo", "icono": "https://fablabean.com/img/recorridos/formas/triangulo.png" },
+      { "valor": 2, "nombre": "Azul",     "color": "#3E63DD", "forma": "cubo",      "icono": "https://fablabean.com/img/recorridos/formas/cubo.png" },
+      { "valor": 3, "nombre": "Verde",    "color": "#30A46C", "forma": "gota",      "icono": "https://fablabean.com/img/recorridos/formas/gota.png" },
+      { "valor": 4, "nombre": "Amarillo", "color": "#F5C400", "forma": "estrella",  "icono": "https://fablabean.com/img/recorridos/formas/estrella.png" }
     ],
     "fallos": 0,
     "penalizacion_segundos": 0,
@@ -159,10 +159,10 @@ Authorization: Bearer <token>
     "lider": { "id": 32, "nombre": "Luis" },
     "pista": { "numero": 4, "id": 17, "texto": "Donde la luz corta sin tocar…", "imagen": "https://fablabean.com/storage/recorridos/abc.jpg" },
     "botones": [
-      { "valor": 1, "nombre": "Rojo",     "color": "#E5484D" },
-      { "valor": 2, "nombre": "Azul",     "color": "#3E63DD" },
-      { "valor": 3, "nombre": "Verde",    "color": "#30A46C" },
-      { "valor": 4, "nombre": "Amarillo", "color": "#F5C400" }
+      { "valor": 1, "nombre": "Rojo",     "color": "#E5484D", "forma": "triangulo", "icono": "https://fablabean.com/img/recorridos/formas/triangulo.png" },
+      { "valor": 2, "nombre": "Azul",     "color": "#3E63DD", "forma": "cubo",      "icono": "https://fablabean.com/img/recorridos/formas/cubo.png" },
+      { "valor": 3, "nombre": "Verde",    "color": "#30A46C", "forma": "gota",      "icono": "https://fablabean.com/img/recorridos/formas/gota.png" },
+      { "valor": 4, "nombre": "Amarillo", "color": "#F5C400", "forma": "estrella",  "icono": "https://fablabean.com/img/recorridos/formas/estrella.png" }
     ],
     "fallos": 1,
     "penalizacion_segundos": 30,
@@ -184,6 +184,7 @@ Qué significa cada campo:
 - `partida.iniciada_at` es cuándo arrancó **el reloj de este equipo**: en una simultánea es el de todos; por jornadas, el suyo.
 - `partida.cierra_at` solo viene en las partidas por jornadas, una vez el equipo arrancó: a esa hora se le acaba el tiempo para jugar y el servidor deja de aceptarle pasos. En las simultáneas es `null`.
 - `botones` es la lista de botones que deben dibujarse, en ese orden, con esos colores. Úsenla en vez de fijar los colores en la app.
+- Cada botón tiene además su **forma** (`forma`): rojo es triángulo, azul es cubo, verde es gota y amarillo es estrella. El botón tiene que verse con su forma, no solo con su color: las Quest 2 muestran el entorno en blanco y negro, y hay jugadores que no distinguen colores. El celular del equipo muestra la secuencia con color y forma, así que el líder puede guiarse por cualquiera de los dos. `icono` es el PNG de la forma, con fondo transparente, para usarlo tal cual. `forma` y `icono` son campos nuevos; `valor`, `nombre` y `color` no cambiaron.
 
 **Consulten este endpoint cada 2 segundos.** Por ahora no hay notificaciones en tiempo real. El cambio de `buscando` a `resolviendo` y de `resolviendo` a `secuencia` ocurre en el celular del equipo, y las gafas solo se enteran consultando. El límite es de 120 llamadas por minuto por gafas.
 

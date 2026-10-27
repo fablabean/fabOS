@@ -373,7 +373,10 @@ class Juego
                 'texto' => $estacion->pista,
                 'imagen' => Estacion::urlDeImagen($estacion->pista_imagen),
             ] : null,
-            'botones' => collect(Equipo::BOTONES)->map(fn ($b, $n) => ['valor' => $n, 'nombre' => $b[0], 'color' => $b[1]])->values()->all(),
+            'botones' => collect(Equipo::BOTONES)->map(fn ($b, $n) => [
+                'valor' => $n, 'nombre' => $b[0], 'color' => $b[1],
+                'forma' => $b[2], 'icono' => Equipo::iconoDeForma($b[2]),
+            ])->values()->all(),
             'fallos' => $equipo->fallos,
             'penalizacion_segundos' => $equipo->penalizacion,
             'segundos' => $equipo->segundos(),

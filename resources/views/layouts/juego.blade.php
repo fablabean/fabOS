@@ -48,8 +48,9 @@
         .etapas i.hecha{background:var(--accent)}
         .etapas i.actual{background:color-mix(in srgb,var(--accent) 45%,var(--rule))}
         .secuencia{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:1rem 0}
-        .secuencia div{aspect-ratio:1;border-radius:14px;display:flex;align-items:center;justify-content:center;
-               font-size:1.6rem;font-weight:800;color:#fff;text-shadow:0 1px 2px rgb(0 0 0/.35)}
+        .secuencia div{aspect-ratio:3/4;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;
+               font-size:1.3rem;line-height:1;font-weight:800;color:#fff;text-shadow:0 1px 2px rgb(0 0 0/.35)}
+        .secuencia svg{filter:drop-shadow(0 1px 1px rgb(0 0 0/.35))}
         .secuencia small{display:block;font-size:.7rem;font-weight:600}
         .error{color:var(--danger);font-size:.9rem;margin-top:.4rem}
     </style>

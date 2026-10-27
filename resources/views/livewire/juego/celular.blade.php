@@ -136,11 +136,14 @@
     @elseif ($equipo->estado === 'secuencia')
         <div class="tarjeta">
             <h2>Lleven esta secuencia a su líder</h2>
-            <p>Que la marque en el tablero de las gafas, en este orden:</p>
+            <p>Que la marque en el tablero de las gafas, en este orden. Cada color tiene su forma: en las gafas, busquen la forma.</p>
             <div class="secuencia">
                 @foreach ($equipo->secuencia ?? [] as $n => $b)
-                    <div style="background:{{ Equipo::BOTONES[$b][1] }}">
-                        <span>{{ $n + 1 }}<small>{{ Equipo::BOTONES[$b][0] }}</small></span>
+                    @php [$color, $hex, $forma] = Equipo::BOTONES[$b]; @endphp
+                    <div style="background:{{ $hex }}" aria-label="{{ $n + 1 }}: {{ $color }}, {{ Equipo::FORMAS[$forma] }}">
+                        <span>{{ $n + 1 }}</span>
+                        @include('juego.forma', ['forma' => $forma])
+                        <small>{{ $color }}</small>
                     </div>
                 @endforeach
             </div>

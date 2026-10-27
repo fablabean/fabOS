@@ -28,13 +28,15 @@
             <h2>Marca la secuencia</h2>
             <div style="display:flex;gap:.4rem;min-height:2.2rem;margin-bottom:.6rem">
                 <template x-for="(b, i) in marcados" :key="i">
-                    <span :style="`width:2.2rem;height:2.2rem;border-radius:8px;background:${ {{ json_encode(collect($estado['botones'])->pluck('color', 'valor')) }}[b] }`"></span>
+                    <img :src="{{ json_encode(collect($estado['botones'])->pluck('icono', 'valor')) }}[b]" alt=""
+                         style="width:2.2rem;height:2.2rem;object-fit:contain">
                 </template>
             </div>
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem">
                 @foreach ($estado['botones'] as $b)
-                    <button type="button" class="boton" style="background:{{ $b['color'] }};padding:1.4rem"
+                    <button type="button" class="boton" style="background:{{ $b['color'] }};padding:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem"
                             @click="if (marcados.length < 4) { marcados.push({{ $b['valor'] }}); if (marcados.length === 4) { $wire.marcar(marcados).then(() => marcados = []) } }">
+                        @include('juego.forma', ['forma' => $b['forma'], 'tam' => '2rem'])
                         {{ $b['nombre'] }}
                     </button>
                 @endforeach
