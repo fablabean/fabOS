@@ -9,6 +9,7 @@
         @media (max-width:700px){
             .fila-tablero{grid-template-columns:2rem 1fr auto;gap:.4rem .8rem}
             .fila-tablero > :nth-child(3){grid-column:1 / -1;grid-row:2}
+            .qr-inscripcion svg{width:160px;height:auto}
         }
     </style>
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:.5rem 2rem">
@@ -24,9 +25,10 @@
         @php $jornada = $partida->jornadaDe(); $proxima = $jornada ? null : $partida->proximaJornada(); @endphp
         <div class="tarjeta" style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem 1.5rem">
             @if ($jornada)
-                <div style="background:#fff;padding:.4rem;border-radius:8px;line-height:0">{!! app(\App\Services\Qr\QrRenderer::class)->svg($partida->urlDeInscripcion(), 120) !!}</div>
-                <div>
-                    <div style="font-size:1.3rem;font-weight:700">¿Llegaron? Escaneen e inscriban a su equipo</div>
+                {{-- Grande: se lee desde lejos en la pantalla de la entrada. --}}
+                <div class="qr-inscripcion" style="background:#fff;padding:.6rem;border-radius:10px;line-height:0">{!! app(\App\Services\Qr\QrRenderer::class)->svg($partida->urlDeInscripcion(), 240) !!}</div>
+                <div style="flex:1 1 16rem">
+                    <div style="font-size:1.8rem;font-weight:700;line-height:1.2">¿Llegaron? Escaneen e inscriban a su equipo</div>
                     <div class="muted">Cada equipo arranca su reloj cuando está listo. La jornada cierra a las {{ $jornada['fin']->copy()->timezone(config('fabos.lab.timezone'))->format('g:i a') }}.</div>
                 </div>
             @elseif ($proxima)

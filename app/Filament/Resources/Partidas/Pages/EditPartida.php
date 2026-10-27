@@ -84,7 +84,7 @@ class EditPartida extends EditRecord
                 ->openUrlInNewTab(),
 
             Action::make('equipos')
-                ->label(fn () => $this->record->esPorJornadas() ? 'Cartel y códigos' : 'Códigos de los equipos')
+                ->label(fn () => $this->record->esPorJornadas() ? 'QR de inscripción' :'Códigos de los equipos')
                 ->icon('heroicon-o-qr-code')
                 ->color('gray')
                 ->url(fn () => route('recorridos.equipos', $this->record))
