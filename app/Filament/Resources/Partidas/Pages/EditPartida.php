@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Partidas\Pages;
 
 use App\Filament\Resources\Partidas\PartidaResource;
 use App\Models\Recorrido\Partida;
+use App\Services\Recorrido\InformeDeParticipantes;
 use App\Services\Recorrido\Juego;
 use App\Services\Recorrido\JuegoException;
 use Filament\Actions\Action;
@@ -85,6 +86,16 @@ class EditPartida extends EditRecord
                 ->color('gray')
                 ->url(fn () => route('recorridos.equipos', $this->record))
                 ->openUrlInNewTab(),
+
+            Action::make('participantes')
+                ->label('Participantes (CSV)')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->action(fn () => response()->streamDownload(
+                    fn () => print(app(InformeDeParticipantes::class)->csv(collect([$this->record]))),
+                    'participantes-' . \Illuminate\Support\Str::slug($this->record->nombre) . '.csv',
+                    ['Content-Type' => 'text/csv; charset=UTF-8'],
+                )),
 
             Action::make('tablero')
                 ->label('Tablero')

@@ -95,9 +95,13 @@ class Juego
      * su celular. Queda esperando hasta que decida empezar: antes tiene que
      * recibir las gafas y emparejarlas.
      *
-     * @param  array<int,string>  $integrantes
+     * Cada integrante, con su correo si lo dio. La autorización de contacto
+     * es una sola, la que marca quien inscribe por todo el equipo, y solo se
+     * guarda en quien dejó correo: sin correo no hay a quién escribirle.
+     *
+     * @param  array<int,string|array{nombre?:?string,correo?:?string}>  $integrantes
      */
-    public function inscribir(Partida $partida, string $nombre, array $integrantes = []): Equipo
+    public function inscribir(Partida $partida, string $nombre, array $integrantes = [], bool $autorizaContacto = false): Equipo
     {
         $this->exigirJornadaAbierta($partida);
 
@@ -107,7 +111,7 @@ class Juego
             throw new JuegoException('Ya hay un equipo con ese nombre en esta partida. Elijan otro.');
         }
 
-        return DB::transaction(function () use ($partida, $nombre, $integrantes) {
+        return DB::transaction(function () use ($partida, $nombre, $integrantes, $autorizaContacto) {
             $cuantos = $partida->equipos()->count();
 
             $equipo = $partida->equipos()->create([
@@ -116,8 +120,20 @@ class Juego
                 'posicion' => $cuantos + 1,
             ]);
 
-            foreach (array_filter(array_map('trim', $integrantes)) as $persona) {
-                $equipo->integrantes()->create(['nombre' => mb_substr($persona, 0, 80)]);
+            foreach ($integrantes as $persona) {
+                $persona = is_array($persona) ? $persona : ['nombre' => $persona];
+                $quien = trim((string) ($persona['nombre'] ?? ''));
+                $correo = trim((string) ($persona['correo'] ?? ''));
+
+                if ($quien === '') {
+                    continue;
+                }
+
+                $equipo->integrantes()->create([
+                    'nombre' => mb_substr($quien, 0, 80),
+                    'correo' => $correo ?: null,
+                    'autoriza_contacto_at' => $correo && $autorizaContacto ? now() : null,
+                ]);
             }
 
             return $equipo;

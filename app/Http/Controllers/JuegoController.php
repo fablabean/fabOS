@@ -23,6 +23,9 @@ class JuegoController extends Controller
 {
     public const COOKIE = 'juego_equipo';
 
+    /** Cuántas filas de integrantes trae la inscripción. */
+    public const INTEGRANTES = 8;
+
     /** El celular del equipo. Abrirlo deja al teléfono identificado. */
     public function equipo(string $token)
     {
@@ -111,13 +114,19 @@ class JuegoController extends Controller
 
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:80'],
-            'integrantes' => ['nullable', 'string', 'max:1200'],
-        ], [], ['nombre' => 'nombre del equipo']);
-
-        $integrantes = array_slice(preg_split('/\R/', (string) ($datos['integrantes'] ?? '')), 0, 12);
+            'integrantes' => ['nullable', 'array', 'max:' . self::INTEGRANTES],
+            'integrantes.*.nombre' => ['nullable', 'string', 'max:80', 'required_with:integrantes.*.correo'],
+            'integrantes.*.correo' => ['nullable', 'email', 'max:160'],
+            // Ley 1581 de 2012: si dejan correos, autorizan para qué.
+            'autoriza' => collect($request->input('integrantes', []))->pluck('correo')->filter()->isNotEmpty() ? ['accepted'] : ['nullable'],
+        ], [
+            'integrantes.*.nombre.required_with' => 'A ese correo le falta el nombre.',
+            'integrantes.*.correo.email' => 'Ese correo no está bien escrito.',
+            'autoriza.accepted' => 'Para guardar los correos necesitamos la autorización.',
+        ], ['nombre' => 'nombre del equipo']);
 
         try {
-            $equipo = $juego->inscribir($partida, $datos['nombre'], $integrantes);
+            $equipo = $juego->inscribir($partida, $datos['nombre'], $datos['integrantes'] ?? [], $request->boolean('autoriza'));
         } catch (JuegoException $e) {
             return back()->withInput()->withErrors(['nombre' => $e->getMessage()]);
         }

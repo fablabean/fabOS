@@ -8,6 +8,7 @@ use App\Filament\Resources\Partidas\Pages\EditPartida;
 use App\Filament\Resources\Partidas\Pages\ListPartidas;
 use App\Models\Recorrido\Circuito;
 use App\Models\Recorrido\Equipo;
+use App\Models\Recorrido\Integrante;
 use App\Models\Recorrido\Partida;
 use App\Models\Reservation;
 use App\Models\Space;
@@ -17,6 +18,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -154,7 +156,21 @@ class PartidaResource extends Resource
                                 ->placeholder('Se genera al guardar'),
                             Repeater::make('integrantes')
                                 ->relationship()
-                                ->simple(TextInput::make('nombre')->required()->maxLength(80))
+                                ->table([
+                                    TableColumn::make('Nombre'),
+                                    TableColumn::make('Correo'),
+                                    TableColumn::make('Autorizó que le escribamos'),
+                                ])
+                                ->schema([
+                                    TextInput::make('nombre')->required()->maxLength(80),
+                                    TextInput::make('correo')->email()->maxLength(160),
+                                    // Se guarda cuándo autorizó, no solo que sí: la Ley 1581 pide poder probarlo.
+                                    Toggle::make('autoriza_contacto_at')
+                                        ->formatStateUsing(fn ($state) => filled($state))
+                                        ->dehydrateStateUsing(fn ($state, ?Integrante $record) => $state
+                                            ? ($record?->autoriza_contacto_at ?? now())
+                                            : null),
+                                ])
                                 ->addActionLabel('Agregar integrante')
                                 ->defaultItems(0)
                                 ->columnSpanFull(),

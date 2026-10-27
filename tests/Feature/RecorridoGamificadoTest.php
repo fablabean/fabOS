@@ -629,10 +629,27 @@ class RecorridoGamificadoTest extends TestCase
 
         $this->get(route('juego.inscribir', $p->codigo))->assertOk()->assertSee('Inscriban a su equipo');
 
-        $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => "Ana\nLuis"]);
+        $integrantes = [['nombre' => 'Ana', 'correo' => ' Ana@Colegio.edu.co '], ['nombre' => 'Luis', 'correo' => ''], ['nombre' => '', 'correo' => '']];
+
+        // Si dejan correos, sin autorización no se guarda nada.
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes])
+            ->assertSessionHasErrors('autoriza');
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Ana', 'correo' => 'no-es-correo']], 'autoriza' => '1'])
+            ->assertSessionHasErrors('integrantes.0.correo');
+        $this->assertSame(0, Equipo::count());
+
+        $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes, 'autoriza' => '1']);
         $e = Equipo::where('nombre', 'Lobos')->firstOrFail();
         $r->assertRedirect(route('juego.equipo', $e->token))->assertCookie(JuegoController::COOKIE);
         $this->assertSame(['Ana', 'Luis'], $e->integrantes->pluck('nombre')->all());
+        $this->assertSame('ana@colegio.edu.co', $e->integrantes[0]->correo);
+        $this->assertNotNull($e->integrantes[0]->autoriza_contacto_at);
+        // Sin correo no hay a quién escribirle: tampoco hay autorización que guardar.
+        $this->assertNull($e->integrantes[1]->autoriza_contacto_at);
+
+        // Sin correos, la casilla no hace falta.
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Osos', 'integrantes' => [['nombre' => 'Sara']]])
+            ->assertSessionHasNoErrors();
 
         Livewire::test(Celular::class, ['equipoId' => $e->id])
             ->assertSee($e->codigo)
@@ -676,6 +693,54 @@ class RecorridoGamificadoTest extends TestCase
             ->assertActionVisible('inscripcion');
 
         $this->get(route('recorridos.equipos', $p))->assertOk()->assertSee('inscribir a tu equipo');
+    }
+
+    public function test_el_informe_de_participantes_trae_correos_y_resultados(): void
+    {
+        $c = $this->circuito(1);
+        $p = $this->partidaPorJornadas($c);
+        $rapidos = $this->juego()->inscribir($p, 'Rápidos', [['nombre' => 'Ana', 'correo' => 'ana@test.co'], ['nombre' => 'Luis']], autorizaContacto: true);
+        $this->juego()->inscribir($p, 'Tardíos', [['nombre' => 'Sara', 'correo' => 'sara@test.co']]);
+        $this->juego()->empezar($rapidos);
+        $this->avanzarUnaEtapa($rapidos->fresh());
+
+        $csv = app(\App\Services\Recorrido\InformeDeParticipantes::class)->csv(collect([$p->fresh()]));
+        $filas = array_map(fn ($l) => str_getcsv($l, ';', '"', '\\'), array_slice(preg_split('/\R/', trim(substr($csv, 3))), 1));
+
+        $this->assertCount(3, $filas);
+        $this->assertSame(['Ana', 'ana@test.co'], array_slice($filas[0], 0, 2));
+        $this->assertStringStartsWith('Sí', $filas[0][2]);
+        $this->assertSame(['Rápidos', 'Halloween', 'Conoce el lab'], array_slice($filas[0], 3, 3));
+        $this->assertSame(['1', 'Terminó'], array_slice($filas[0], 7, 2));
+        $this->assertSame('No', $filas[2][2]);           // Sara dio correo, pero no autorizó
+        $this->assertSame('No empezó', $filas[2][8]);
+
+        $this->superadmin();
+        Livewire::test(\App\Filament\Resources\Partidas\Pages\ListPartidas::class)->callAction('participantes')->assertFileDownloaded();
+        Livewire::test(EditPartida::class, ['record' => $p->getRouteKey()])->callAction('participantes')->assertFileDownloaded();
+    }
+
+    /** Desde el panel también se anotan los correos, con su autorización. */
+    public function test_desde_el_panel_se_anota_el_correo_de_cada_integrante(): void
+    {
+        $this->superadmin();
+        $c = $this->circuito(1);
+
+        Livewire::test(CreatePartida::class)
+            ->fillForm([
+                'nombre' => 'Colegio', 'circuito_id' => $c->id, 'penalizacion_segundos' => 30, 'rotar_orden' => true, 'modo' => 'simultanea',
+                'equipos' => [['nombre' => 'Rojos', 'color' => '#E5484D', 'integrantes' => [
+                    ['nombre' => 'Ana', 'correo' => 'ana@test.co', 'autoriza_contacto_at' => true],
+                    ['nombre' => 'Luis', 'correo' => 'luis@test.co', 'autoriza_contacto_at' => false],
+                ]]],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $personas = Partida::firstOrFail()->equipos[0]->integrantes;
+        $this->assertSame(['ana@test.co', 'luis@test.co'], $personas->pluck('correo')->all());
+        $this->assertNotNull($personas[0]->autoriza_contacto_at);
+        $this->assertNull($personas[1]->autoriza_contacto_at);
     }
 
     /** Pasa de etapa como lo hace el juego: escanear, responder, secuencia. */
