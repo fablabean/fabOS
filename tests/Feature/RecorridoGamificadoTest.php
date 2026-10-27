@@ -11,6 +11,7 @@ use App\Models\Recorrido\Circuito;
 use App\Models\Recorrido\Equipo;
 use App\Models\Recorrido\Estacion;
 use App\Models\Recorrido\Partida;
+use App\Models\Reservation;
 use App\Models\User;
 use App\Services\Auth\TwoFactorService;
 use App\Services\Recorrido\Corrector;
@@ -629,25 +630,38 @@ class RecorridoGamificadoTest extends TestCase
 
         $this->get(route('juego.inscribir', $p->codigo))->assertOk()->assertSee('Inscriban a su equipo');
 
-        $integrantes = [['nombre' => 'Ana', 'correo' => ' Ana@Colegio.edu.co '], ['nombre' => 'Luis', 'correo' => ''], ['nombre' => '', 'correo' => '']];
+        $integrantes = [
+            ['nombre' => 'Ana', 'menor' => '0', 'correo' => ' Ana@Colegio.edu.co '],
+            ['nombre' => 'Luis', 'menor' => '0', 'correo' => ''],
+            // Un menor no deja correo, aunque llegue uno escrito.
+            ['nombre' => 'Tomás', 'menor' => '1', 'correo' => 'tomas@colegio.edu.co', 'autoriza' => '1'],
+            // Sin responder la edad tampoco: no se supone que es mayor.
+            ['nombre' => 'Sofía', 'correo' => 'sofia@colegio.edu.co', 'autoriza' => '1'],
+            ['nombre' => '', 'correo' => ''],
+        ];
 
-        // Si dejan correos, sin autorización no se guarda nada.
+        // Un adulto que deja correo tiene que haber aceptado él, no quien llena.
         $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes])
-            ->assertSessionHasErrors('autoriza');
-        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Ana', 'correo' => 'no-es-correo']], 'autoriza' => '1'])
+            ->assertSessionHasErrors('integrantes.0.autoriza');
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Ana', 'menor' => '0', 'correo' => 'no-es-correo', 'autoriza' => '1']]])
             ->assertSessionHasErrors('integrantes.0.correo');
         $this->assertSame(0, Equipo::count());
 
-        $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes, 'autoriza' => '1']);
+        $integrantes[0]['autoriza'] = '1';
+        $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes]);
         $e = Equipo::where('nombre', 'Lobos')->firstOrFail();
         $r->assertRedirect(route('juego.equipo', $e->token))->assertCookie(JuegoController::COOKIE);
-        $this->assertSame(['Ana', 'Luis'], $e->integrantes->pluck('nombre')->all());
-        $this->assertSame('ana@colegio.edu.co', $e->integrantes[0]->correo);
-        $this->assertNotNull($e->integrantes[0]->autoriza_contacto_at);
-        // Sin correo no hay a quién escribirle: tampoco hay autorización que guardar.
-        $this->assertNull($e->integrantes[1]->autoriza_contacto_at);
+        [$ana, $luis, $tomas, $sofia] = $e->integrantes->all();
+        $this->assertSame(['Ana', 'Luis', 'Tomás', 'Sofía'], $e->integrantes->pluck('nombre')->all());
+        $this->assertSame('ana@colegio.edu.co', $ana->correo);
+        $this->assertNotNull($ana->autoriza_contacto_at);
+        $this->assertNull($luis->autoriza_contacto_at);
+        $this->assertTrue($tomas->menor_de_edad);
+        $this->assertNull($tomas->correo);
+        $this->assertNull($tomas->autoriza_contacto_at);
+        $this->assertNull($sofia->correo);
 
-        // Sin correos, la casilla no hace falta.
+        // Sin correos, no hay nada que aceptar.
         $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Osos', 'integrantes' => [['nombre' => 'Sara']]])
             ->assertSessionHasNoErrors();
 
@@ -699,8 +713,11 @@ class RecorridoGamificadoTest extends TestCase
     {
         $c = $this->circuito(1);
         $p = $this->partidaPorJornadas($c);
-        $rapidos = $this->juego()->inscribir($p, 'Rápidos', [['nombre' => 'Ana', 'correo' => 'ana@test.co'], ['nombre' => 'Luis']], autorizaContacto: true);
-        $this->juego()->inscribir($p, 'Tardíos', [['nombre' => 'Sara', 'correo' => 'sara@test.co']]);
+        $rapidos = $this->juego()->inscribir($p, 'Rápidos', [
+            ['nombre' => 'Ana', 'menor' => false, 'correo' => 'ana@test.co', 'autoriza' => true],
+            ['nombre' => 'Luis', 'menor' => true],
+        ]);
+        $this->juego()->inscribir($p, 'Tardíos', [['nombre' => 'Sara', 'menor' => false, 'correo' => 'sara@test.co']]);
         $this->juego()->empezar($rapidos);
         $this->avanzarUnaEtapa($rapidos->fresh());
 
@@ -708,12 +725,13 @@ class RecorridoGamificadoTest extends TestCase
         $filas = array_map(fn ($l) => str_getcsv($l, ';', '"', '\\'), array_slice(preg_split('/\R/', trim(substr($csv, 3))), 1));
 
         $this->assertCount(3, $filas);
-        $this->assertSame(['Ana', 'ana@test.co'], array_slice($filas[0], 0, 2));
-        $this->assertStringStartsWith('Sí', $filas[0][2]);
-        $this->assertSame(['Rápidos', 'Halloween', 'Conoce el lab'], array_slice($filas[0], 3, 3));
-        $this->assertSame(['1', 'Terminó'], array_slice($filas[0], 7, 2));
-        $this->assertSame('No', $filas[2][2]);           // Sara dio correo, pero no autorizó
-        $this->assertSame('No empezó', $filas[2][8]);
+        $this->assertSame(['Ana', 'No', 'ana@test.co'], array_slice($filas[0], 0, 3));
+        $this->assertStringStartsWith('Sí', $filas[0][3]);
+        $this->assertSame(['Rápidos', 'Halloween', 'Conoce el lab'], array_slice($filas[0], 4, 3));
+        $this->assertSame(['1', 'Terminó'], array_slice($filas[0], 8, 2));
+        $this->assertSame(['Luis', 'Sí', '', 'No: es menor de edad'], array_slice($filas[1], 0, 4));
+        $this->assertSame('No', $filas[2][3]);           // Sara dio correo, pero no aceptó
+        $this->assertSame('No empezó', $filas[2][9]);
 
         $this->superadmin();
         Livewire::test(\App\Filament\Resources\Partidas\Pages\ListPartidas::class)->callAction('participantes')->assertFileDownloaded();
@@ -730,17 +748,65 @@ class RecorridoGamificadoTest extends TestCase
             ->fillForm([
                 'nombre' => 'Colegio', 'circuito_id' => $c->id, 'penalizacion_segundos' => 30, 'rotar_orden' => true, 'modo' => 'simultanea',
                 'equipos' => [['nombre' => 'Rojos', 'color' => '#E5484D', 'integrantes' => [
-                    ['nombre' => 'Ana', 'correo' => 'ana@test.co', 'autoriza_contacto_at' => true],
-                    ['nombre' => 'Luis', 'correo' => 'luis@test.co', 'autoriza_contacto_at' => false],
+                    ['nombre' => 'Ana', 'menor_de_edad' => false, 'correo' => 'ana@test.co', 'autoriza_contacto_at' => true],
+                    ['nombre' => 'Luis', 'menor_de_edad' => false, 'correo' => 'luis@test.co', 'autoriza_contacto_at' => false],
+                    ['nombre' => 'Tomás', 'menor_de_edad' => true, 'correo' => 'tomas@test.co', 'autoriza_contacto_at' => true],
                 ]]],
             ])
             ->call('create')
             ->assertHasNoFormErrors();
 
         $personas = Partida::firstOrFail()->equipos[0]->integrantes;
-        $this->assertSame(['ana@test.co', 'luis@test.co'], $personas->pluck('correo')->all());
+        $this->assertSame(['ana@test.co', 'luis@test.co', null], $personas->pluck('correo')->all());
         $this->assertNotNull($personas[0]->autoriza_contacto_at);
         $this->assertNull($personas[1]->autoriza_contacto_at);
+        // Al menor no se le guarda correo ni autorización, aunque lleguen.
+        $this->assertTrue($personas[2]->menor_de_edad);
+        $this->assertNull($personas[2]->autoriza_contacto_at);
+    }
+
+    // ------------------------------------------------------------ el reporte
+
+    /** A quien solicitó el recorrido le llega el enlace; también de partidas viejas. */
+    public function test_el_reporte_del_recorrido_le_llega_a_quien_lo_solicito(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->superadmin();
+        $c = $this->circuito(1);
+        $p = $this->partida($c, 2);
+        $this->juego()->iniciar($p);
+        $p->equipos[0]->integrantes()->create(['nombre' => 'Marta', 'menor_de_edad' => false, 'correo' => 'marta@test.co']);
+        $this->avanzarUnaEtapa($p->equipos[0]->fresh());
+
+        // Una partida de antes no tiene enlace todavía: se crea al pedirlo.
+        $this->assertNull($p->fresh()->reporte_token);
+
+        $profe = User::create(['name' => 'Profe Ramírez', 'email' => 'profe@colegio.edu.co', 'status' => 'activo']);
+        $p->reservation_id = Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $profe->id, 'user_id' => $profe->id,
+            'mode' => 'recorrido', 'status' => 'confirmada', 'starts_at' => now(), 'ends_at' => now()->addHours(2),
+        ])->id;
+        $p->save();
+
+        Livewire::test(EditPartida::class, ['record' => $p->getRouteKey()])
+            ->mountAction('enviarReporte')
+            ->assertSchemaStateSet(['nombre' => 'Profe Ramírez', 'correo' => 'profe@colegio.edu.co'])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $p->refresh();
+        $this->assertNotNull($p->reporte_token);
+        $this->assertSame('profe@colegio.edu.co', $p->reporte_enviado_a);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('profe@colegio.edu.co'));
+        $this->assertDatabaseHas('notification_logs', ['key' => 'recorrido.reporte', 'to' => 'profe@colegio.edu.co', 'status' => 'enviado']);
+
+        // El reporte se abre sin sesión: nombres de todos, correos de nadie.
+        auth()->logout();
+        $this->get($p->urlDelReporte())
+            ->assertOk()
+            ->assertSee('Equipo 1')->assertSee('Ana 1')->assertSee('Marta')->assertSee('Profe Ramírez')
+            ->assertDontSee('marta@test.co');
+        $this->get(route('recorridos.reporte', str_repeat('a', 40)))->assertNotFound();
     }
 
     /** Pasa de etapa como lo hace el juego: escanear, responder, secuencia. */

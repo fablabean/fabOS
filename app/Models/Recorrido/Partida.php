@@ -37,6 +37,7 @@ class Partida extends Model
     protected $fillable = [
         'circuito_id', 'reservation_id', 'nombre', 'codigo', 'estado', 'modo', 'jornadas',
         'penalizacion_segundos', 'rotar_orden', 'iniciada_at', 'terminada_at',
+        'reporte_token', 'reporte_enviado_a', 'reporte_enviado_at',
     ];
 
     protected function casts(): array
@@ -46,6 +47,7 @@ class Partida extends Model
             'jornadas'     => 'array',
             'iniciada_at'  => 'datetime',
             'terminada_at' => 'datetime',
+            'reporte_enviado_at' => 'datetime',
         ];
     }
 
@@ -123,6 +125,35 @@ class Partida extends Model
     public function urlDeInscripcion(): string
     {
         return route('juego.inscribir', $this->codigo);
+    }
+
+    /**
+     * El enlace del reporte para quien solicitó el recorrido. Distinto del
+     * tablero, que se proyecta: este lleva los nombres de todos. Se crea la
+     * primera vez que se pide, y así sirve también para partidas viejas.
+     */
+    public function urlDelReporte(): string
+    {
+        if (! $this->reporte_token) {
+            $this->forceFill(['reporte_token' => Str::random(40)])->save();
+        }
+
+        return route('recorridos.reporte', $this->reporte_token);
+    }
+
+    /** Cuándo se jugó, para decirlo en una línea: «viernes 31 de octubre», o varias fechas. */
+    public function fechaDeJuego(): string
+    {
+        $tz = config('fabos.lab.timezone');
+
+        $dias = $this->esPorJornadas()
+            ? $this->horarios()->pluck('inicio')
+            : collect([$this->iniciada_at ?? $this->created_at]);
+
+        return $dias->filter()
+            ->map(fn ($d) => $d->copy()->timezone($tz)->locale('es')->translatedFormat('l j \d\e F \d\e Y'))
+            ->unique()
+            ->implode(', ');
     }
 
     public function urlDelTablero(): string

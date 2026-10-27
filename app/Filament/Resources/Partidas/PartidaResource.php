@@ -158,14 +158,23 @@ class PartidaResource extends Resource
                                 ->relationship()
                                 ->table([
                                     TableColumn::make('Nombre'),
+                                    TableColumn::make('Menor de edad'),
                                     TableColumn::make('Correo'),
-                                    TableColumn::make('Autorizó que le escribamos'),
+                                    TableColumn::make('Aceptó que le escribamos'),
                                 ])
                                 ->schema([
                                     TextInput::make('nombre')->required()->maxLength(80),
-                                    TextInput::make('correo')->email()->maxLength(160),
-                                    // Se guarda cuándo autorizó, no solo que sí: la Ley 1581 pide poder probarlo.
+                                    // Antes que el correo: a un menor no se le escribe (Ley 1581).
+                                    Toggle::make('menor_de_edad')
+                                        ->live()
+                                        ->afterStateUpdated(fn ($state, $set) => $state ? $set('correo', null) : null),
+                                    TextInput::make('correo')
+                                        ->email()->maxLength(160)
+                                        ->disabled(fn ($get) => (bool) $get('menor_de_edad'))
+                                        ->placeholder(fn ($get) => $get('menor_de_edad') ? 'No se guarda' : null),
+                                    // Se guarda cuándo aceptó, no solo que sí: la Ley 1581 pide poder probarlo.
                                     Toggle::make('autoriza_contacto_at')
+                                        ->disabled(fn ($get) => (bool) $get('menor_de_edad'))
                                         ->formatStateUsing(fn ($state) => filled($state))
                                         ->dehydrateStateUsing(fn ($state, ?Integrante $record) => $state
                                             ? ($record?->autoriza_contacto_at ?? now())

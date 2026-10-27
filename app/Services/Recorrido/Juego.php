@@ -95,13 +95,13 @@ class Juego
      * su celular. Queda esperando hasta que decida empezar: antes tiene que
      * recibir las gafas y emparejarlas.
      *
-     * Cada integrante, con su correo si lo dio. La autorización de contacto
-     * es una sola, la que marca quien inscribe por todo el equipo, y solo se
-     * guarda en quien dejó correo: sin correo no hay a quién escribirle.
+     * Cada integrante, con su correo si lo dio y si esa persona aceptó que
+     * le escribamos: lo acepta cada una, no quien llena por todos. El correo
+     * solo se guarda si dijeron que es mayor de edad.
      *
-     * @param  array<int,string|array{nombre?:?string,correo?:?string}>  $integrantes
+     * @param  array<int,string|array{nombre?:?string,menor?:mixed,correo?:?string,autoriza?:mixed}>  $integrantes
      */
-    public function inscribir(Partida $partida, string $nombre, array $integrantes = [], bool $autorizaContacto = false): Equipo
+    public function inscribir(Partida $partida, string $nombre, array $integrantes = []): Equipo
     {
         $this->exigirJornadaAbierta($partida);
 
@@ -111,7 +111,7 @@ class Juego
             throw new JuegoException('Ya hay un equipo con ese nombre en esta partida. Elijan otro.');
         }
 
-        return DB::transaction(function () use ($partida, $nombre, $integrantes, $autorizaContacto) {
+        return DB::transaction(function () use ($partida, $nombre, $integrantes) {
             $cuantos = $partida->equipos()->count();
 
             $equipo = $partida->equipos()->create([
@@ -129,10 +129,17 @@ class Juego
                     continue;
                 }
 
+                // La edad se pregunta antes que el correo, y sin respuesta no
+                // hay correo: no se supone que alguien es mayor de edad.
+                $menor = in_array($persona['menor'] ?? null, [null, ''], true)
+                    ? null
+                    : filter_var($persona['menor'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
                 $equipo->integrantes()->create([
                     'nombre' => mb_substr($quien, 0, 80),
-                    'correo' => $correo ?: null,
-                    'autoriza_contacto_at' => $correo && $autorizaContacto ? now() : null,
+                    'menor_de_edad' => (bool) $menor,
+                    'correo' => $menor === false && $correo !== '' ? $correo : null,
+                    'autoriza_contacto_at' => filter_var($persona['autoriza'] ?? false, FILTER_VALIDATE_BOOLEAN) ? now() : null,
                 ]);
             }
 

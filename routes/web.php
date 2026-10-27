@@ -657,6 +657,10 @@ Route::middleware('throttle:120,1')->prefix('juego')->name('juego.')->group(func
         ->middleware('auth')->name('visor');
 });
 
+// El reporte del recorrido, para quien lo solicitó: sin sesión, con su enlace.
+Route::get('/recorridos/reporte/{token}', [\App\Http\Controllers\JuegoController::class, 'reporte'])
+    ->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1')->name('recorridos.reporte');
+
 // Lo que se imprime para un recorrido: los QR de las estaciones y los equipos.
 Route::middleware('auth')->prefix('recorridos')->name('recorridos.')->group(function () {
     Route::get('/circuitos/{circuito}/qr', [\App\Http\Controllers\RecorridoImpresionController::class, 'qr'])->name('qr');

@@ -116,23 +116,50 @@ class JuegoController extends Controller
             'nombre' => ['required', 'string', 'max:80'],
             'integrantes' => ['nullable', 'array', 'max:' . self::INTEGRANTES],
             'integrantes.*.nombre' => ['nullable', 'string', 'max:80', 'required_with:integrantes.*.correo'],
+            'integrantes.*.menor' => ['nullable', 'boolean'],
             'integrantes.*.correo' => ['nullable', 'email', 'max:160'],
-            // Ley 1581 de 2012: si dejan correos, autorizan para qué.
-            'autoriza' => collect($request->input('integrantes', []))->pluck('correo')->filter()->isNotEmpty() ? ['accepted'] : ['nullable'],
+            'integrantes.*.autoriza' => ['nullable', 'boolean'],
         ], [
             'integrantes.*.nombre.required_with' => 'A ese correo le falta el nombre.',
             'integrantes.*.correo.email' => 'Ese correo no está bien escrito.',
-            'autoriza.accepted' => 'Para guardar los correos necesitamos la autorización.',
         ], ['nombre' => 'nombre del equipo']);
 
+        // Ley 1581 de 2012: el correo de un adulto se guarda solo si esa
+        // persona aceptó. El de un menor ni se mira: no se guarda.
+        $faltan = collect($datos['integrantes'] ?? [])
+            ->filter(fn ($p) => filled($p['correo'] ?? null) && ($p['menor'] ?? null) === '0' && empty($p['autoriza']));
+
+        if ($faltan->isNotEmpty()) {
+            return back()->withInput()->withErrors($faltan->mapWithKeys(fn ($p, $n) => [
+                "integrantes.$n.autoriza" => 'Léanle el aviso a ' . (trim($p['nombre'] ?? '') ?: 'esta persona') . ' y marquen si aceptó. Si no acepta, borren el correo.',
+            ])->all());
+        }
+
         try {
-            $equipo = $juego->inscribir($partida, $datos['nombre'], $datos['integrantes'] ?? [], $request->boolean('autoriza'));
+            $equipo = $juego->inscribir($partida, $datos['nombre'], $datos['integrantes'] ?? []);
         } catch (JuegoException $e) {
             return back()->withInput()->withErrors(['nombre' => $e->getMessage()]);
         }
 
         return redirect()->route('juego.equipo', $equipo->token)
             ->withCookie(cookie(self::COOKIE, $equipo->token, 60 * 24));
+    }
+
+    /**
+     * El reporte para quien solicitó el recorrido: equipos, quiénes jugaron,
+     * puestos y tiempos. Con los nombres de todos y sin un solo correo.
+     */
+    public function reporte(string $token, Juego $juego)
+    {
+        $partida = Partida::with(['circuito', 'reservation.user'])->where('reporte_token', $token)->firstOrFail();
+
+        return response()
+            ->view('recorridos.reporte', [
+                'partida' => $partida,
+                'equipos' => $juego->clasificacion($partida),
+                'estaciones' => $partida->circuito->estaciones()->count(),
+            ])
+            ->header('X-Robots-Tag', 'noindex');
     }
 
     /** Para proyectar: dónde va cada equipo. Sin datos de nadie más que el nombre. */

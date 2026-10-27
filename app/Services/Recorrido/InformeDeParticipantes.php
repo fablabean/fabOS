@@ -11,7 +11,8 @@ use Illuminate\Support\Collection;
  * Quiénes jugaron los recorridos, con su correo y cómo le fue a su equipo.
  *
  * Es la lista para escribirles después: la columna de la autorización dice a
- * quién sí. Punto y coma y UTF-8 con BOM, como la abre Excel en Colombia.
+ * quién sí; a los menores de edad, nunca. Punto y coma y UTF-8 con BOM, como
+ * la abre Excel en Colombia.
  */
 class InformeDeParticipantes
 {
@@ -27,7 +28,7 @@ class InformeDeParticipantes
         fwrite($salida, "\xEF\xBB\xBF");
 
         fputcsv($salida, [
-            'Nombre', 'Correo', 'Autorizó que le escribamos', 'Equipo', 'Partida', 'Circuito',
+            'Nombre', 'Menor de edad', 'Correo', 'Aceptó que le escribamos', 'Equipo', 'Partida', 'Circuito',
             'Fecha', 'Puesto', 'Resultado', 'Tiempo',
         ], ';', '"', '\\');
 
@@ -48,8 +49,13 @@ class InformeDeParticipantes
                 foreach ($equipo->integrantes as $persona) {
                     fputcsv($salida, [
                         $persona->nombre,
+                        $persona->menor_de_edad ? 'Sí' : 'No',
                         $persona->correo,
-                        $persona->autoriza_contacto_at ? 'Sí, ' . $persona->autoriza_contacto_at->timezone($tz)->format('d/m/Y H:i') : 'No',
+                        match (true) {
+                            $persona->menor_de_edad                => 'No: es menor de edad',
+                            (bool) $persona->autoriza_contacto_at => 'Sí, ' . $persona->autoriza_contacto_at->timezone($tz)->format('d/m/Y H:i'),
+                            default                                => 'No',
+                        },
                         $equipo->nombre,
                         $partida->nombre,
                         $partida->circuito?->nombre,

@@ -7,8 +7,11 @@ use App\Models\Recorrido\Partida;
 use App\Services\Recorrido\InformeDeParticipantes;
 use App\Services\Recorrido\Juego;
 use App\Services\Recorrido\JuegoException;
+use App\Services\Recorrido\ReporteDelRecorrido;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -87,15 +90,58 @@ class EditPartida extends EditRecord
                 ->url(fn () => route('recorridos.equipos', $this->record))
                 ->openUrlInNewTab(),
 
-            Action::make('participantes')
-                ->label('Participantes (CSV)')
-                ->icon('heroicon-o-arrow-down-tray')
+            // Lo que se le entrega a quien trajo al grupo, y la lista para el laboratorio.
+            ActionGroup::make([
+                Action::make('enviarReporte')
+                    ->label('Enviar reporte')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('gray')
+                    ->modalHeading('Enviar el reporte del recorrido')
+                    ->modalDescription(fn () => 'Le llega un enlace con el resumen: equipos, quiénes jugaron, puestos y tiempos. Sin el correo de nadie.'
+                        . ($this->record->reporte_enviado_at
+                            ? ' Ya se envió a ' . $this->record->reporte_enviado_a . ' el ' . $this->record->reporte_enviado_at->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i') . '.'
+                            : ''))
+                    ->schema([
+                        TextInput::make('nombre')
+                            ->label('A quién')
+                            ->helperText('Quien solicitó el recorrido, normalmente el profesor.')
+                            ->default(fn () => ReporteDelRecorrido::solicitante($this->record)['nombre'])
+                            ->required()->maxLength(160),
+                        TextInput::make('correo')
+                            ->email()
+                            ->default(fn () => ReporteDelRecorrido::solicitante($this->record)['correo'])
+                            ->required()->maxLength(160),
+                    ])
+                    ->modalSubmitActionLabel('Enviar')
+                    ->action(function (array $data): void {
+                        $aviso = app(ReporteDelRecorrido::class)->enviar($this->record, $data['correo'], $data['nombre']);
+
+                        $aviso->status === 'enviado'
+                            ? Notification::make()->success()->title('Reporte enviado')->body('A ' . $data['correo'] . '.')->send()
+                            : Notification::make()->danger()->title('No se pudo enviar')->body($aviso->reason)->send();
+                    }),
+
+                Action::make('reporte')
+                    ->label('Ver reporte')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('gray')
+                    ->url(fn () => $this->record->urlDelReporte())
+                    ->openUrlInNewTab(),
+
+                Action::make('participantes')
+                    ->label('Participantes (CSV)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn () => response()->streamDownload(
+                        fn () => print(app(InformeDeParticipantes::class)->csv(collect([$this->record]))),
+                        'participantes-' . \Illuminate\Support\Str::slug($this->record->nombre) . '.csv',
+                        ['Content-Type' => 'text/csv; charset=UTF-8'],
+                    )),
+            ])
+                ->label('Reporte')
+                ->icon('heroicon-o-document-chart-bar')
                 ->color('gray')
-                ->action(fn () => response()->streamDownload(
-                    fn () => print(app(InformeDeParticipantes::class)->csv(collect([$this->record]))),
-                    'participantes-' . \Illuminate\Support\Str::slug($this->record->nombre) . '.csv',
-                    ['Content-Type' => 'text/csv; charset=UTF-8'],
-                )),
+                ->button(),
 
             Action::make('tablero')
                 ->label('Tablero')
