@@ -17,7 +17,17 @@
         .gafas{margin-top:.6rem;padding-top:.6rem;border-top:1px dashed #ccc}
         .cartel{text-align:center;padding:2rem 1rem;border-bottom:1px solid #ddd;break-after:page}
         .cartel h1{font-size:2.4rem;margin:0}
-        @media print{.barra,.solo-pantalla{display:none}}
+        /* Un solo QR legible a la vez: con varios en pantalla, el lector (o las
+           gafas) agarra el que quiere. Los demás quedan borrosos, que es lo que
+           de verdad impide leerlos; un QR solo atenuado se sigue leyendo. */
+        .qr{position:relative;display:inline-block;border:0;background:none;padding:0;cursor:pointer;line-height:0}
+        .qr svg{transition:filter .2s,opacity .2s}
+        .qr:not(.activo) svg{filter:blur(9px);opacity:.25}
+        .qr span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                 font:600 .9rem/1.2 system-ui,"Segoe UI",Arial,sans-serif;color:#333;padding:.5rem}
+        .qr.activo span{display:none}
+        .qr.activo{outline:3px solid #30A46C;outline-offset:6px;border-radius:4px}
+        @media print{.barra,.solo-pantalla{display:none}.qr:not(.activo) svg{filter:none;opacity:1}.qr span{display:none}.qr.activo{outline:0}}
     </style>
 </head>
 <body>
@@ -25,6 +35,7 @@
         <strong>{{ $partida->nombre }}</strong>
         <span class="muted">{{ $partida->circuito->nombre }} · entrar a mano: {{ route('juego.unirse') }}</span>
         <button onclick="window.print()">Imprimir</button>
+        <span class="muted">Solo se lee el QR activo; toca otro para activarlo, o el activo para apagarlo.</span>
     </div>
 
     @if ($partida->esPorJornadas())
@@ -32,7 +43,7 @@
         <div class="cartel">
             <h1>{{ $partida->nombre }}</h1>
             <p style="font-size:1.3rem;margin:.2rem 0 1rem">Escanea para inscribir a tu equipo</p>
-            {!! $qr->svg($partida->urlDeInscripcion(), 320) !!}
+            <button type="button" class="qr">{!! $qr->svg($partida->urlDeInscripcion(), 320) !!}<span>Toca para activar</span></button>
             <p class="muted">{{ $partida->urlDeInscripcion() }}</p>
             @foreach ($partida->horarios() as $j)
                 <p style="margin:.2rem 0">{{ ucfirst(\App\Services\Recorrido\Juego::fecha($j['inicio'])) }} a {{ $j['fin']->copy()->timezone(config('fabos.lab.timezone'))->format('g:i a') }}</p>
@@ -44,12 +55,12 @@
         @forelse ($partida->equipos as $e)
             <div class="tarjeta" style="border-color:{{ $e->color }}">
                 <h2>{{ $e->nombre }}</h2>
-                {!! $qr->svg($e->urlDelCelular(), 180) !!}
+                <button type="button" class="qr">{!! $qr->svg($e->urlDelCelular(), 180) !!}<span>Toca para activar</span></button>
                 <div class="muted">Escaneen para abrir el juego en el celular del equipo</div>
                 <div class="codigo">{{ $e->codigo }}</div>
                 <div class="muted">Código del equipo y de sus gafas</div>
                 <div class="gafas">
-                    {!! $qr->svg($e->qrParaGafas(), 120) !!}
+                    <button type="button" class="qr">{!! $qr->svg($e->qrParaGafas(), 120) !!}<span>Toca para activar</span></button>
                     <div class="muted">Para las gafas: míralo con ellas y se emparejan solas</div>
                 </div>
                 @if ($e->integrantes->isNotEmpty())
@@ -61,5 +72,18 @@
             <p>Esta partida todavía no tiene equipos.</p>
         @endforelse
     </div>
+    <script>
+        // Arranca activo el primero: el de inscripción si la partida es por
+        // jornadas, si no el del celular del primer equipo.
+        (() => {
+            const qrs = [...document.querySelectorAll('.qr')];
+            qrs[0]?.classList.add('activo');
+            qrs.forEach(q => q.addEventListener('click', () => {
+                const prender = !q.classList.contains('activo');
+                qrs.forEach(o => o.classList.remove('activo'));
+                if (prender) q.classList.add('activo');
+            }));
+        })();
+    </script>
 </body>
 </html>
