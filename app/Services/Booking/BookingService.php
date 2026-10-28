@@ -83,7 +83,7 @@ class BookingService
         ?float $material = null,
         ?int $tarifaMaterial = null,
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
         // El material solo cuenta donde está tarifado: el obligatorio del
         // equipo, o el que se eligió entre los que se ofrecen.
@@ -349,7 +349,7 @@ class BookingService
         ?string $proposito = null,
         ?User $acompanante = null,
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
         $herramientas = collect($herramientas)->unique('id')->values();
         $tope = \App\Support\Settings::maxHerramientasPorReserva();
@@ -436,7 +436,7 @@ class BookingService
      */
     public function reprogramar(Reservation $reserva, CarbonInterface $desde, CarbonInterface $hasta): Reservation
     {
-        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
         if (! in_array($reserva->status, ['solicitada', 'confirmada'], true)) {
             throw new BookingException(

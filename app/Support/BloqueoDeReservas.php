@@ -2,126 +2,182 @@
 
 namespace App\Support;
 
-use App\Models\Setting;
+use App\Models\Bloqueo;
 use App\Services\Booking\BookingException;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * El laboratorio entero, cerrado a las reservas.
  *
  * No es un cierre de agenda (Operación → Ausencias y cierres): ese quita la
  * cobertura de unas fechas, pero quien reserva sin acompañamiento —un espacio
- * autónomo, una herramienta— seguía pudiendo. Esto es el interruptor para
- * cuando pasa algo —una obra, un corte de luz, una emergencia— y nadie debe
- * reservar nada hasta que se levante: se dice por qué, a todo el que entra.
+ * autónomo, una herramienta— seguía pudiendo. Esto cierra todo: una obra, un
+ * corte de luz, una emergencia, o «el viernes no abrimos».
  *
- * Con fecha de reapertura se levanta solo; sin ella, hasta que alguien lo
- * apague. Las reservas que ya existían no se tocan: cancelarlas o no es una
- * decisión de cada caso, y se hace desde la lista.
+ * Cada bloqueo (App\Models\Bloqueo) va de una fecha a otra, y puede haber
+ * varios. Desde ya o programado: el viernes entero, o la próxima semana de
+ * tal hora a tal otra. Antes de empezar se avisa en el sitio con una ventana
+ * que se cierra, y se sigue reservando para los demás días; mientras dura,
+ * no se reserva nada que caiga dentro y sale el aviso de bloqueo.
+ *
+ * Sin fecha de fin, hasta que alguien lo levante. Las reservas que ya
+ * existían no se tocan: cancelarlas o no es una decisión de cada caso, y se
+ * hace desde la lista.
  */
 class BloqueoDeReservas
 {
-    public const CLAVE = 'reservas.bloqueo';
+    /**
+     * Una consulta por petición, no una por pregunta: el aviso sale en cada
+     * página. Se guarda en la aplicación, que nace con cada petición, y
+     * atada al segundo, porque en los tests el reloj viaja.
+     */
+    private const MEMORIA = 'bloqueos-de-reservas.vigentes';
 
-    /** @return array{activo:bool,motivo:?string,hasta:?string,desde:?string,por:?string} */
-    public static function estado(): array
+    /** @return Collection<int,Bloqueo> en curso y por venir, por fecha */
+    public static function vigentes(): Collection
     {
-        $guardado = Setting::get(self::CLAVE);
+        $ahora = now()->getTimestamp();
+        $m = app()->bound(self::MEMORIA) ? app(self::MEMORIA) : null;
 
-        return array_merge(
-            ['activo' => false, 'motivo' => null, 'hasta' => null, 'desde' => null, 'por' => null],
-            is_array($guardado) ? $guardado : [],
-        );
+        if ($m === null || $m[0] !== $ahora) {
+            $m = [$ahora, Bloqueo::query()->vigentes()->get()];
+            app()->instance(self::MEMORIA, $m);
+        }
+
+        return $m[1];
+    }
+
+    public static function olvidar(): void
+    {
+        app()->forgetInstance(self::MEMORIA);
+    }
+
+    /** El que está en curso ahora, si hay. */
+    public static function actual(): ?Bloqueo
+    {
+        return self::vigentes()->first(fn (Bloqueo $b) => $b->enCurso());
+    }
+
+    /** Los que vienen y ya se están avisando. */
+    public static function porVenir(): Collection
+    {
+        return self::vigentes()->filter(fn (Bloqueo $b) => ! $b->enCurso() && $b->avisar_desde->lte(now()))->values();
     }
 
     public static function activo(): bool
     {
-        $e = self::estado();
-
-        if (! $e['activo']) {
-            return false;
-        }
-
-        $hasta = self::hasta();
-
-        return $hasta === null || now()->lt($hasta);
+        return self::actual() !== null;
     }
 
     public static function motivo(): string
     {
-        return trim((string) self::estado()['motivo']) ?: 'Por una situación en el laboratorio.';
+        return self::textoDe(self::actual());
+    }
+
+    public static function textoDe(?Bloqueo $b): string
+    {
+        return trim((string) $b?->motivo) ?: 'Por una situación en el laboratorio.';
     }
 
     public static function hasta(): ?Carbon
     {
-        $hasta = self::estado()['hasta'];
-
-        return filled($hasta) ? Carbon::parse($hasta) : null;
+        return self::actual()?->hasta;
     }
 
-    /** «hasta el lunes 6 de octubre a las 8:00», en la hora del laboratorio. */
+    /** «lunes 6 de octubre a las 8:00», en la hora del laboratorio. */
     public static function hastaLegible(): ?string
     {
-        $hasta = self::hasta()?->timezone(config('fabos.lab.timezone'))->locale('es');
-
-        return $hasta?->isoFormat('dddd D [de] MMMM [a las] H:mm');
+        return self::legible(self::hasta());
     }
 
-    /** Una marca que cambia cada vez que se activa o se edita: el modal vuelve a salir. */
+    public static function legible(?CarbonInterface $momento): ?string
+    {
+        return $momento?->copy()->timezone(config('fabos.lab.timezone'))->locale('es')->isoFormat('dddd D [de] MMMM [a las] H:mm');
+    }
+
+    /** Una marca que cambia con lo que se avisa: si cambia, la ventana vuelve a salir. */
     public static function version(): string
     {
-        $e = self::estado();
+        $avisos = self::porVenir()->push(self::actual())->filter();
 
-        return substr(md5(($e['desde'] ?? '') . '|' . ($e['motivo'] ?? '') . '|' . ($e['hasta'] ?? '')), 0, 10);
+        return substr(md5($avisos->map(fn (Bloqueo $b) => $b->id . '|' . $b->updated_at . '|' . ($b->enCurso() ? 'ya' : 'viene'))->implode(',')), 0, 10);
     }
 
-    public static function activar(string $motivo, ?Carbon $hasta, ?string $por): void
+    /** Desde ya. Como el interruptor de siempre. */
+    public static function activar(string $motivo, ?Carbon $hasta, ?string $por): Bloqueo
     {
-        Setting::put(self::CLAVE, [
-            'activo' => true,
-            'motivo' => trim($motivo),
-            'hasta'  => $hasta?->utc()->toIso8601String(),
-            'desde'  => now()->utc()->toIso8601String(),
-            'por'    => $por,
-        ], 'reservas');
-    }
-
-    public static function levantar(): void
-    {
-        Setting::put(self::CLAVE, array_merge(self::estado(), ['activo' => false]), 'reservas');
+        return self::programar($motivo, now(), $hasta, null, $por);
     }
 
     /**
-     * Si el bloqueo alcanza algo que empieza en `$desde`.
-     *
-     * Es un periodo, de ahora a la reapertura: lo que empieza después se
-     * puede reservar ya —el laboratorio se reabre y la gente quiere su
-     * turno—. Sin fecha de reapertura, alcanza a todo. Sin `$desde`, se
-     * pregunta por ahora mismo: registrar una llegada, por ejemplo.
+     * Para unas fechas. Sin `$avisarDesde`, se avisa desde ya.
      */
-    public static function cubre(?\Carbon\CarbonInterface $desde = null): bool
-    {
-        if (! self::activo()) {
-            return false;
-        }
+    public static function programar(
+        string $motivo,
+        CarbonInterface $desde,
+        ?CarbonInterface $hasta,
+        ?CarbonInterface $avisarDesde,
+        ?string $por,
+        bool $diasCompletos = false,
+    ): Bloqueo {
+        $avisar = $avisarDesde ?? now();
 
-        $reabre = self::hasta();
+        // En UTC: Eloquent guarda la hora tal cual, sin mirar la zona, y la
+        // medianoche de Bogotá quedaba como medianoche UTC.
+        $utc = fn (?CarbonInterface $m) => $m?->copy()->utc();
 
-        return $reabre === null || ($desde ?? now())->lt($reabre);
+        return Bloqueo::create([
+            'motivo'         => trim($motivo),
+            'desde'          => $utc($desde),
+            'hasta'          => $utc($hasta),
+            'avisar_desde'   => $utc($avisar->gt($desde) ? $desde : $avisar),
+            'dias_completos' => $diasCompletos,
+            'por'            => $por,
+        ]);
     }
 
-    /** @throws BookingException si lo que empieza en `$desde` cae en el bloqueo */
-    public static function exigirAbierto(?\Carbon\CarbonInterface $desde = null): void
+    /** Levanta el que está en curso. */
+    public static function levantar(): void
     {
-        if (! self::cubre($desde)) {
+        self::actual()?->update(['levantado_at' => now()]);
+    }
+
+    /** El bloqueo que alcanza algo de `$desde` a `$hasta`, si hay. */
+    public static function elQueCubre(?CarbonInterface $desde = null, ?CarbonInterface $hasta = null): ?Bloqueo
+    {
+        $desde ??= now();
+
+        return self::vigentes()->first(fn (Bloqueo $b) => $b->alcanza($desde, $hasta));
+    }
+
+    /**
+     * Si un bloqueo alcanza algo de `$desde` a `$hasta`.
+     *
+     * Lo que queda fuera de los bloqueos se reserva normal, también mientras
+     * uno está en curso: el laboratorio se reabre y la gente quiere su turno.
+     * Sin `$desde`, se pregunta por ahora mismo: registrar una llegada.
+     */
+    public static function cubre(?CarbonInterface $desde = null, ?CarbonInterface $hasta = null): bool
+    {
+        return self::elQueCubre($desde, $hasta) !== null;
+    }
+
+    /** @throws BookingException si lo que va de `$desde` a `$hasta` cae en un bloqueo */
+    public static function exigirAbierto(?CarbonInterface $desde = null, ?CarbonInterface $hasta = null): void
+    {
+        $b = self::elQueCubre($desde, $hasta);
+
+        if ($b === null) {
             return;
         }
 
-        $cuando = self::hastaLegible();
+        $cuando = self::legible($b->hasta);
 
         throw new BookingException(
-            'Las reservas del laboratorio están bloqueadas: ' . rtrim(self::motivo(), '.') . '.'
-            . ($cuando ? ' Puedes reservar a partir del ' . $cuando . '.' : ' Te avisaremos cuando se reabran.')
+            'Las reservas del laboratorio están bloqueadas ' . $b->cuando() . ': ' . rtrim(self::textoDe($b), '.') . '.'
+            . ($cuando ? ' Puedes reservar a partir del ' . $cuando . ', o elegir otro día.' : ' Te avisaremos cuando se reabran.')
         );
     }
 }

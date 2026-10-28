@@ -1,52 +1,64 @@
 @php
     $b = \App\Support\BloqueoDeReservas::class;
-    $activo = $b::activo();
-    $estado = $b::estado();
+    $vigentes = $b::vigentes();
+    $tz = config('fabos.lab.timezone');
 @endphp
 
 <x-filament-panels::page>
-    @if ($activo)
+    @foreach ($vigentes as $bloqueo)
+        @php $ya = $bloqueo->enCurso(); $vivas = $bloqueo->reservasDentro(); @endphp
         <x-filament::section>
             <x-slot name="heading">
-                <span style="color:#dc2626">● Las reservas están bloqueadas</span>
+                @if ($ya)
+                    <span style="color:#dc2626">● Bloqueado ahora</span>
+                @else
+                    <span style="color:#b45309">● Programado</span>
+                @endif
+                · {{ ucfirst($bloqueo->cuando()) }}
             </x-slot>
             <x-slot name="description">
-                Desde el {{ \Illuminate\Support\Carbon::parse($estado['desde'])->timezone(config('fabos.lab.timezone'))->locale('es')->isoFormat('D [de] MMMM, H:mm') }}
-                @if ($estado['por']) · lo activó {{ $estado['por'] }} @endif
+                @if ($ya)
+                    Las reservas están bloqueadas.
+                @elseif ($bloqueo->avisar_desde->lte(now()))
+                    El aviso ya sale en el sitio; se reserva normal los demás días.
+                @else
+                    El aviso empieza a salir el {{ $b::legible($bloqueo->avisar_desde) }}.
+                @endif
+                @if ($bloqueo->por) · lo programó {{ $bloqueo->por }} @endif
             </x-slot>
 
-            <p class="text-sm"><strong>Motivo:</strong> {{ $b::motivo() }}</p>
-            <p class="text-sm mt-1">
-                <strong>Se reabre:</strong> {{ $b::hastaLegible() ?? 'cuando se levante aquí' }}
-            </p>
+            <p class="text-sm" style="white-space:pre-line"><strong>Mensaje:</strong> {{ $b::textoDe($bloqueo) }}</p>
 
-            @php $vivas = $this->reservasPorDelante(); @endphp
             <p class="text-sm mt-3">
-                Siguen en pie <strong>{{ $vivas }}</strong> {{ $vivas === 1 ? 'reserva' : 'reservas' }}
-                {{ $b::hasta() ? 'de aquí a la reapertura' : 'de aquí en adelante' }}.
+                Hay <strong>{{ $vivas }}</strong> {{ $vivas === 1 ? 'reserva' : 'reservas' }} en pie dentro de este bloqueo.
                 El bloqueo no las cancela: si hay que hacerlo, se hace desde
                 <a class="text-primary-600 hover:underline" href="{{ \App\Filament\Resources\Reservations\ReservationResource::getUrl('index') }}">Reservas</a>.
             </p>
 
             <div class="mt-4">
-                <x-filament::button color="success" wire:click="levantar"
-                                    wire:confirm="¿Abrir las reservas otra vez?">
-                    Levantar el bloqueo
+                <x-filament::button :color="$ya ? 'success' : 'gray'" wire:click="quitar({{ $bloqueo->id }})"
+                                    wire:confirm="{{ $ya ? '¿Abrir las reservas otra vez?' : '¿Quitar este bloqueo? Se podrá reservar en esas fechas.' }}">
+                    {{ $ya ? 'Levantar el bloqueo' : 'Quitar este bloqueo' }}
                 </x-filament::button>
             </div>
         </x-filament::section>
-    @endif
+    @endforeach
 
-    <form wire:submit="activar" class="space-y-6">
-        {{ $this->form }}
+    <x-filament::section>
+        <x-slot name="heading">{{ $vigentes->isEmpty() ? 'Bloquear las reservas' : 'Programar otro bloqueo' }}</x-slot>
+        <x-slot name="description">El viernes entero, la próxima semana de tal hora a tal otra, o desde ya por una emergencia.</x-slot>
 
-        <div>
-            <x-filament::button type="submit" color="danger"
-                                wire:confirm="Nadie podrá reservar nada —equipos, espacios, herramientas ni asesorías— y todo el que entre al sitio verá el aviso. ¿Bloquear?">
-                {{ $activo ? 'Actualizar el bloqueo' : 'Bloquear todas las reservas' }}
-            </x-filament::button>
-        </div>
-    </form>
+        <form wire:submit="activar" class="space-y-6">
+            {{ $this->form }}
+
+            <div>
+                <x-filament::button type="submit" color="danger"
+                                    wire:confirm="En esas fechas nadie podrá reservar nada —equipos, espacios, herramientas ni asesorías— y en el sitio saldrá el aviso. ¿Bloquear?">
+                    Bloquear las reservas
+                </x-filament::button>
+            </div>
+        </form>
+    </x-filament::section>
 
     <x-filament::section>
         <x-slot name="heading">Horario de autoservicio</x-slot>
@@ -94,10 +106,11 @@
     <x-filament::section>
         <x-slot name="heading">Qué hace el bloqueo</x-slot>
         <ul class="text-sm space-y-1" style="list-style:disc;padding-left:1.2rem">
-            <li>Nadie puede crear ni reprogramar reservas de equipos, espacios, herramientas ni asesorías que empiecen antes de la reapertura, tampoco desde el panel. Con fecha de reapertura, lo de después sí se puede reservar ya.</li>
+            <li>Nadie puede crear ni reprogramar reservas de equipos, espacios, herramientas ni asesorías que caigan dentro del bloqueo, ni siquiera en parte, tampoco desde el panel. Lo de antes y lo de después se reserva normal.</li>
+            <li>Antes de que empiece, en el sitio sale una ventana ámbar con las fechas y el mensaje, que se puede cerrar para seguir reservando los demás días. Al elegir la hora de una reserva también se dice qué días no se puede.</li>
             <li>No se ofrecen horas de asesoría ni de uso acompañado dentro del periodo, y nadie puede registrar su llegada por QR.</li>
             <li>Los proyectos siguen normales.</li>
-            <li>En el sitio sale un aviso en ventana con el motivo la primera vez que alguien entra, y una franja roja arriba en todas las páginas.</li>
+            <li>Mientras dura, en el sitio sale un aviso en ventana con el mensaje la primera vez que alguien entra, y una franja roja arriba en todas las páginas.</li>
             <li>Las reservas que ya existían siguen igual.</li>
         </ul>
     </x-filament::section>

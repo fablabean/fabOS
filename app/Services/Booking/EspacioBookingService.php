@@ -392,7 +392,7 @@ class EspacioBookingService
         array $acompanantesIds = [],
         ?string $notaConjunta = null,
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
         if ($hasta->lessThanOrEqualTo($desde)) {
             throw new BookingException('La hora de fin debe ser posterior a la de inicio.');
@@ -697,7 +697,7 @@ class EspacioBookingService
         array $acompanantesIds = [],
         array $acompanantesPorEspacio = [],
     ): Reservation {
-        \App\Support\BloqueoDeReservas::exigirAbierto($desde);
+        \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
         $espacios = collect($espacios)->unique('id')->values();
 

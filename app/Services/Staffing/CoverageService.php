@@ -40,7 +40,7 @@ class CoverageService
         // Un cierre del laboratorio deja a todo el mundo fuera. Y el bloqueo
         // de reservas también: sin nadie en jornada, no se ofrecen horas de
         // asesoría ni de uso acompañado dentro del periodo.
-        if (\App\Support\BloqueoDeReservas::cubre($desde)) {
+        if (\App\Support\BloqueoDeReservas::cubre($desde, $hasta)) {
             return collect();
         }
 

@@ -19,7 +19,10 @@ class ReservasAbiertas
     {
         // Con fecha de reapertura se entra: lo de después ya se puede
         // reservar, y el servicio rechaza lo que cae dentro del periodo.
-        if (! BloqueoDeReservas::activo() || BloqueoDeReservas::hasta() !== null) {
+        // Igual con uno programado: los demás días se reservan normal.
+        $actual = BloqueoDeReservas::actual();
+
+        if ($actual === null || $actual->hasta !== null) {
             return $next($request);
         }
 
