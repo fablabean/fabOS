@@ -213,6 +213,9 @@ class RecorridoGamificadoTest extends TestCase
 
         $this->postJson('/api/recorridos/visor/emparejar', ['codigo' => 'NOEXISTE'])->assertNotFound();
 
+        // El QR de las gafas lleva el código en JSON, no una dirección.
+        $this->assertSame(['tipo' => 'fabos-equipo', 'codigo' => $equipo->codigo], json_decode($equipo->qrParaGafas(), true));
+
         $token = $this->postJson('/api/recorridos/visor/emparejar', ['codigo' => strtolower($equipo->codigo)])
             ->assertOk()
             ->assertJsonPath('estado.etapa', 1)

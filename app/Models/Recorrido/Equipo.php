@@ -169,4 +169,13 @@ class Equipo extends Model
     {
         return route('juego.equipo', $this->token);
     }
+
+    /**
+     * Lo que lleva el QR que leen las gafas: un JSON con el código del
+     * equipo, no una dirección; las gafas no abren páginas, se emparejan.
+     */
+    public function qrParaGafas(): string
+    {
+        return json_encode(['tipo' => 'fabos-equipo', 'codigo' => $this->codigo]);
+    }
 }

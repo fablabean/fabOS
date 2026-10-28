@@ -145,12 +145,6 @@ class AdminPanelProvider extends PanelProvider
                 fn (): string => \App\Filament\Resources\Anuncios\AnuncioResource::canAccess()
                     ? \Illuminate\Support\Facades\Blade::render('<livewire:anuncios-favoritos />') : '',
             )
-            // El laboratorio cerrado a las reservas: el equipo también lo ve,
-            // que es quien recibe la llamada de «¿por qué no me deja?».
-            ->renderHook(
-                PanelsRenderHook::BODY_START,
-                fn (): string => view('partials.aviso-bloqueo')->render(),
-            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->middleware([

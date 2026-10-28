@@ -106,6 +106,9 @@ class BloqueoDeReservasTest extends TestCase
         $this->assertTrue(BloqueoDeReservas::activo());
         $this->assertSame('Inventario anual', BloqueoDeReservas::motivo());
 
+        // El aviso es para quien reserva: en el panel no estorba.
+        $this->get(Pantalla::getUrl())->assertOk()->assertDontSee('bq-modal');
+
         Livewire::test(Pantalla::class)->call('levantar');
 
         $this->assertFalse(BloqueoDeReservas::activo());

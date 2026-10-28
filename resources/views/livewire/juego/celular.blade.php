@@ -45,6 +45,8 @@
             <h2>Ya están inscritos</h2>
             <p>Antes de empezar, pidan las gafas a quien guía el recorrido y emparéjenlas con este código:</p>
             <p style="font-size:2rem;font-weight:800;letter-spacing:.2em;text-align:center;margin:.4rem 0;font-family:ui-monospace,Consolas,monospace">{{ $equipo->codigo }}</p>
+            <div style="text-align:center">{!! app(\App\Services\Qr\QrRenderer::class)->svg($equipo->qrParaGafas(), 160) !!}</div>
+            <p class="muted" style="text-align:center">O muéstrenles este QR a las gafas: se emparejan solas.</p>
             <p class="muted">Integrantes: {{ $equipo->integrantes->pluck('nombre')->implode(', ') ?: '—' }}</p>
             @if ($equipo->partida->abiertaAhora())
                 <p>Cuando estén listos, toquen «Empezar»: desde ese momento corre su reloj.</p>

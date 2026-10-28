@@ -43,6 +43,14 @@ En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafa
 
 Cada equipo tiene un **código de 6 caracteres**, por ejemplo `K7M2QX`. Sale en la hoja «Códigos de los equipos» de la partida. Se escribe una vez en las gafas, al inicio. No distingue mayúsculas.
 
+Para no tener que escribirlo, cada equipo trae además un **QR para las gafas**: el pequeño de su tarjeta en la hoja de la partida, y el que aparece en el celular del equipo cuando se inscribe por jornadas. Ese QR no lleva una dirección sino un JSON con el código:
+
+```json
+{ "tipo": "fabos-equipo", "codigo": "K7M2QX" }
+```
+
+La app lee el QR con la cámara de las gafas, comprueba que `tipo` sea `fabos-equipo` y manda `codigo` al endpoint de abajo, igual que si se hubiera escrito. El QR grande de la tarjeta es otro: abre el juego en el celular y las gafas deben ignorarlo.
+
 ```http
 POST https://fablabean.com/api/recorridos/visor/emparejar
 Content-Type: application/json
