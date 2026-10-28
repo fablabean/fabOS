@@ -217,6 +217,32 @@ class BloqueoDeReservasTest extends TestCase
         $this->get('/')->assertOk()->assertDontSee('bq-modal');
     }
 
+    public function test_la_semana_del_laboratorio_dibuja_los_bloqueos(): void
+    {
+        $viernes = $this->viernes();
+        BloqueoDeReservas::programar('Feria de Halloween', $viernes, $viernes->copy()->addDay(), null, null, true);
+        $lunes = $viernes->copy()->addDays(3);
+        BloqueoDeReservas::programar('Mantenimiento', $lunes->copy()->setTime(8, 0), $lunes->copy()->addDay()->setTime(12, 0), null, null);
+
+        $ocupacion = app(\App\Services\Booking\OcupacionSemanal::class);
+        $s = $ocupacion->paraVer($viernes->toDateString(), null, false, null, null);
+        $this->assertSame([0, 1440], [$s['bloqueos'][$viernes->toDateString()][0]['desde'], $s['bloqueos'][$viernes->toDateString()][0]['hasta']]);
+
+        // La semana siguiente: el lunes desde las 8:00, el martes hasta las 12:00.
+        $sig = $ocupacion->paraVer($lunes->toDateString(), null, false, null, null);
+        $this->assertSame(8 * 60, $sig['bloqueos'][$lunes->toDateString()][0]['desde']);
+        $this->assertSame(12 * 60, $sig['bloqueos'][$lunes->copy()->addDay()->toDateString()][0]['hasta']);
+
+        // Sin reservas en la semana, igual se dibuja: el bloqueo es lo que hay que ver.
+        $html = view('partials.semana-del-laboratorio', ['s' => $s, 'base' => '/'])->render();
+        $this->assertStringContainsString('class="sem-bq"', $html);
+        $this->assertStringContainsString('Feria de Halloween', $html);
+        $this->assertStringNotContainsString('Nada reservado', $html);
+
+        $html = view('partials.semana-del-laboratorio', ['s' => ['vista' => 'espacios'] + $s, 'base' => '/'])->render();
+        $this->assertStringContainsString('Bloqueo de reservas', $html);
+    }
+
     public function test_el_aviso_previo_sale_desde_cuando_se_dijo(): void
     {
         $viernes = $this->viernes();

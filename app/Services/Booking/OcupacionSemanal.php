@@ -168,10 +168,12 @@ class OcupacionSemanal
             $bloques[$dia] = $this->enCarriles($delDia);
         }
 
+        $bloqueos = $this->bloqueos($desde, $hasta);
+
         // Lunes a sábado siempre; el domingo solo si algo pasa ese día.
         $dias = [];
         for ($d = $desde->copy(); $d->lte($hasta); $d->addDay()) {
-            if ($d->isSunday() && empty($bloques[$d->toDateString()])) {
+            if ($d->isSunday() && empty($bloques[$d->toDateString()]) && empty($bloqueos[$d->toDateString()])) {
                 continue;
             }
             $dias[] = $d->copy();
@@ -184,8 +186,59 @@ class OcupacionSemanal
             'horaDesde' => $horaDesde,
             'horaHasta' => min(24, $horaHasta),
             'bloques'   => $bloques,
+            'bloqueos'  => $bloqueos,
             'espacios'  => Space::query()->where('is_reservable', true)->orderBy('name')->get(['id', 'name']),
         ];
+    }
+
+    /**
+     * Los bloqueos de reservas de la semana (App\Support\BloqueoDeReservas),
+     * partidos por día como las reservas: de qué minuto a qué minuto.
+     *
+     * También los que ya pasaron, para ver por qué un día quedó vacío; uno
+     * levantado antes de tiempo se dibuja hasta que se levantó.
+     *
+     * @return array<string,list<array{desde:int,hasta:int,motivo:string,cuando:string}>>
+     */
+    private function bloqueos(Carbon $desde, Carbon $hasta): array
+    {
+        $tz = config('fabos.lab.timezone');
+        $porDia = [];
+
+        $bloqueos = \App\Models\Bloqueo::query()
+            ->where('desde', '<', $hasta->copy()->utc())
+            ->where(fn ($q) => $q->whereNull('hasta')->orWhere('hasta', '>', $desde->copy()->utc()))
+            ->where(fn ($q) => $q->whereNull('levantado_at')->orWhereColumn('levantado_at', '>', 'desde'))
+            ->orderBy('desde')
+            ->get();
+
+        foreach ($bloqueos as $bq) {
+            $inicio = $bq->desde->copy()->timezone($tz);
+            $fin = collect([$bq->hasta, $bq->levantado_at, $hasta->copy()->addSecond()])
+                ->filter()->min()->copy()->timezone($tz);
+
+            for ($dia = $inicio->copy()->startOfDay(); $dia->lt($fin) && $dia->lte($hasta); $dia->addDay()) {
+                if ($dia->lt($desde)) {
+                    continue;
+                }
+
+                $a = $inicio->max($dia);
+                $b = $fin->min($dia->copy()->addDay());
+
+                if ($a->gte($b)) {
+                    continue;
+                }
+
+                $porDia[$dia->toDateString()][] = [
+                    'desde'  => $a->hour * 60 + $a->minute,
+                    'hasta'  => $b->isSameDay($a) ? $b->hour * 60 + $b->minute : 24 * 60,
+                    'motivo' => \App\Support\BloqueoDeReservas::textoDe($bq),
+                    'cuando' => $bq->cuando(),
+                ];
+            }
+        }
+
+        return $porDia;
     }
 
     /** @return array<string,mixed> */

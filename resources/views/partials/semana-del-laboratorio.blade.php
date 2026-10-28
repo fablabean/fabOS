@@ -22,6 +22,11 @@
     $estaSemana = now($tz)->startOfWeek()->toDateString();
     $nombresDia = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
     $total = collect($s['bloques'])->flatten(1);
+    // Los bloqueos de reservas: se dibujan debajo de las reservas, rayados.
+    $bloqueos = $s['bloqueos'] ?? [];
+    $hhmm = fn (int $m) => sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+    $tituloBq = fn (array $q) => 'Reservas bloqueadas ' . $q['cuando'] . "
+" . $q['motivo'];
 
     $filtros = array_filter([
         'espacio' => $s['espacio'],
@@ -116,7 +121,7 @@
         @endif
     </div>
 
-    @if ($total->isEmpty())
+    @if ($total->isEmpty() && empty($bloqueos))
         <p class="sem-vacio">
             Nada reservado esta semana{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
         </p>
@@ -136,6 +141,22 @@
                     </tr>
                 </thead>
                 <tbody>
+                @if (! empty($bloqueos))
+                    <tr>
+                        <th scope="row">Bloqueo de reservas</th>
+                        @foreach ($s['dias'] as $dia)
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                                @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
+                                    <div class="sem-f bloqueo" title="{{ $tituloBq($q) }}">
+                                        <span class="h">{{ $q['desde'] === 0 && $q['hasta'] === 1440 ? 'Todo el día' : $hhmm($q['desde']) . '–' . $hhmm($q['hasta']) }}</span>
+                                        <span class="q">Bloqueado</span>
+                                        <span class="r">{{ $q['motivo'] }}</span>
+                                    </div>
+                                @endforeach
+                            </td>
+                        @endforeach
+                    </tr>
+                @endif
                 @foreach ($total->pluck('espacio')->unique()->sort() as $espacio)
                     <tr>
                         <th scope="row">{{ $espacio }}</th>
@@ -184,6 +205,7 @@
                 @foreach ($s['dias'] as $dia)
                     <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
                         {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                        @if (! empty($bloqueos[$dia->toDateString()])) <b class="sem-dia-bq">bloqueado</b> @endif
                     </div>
                 @endforeach
 
@@ -196,6 +218,21 @@
                 @foreach ($s['dias'] as $dia)
                     <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }}"
                          style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
+                        @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
+                            @php
+                                // Recortado a las horas que se ven: un día entero no estira la grilla.
+                                $a = max($q['desde'], $s['horaDesde'] * 60);
+                                $z = min($q['hasta'], $s['horaHasta'] * 60);
+                            @endphp
+                            @if ($z > $a)
+                                <div class="sem-bq" title="{{ $tituloBq($q) }}"
+                                     style="top:{{ ($a / 60 - $s['horaDesde']) * $hPx }}rem;height:{{ ($z - $a) / 60 * $hPx }}rem">
+                                    <span class="h">{{ $q['desde'] === 0 && $q['hasta'] === 1440 ? 'Todo el día' : $hhmm($q['desde']) . '–' . $hhmm($q['hasta']) }}</span>
+                                    <span class="q">Reservas bloqueadas</span>
+                                    <span class="r">{{ $q['motivo'] }}</span>
+                                </div>
+                            @endif
+                        @endforeach
                         @foreach ($s['bloques'][$dia->toDateString()] ?? [] as $b)
                             @php
                                 $top = ($b['desde'] / 60 - $s['horaDesde']) * $hPx;
@@ -233,6 +270,7 @@
         <span><i class="sem-m"></i> Uso del laboratorio</span>
         <span><i class="sem-m pedida"></i> Solicitada, sin confirmar</span>
         <span><i class="sem-m pasada"></i> Ya pasó</span>
+        <span><i class="sem-m bloqueo"></i> Reservas bloqueadas</span>
     </div>
     <p class="sem-nota">
         Con cada franja va quién responde: quien asesora o acompaña; si nadie del equipo
@@ -314,6 +352,23 @@
                                        border-left:3px dashed var(--s-warn); }
         .sem-b.nuestro.pedida, .sem-f.nuestro.pedida { border-left-color:var(--s-accent); }
         .sem-b.pasada, .sem-f.pasada { opacity:.5; }
+
+        /* El bloqueo, debajo de las reservas: rayado en rojo, para que se lea
+           «aquí no se reserva» sin tapar lo que ya estaba reservado. */
+        .sem-bq, .sem-f.bloqueo, .sem-m.bloqueo {
+            background:repeating-linear-gradient(135deg, color-mix(in srgb, #DC2626 16%, transparent) 0 6px,
+                       color-mix(in srgb, #DC2626 6%, transparent) 6px 12px);
+            border-left:3px solid #DC2626; }
+        .sem-bq { position:absolute; left:0; right:0; z-index:0; overflow:hidden; border-radius:3px;
+                  padding:.15rem .3rem; font-size:.68rem; line-height:1.2; color:var(--s-ink); }
+        .sem-bq span { display:block; }
+        .sem-bq .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:#B91C1C; }
+        .sem-bq .q, .sem-f.bloqueo .q { font-weight:700; color:#B91C1C; }
+        .dark .sem-bq .h, .dark .sem-bq .q, .dark .sem-f.bloqueo .q { color:#F87171; }
+        .sem-bq .r { color:var(--s-soft); }
+        .sem-col .sem-b:not(:hover) { z-index:1; }
+        .sem-dia-bq { font-weight:700; color:#B91C1C; letter-spacing:.04em; margin-left:.3rem; }
+        .dark .sem-dia-bq { color:#F87171; }
 
         .sem-tabla { width:100%; min-width:44rem; border-collapse:separate; border-spacing:2px; table-layout:fixed; }
         .sem-tabla th, .sem-tabla td { vertical-align:top; padding:.3rem; border:0; background:none; }
