@@ -35,6 +35,22 @@ class BloqueoDeReservas
      */
     private const MEMORIA = 'bloqueos-de-reservas.vigentes';
 
+    /**
+     * Páginas de documentos —firmar o ver un acta, una requisición, un lote
+     * compartido, verificar un certificado, la asistencia o la encuesta de
+     * una actividad—: quien llega ahí no viene a reservar, y el aviso estorba.
+     */
+    private const SIN_AVISO = [
+        'actas.*', 'compras.*', 'lotes.compartido*', 'publico.verificar',
+        'asistencia*', 'encuesta*',
+    ];
+
+    /** Si en esta página sale el aviso del bloqueo. */
+    public static function seAvisaAqui(): bool
+    {
+        return ! request()->routeIs(...self::SIN_AVISO);
+    }
+
     /** @return Collection<int,Bloqueo> en curso y por venir, por fecha */
     public static function vigentes(): Collection
     {

@@ -93,6 +93,15 @@ class BloqueoDeReservasTest extends TestCase
             ->assertSee('Corte de luz programado');
     }
 
+    public function test_las_paginas_de_documentos_no_llevan_el_aviso(): void
+    {
+        BloqueoDeReservas::activar('Corte de luz programado', null, null);
+
+        // Verificar un certificado: un documento, no una reserva.
+        $this->get(route('publico.verificar', 'NOEXISTE'))->assertDontSee('bq-modal');
+        $this->get('/')->assertSee('bq-modal');
+    }
+
     public function test_desde_el_panel_se_bloquea_y_se_levanta(): void
     {
         $this->admin();

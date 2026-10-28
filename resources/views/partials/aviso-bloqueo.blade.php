@@ -11,8 +11,9 @@
      cambie lo que avisa, o hasta que el bloqueo empiece. --}}
 @php
     $bq = \App\Support\BloqueoDeReservas::class;
-    $actual = $bq::actual();
-    $proximos = $actual ? collect() : $bq::porVenir();
+    $aqui = $bq::seAvisaAqui();
+    $actual = $aqui ? $bq::actual() : null;
+    $proximos = $aqui && ! $actual ? $bq::porVenir() : collect();
 @endphp
 @if ($actual || $proximos->isNotEmpty())
     @php $cuando = $actual ? $bq::legible($actual->hasta) : null; @endphp
