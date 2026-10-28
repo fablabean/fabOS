@@ -9,7 +9,8 @@
     <style>
         body{font-family:system-ui,"Segoe UI",Arial,sans-serif;margin:0;color:#111;background:#fff}
         .barra{padding:1rem;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;border-bottom:1px solid #ddd}
-        .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));gap:1rem;padding:1rem}
+        /* Tarjetas de ancho fijo y centradas: con pocos equipos no se pegan a la izquierda. */
+        .rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(17rem,19rem));justify-content:center;gap:1rem;padding:1rem}
         .tarjeta{border:2px solid #ccc;border-radius:12px;padding:1rem;text-align:center;break-inside:avoid}
         .tarjeta h2{margin:.2rem 0 .4rem;font-size:1.3rem}
         .codigo{font-size:1.8rem;font-weight:800;letter-spacing:.2em;font-family:ui-monospace,Consolas,monospace;margin:.3rem 0}
