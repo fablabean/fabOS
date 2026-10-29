@@ -7,6 +7,7 @@ use App\Models\Bloqueo as BloqueoProgramado;
 use App\Support\BloqueoDeReservas as Bloqueo;
 use App\Support\HorarioDeAutoservicio as Horario;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -189,6 +190,44 @@ class BloqueoDeReservas extends Page
         BloqueoProgramado::query()->vigentes()->whereKey($id)->first()?->update(['levantado_at' => now()]);
 
         Notification::make()->title('Bloqueo quitado')->success()->send();
+    }
+
+    /**
+     * Corregir el mensaje de un bloqueo ya puesto, sin quitarlo y volverlo a
+     * programar. Las fechas no se tocan: cambiarlas es otro bloqueo.
+     *
+     * Al guardarlo cambia la versión del aviso (Bloqueo::version()), así que
+     * quien ya lo había cerrado lo vuelve a ver con el texto nuevo.
+     */
+    public function editarMensajeAction(): Action
+    {
+        return Action::make('editarMensaje')
+            ->modalHeading('Editar el mensaje del bloqueo')
+            ->modalDescription('Las fechas siguen igual. Quien ya había cerrado el aviso lo vuelve a ver, con el texto nuevo.')
+            ->modalSubmitActionLabel('Guardar el mensaje')
+            ->fillForm(fn (array $arguments): array => [
+                'motivo' => BloqueoProgramado::find($arguments['bloqueo'] ?? 0)?->motivo,
+            ])
+            ->schema([
+                Textarea::make('motivo')
+                    ->label('Mensaje para quien reserva')
+                    ->rows(5)
+                    ->maxLength(400)
+                    ->required(),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $bloqueo = BloqueoProgramado::query()->vigentes()->whereKey($arguments['bloqueo'] ?? 0)->first();
+
+                if (! $bloqueo) {
+                    Notification::make()->title('Ese bloqueo ya no está')->warning()->send();
+
+                    return;
+                }
+
+                $bloqueo->update(['motivo' => trim($data['motivo'])]);
+
+                Notification::make()->title('Mensaje actualizado')->body('El aviso del sitio ya dice lo nuevo.')->success()->send();
+            });
     }
 
     public function guardarHorario(): void

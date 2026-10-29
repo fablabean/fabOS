@@ -35,7 +35,11 @@
                 <a class="text-primary-600 hover:underline" href="{{ \App\Filament\Resources\Reservations\ReservationResource::getUrl('index') }}">Reservas</a>.
             </p>
 
-            <div class="mt-4">
+            <div class="mt-4 flex flex-wrap gap-3">
+                <x-filament::button color="gray" icon="heroicon-o-pencil-square"
+                                    wire:click="mountAction('editarMensaje', { bloqueo: {{ $bloqueo->id }} })">
+                    Editar el mensaje
+                </x-filament::button>
                 <x-filament::button :color="$ya ? 'success' : 'gray'" wire:click="quitar({{ $bloqueo->id }})"
                                     wire:confirm="{{ $ya ? '¿Abrir las reservas otra vez?' : '¿Quitar este bloqueo? Se podrá reservar en esas fechas.' }}">
                     {{ $ya ? 'Levantar el bloqueo' : 'Quitar este bloqueo' }}
