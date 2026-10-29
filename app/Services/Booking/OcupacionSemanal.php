@@ -28,6 +28,9 @@ class OcupacionSemanal
     /** Lo que no ocupa nada: se pidió y no fue, o no se dio. */
     private const SIN_OCUPAR = ['rechazada', 'cancelada'];
 
+    /** Cuántos días se ven cuando se mira desde hoy: el de hoy y cinco más. */
+    public const DIAS_DESDE_HOY = 6;
+
     /**
      * La semana tal como la pide una pantalla: el día que se quiere ver, los
      * filtros y la vista, ya resueltos.
@@ -42,7 +45,7 @@ class OcupacionSemanal
      *
      * @return array<string,mixed>
      */
-    public function paraVer(?string $dia, ?int $espacio, bool $solo, ?string $vista, ?User $quien): array
+    public function paraVer(?string $dia, ?int $espacio, bool $solo, ?string $vista, ?User $quien, bool $desdeHoy = false): array
     {
         $tz = config('fabos.lab.timezone');
 
@@ -60,6 +63,7 @@ class OcupacionSemanal
             soloDelProyecto: $solo,
             conQuienReserva: $delEquipo,
             soloDe: $delEquipo ? null : $quien,
+            desdeHoy: $desdeHoy,
         ) + [
             'todoElLaboratorio' => $delEquipo,
             'espacio' => $espacio ?: null,
@@ -93,11 +97,25 @@ class OcupacionSemanal
         bool $soloDelProyecto = false,
         bool $conQuienReserva = true,
         ?User $soloDe = null,
+        bool $desdeHoy = false,
     ): array {
         $tz = config('fabos.lab.timezone');
 
-        $desde = $cualquierDia->copy()->timezone($tz)->startOfWeek(Carbon::MONDAY);
-        $hasta = $desde->copy()->endOfWeek(Carbon::SUNDAY);
+        if ($desdeHoy) {
+            // Lo que viene, no la semana del calendario: el día pedido a la
+            // izquierda y cinco más. El domingo no cuenta entre los seis, que
+            // casi nunca abre; si tiene algo, se dibuja de más.
+            $desde = $cualquierDia->copy()->timezone($tz)->startOfDay();
+            $hasta = $desde->copy();
+            for ($n = 1; $n < self::DIAS_DESDE_HOY;) {
+                $hasta->addDay();
+                $n += $hasta->isSunday() ? 0 : 1;
+            }
+            $hasta->endOfDay();
+        } else {
+            $desde = $cualquierDia->copy()->timezone($tz)->startOfWeek(Carbon::MONDAY);
+            $hasta = $desde->copy()->endOfWeek(Carbon::SUNDAY);
+        }
 
         $reservas = Reservation::query()
             ->with([
@@ -170,10 +188,20 @@ class OcupacionSemanal
 
         $bloqueos = $this->bloqueos($desde, $hasta);
 
-        // Lunes a sábado siempre; el domingo solo si algo pasa ese día.
+        // Con hoy a la vista, la grilla alcanza la hora de ahora: la línea que
+        // la marca no se sale por abajo a las nueve de la noche.
+        $ahora = now($tz);
+        if ($ahora->betweenIncluded($desde, $hasta)) {
+            $horaDesde = min($horaDesde, $ahora->hour);
+            $horaHasta = max($horaHasta, $ahora->hour + 1);
+        }
+
+        // Lunes a sábado siempre; el domingo solo si algo pasa ese día, o si
+        // es el primero que se muestra.
         $dias = [];
         for ($d = $desde->copy(); $d->lte($hasta); $d->addDay()) {
-            if ($d->isSunday() && empty($bloques[$d->toDateString()]) && empty($bloqueos[$d->toDateString()])) {
+            if ($d->isSunday() && ! ($desdeHoy && $d->isSameDay($desde))
+                && empty($bloques[$d->toDateString()]) && empty($bloqueos[$d->toDateString()])) {
                 continue;
             }
             $dias[] = $d->copy();
@@ -187,6 +215,7 @@ class OcupacionSemanal
             'horaHasta' => min(24, $horaHasta),
             'bloques'   => $bloques,
             'bloqueos'  => $bloqueos,
+            'desdeHoy'  => $desdeHoy,
             'espacios'  => Space::query()->where('is_reservable', true)->orderBy('name')->get(['id', 'name']),
         ];
     }

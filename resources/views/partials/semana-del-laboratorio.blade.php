@@ -20,6 +20,26 @@
     $tz = config('fabos.lab.timezone');
     $hoy = now($tz)->toDateString();
     $estaSemana = now($tz)->startOfWeek()->toDateString();
+    $desdeHoy = $s['desdeHoy'] ?? false;
+    // Adónde llevan las flechas. Desde hoy se avanza de seis en seis días, y
+    // hacia atrás solo hasta hoy: lo que ya pasó está en la tabla.
+    if ($desdeHoy) {
+        $siguiente = $s['hasta']->copy()->addDay()->toDateString();
+        $atras = $s['desde']->copy();
+        for ($n = 0; $n < \App\Services\Booking\OcupacionSemanal::DIAS_DESDE_HOY;) {
+            $atras->subDay();
+            $n += $atras->isSunday() ? 0 : 1;
+        }
+        $anterior = $s['desde']->toDateString() > $hoy ? max($hoy, $atras->toDateString()) : null;
+        $volver = $s['desde']->toDateString() !== $hoy ? ['dia' => $hoy, 'txt' => 'Hoy'] : null;
+    } else {
+        $siguiente = $s['desde']->copy()->addWeek()->toDateString();
+        $anterior = $s['desde']->copy()->subWeek()->toDateString();
+        $volver = $s['desde']->toDateString() !== $estaSemana ? ['dia' => $hoy, 'txt' => 'Esta semana'] : null;
+    }
+    // Desde hoy el tramo termina en el último día que se dibuja; la semana, el domingo.
+    $ultimo = $desdeHoy ? (collect($s['dias'])->last() ?? $s['hasta']) : $s['hasta'];
+    $ahoraMin = now($tz)->hour * 60 + now($tz)->minute;
     $nombresDia = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
     $total = collect($s['bloques'])->flatten(1);
     // Los bloqueos de reservas: se dibujan debajo de las reservas, rayados.
@@ -61,18 +81,18 @@
     <div class="sem-barra">
         <div class="sem-nav">
             @if ($livewire)
-                <button type="button" wire:click="irA('{{ $s['desde']->copy()->subWeek()->toDateString() }}')">← Anterior</button>
-                <strong>{{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}</strong>
-                <button type="button" wire:click="irA('{{ $s['desde']->copy()->addWeek()->toDateString() }}')">Siguiente →</button>
-                @if ($s['desde']->toDateString() !== $estaSemana)
-                    <button type="button" wire:click="irA('{{ $hoy }}')">Esta semana</button>
+                @if ($anterior) <button type="button" wire:click="irA('{{ $anterior }}')">← Anterior</button> @endif
+                <strong>{{ $s['desde']->format('d/m') }} – {{ $ultimo->format('d/m/Y') }}</strong>
+                <button type="button" wire:click="irA('{{ $siguiente }}')">Siguiente →</button>
+                @if ($volver)
+                    <button type="button" wire:click="irA('{{ $volver['dia'] }}')">{{ $volver['txt'] }}</button>
                 @endif
             @else
-                <a href="{{ $url(['semana' => $s['desde']->copy()->subWeek()->toDateString()]) }}">← Anterior</a>
-                <strong>{{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}</strong>
-                <a href="{{ $url(['semana' => $s['desde']->copy()->addWeek()->toDateString()]) }}">Siguiente →</a>
-                @if ($s['desde']->toDateString() !== $estaSemana)
-                    <a href="{{ $url(['semana' => $hoy]) }}">Esta semana</a>
+                @if ($anterior) <a href="{{ $url(['semana' => $anterior]) }}">← Anterior</a> @endif
+                <strong>{{ $s['desde']->format('d/m') }} – {{ $ultimo->format('d/m/Y') }}</strong>
+                <a href="{{ $url(['semana' => $siguiente]) }}">Siguiente →</a>
+                @if ($volver)
+                    <a href="{{ $url(['semana' => $volver['dia']]) }}">{{ $volver['txt'] }}</a>
                 @endif
             @endif
         </div>
@@ -95,9 +115,11 @@
                         <option value="{{ $esp->id }}">{{ $esp->name }}</option>
                     @endforeach
                 </select>
-                <label class="sem-check">
-                    <input type="checkbox" wire:model.live="solo"> Solo de proyectos
-                </label>
+                @unless ($s['soloFijo'] ?? false)
+                    <label class="sem-check">
+                        <input type="checkbox" wire:model.live="solo"> Solo de proyectos
+                    </label>
+                @endunless
             </div>
         @else
             <form method="get" action="{{ $base }}#semana" class="sem-filtro">
@@ -123,7 +145,7 @@
 
     @if ($total->isEmpty() && empty($bloqueos))
         <p class="sem-vacio">
-            Nada reservado esta semana{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
+            Nada reservado {{ $desdeHoy ? 'en estos días' : 'esta semana' }}{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
         </p>
     @elseif ($s['vista'] === 'espacios')
         {{-- Una fila por espacio: lo que se pregunta es «¿cuándo está libre
@@ -250,6 +272,16 @@
                                 @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
                             </{{ $href ? 'a' : 'div' }}>
                         @endforeach
+                        @if ($dia->toDateString() === $hoy)
+                            {{-- La hora de ahora, de lado a lado del día. Se mueve sola
+                                 (el script de abajo); la página no tiene que recargarse. --}}
+                            <div class="sem-ahora" aria-hidden="true"
+                                 data-tz="{{ $tz }}" data-desde="{{ $s['horaDesde'] }}" data-hasta="{{ $s['horaHasta'] }}" data-hpx="{{ $hPx }}"
+                                 style="top:{{ ($ahoraMin / 60 - $s['horaDesde']) * $hPx }}rem"
+                                 @if ($ahoraMin < $s['horaDesde'] * 60 || $ahoraMin >= $s['horaHasta'] * 60) hidden @endif>
+                                <span>{{ $hhmm($ahoraMin) }}</span>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -370,6 +402,16 @@
         .sem-dia-bq { font-weight:700; color:#B91C1C; letter-spacing:.04em; margin-left:.3rem; }
         .dark .sem-dia-bq { color:#F87171; }
 
+        /* Ahora: una raya por encima de las reservas, que no estorba el cursor. */
+        .sem-ahora { position:absolute; left:0; right:0; height:0; z-index:4; pointer-events:none;
+                     border-top:2px solid var(--s-ink); }
+        .sem-ahora[hidden] { display:none; }
+        .sem-ahora::before { content:""; position:absolute; left:-4px; top:-5px; width:8px; height:8px;
+                             border-radius:50%; background:var(--s-ink); }
+        .sem-ahora span { position:absolute; right:2px; top:-.95rem; padding:0 .25rem; border-radius:2px;
+                          font-family:ui-monospace,Consolas,monospace; font-size:.62rem; font-weight:700;
+                          background:var(--s-ink); color:var(--s-surface); }
+
         .sem-tabla { width:100%; min-width:44rem; border-collapse:separate; border-spacing:2px; table-layout:fixed; }
         .sem-tabla th, .sem-tabla td { vertical-align:top; padding:.3rem; border:0; background:none; }
         .sem-tabla thead th { font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--s-muted);
@@ -391,4 +433,19 @@
         .sem-m.pasada { opacity:.5; }
         .sem-nota { margin:.5rem 0 0; font-size:.8rem; color:var(--s-muted); }
     </style>
+    <script>
+        // Mueve la raya de ahora cada medio minuto. Busca las rayas en cada
+        // vuelta: Livewire redibuja la semana al cambiar de vista o de filtro.
+        window.semAhora ??= setInterval(function () {
+            document.querySelectorAll('.sem-ahora').forEach(function (el) {
+                const [h, m] = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: el.dataset.tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+                }).format(new Date()).split(':');
+                const min = +h * 60 + +m, a = el.dataset.desde * 60, z = el.dataset.hasta * 60;
+                el.hidden = min < a || min >= z;
+                el.style.top = ((min - a) / 60 * el.dataset.hpx) + 'rem';
+                el.querySelector('span').textContent = h + ':' + m;
+            });
+        }, 30000);
+    </script>
 @endonce

@@ -143,10 +143,14 @@ class SemanaDelLaboratorioTest extends TestCase
 
         $this->actingAs($admin);
 
+        // Desde el día pedido y cinco más; el domingo vacío no cuenta.
         \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
             ->call('irA', '2026-09-29')
-            ->assertSee('28/09 – 04/10/2026')
+            ->assertSee('29/09 – 05/10/2026')
             ->assertSee('Ana Torres')
+            ->assertSeeHtml("irA('2026-10-06')")
+            ->call('irA', '2026-09-30')
+            ->assertDontSee('Ana Torres', 'El lunes ya no se ve.')
             ->call('irA', '2026-10-06')
             ->assertDontSee('Ana Torres')
             ->call('irA', '2026-09-29')
@@ -154,6 +158,49 @@ class SemanaDelLaboratorioTest extends TestCase
             ->assertSee('sem-tabla', false)
             ->set('solo', true)
             ->assertDontSee('Ana Torres');
+    }
+
+    /**
+     * Abre con hoy a la izquierda, sin flecha hacia atrás, y con la raya de
+     * la hora de ahora en la columna de hoy.
+     */
+    public function test_el_widget_abre_en_hoy_con_la_hora_marcada(): void
+    {
+        Carbon::setTestNow($this->martes('10:30'));
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $this->reserva($admin, '09:00', '11:00', ['purpose' => 'Corte de prueba']);
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
+            ->assertSee('29/09 – 05/10/2026')
+            ->assertDontSee('← Anterior')
+            ->assertDontSeeHtml('>Hoy</button>')
+            ->assertSeeHtml('class="sem-ahora"')
+            ->assertSee('10:30')
+            ->call('irA', '2026-10-06')
+            ->assertSee('← Anterior')
+            ->assertSeeHtml('>Hoy</button>')
+            ->assertDontSeeHtml('class="sem-ahora"');
+
+        Carbon::setTestNow();
+    }
+
+    /** En la lista de proyectos, solo lo de proyectos, sin ofrecer el filtro. */
+    public function test_en_proyectos_el_widget_solo_muestra_lo_de_proyectos(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $p = $this->proyecto($admin);
+        $this->reserva($admin, '10:00', '12:00', ['project_id' => $p->id]);
+        $this->reserva($this->persona('Beto Suelto'), '14:00', '15:00');
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class, ['soloFijo' => true])
+            ->call('irA', '2026-09-29')
+            ->assertSee($p->code)
+            ->assertDontSee('Beto Suelto')
+            ->assertDontSee('Solo de proyectos');
     }
 
     /**
