@@ -20,6 +20,12 @@ Schedule::command('fabos:pausas-sin-respuesta')
     ->dailyAt('09:00')
     ->timezone(config('fabos.lab.timezone'));
 
+// Los festivos que vienen quedan bloqueados para reservas, con tiempo para
+// avisarse en el sitio y para levantar el que sí se abra.
+Schedule::command('fabos:bloquear-festivos')
+    ->dailyAt('00:10')
+    ->timezone(config('fabos.lab.timezone'));
+
 // Los planes preventivos se vuelven órdenes reales cada madrugada (§8).
 Schedule::command('fabos:generar-preventivas')->dailyAt('05:00');
 

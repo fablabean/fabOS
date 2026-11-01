@@ -20,16 +20,26 @@ use DateTimeInterface;
  */
 class DiasHabiles
 {
-    /** Los que caen siempre en su fecha: [mes, día]. */
-    private const FIJOS = [[1, 1], [5, 1], [7, 20], [8, 7], [12, 8], [12, 25]];
+    /** Los que caen siempre en su fecha: [mes, día, nombre]. */
+    private const FIJOS = [
+        [1, 1, 'Año Nuevo'], [5, 1, 'Día del Trabajo'], [7, 20, 'Día de la Independencia'],
+        [8, 7, 'Batalla de Boyacá'], [12, 8, 'Inmaculada Concepción'], [12, 25, 'Navidad'],
+    ];
 
     /** Los que se corren al lunes siguiente si no caen en lunes. */
-    private const AL_LUNES = [[1, 6], [3, 19], [6, 29], [8, 15], [10, 12], [11, 1], [11, 11]];
+    private const AL_LUNES = [
+        [1, 6, 'Reyes Magos'], [3, 19, 'San José'], [6, 29, 'San Pedro y San Pablo'],
+        [8, 15, 'Asunción de la Virgen'], [10, 12, 'Día de la Raza'], [11, 1, 'Todos los Santos'],
+        [11, 11, 'Independencia de Cartagena'],
+    ];
 
-    /** Días desde el domingo de Pascua, y si se corren al lunes. */
-    private const DE_PASCUA = [[-3, false], [-2, false], [39, true], [60, true], [68, true]];
+    /** Días desde el domingo de Pascua, si se corren al lunes, y el nombre. */
+    private const DE_PASCUA = [
+        [-3, false, 'Jueves Santo'], [-2, false, 'Viernes Santo'], [39, true, 'Ascensión del Señor'],
+        [60, true, 'Corpus Christi'], [68, true, 'Sagrado Corazón'],
+    ];
 
-    /** @var array<int,array<string,true>> */
+    /** @var array<int,array<string,string>> */
     private static array $festivos = [];
 
     public static function esHabil(DateTimeInterface $dia): bool
@@ -37,6 +47,32 @@ class DiasHabiles
         $dia = self::local($dia);
 
         return ! $dia->isWeekend() && ! isset(self::festivosDe($dia->year)[$dia->toDateString()]);
+    }
+
+    /** El nombre del festivo de ese día, o nulo si no es festivo: «Todos los Santos». */
+    public static function festivo(DateTimeInterface $dia): ?string
+    {
+        $dia = self::local($dia);
+
+        return self::festivosDe($dia->year)[$dia->toDateString()] ?? null;
+    }
+
+    /**
+     * Los festivos de `$desde` a `$hasta`, ambos incluidos.
+     *
+     * @return array<string,string> fecha Y-m-d => nombre
+     */
+    public static function festivosEntre(DateTimeInterface $desde, DateTimeInterface $hasta): array
+    {
+        $a = self::local($desde)->toDateString();
+        $z = self::local($hasta)->toDateString();
+        $todos = [];
+
+        for ($año = (int) substr($a, 0, 4); $año <= (int) substr($z, 0, 4); $año++) {
+            $todos += self::festivosDe($año);
+        }
+
+        return array_filter($todos, fn (string $fecha) => $fecha >= $a && $fecha <= $z, ARRAY_FILTER_USE_KEY);
     }
 
     /**
@@ -108,7 +144,7 @@ class DiasHabiles
         return CarbonImmutable::instance($instante)->setTimezone(config('fabos.lab.timezone'));
     }
 
-    /** @return array<string,true> las fechas festivas del año, como Y-m-d */
+    /** @return array<string,string> las fechas festivas del año, como Y-m-d, con su nombre */
     private static function festivosDe(int $año): array
     {
         if (isset(self::$festivos[$año])) {
@@ -119,25 +155,24 @@ class DiasHabiles
         $alLunes = fn (CarbonImmutable $d) => $d->isMonday() ? $d : $d->next(CarbonImmutable::MONDAY);
         $fechas = [];
 
-        foreach (self::FIJOS as [$mes, $dia]) {
-            $fechas[] = CarbonImmutable::create($año, $mes, $dia, 0, 0, 0, $tz);
+        foreach (self::FIJOS as [$mes, $dia, $nombre]) {
+            $fechas[CarbonImmutable::create($año, $mes, $dia, 0, 0, 0, $tz)->toDateString()] = $nombre;
         }
 
-        foreach (self::AL_LUNES as [$mes, $dia]) {
-            $fechas[] = $alLunes(CarbonImmutable::create($año, $mes, $dia, 0, 0, 0, $tz));
+        foreach (self::AL_LUNES as [$mes, $dia, $nombre]) {
+            $fechas[$alLunes(CarbonImmutable::create($año, $mes, $dia, 0, 0, 0, $tz))->toDateString()] = $nombre;
         }
 
         $pascua = self::pascua($año, $tz);
 
-        foreach (self::DE_PASCUA as [$dias, $corre]) {
+        foreach (self::DE_PASCUA as [$dias, $corre, $nombre]) {
             $fecha = $pascua->addDays($dias);
-            $fechas[] = $corre ? $alLunes($fecha) : $fecha;
+            $fechas[($corre ? $alLunes($fecha) : $fecha)->toDateString()] = $nombre;
         }
 
-        return self::$festivos[$año] = array_fill_keys(
-            array_map(fn (CarbonImmutable $f) => $f->toDateString(), $fechas),
-            true,
-        );
+        ksort($fechas);
+
+        return self::$festivos[$año] = $fechas;
     }
 
     /** El domingo de Pascua (algoritmo de Butcher): no depende de extensiones. */

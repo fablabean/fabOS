@@ -667,6 +667,25 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'equipo', 'fecha', 'inicio', 'motivo'],
             ],
             [
+                'key'          => 'reserva.cancelada_por_festivo',
+                'name'         => 'Reserva cancelada por caer en festivo',
+                'description'  => 'A quien tenía una reserva en un día festivo, cuando el laboratorio la cancela porque ese día no abre.',
+                'is_essential' => true,
+                'subject'      => 'Tu reserva del {fecha} se canceló: es festivo',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu reserva de {equipo} para el {fecha}, de {inicio} a {fin}, quedó cancelada: ese día es festivo ({festivo}) y el laboratorio no abre.
+
+                    El sistema la dejó pasar porque todavía no reconocía los festivos. Ya lo corregimos, y lamentamos el inconveniente.
+
+                    Por favor vuelve a reservar en otro día: {enlace}
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'equipo', 'fecha', 'inicio', 'fin', 'festivo', 'enlace', 'laboratorio'],
+            ],
+            [
                 'key'          => 'reserva.no_show',
                 'name'         => 'Reserva liberada por no llegar',
                 'description'  => 'Se envía cuando pasa la tolerancia de llegada y la reserva se suelta.',

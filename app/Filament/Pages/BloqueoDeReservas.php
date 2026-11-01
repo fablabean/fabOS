@@ -59,7 +59,9 @@ class BloqueoDeReservas extends Page
 
     public static function getNavigationBadge(): ?string
     {
-        return Bloqueo::activo() ? 'Activo' : (Bloqueo::vigentes()->isNotEmpty() ? 'Programado' : null);
+        // «Programado» solo cuando ya se avisa en el sitio: con los festivos
+        // siempre hay alguno a dos meses, y la marca no diría nada.
+        return Bloqueo::activo() ? 'Activo' : (Bloqueo::porVenir()->isNotEmpty() ? 'Programado' : null);
     }
 
     public static function getNavigationBadgeColor(): ?string
