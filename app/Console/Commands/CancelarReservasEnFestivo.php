@@ -34,7 +34,7 @@ class CancelarReservasEnFestivo extends Command
         $this->table(['Reserva', 'Cuándo', 'Qué', 'Quién', 'Correo', 'Estado'], $afectadas->map(fn (Reservation $r) => [
             $r->id,
             $r->starts_at->copy()->timezone($tz)->format('d/m H:i') . '–' . $r->ends_at->copy()->timezone($tz)->format('H:i'),
-            $r->nombreDelRecurso(),
+            Festivos::queEs($r),
             $r->user?->name ?? '—',
             $r->user?->email ?? '—',
             $r->status,

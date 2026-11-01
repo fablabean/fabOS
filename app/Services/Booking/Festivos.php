@@ -68,6 +68,15 @@ class Festivos
             ->values();
     }
 
+    /**
+     * Qué se reservó, dicho para quien lo reservó: en una asesoría el recurso
+     * es la persona del equipo, y «tu reserva de Michael» no dice nada.
+     */
+    public static function queEs(Reservation $reserva): string
+    {
+        return $reserva->esAtencionPersonal() ? $reserva->queAtiende() : $reserva->nombreDelRecurso();
+    }
+
     public static function motivo(string $nombre): string
     {
         return "Es festivo ({$nombre}) y el laboratorio no abre. Los demás días se reserva normal.";
@@ -114,7 +123,7 @@ class Festivos
         $tz = config('fabos.lab.timezone');
 
         $this->avisos->enviarUnaVez('reserva.cancelada_por_festivo', $reserva->user, $reserva, [
-            'equipo'  => $reserva->nombreDelRecurso(),
+            'equipo'  => self::queEs($reserva),
             'fecha'   => $reserva->starts_at->copy()->timezone($tz)->locale('es')->isoFormat('dddd D [de] MMMM'),
             'inicio'  => $reserva->starts_at->copy()->timezone($tz)->format('H:i'),
             'fin'     => $reserva->ends_at->copy()->timezone($tz)->format('H:i'),
