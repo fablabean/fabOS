@@ -671,15 +671,15 @@ class NotificationTemplateSeeder extends Seeder
                 'name'         => 'Reserva cancelada por caer en festivo',
                 'description'  => 'A quien tenía una reserva en un día festivo, cuando el laboratorio la cancela porque ese día no abre.',
                 'is_essential' => true,
-                'subject'      => 'Tu reserva del {fecha} se canceló: es festivo',
+                'subject'      => 'Tu reserva del {fecha}: era festivo y la cancelamos',
                 'body'         => <<<'TXT'
                     Hola {nombre_pila},
 
-                    Tu reserva de {equipo} para el {fecha}, de {inicio} a {fin}, quedó cancelada: ese día es festivo ({festivo}) y el laboratorio no abre.
+                    Tu reserva de {equipo} del {fecha}, de {inicio} a {fin}, cayó en un día festivo ({festivo}), y los festivos el laboratorio no abre. Por eso la cancelamos.
 
-                    El sistema la dejó pasar porque todavía no reconocía los festivos. Ya lo corregimos, y lamentamos el inconveniente.
+                    El sistema te dejó hacerla porque todavía no reconocía los festivos. Ya lo corregimos, y lamentamos el inconveniente. Si te había costado FabCoins, ya te los devolvimos.
 
-                    Por favor vuelve a reservar en otro día: {enlace}
+                    Cuando quieras, reserva de nuevo para otro día: {enlace}
 
                     — {laboratorio}
                     TXT,
