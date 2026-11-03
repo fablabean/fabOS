@@ -271,4 +271,56 @@ class BackofficePreinscripcionTest extends TestCase
             ->assertSee('Ya alcanzamos el mínimo para abrir la cohorte.')
             ->assertSee('Preinscríbete');
     }
+
+    /**
+     * La lista que manda Fab Academy se pega tal cual: los preinscritos que
+     * aparecen quedan inscritos, y lo que no coincide se enseña.
+     */
+    public function test_la_lista_de_registrados_inscribe_a_los_que_coinciden(): void
+    {
+        $this->admin();
+        UserCategory::firstOrCreate(['slug' => 'externo'], ['name' => 'Externo', 'position' => 2]);
+        $cohorte = $this->cohorte([], ['capacity' => 20]);
+        $ana = $this->preinscrito($cohorte, ['name' => 'Ana', 'email' => 'ana@test.co']);
+        $luis = $this->preinscrito($cohorte, ['name' => 'Luis', 'email' => 'luis@test.co']);
+        $sin = $this->preinscrito($cohorte, ['name' => 'Sin registro', 'email' => 'sin@test.co']);
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+
+        $lista = "Nombre;Correo;Lab#NL#Ana P;ANA@test.co;EAN#NL#Luis;luis@test.co;EAN#NL#Otra;otra@fuera.org;EAN";
+
+        $this->pestana($cohorte->fresh())
+            ->callTableAction('cruzar_lista', data: ['lista' => str_replace('#NL#', "\n", $lista)])
+            ->assertHasNoTableActionErrors()
+            ->assertNotified();
+
+        $this->assertSame('inscrito', $ana->fresh()->status);
+        $this->assertSame('inscrito', $luis->fresh()->status);
+        $this->assertSame('preinscrito', $sin->fresh()->status);
+        $this->assertSame(2, $cohorte->fresh()->inscritos());
+
+        $r = app(PreinscripcionService::class)->inscribirDesdeLista($cohorte->fresh(), 'ana@test.co, otra@fuera.org');
+        $this->assertSame(['Ana'], $r['ya']);
+        $this->assertSame(['otra@fuera.org'], $r['sin_preinscripcion']);
+    }
+
+    /** La inscripción anulada antes de publicar no sale como alguien que se retiró. */
+    public function test_la_inscripcion_anulada_antes_de_publicar_no_asusta(): void
+    {
+        $this->admin();
+        $cohorte = $this->cohorte();
+        $u = User::create(['name' => 'Erick', 'email' => 'erick@test.co', 'status' => 'activo']);
+        $anulada = $cohorte->enrollments()->create(['user_id' => $u->id, 'status' => 'retirado']);
+
+        $this->travel(1)->minute();
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+
+        Livewire::test(\App\Filament\Resources\CourseEditions\RelationManagers\EnrollmentsRelationManager::class, [
+            'ownerRecord' => $cohorte->fresh(),
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->assertCanNotSeeTableRecords([$anulada])
+            ->removeTableFilter('sin_anuladas')
+            ->assertCanSeeTableRecords([$anulada])
+            ->assertSee('Anulada antes de publicar la cohorte');
+    }
 }

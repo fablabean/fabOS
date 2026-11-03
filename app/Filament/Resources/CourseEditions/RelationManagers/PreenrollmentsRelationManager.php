@@ -163,6 +163,7 @@ class PreenrollmentsRelationManager extends RelationManager
             ])
             ->headerActions([
                 self::abrirCohorte(),
+                self::cruzarConLaLista(),
 
                 CreateAction::make()
                     ->label('Anotar a alguien')
@@ -236,6 +237,49 @@ class PreenrollmentsRelationManager extends RelationManager
                     ->title('Cohorte abierta')
                     ->body($avisados === 1 ? 'Se le avisó a una persona.' : 'Se les avisó a ' . $avisados . ' personas.')
                     ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * Cuando Fab Academy manda la lista de quienes se registraron allá: se
+     * pega, y los que estaban preinscritos aquí quedan inscritos de una vez,
+     * con su cuenta. Lo que no coincide se enseña, no se adivina.
+     */
+    private static function cruzarConLaLista(): Action
+    {
+        return Action::make('cruzar_lista')
+            ->label('Cruzar con la lista de registrados')
+            ->icon('heroicon-o-clipboard-document-check')
+            ->color('gray')
+            ->visible(fn (RelationManager $livewire) => $livewire->getOwnerRecord()->status === 'abierta')
+            ->modalHeading('Cruzar con la lista de registrados')
+            ->modalDescription('Pega la lista que mandó Fab Academy, como venga: se toman solo los correos. Cada preinscrito que aparezca queda inscrito, con su cuenta, ocupa un cupo y le llega el correo de inscripción. Los correos que no estaban preinscritos aquí se muestran al final.')
+            ->modalSubmitActionLabel('Cruzar e inscribir')
+            ->schema([
+                Textarea::make('lista')
+                    ->label('Lista de registrados')
+                    ->rows(10)
+                    ->required()
+                    ->placeholder("ana@correo.com\nluis@empresa.co\n…"),
+            ])
+            ->action(function (array $data, RelationManager $livewire) {
+                $r = app(PreinscripcionService::class)->inscribirDesdeLista($livewire->getOwnerRecord(), $data['lista']);
+
+                $partes = array_filter([
+                    $r['inscritos'] ? 'Inscritos ahora (' . count($r['inscritos']) . '): ' . implode(', ', $r['inscritos']) . '.' : null,
+                    $r['ya'] ? 'Ya estaban inscritos (' . count($r['ya']) . '): ' . implode(', ', $r['ya']) . '.' : null,
+                    $r['sin_preinscripcion'] ? 'No estaban preinscritos aquí (' . count($r['sin_preinscripcion']) . '): ' . implode(', ', $r['sin_preinscripcion']) . '. Inscríbelos desde la pestaña Inscritos si son de esta cohorte.' : null,
+                    $r['errores'] ? 'No se pudo (' . count($r['errores']) . '): ' . implode(' · ', $r['errores']) : null,
+                ]);
+
+                Notification::make()
+                    ->title($partes ? 'Lista cruzada' : 'La lista no traía correos')
+                    ->body($partes
+                        ? new \Illuminate\Support\HtmlString(implode('<br><br>', array_map('e', $partes)))
+                        : 'Pega los correos de quienes se registraron.')
+                    ->color($r['errores'] || $r['sin_preinscripcion'] ? 'warning' : 'success')
+                    ->persistent()
                     ->send();
             });
     }

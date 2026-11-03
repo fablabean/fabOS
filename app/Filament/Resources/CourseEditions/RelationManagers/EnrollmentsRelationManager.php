@@ -59,7 +59,9 @@ class EnrollmentsRelationManager extends RelationManager
                     })
                     ->description(fn (Enrollment $r) => $r->enEspera() && $r->waitlisted_at
                         ? 'Desde el ' . $r->waitlisted_at->timezone($tz)->format('d/m H:i')
-                        : ($r->status === 'retirado' && $r->feedback ? \Illuminate\Support\Str::limit($r->feedback, 60) : null)),
+                        : (self::anuladaAntesDePublicar($r)
+                            ? 'Anulada antes de publicar la cohorte: pasó a preinscripción'
+                            : ($r->status === 'retirado' && $r->feedback ? \Illuminate\Support\Str::limit($r->feedback, 60) : null))),
 
                 TextColumn::make('participant_type')
                     ->label('Participante')
@@ -178,6 +180,15 @@ class EnrollmentsRelationManager extends RelationManager
                     . ($grupos ? ' — ' . $grupos : '');
             })
             ->filters([
+                // Una inscripción retirada antes de publicar la cohorte no es
+                // alguien que se fue: es la que se hizo por error mientras se
+                // preinscribía. Vista como «retirado» asusta sin motivo.
+                \Filament\Tables\Filters\Filter::make('sin_anuladas')
+                    ->label('Ocultar las anuladas antes de publicar')
+                    ->default()
+                    ->query(fn ($query, RelationManager $livewire) => ($publicada = $livewire->getOwnerRecord()->published_at)
+                        ? $query->where(fn ($q) => $q->where('status', '!=', 'retirado')->orWhere('updated_at', '>=', $publicada))
+                        : $query),
                 SelectFilter::make('status')->label('Estado')->options(Enrollment::ESTADOS),
                 SelectFilter::make('participant_type')->label('Participante')
                     ->options(collect(Enrollment::TIPOS_DE_PARTICIPANTE)->map(fn ($t) => $t['nombre'])->all()),
@@ -198,6 +209,14 @@ class EnrollmentsRelationManager extends RelationManager
                 self::retirar(),
             ])
             ->toolbarActions([]);
+    }
+
+    /** Retirada antes de que la cohorte se publicara: se anuló, nadie se fue. */
+    private static function anuladaAntesDePublicar(Enrollment $r): bool
+    {
+        $publicada = $r->edition?->published_at;
+
+        return $r->status === 'retirado' && $publicada && $r->updated_at?->lt($publicada);
     }
 
     /**

@@ -222,6 +222,43 @@ class PreinscripcionService
         });
     }
 
+    /**
+     * Cruza la lista de quienes se registraron de verdad —la que manda Fab
+     * Academy— con los preinscritos, e inscribe a los que coinciden.
+     *
+     * Se pega como venga: una columna de correos, una hoja copiada entera, un
+     * correo reenviado. Se toman los correos y nada más. Lo que no coincide
+     * no se inventa: se devuelve para que alguien decida qué es.
+     *
+     * @return array{inscritos: list<string>, ya: list<string>, sin_preinscripcion: list<string>, errores: list<string>}
+     */
+    public function inscribirDesdeLista(CourseEdition $cohorte, string $lista): array
+    {
+        preg_match_all('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $lista, $m);
+        $correos = array_values(array_unique(array_map('mb_strtolower', $m[0])));
+
+        $resultado = ['inscritos' => [], 'ya' => [], 'sin_preinscripcion' => [], 'errores' => []];
+
+        foreach ($correos as $correo) {
+            $p = $cohorte->preenrollments()->where('email', $correo)->first();
+
+            if (! $p) {
+                $resultado['sin_preinscripcion'][] = $correo;
+            } elseif ($p->yaInscrito()) {
+                $resultado['ya'][] = $p->name;
+            } else {
+                try {
+                    $this->inscribir($p);
+                    $resultado['inscritos'][] = $p->name;
+                } catch (TrainingException $e) {
+                    $resultado['errores'][] = $p->name . ': ' . $e->getMessage();
+                }
+            }
+        }
+
+        return $resultado;
+    }
+
     // ------------------------------------------------------------- por dentro
 
     /** Estudiante si es de la casa, externo si viene de fuera: sale del correo. */
