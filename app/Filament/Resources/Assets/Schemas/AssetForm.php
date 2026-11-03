@@ -148,7 +148,11 @@ class AssetForm
                         Select::make('status')
                             ->label('Estado')
                             ->options(Asset::ESTADOS)
-                            ->disableOptionWhen(fn (string $value) => $value === 'mantenimiento')
+                            // A mantenimiento no se llega a mano, pero el que ya
+                            // está ahí lo conserva: bloquear su propio valor
+                            // dejaba la ficha sin poder guardarse por nada.
+                            ->disableOptionWhen(fn (string $value, ?Asset $record) => $value === 'mantenimiento'
+                                && $record?->getOriginal('status') !== 'mantenimiento')
                             ->default('operativo')
                             ->required()
                             // Mientras una orden lo tenga detenido, lo devuelve la orden.

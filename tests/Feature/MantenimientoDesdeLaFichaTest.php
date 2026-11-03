@@ -92,4 +92,31 @@ class MantenimientoDesdeLaFichaTest extends TestCase
 
         $this->assertSame('mantenimiento', $this->equipo->fresh()->status);
     }
+
+    /** Un equipo detenido por una orden sigue pudiendo editarse en lo demás. */
+    public function test_en_mantenimiento_la_ficha_se_puede_guardar(): void
+    {
+        app(MaintenanceService::class)->reportarFalla($this->equipo, auth()->user(), 'Cable roto', detieneElEquipo: true);
+
+        Livewire::test(EditAsset::class, ['record' => $this->equipo->getRouteKey()])
+            ->fillForm(['brand' => 'FLSun'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('FLSun', $this->equipo->fresh()->brand);
+        $this->assertSame('mantenimiento', $this->equipo->fresh()->status);
+    }
+
+    /** Sin orden abierta, el que estaba en mantenimiento puede volver a operativo. */
+    public function test_en_mantenimiento_sin_orden_se_puede_guardar_igual(): void
+    {
+        $this->equipo->forceFill(['status' => 'mantenimiento'])->save();
+
+        Livewire::test(EditAsset::class, ['record' => $this->equipo->getRouteKey()])
+            ->fillForm(['brand' => 'Rigol'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('Rigol', $this->equipo->fresh()->brand);
+    }
 }
