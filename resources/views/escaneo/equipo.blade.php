@@ -169,11 +169,59 @@
                     <span class="quien">
                         · reportado {{ $o->created_at->timezone($tz)->diffForHumans() }}
                     </span>
+                    @if ($gestiona)
+                        · <a href="{{ \App\Filament\Resources\WorkOrders\WorkOrderResource::getUrl('edit', ['record' => $o]) }}">abrir la orden</a>
+                    @endif
                 </p>
             @endforeach
         </div>
     @endif
 
+    @if ($gestiona)
+        {{-- Quien gestiona el mantenimiento lo decide aquí mismo, con el
+             equipo delante: la misma orden que en el panel, con paro. --}}
+        <div class="panel">
+            <h2 style="margin-top:0">Mandar a mantenimiento</h2>
+            @if ($activo->status === 'mantenimiento')
+                <p class="help" style="margin:0">
+                    Ya está en mantenimiento. Vuelve a servicio al cerrar su orden
+                    @if ($ordenes->isNotEmpty())
+                        (enlace arriba)
+                    @else
+                        en <a href="{{ \App\Filament\Resources\WorkOrders\WorkOrderResource::getUrl('index') }}">Órdenes de trabajo</a>
+                    @endif.
+                </p>
+            @else
+                <p class="help" style="margin:0 0 .6rem">
+                    Abre una orden de trabajo y saca el equipo de servicio: deja de
+                    poder reservarse y se avisa a quien tenía reserva. Al cerrar la
+                    orden vuelve a servicio.
+                </p>
+                <form method="POST" action="{{ route('escaneo.mantenimiento', $activo->qr_token) }}">
+                    @csrf
+                    <label for="motivo">Qué tiene o qué se le va a hacer</label>
+                    <input id="motivo" name="motivo" type="text" required maxlength="500" value="{{ old('motivo') }}"
+                           placeholder="Cambio de boquilla, el láser no corta parejo…">
+
+                    <label for="tipo">Tipo</label>
+                    <select id="tipo" name="tipo">
+                        @foreach (\App\Models\WorkOrder::TIPOS as $valor => $nombre)
+                            <option value="{{ $valor }}" @selected(old('tipo', 'correctivo') === $valor)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+
+                    <label for="prioridad">Prioridad</label>
+                    <select id="prioridad" name="prioridad">
+                        @foreach (\App\Models\WorkOrder::PRIORIDADES as $valor => $nombre)
+                            <option value="{{ $valor }}" @selected(old('prioridad', 'normal') === $valor)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit">Mandar a mantenimiento</button>
+                </form>
+            @endif
+        </div>
+    @else
     {{-- Reportar una falla: quien detecta el problema es quien está delante. --}}
     <div class="panel">
         <h2 style="margin-top:0">¿Algo anda mal?</h2>
@@ -194,6 +242,7 @@
             </button>
         </form>
     </div>
+    @endif
 
     <p><a class="volver" href="{{ route('publico.reservas') }}">← Ir a Reservas</a></p>
 @endsection

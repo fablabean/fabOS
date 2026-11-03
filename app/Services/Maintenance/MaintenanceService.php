@@ -52,6 +52,38 @@ class MaintenanceService
         });
     }
 
+    /**
+     * Mandar el equipo a mantenimiento desde su QR, con el equipo delante.
+     *
+     * Es la orden que se crearía en el panel con «saca el equipo de servicio»
+     * marcado, sin ir a buscar la ficha: queda abierta, el equipo deja de
+     * poder reservarse y se avisa a quien tenía reserva. Cerrarla lo devuelve.
+     */
+    public function mandarAMantenimiento(
+        Asset $equipo,
+        User $quien,
+        string $motivo,
+        string $tipo = 'correctivo',
+        string $prioridad = 'normal',
+    ): WorkOrder {
+        return DB::transaction(function () use ($equipo, $quien, $motivo, $tipo, $prioridad) {
+            $orden = WorkOrder::create([
+                'asset_id'        => $equipo->id,
+                'kind'            => $tipo,
+                'status'          => 'abierta',
+                'priority'        => $prioridad,
+                'reported_issue'  => $motivo,
+                'reported_by'     => $quien->id,
+                'stops_equipment' => true,
+                'down_since'      => now(),
+            ]);
+
+            $this->detener($equipo, $motivo);
+
+            return $orden;
+        });
+    }
+
     /** Saca el equipo de servicio y avisa qué reservas quedan afectadas. */
     public function detener(Asset $equipo, ?string $motivo = null): Collection
     {

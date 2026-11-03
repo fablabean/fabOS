@@ -503,6 +503,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/e/reserva/{reservation}/llegada', [ScanController::class, 'checkIn'])->name('escaneo.checkin');
     Route::post('/e/reserva/{reservation}/salida', [ScanController::class, 'checkOut'])->name('escaneo.checkout');
     Route::post('/e/{token}/falla', [ScanController::class, 'reportarFalla'])->name('escaneo.falla');
+    Route::post('/e/{token}/mantenimiento', [ScanController::class, 'mandarAMantenimiento'])->name('escaneo.mantenimiento');
 
     // Inventario ciclico: se escanea el QR de una ubicacion (§7).
     Route::get('/u/{token}', [InventoryController::class, 'show'])->name('inventario.ubicacion');

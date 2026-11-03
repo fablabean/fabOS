@@ -49,7 +49,36 @@ class ScanController extends Controller
             'ordenes'   => $this->mantenimiento->abiertasDe($activo),
             'tarifaMaterial' => \App\Services\Money\MaterialDelEquipo::tarifa($activo),
             'materialesOfrecidos' => \App\Services\Money\MaterialDelEquipo::ofrecidas($activo),
+            'gestiona'  => self::gestionaMantenimiento($user),
         ]);
+    }
+
+    /**
+     * Quien puede crear órdenes de trabajo en el panel puede también mandar el
+     * equipo a mantenimiento desde su QR. El mismo permiso, no uno nuevo: se
+     * da o se quita en Configuración → Roles y accesos.
+     */
+    private static function gestionaMantenimiento(?\App\Models\User $user): bool
+    {
+        return (bool) $user?->puedeEnLaSeccion('crear', \App\Support\Secciones::claveDe(\App\Filament\Resources\WorkOrders\WorkOrderResource::class));
+    }
+
+    /** Mandar el equipo a mantenimiento, con él delante (MaintenanceService::mandarAMantenimiento). */
+    public function mandarAMantenimiento(Request $request, string $token)
+    {
+        abort_unless(self::gestionaMantenimiento($request->user()), 403);
+
+        $activo = Asset::where('qr_token', $token)->firstOrFail();
+
+        $datos = $request->validate([
+            'motivo'    => ['required', 'string', 'max:500'],
+            'tipo'      => ['required', 'in:' . implode(',', array_keys(\App\Models\WorkOrder::TIPOS))],
+            'prioridad' => ['required', 'in:' . implode(',', array_keys(\App\Models\WorkOrder::PRIORIDADES))],
+        ]);
+
+        $this->mantenimiento->mandarAMantenimiento($activo, $request->user(), $datos['motivo'], $datos['tipo'], $datos['prioridad']);
+
+        return back()->with('status', 'Equipo en mantenimiento: ya no se puede reservar, y a quien tenía reserva se le avisó. Al cerrar la orden vuelve a servicio.');
     }
 
     /**
