@@ -323,4 +323,46 @@ class BackofficePreinscripcionTest extends TestCase
             ->assertCanSeeTableRecords([$anulada])
             ->assertSee('Anulada antes de publicar la cohorte');
     }
+
+    /**
+     * La invitación al registro oficial: se ve antes, se prueba con uno mismo,
+     * y le llega una vez a cada preinscrito que ya puede pasar.
+     */
+    public function test_invitar_al_registro_oficial(): void
+    {
+        $yo = $this->admin();
+        $cohorte = $this->cohorte(['slug' => 'tera-fab-academy'], ['capacity' => 20, 'minimum_to_open' => 18]);
+        $this->preinscrito($cohorte, ['name' => 'Ana Torres', 'email' => 'ana@test.co']);
+        $this->travel(1)->minute();
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+        $this->travel(1)->minute();
+        $this->preinscrito($cohorte, ['name' => 'Luis', 'email' => 'luis@test.co']);
+
+        $this->pestana($cohorte->fresh())
+            ->assertTableActionVisible('invitar_registro')
+            ->mountTableAction('invitar_registro')
+            ->assertTableActionMounted('invitar_registro')
+            ->callMountedTableAction(['prueba' => true]);
+
+        // Lo que enseña la vista previa de la ventana.
+        $vista = app(\App\Services\Notifications\NotificationService::class)->previsualizar(
+            'curso.registro_oficial', null, 'Ana María',
+            app(PreinscripcionService::class)->datosDelRegistro($cohorte->fresh(), 'Hola'),
+        );
+        $this->assertSame('Fab Academy: ya puedes hacer tu registro oficial', $vista['asunto']);
+        $this->assertStringContainsString('form.jotform.com/FabAcademy/2027-student-registration-form', $vista['cuerpo']);
+        $this->assertStringContainsString(route('fab-academy'), $vista['cuerpo']);
+
+        $this->assertDatabaseHas('notification_logs', ['key' => 'curso.registro_oficial', 'user_id' => $yo->id]);
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'curso.registro_oficial', 'to' => 'ana@test.co']);
+
+        $this->pestana($cohorte->fresh())->callTableAction('invitar_registro', data: ['mensaje' => 'Nos vemos en enero.'])
+            ->assertHasNoTableActionErrors();
+        $this->pestana($cohorte->fresh())->callTableAction('invitar_registro');
+
+        $enviados = \App\Models\NotificationLog::where('key', 'curso.registro_oficial')->where('to', 'ana@test.co');
+        $this->assertSame(1, $enviados->count());
+        $this->assertStringContainsString('Nos vemos en enero.', $enviados->value('body'));
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'curso.registro_oficial', 'to' => 'luis@test.co']);
+    }
 }

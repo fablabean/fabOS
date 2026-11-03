@@ -850,6 +850,34 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'curso', 'cohorte', 'inicio', 'costo', 'faltan', 'enlace'],
             ],
             [
+                'key'          => 'curso.registro_oficial',
+                'name'         => 'Invitación al registro oficial de Fab Academy',
+                'description'  => 'A cada preinscrito que ya puede pasar, una sola vez, cuando el equipo lo envía desde la pestaña de preinscritos.',
+                'is_essential' => true,
+                'subject'      => 'Fab Academy: ya puedes hacer tu registro oficial',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Fab Academy ya está publicada en {laboratorio} y empieza el {inicio}. Como estás en la lista de preinscritos, el siguiente paso es tu registro oficial en Fab Academy.
+
+                    1. Revisa la página del programa: cómo funciona, la inversión y las preguntas frecuentes.
+                    {enlace}
+
+                    2. Completa el formulario de registro de Fab Academy.
+                    {registro}
+
+                    Antes de enviarlo, ten en cuenta:
+                    {condiciones}
+
+                    {mensaje}
+
+                    Si tienes dudas, responde este correo.
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'inicio', 'enlace', 'registro', 'condiciones', 'mensaje', 'laboratorio'],
+            ],
+            [
                 'key'          => 'curso.cohorte_abierta',
                 'name'         => 'La cohorte se abrió',
                 'description'  => 'A cada preinscrito, una sola vez, cuando el equipo abre la cohorte que estaba esperando.',

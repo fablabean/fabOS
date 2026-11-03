@@ -259,6 +259,50 @@ class PreinscripcionService
         return $resultado;
     }
 
+    /**
+     * Invita al registro oficial a los preinscritos que ya pueden pasar
+     * (CourseEdition::habilitaElRegistro). Una vez por persona: pulsar el botón
+     * otra vez solo le escribe a quien no lo había recibido.
+     *
+     * @return array{enviados:int, ya:int, por_habilitar:int}
+     */
+    public function invitarAlRegistro(CourseEdition $cohorte, ?string $mensaje = null): array
+    {
+        $r = ['enviados' => 0, 'ya' => 0, 'por_habilitar' => 0];
+
+        foreach ($cohorte->preenrollments()->whereIn('status', ['preinscrito', 'confirmado'])->get() as $p) {
+            if (! $cohorte->habilitaElRegistro($p)) {
+                $r['por_habilitar']++;
+            } elseif ($this->yaSeLeAviso('curso.registro_oficial', $p)) {
+                $r['ya']++;
+            } else {
+                $this->avisar('curso.registro_oficial', $p, $this->datosDelRegistro($cohorte, $mensaje));
+                $r['enviados']++;
+            }
+        }
+
+        return $r;
+    }
+
+    /**
+     * Lo que lleva el correo de la invitación, también para verlo antes.
+     *
+     * @return array<string,string>
+     */
+    public function datosDelRegistro(CourseEdition $cohorte, ?string $mensaje = null): array
+    {
+        $registro = \App\Support\PaginaFabAcademy::contenido()['registro'];
+
+        return [
+            'inicio'      => $cohorte->starts_on?->locale('es')->isoFormat('D [de] MMMM [de] YYYY') ?? 'por definir',
+            'enlace'      => route('fab-academy'),
+            'registro'    => (string) ($registro['url'] ?? ''),
+            'condiciones' => collect(\App\Support\PaginaFabAcademy::lineas($registro['condiciones'] ?? null))
+                ->map(fn ($c) => '- ' . $c)->implode("\n"),
+            'mensaje'     => trim((string) $mensaje),
+        ];
+    }
+
     // ------------------------------------------------------------- por dentro
 
     /** Estudiante si es de la casa, externo si viene de fuera: sale del correo. */
