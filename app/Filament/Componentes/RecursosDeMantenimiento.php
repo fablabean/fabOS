@@ -138,7 +138,7 @@ class RecursosDeMantenimiento
 
         if (! $recursos) {
             return new HtmlString(e($equipo
-                ? 'Este equipo todavía no tiene manuales ni videos. Se añaden en su ficha, en «Manuales y videos de mantenimiento».'
+                ? 'Este equipo todavía no tiene manuales ni videos. Añádelos con «Editar manuales y videos», aquí arriba: quedan en su ficha.'
                 : 'Elige el equipo para ver sus manuales y videos.'));
         }
 

@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\WorkOrders\Schemas;
 
 use App\Filament\Componentes\RecursosDeMantenimiento;
+use App\Filament\Resources\Assets\AssetResource;
 use App\Models\Asset;
 use App\Models\User;
 use App\Models\WorkOrder;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 
 /**
@@ -77,6 +80,42 @@ class WorkOrderForm
 
                 // Lo que hay del equipo para consultar mientras se trabaja.
                 Section::make('Manuales y videos del equipo')
+                    ->key('recursos')
+                    // Se cargan o corrigen desde aquí, sin perder la orden:
+                    // es al reparar cuando se nota que falta el manual.
+                    ->afterHeader([
+                        Action::make('abrirFicha')
+                            ->label('Abrir la ficha')
+                            ->icon('heroicon-o-arrow-top-right-on-square')
+                            ->link()
+                            ->url(fn (Get $get) => filled($get('asset_id')) ? AssetResource::getUrl('edit', ['record' => $get('asset_id')]) : null)
+                            ->openUrlInNewTab()
+                            ->visible(fn (Get $get) => self::puedeEditarElEquipo($get('asset_id'))),
+
+                        Action::make('editarRecursos')
+                            ->label('Editar manuales y videos')
+                            ->icon('heroicon-o-pencil-square')
+                            ->size('sm')
+                            ->modalHeading('Manuales y videos del equipo')
+                            ->modalDescription('Quedan en la ficha del equipo: se ven en esta orden, en las siguientes y desde su QR.')
+                            ->modalSubmitActionLabel('Guardar en la ficha')
+                            ->fillForm(fn (Get $get): array => [
+                                'maintenance_resources' => Asset::find($get('asset_id'))?->maintenance_resources ?? [],
+                            ])
+                            ->schema([RecursosDeMantenimiento::campo()])
+                            ->action(function (array $data, Get $get): void {
+                                $equipo = Asset::find($get('asset_id'));
+
+                                if (! $equipo || ! self::puedeEditarElEquipo($equipo->id)) {
+                                    return;
+                                }
+
+                                $equipo->update(['maintenance_resources' => array_values($data['maintenance_resources'] ?? [])]);
+
+                                Notification::make()->title('Manuales y videos guardados en la ficha')->success()->send();
+                            })
+                            ->visible(fn (Get $get) => self::puedeEditarElEquipo($get('asset_id'))),
+                    ])
                     ->schema([
                         Placeholder::make('recursos_del_equipo')
                             ->hiddenLabel()
@@ -139,5 +178,13 @@ class WorkOrderForm
                             ->seconds(false),
                     ]),
             ]);
+    }
+
+    /** Quien puede editar la ficha del equipo puede cargarle manuales desde la orden. */
+    private static function puedeEditarElEquipo(mixed $id): bool
+    {
+        $equipo = filled($id) ? Asset::find($id) : null;
+
+        return $equipo && (auth()->user()?->can('update', $equipo) ?? false);
     }
 }

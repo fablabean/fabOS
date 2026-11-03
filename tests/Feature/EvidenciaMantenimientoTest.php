@@ -149,4 +149,27 @@ class EvidenciaMantenimientoTest extends TestCase
         );
         $this->assertCount(3, $orden->fresh()->reference_videos, 'La orden conserva todos los que se usaron.');
     }
+
+    public function test_desde_la_orden_se_cargan_los_videos_en_la_ficha(): void
+    {
+        Mail::fake();
+        $admin = $this->persona(User::ROL_SUPERADMIN);
+        $equipo = $this->equipo();
+        $orden = app(MaintenanceService::class)->reportarFalla($equipo, $admin, 'Cable roto');
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\WorkOrders\Pages\EditWorkOrder::class, ['record' => $orden->getRouteKey()])
+            ->assertSee('Editar manuales y videos')
+            ->callAction(\Filament\Actions\Testing\TestAction::make('editarRecursos')->schemaComponent('recursos', schema: 'form'), data: [
+                'maintenance_resources' => [
+                    ['tipo' => 'video', 'titulo' => 'Cambio del cable plano', 'url' => 'https://youtu.be/cable'],
+                ],
+            ])
+            ->assertHasNoActionErrors()
+            ->assertSee('Cambio del cable plano');
+
+        $this->assertSame('https://youtu.be/cable', $equipo->fresh()->maintenance_resources[0]['url']);
+        $this->assertSame('abierta', $orden->fresh()->status, 'La orden sigue como estaba.');
+    }
 }
