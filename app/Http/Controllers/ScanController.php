@@ -74,11 +74,16 @@ class ScanController extends Controller
             'motivo'    => ['required', 'string', 'max:500'],
             'tipo'      => ['required', 'in:' . implode(',', array_keys(\App\Models\WorkOrder::TIPOS))],
             'prioridad' => ['required', 'in:' . implode(',', array_keys(\App\Models\WorkOrder::PRIORIDADES))],
+            'detiene'   => ['nullable', 'boolean'],
         ]);
 
-        $this->mantenimiento->mandarAMantenimiento($activo, $request->user(), $datos['motivo'], $datos['tipo'], $datos['prioridad']);
+        $detiene = (bool) ($datos['detiene'] ?? false);
 
-        return back()->with('status', 'Equipo en mantenimiento: ya no se puede reservar, y a quien tenía reserva se le avisó. Al cerrar la orden vuelve a servicio.');
+        $this->mantenimiento->mandarAMantenimiento($activo, $request->user(), $datos['motivo'], $datos['tipo'], $datos['prioridad'], $detiene);
+
+        return back()->with('status', $detiene
+            ? 'Equipo en mantenimiento: ya no se puede reservar, y a quien tenía reserva se le avisó. Al cerrar la orden vuelve a servicio.'
+            : 'Orden abierta. El equipo sigue reservable mientras se hace el trabajo.');
     }
 
     /**

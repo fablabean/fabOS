@@ -49,6 +49,15 @@ class WorkOrderForm
                             ->label('Tipo')
                             ->options(WorkOrder::TIPOS)
                             ->default('correctivo')
+                            // Al crearla, un correctivo saca el equipo de
+                            // servicio y un preventivo no; la marca se puede
+                            // cambiar. Editando, cambiar el tipo no la toca.
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, string $operation) {
+                                if ($operation === 'create') {
+                                    $set('stops_equipment', $state === 'correctivo');
+                                }
+                            })
                             ->required(),
 
                         Select::make('status')
@@ -70,6 +79,7 @@ class WorkOrderForm
 
                         Toggle::make('stops_equipment')
                             ->label('Saca el equipo de servicio')
+                            ->default(true)
                             ->helperText('Mientras esté abierta con esta marca, el equipo no se puede reservar.'),
 
                         Select::make('assigned_to')

@@ -58,7 +58,7 @@ class MantenimientoDesdeElQrTest extends TestCase
             ->assertDontSee('Reportar falla');
 
         $this->actingAs($jefa)->from('/e/prusa1')
-            ->post('/e/prusa1/mantenimiento', ['motivo' => 'Cambio de boquilla', 'tipo' => 'preventivo', 'prioridad' => 'alta'])
+            ->post('/e/prusa1/mantenimiento', ['motivo' => 'Cambio de boquilla', 'tipo' => 'preventivo', 'prioridad' => 'alta', 'detiene' => '1'])
             ->assertRedirect('/e/prusa1');
 
         $this->assertSame('mantenimiento', $equipo->fresh()->status);
@@ -89,5 +89,21 @@ class MantenimientoDesdeElQrTest extends TestCase
 
         $this->assertSame('operativo', $equipo->fresh()->status);
         $this->assertSame(0, WorkOrder::count());
+    }
+
+    /** Sin la casilla —un preventivo corto— la orden se abre y la agenda sigue. */
+    public function test_sin_sacarlo_de_servicio_sigue_reservable(): void
+    {
+        $equipo = $this->equipo();
+        $jefa = $this->persona(User::ROL_SUPERADMIN);
+
+        $this->actingAs($jefa)->from('/e/prusa1')
+            ->post('/e/prusa1/mantenimiento', ['motivo' => 'Limpiar boquilla', 'tipo' => 'preventivo', 'prioridad' => 'normal', 'detiene' => '0'])
+            ->assertRedirect('/e/prusa1')
+            ->assertSessionHas('status', 'Orden abierta. El equipo sigue reservable mientras se hace el trabajo.');
+
+        $this->assertSame('operativo', $equipo->fresh()->status);
+        $this->assertFalse((bool) WorkOrder::sole()->stops_equipment);
+        $this->assertNull(WorkOrder::sole()->down_since);
     }
 }

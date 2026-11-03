@@ -55,9 +55,10 @@ class MaintenanceService
     /**
      * Mandar el equipo a mantenimiento desde su QR, con el equipo delante.
      *
-     * Es la orden que se crearía en el panel con «saca el equipo de servicio»
-     * marcado, sin ir a buscar la ficha: queda abierta, el equipo deja de
-     * poder reservarse y se avisa a quien tenía reserva. Cerrarla lo devuelve.
+     * Es la orden que se crearía en el panel, sin ir a buscar la ficha. Con
+     * `$detiene`, el equipo deja de poder reservarse y se avisa a quien tenía
+     * reserva; cerrarla lo devuelve. Sin él —un preventivo de diez minutos—
+     * la orden queda abierta y la agenda sigue igual.
      */
     public function mandarAMantenimiento(
         Asset $equipo,
@@ -65,8 +66,9 @@ class MaintenanceService
         string $motivo,
         string $tipo = 'correctivo',
         string $prioridad = 'normal',
+        bool $detiene = true,
     ): WorkOrder {
-        return DB::transaction(function () use ($equipo, $quien, $motivo, $tipo, $prioridad) {
+        return DB::transaction(function () use ($equipo, $quien, $motivo, $tipo, $prioridad, $detiene) {
             $orden = WorkOrder::create([
                 'asset_id'        => $equipo->id,
                 'kind'            => $tipo,
@@ -74,11 +76,13 @@ class MaintenanceService
                 'priority'        => $prioridad,
                 'reported_issue'  => $motivo,
                 'reported_by'     => $quien->id,
-                'stops_equipment' => true,
-                'down_since'      => now(),
+                'stops_equipment' => $detiene,
+                'down_since'      => $detiene ? now() : null,
             ]);
 
-            $this->detener($equipo, $motivo);
+            if ($detiene) {
+                $this->detener($equipo, $motivo);
+            }
 
             return $orden;
         });

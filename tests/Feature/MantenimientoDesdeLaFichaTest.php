@@ -119,4 +119,16 @@ class MantenimientoDesdeLaFichaTest extends TestCase
 
         $this->assertSame('Rigol', $this->equipo->fresh()->brand);
     }
+
+    /** Al crearla, un correctivo saca el equipo de servicio y un preventivo no. */
+    public function test_el_tipo_propone_si_saca_el_equipo_de_servicio(): void
+    {
+        Livewire::withQueryParams(['equipo' => $this->equipo->id])
+            ->test(CreateWorkOrder::class)
+            ->assertSchemaStateSet(['kind' => 'correctivo', 'stops_equipment' => true])
+            ->fillForm(['kind' => 'preventivo'])
+            ->assertSchemaStateSet(['stops_equipment' => false])
+            ->fillForm(['kind' => 'correctivo'])
+            ->assertSchemaStateSet(['stops_equipment' => true]);
+    }
 }
