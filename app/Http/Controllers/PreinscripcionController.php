@@ -30,13 +30,42 @@ class PreinscripcionController extends Controller
      * Lleva al curso tera que entra por preinscripción; si no hay ninguno
      * publicado, no hay página que enseñar.
      */
-    public function fabAcademy()
+    public function fabAcademy(Request $request)
     {
         $curso = Course::deFabAcademy();
 
         abort_unless($curso !== null, 404);
 
+        // «No soy yo»: se olvida el correo y se vuelve a preguntar.
+        if ($request->boolean('otro')) {
+            $request->session()->forget(self::CORREO);
+
+            return redirect()->to(route('fab-academy') . '#preinscripcion');
+        }
+
         return $this->show($curso);
+    }
+
+    /** Dónde se recuerda el correo que alguien escribió sin sesión. */
+    private const CORREO = 'fab_academy.correo';
+
+    /**
+     * Con la cohorte abierta, lo primero es el correo: si ya está en la lista,
+     * lo que sigue es el registro oficial; si no, la preinscripción.
+     *
+     * Se recuerda en la sesión y nada más: decir si un correo está en la
+     * lista es lo único que se revela, y el enlace al que lleva es público.
+     */
+    public function correo(Request $request)
+    {
+        $datos = $request->validate(['correo' => ['required', 'email', 'max:160']], [
+            'correo.required' => 'Escribe tu correo.',
+            'correo.email'    => 'Ese correo no parece completo.',
+        ]);
+
+        $request->session()->put(self::CORREO, mb_strtolower(trim($datos['correo'])));
+
+        return redirect()->to(route('fab-academy') . '#preinscripcion');
     }
 
     public function show(Course $course)
@@ -52,16 +81,30 @@ class PreinscripcionController extends Controller
         $cohorte = $course->cohortePorAbrir();
 
         $esFabAcademy = $course->level === 'tera';
+        $pagina = $esFabAcademy ? \App\Support\PaginaFabAcademy::contenido() : null;
+
+        // La que ya abrió, si la hay: a quien llega tarde se le manda a
+        // inscribirse de verdad en vez de decirle que no hay nada.
+        $abierta = $course->edicionesAbiertas()->first();
+
+        // Salvo que el registro de verdad sea afuera (Fab Academy): entonces
+        // la abierta sigue siendo la cohorte de esta página, con su conteo.
+        $registro = null;
+
+        if ($abierta?->conRegistroExterno()) {
+            $cohorte = $abierta;
+            $abierta = null;
+            $registro = $this->registroExterno($cohorte, $pagina['registro']);
+        }
 
         // Fab Academy tiene página propia, con lo que se carga en
         // Formación → Página Fab Academy; el resto usa la de siempre.
         return view($esFabAcademy ? 'formacion.fab-academy' : 'formacion.preinscripcion', [
-            'pagina'   => $esFabAcademy ? \App\Support\PaginaFabAcademy::contenido() : null,
+            'pagina'   => $pagina,
             'curso'    => $course->load('riskFamilies'),
             'cohorte'  => $cohorte,
-            // La que ya abrió, si la hay: a quien llega tarde se le manda a
-            // inscribirse de verdad en vez de decirle que no hay nada.
-            'abierta'  => $course->edicionesAbiertas()->first(),
+            'abierta'  => $abierta,
+            'registro' => $registro,
             'esFabAcademy' => $esFabAcademy,
             'yaEstoy'  => $cohorte && auth()->check()
                 ? $cohorte->preenrollments()->vivos()
@@ -104,6 +147,12 @@ class PreinscripcionController extends Controller
         ]);
 
         $cohorte = $course->cohortePorAbrir();
+        $abierta = $course->edicionesAbiertas()->first();
+        $conRegistroExterno = ! $cohorte && $abierta?->conRegistroExterno();
+
+        if ($conRegistroExterno) {
+            $cohorte = $abierta;
+        }
 
         if (! $cohorte) {
             return back()->withInput()->withErrors([
@@ -127,9 +176,46 @@ class PreinscripcionController extends Controller
             return back()->withInput()->withErrors(['cohorte' => $e->getMessage()]);
         }
 
+        // Con la cohorte abierta se vuelve a la página: ahí dice si ya se
+        // puede ir al registro oficial o cuánto falta.
+        if ($conRegistroExterno) {
+            $request->session()->put(self::CORREO, mb_strtolower(trim($datos['correo'])));
+
+            return redirect()->to(route('fab-academy') . '#preinscripcion')
+                ->with('status', 'Gracias, ' . trim($datos['nombre']) . ': quedaste preinscrito.');
+        }
+
         return redirect()
             ->route('preinscripcion.gracias', $course)
             ->with('nombre', trim($datos['nombre']));
+    }
+
+    /**
+     * Lo que necesita la página para el paso del registro oficial: de quién
+     * es el correo, si ya está en la lista y si ya puede pasar.
+     *
+     * @param  array{url:string,condiciones:?string}  $config
+     * @return array<string,mixed>
+     */
+    private function registroExterno(\App\Models\CourseEdition $cohorte, array $config): array
+    {
+        $yo = auth()->user();
+        $correo = $yo ? mb_strtolower((string) $yo->email) : session(self::CORREO);
+
+        $mia = $correo
+            ? $cohorte->preenrollments()->vivos()
+                ->where(fn ($q) => $q->where('email', $correo)->when($yo, fn ($q) => $q->orWhere('user_id', $yo->id)))
+                ->first()
+            : null;
+
+        return [
+            'url'         => $config['url'],
+            'condiciones' => \App\Support\PaginaFabAcademy::lineas($config['condiciones'] ?? null),
+            'correo'      => $correo,
+            'conSesion'   => (bool) $yo,
+            'mia'         => $mia,
+            'habilitado'  => $mia && $cohorte->habilitaElRegistro($mia),
+        ];
     }
 
     public function gracias(Course $course)

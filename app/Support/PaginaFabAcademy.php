@@ -131,6 +131,13 @@ class PaginaFabAcademy
                 ['pregunta' => '¿Puedo participar si no pertenezco a la EAN?', 'respuesta' => 'Sí. El programa está abierto a cualquier persona que pueda venir al laboratorio a trabajar cada semana.'],
             ],
 
+            // El registro oficial, en el sitio de Fab Academy. Con la cohorte
+            // abierta, quien ya está preinscrito ve el enlace y lo que acepta.
+            'registro' => [
+                'url'         => 'https://form.jotform.com/FabAcademy/2027-student-registration-form',
+                'condiciones' => "El registro oficial lo recibe Fab Academy, no el laboratorio: es ahí donde quedas inscrito al programa.\nCuando el formulario pregunte por el laboratorio, elige el nuestro.\nLee las condiciones de pago, calendario y dedicación del formulario antes de enviarlo: al enviarlo las aceptas.",
+            ],
+
             'enlaces' => [
                 ['texto' => 'Sitio oficial de Fab Academy', 'url' => 'https://fabacademy.org/'],
                 ['texto' => 'Cómo está estructurado el programa', 'url' => 'https://fabacademy.org/about/course.html'],

@@ -113,7 +113,8 @@ class PreinscripcionTest extends TestCase
 
     public function test_solo_una_cohorte_planeada_recibe_preinscripciones(): void
     {
-        $curso = $this->curso();
+        // Fab Academy es la excepción: su registro es afuera (FabAcademyRegistroTest).
+        $curso = $this->curso(['level' => 'giga', 'name' => 'giga · Instructores']);
 
         $this->assertTrue($this->cohorte($curso)->admitePreinscripciones());
 
@@ -200,9 +201,10 @@ class PreinscripcionTest extends TestCase
         $this->assertSame($ya->id, $p->user_id);
     }
 
+    /** Fab Academy es la excepción: su registro es afuera (FabAcademyRegistroTest). */
     public function test_no_se_preinscribe_por_el_sitio_a_una_cohorte_que_ya_abrio(): void
     {
-        $cohorte = $this->cohorte(null, ['status' => 'abierta']);
+        $cohorte = $this->cohorte($this->curso(['level' => 'giga', 'name' => 'giga · Instructores']), ['status' => 'abierta']);
 
         $this->expectException(TrainingException::class);
 
@@ -423,10 +425,10 @@ class PreinscripcionTest extends TestCase
 
     public function test_con_la_cohorte_ya_abierta_manda_a_inscribirse(): void
     {
-        $curso = $this->curso();
+        $curso = $this->curso(['level' => 'giga', 'name' => 'giga · Instructores']);
         $this->cohorte($curso, ['status' => 'abierta']);
 
-        $this->get('/fab-academy')
+        $this->get(route('preinscripcion', $curso))
             ->assertOk()
             ->assertSee('La cohorte ya abrió')
             ->assertDontSee('Preinscribirme');

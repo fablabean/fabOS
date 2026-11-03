@@ -223,6 +223,13 @@ class PaginaFabAcademy extends Page
                         Textarea::make('inversion.incluye')->label('Qué incluye (uno por línea)')->rows(4),
                         Textarea::make('inversion.no_incluye')->label('Qué no incluye (uno por línea)')->rows(3),
                         Textarea::make('inversion.financiacion')->label('Financiación')->rows(2),
+
+                        Section::make('Registro oficial')
+                            ->description('Con la cohorte abierta, quien ya está preinscrito ve este enlace para registrarse en Fab Academy. Cámbialo cada año: el formulario es de la cohorte.')
+                            ->schema([
+                                TextInput::make('registro.url')->label('Formulario de registro')->url()->placeholder('https://form.jotform.com/…'),
+                                Textarea::make('registro.condiciones')->label('Lo que hay que saber antes (una por línea)')->rows(4),
+                            ]),
                     ]),
 
                     Tab::make('Preguntas y enlaces')->schema([

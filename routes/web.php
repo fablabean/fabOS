@@ -121,6 +121,10 @@ Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion'
  * la otra es la que sirve para cualquier curso que entre por preinscripcion.
  */
 Route::get('/fab-academy', [PreinscripcionController::class, 'fabAcademy'])->name('fab-academy');
+// Con la cohorte abierta, el correo dice si ya toca el registro oficial.
+Route::post('/fab-academy/correo', [PreinscripcionController::class, 'correo'])
+    ->middleware('throttle:30,60')
+    ->name('fab-academy.correo');
 Route::get('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'show'])->name('preinscripcion');
 Route::post('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'store'])
     ->middleware(['throttle:40,60', 'captcha:correo'])
