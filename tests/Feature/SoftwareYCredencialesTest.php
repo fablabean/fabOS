@@ -365,6 +365,11 @@ class SoftwareYCredencialesTest extends TestCase
         $this->get('/admin/software')->assertOk()->assertSee('Fusion 360');
         $this->get('/admin/software/'.$programa->id.'/edit')->assertOk();
         $this->get('/admin/credenciales')->assertOk()->assertSee('Panel del correo');
+
+        // El navegador no rellena la credencial nueva con una cuenta guardada.
+        $this->get('/admin/credenciales/create')->assertOk()
+            ->assertSee('autocomplete="off"', false)
+            ->assertSee('autocomplete="new-password"', false);
     }
 
     /** La lista dice que no lo enseña todo: si no, se apunta dos veces lo mismo. */
