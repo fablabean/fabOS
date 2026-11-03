@@ -21,6 +21,9 @@ class CreateWorkOrder extends CreateRecord
     {
         $orden = $this->record;
 
+        // Los videos marcados «A la ficha» quedan en el equipo.
+        \App\Filament\Componentes\RecursosDeMantenimiento::llevarALaFicha($orden);
+
         if (! $orden->stops_equipment || ! in_array($orden->status, \App\Models\WorkOrder::ABIERTAS, true)) {
             return;
         }

@@ -345,7 +345,7 @@ class AssetForm
                             ->label('Video')
                             ->url()
                             ->prefixIcon('heroicon-o-play')
-                            ->helperText('Enlace a YouTube o Vimeo, opcional.')
+                            ->helperText('Enlace a YouTube o Vimeo, opcional. Es el que se ve en el sitio; los de mantenimiento van en su sección.')
                             ->columnSpanFull(),
 
                         Textarea::make('public_description')
@@ -357,6 +357,14 @@ class AssetForm
                         Toggle::make('is_public')
                             ->label('Mostrar en el sitio público')
                             ->default(true),
+                    ]),
+
+                // Lo que se consulta para repararlo: no es la vitrina.
+                Section::make('Manuales y videos de mantenimiento')
+                    ->description('Lo que se consulta para hacerle mantenimiento: manuales en PDF y videos. Se ve desde cada orden de trabajo y desde el QR del equipo, no en el sitio público.')
+                    ->collapsed()
+                    ->schema([
+                        \App\Filament\Componentes\RecursosDeMantenimiento::campo(),
                     ]),
 
                 Section::make('Dependencias')

@@ -2,15 +2,19 @@
 
 namespace App\Filament\Resources\WorkOrders\Schemas;
 
+use App\Filament\Componentes\RecursosDeMantenimiento;
+use App\Models\Asset;
 use App\Models\User;
 use App\Models\WorkOrder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 /**
@@ -35,6 +39,7 @@ class WorkOrderForm
                             ->searchable()
                             // Desde la ficha del equipo llega ya elegido.
                             ->default(fn () => request()->integer('equipo') ?: null)
+                            ->live()
                             ->required(),
 
                         Select::make('kind')
@@ -70,6 +75,14 @@ class WorkOrderForm
                             ->searchable(),
                     ]),
 
+                // Lo que hay del equipo para consultar mientras se trabaja.
+                Section::make('Manuales y videos del equipo')
+                    ->schema([
+                        Placeholder::make('recursos_del_equipo')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get) => RecursosDeMantenimiento::lista(Asset::find($get('asset_id')))),
+                    ]),
+
                 Section::make('Qué se hizo')
                     ->columns(2)
                     ->schema([
@@ -95,6 +108,8 @@ class WorkOrderForm
                             ->maxSize(4096)
                             ->columnSpanFull()
                             ->helperText('Antes y después. Una foto convierte «se arregló» en algo comprobable dentro de dos años.'),
+
+                        RecursosDeMantenimiento::videosDeLaOrden(),
 
                         TextInput::make('cost')
                             ->label('Costo de repuestos')

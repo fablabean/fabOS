@@ -35,6 +35,7 @@ class Asset extends Model
         'min_minutes', 'autonomous_minutes', 'max_minutes',
         'purchase_cost', 'purchased_at', 'warranty_until',
         'photo_path', 'video_url', 'public_description', 'is_public',
+        'maintenance_resources',
     ];
 
     /**
@@ -60,6 +61,7 @@ class Asset extends Model
             'purchased_at'   => 'date',
             'warranty_until' => 'date',
             'purchase_cost'  => 'decimal:2',
+            'maintenance_resources' => 'array',
         ];
     }
 

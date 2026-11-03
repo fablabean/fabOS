@@ -178,6 +178,22 @@
     @endif
 
     @if ($gestiona)
+        {{-- Con el equipo delante es cuando hace falta el manual. --}}
+        @php $recursos = \App\Filament\Componentes\RecursosDeMantenimiento::de($activo); @endphp
+        <div class="panel">
+            <h2 style="margin-top:0">Manuales y videos</h2>
+            @forelse ($recursos as $r)
+                <p style="margin:0 0 .4rem">
+                    <a href="{{ $r['url'] }}" target="_blank" rel="noopener">{{ $r['titulo'] }}</a>
+                    <span class="help">· {{ ['manual' => 'PDF', 'video' => 'video'][$r['tipo']] ?? 'página' }}</span>
+                </p>
+            @empty
+                <p class="help" style="margin:0">
+                    Todavía no tiene. Se añaden en su ficha del panel, en «Manuales y videos de mantenimiento».
+                </p>
+            @endforelse
+        </div>
+
         {{-- Quien gestiona el mantenimiento lo decide aquí mismo, con el
              equipo delante: la misma orden que en el panel, con paro. --}}
         <div class="panel">

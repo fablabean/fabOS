@@ -101,4 +101,52 @@ class EvidenciaMantenimientoTest extends TestCase
             ->assertSee('Diagnóstico')
             ->assertSee('Trabajo realizado');
     }
+
+    public function test_la_orden_muestra_los_manuales_del_equipo_y_pide_los_videos_de_referencia(): void
+    {
+        Mail::fake();
+        $admin = $this->persona(User::ROL_ADMINISTRADOR);
+        $equipo = $this->equipo();
+        $equipo->update(['maintenance_resources' => [
+            ['tipo' => 'manual', 'titulo' => 'Manual de servicio', 'archivo' => 'manuales/servicio.pdf', 'nombre' => 'servicio.pdf'],
+            ['tipo' => 'video', 'titulo' => 'Cambio de correa', 'url' => 'https://youtu.be/correa'],
+        ]]);
+        $orden = app(MaintenanceService::class)->reportarFalla($equipo, $admin, 'Se atasca el eje');
+
+        $servicio = app(TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($admin);
+        $servicio->confirmar($admin, app(Google2FA::class)->getCurrentOtp($secreto));
+
+        $this->actingAs($admin->fresh())
+            ->withSession([FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]])
+            ->get('/admin/work-orders/' . $orden->id . '/edit')
+            ->assertOk()
+            ->assertSee('Manuales y videos del equipo')
+            ->assertSee('Manual de servicio')
+            ->assertSee('https://youtu.be/correa')
+            ->assertSee('Videos de referencia');
+    }
+
+    public function test_los_videos_marcados_pasan_a_la_ficha_sin_repetirse(): void
+    {
+        Mail::fake();
+        $equipo = $this->equipo();
+        $equipo->update(['maintenance_resources' => [['tipo' => 'video', 'titulo' => 'Ya estaba', 'url' => 'https://youtu.be/a']]]);
+        $orden = app(MaintenanceService::class)->reportarFalla($equipo, $this->persona(), 'Ruido raro');
+
+        $orden->update(['reference_videos' => [
+            ['titulo' => 'Ya estaba', 'url' => 'https://youtu.be/a', 'a_la_ficha' => true],
+            ['titulo' => 'Rodamientos', 'url' => 'https://youtu.be/b', 'a_la_ficha' => true],
+            ['titulo' => 'Solo para esta', 'url' => 'https://youtu.be/c', 'a_la_ficha' => false],
+        ]]);
+
+        \App\Filament\Componentes\RecursosDeMantenimiento::llevarALaFicha($orden->fresh());
+        \App\Filament\Componentes\RecursosDeMantenimiento::llevarALaFicha($orden->fresh());
+
+        $this->assertSame(
+            ['https://youtu.be/a', 'https://youtu.be/b'],
+            collect($equipo->fresh()->maintenance_resources)->pluck('url')->all(),
+        );
+        $this->assertCount(3, $orden->fresh()->reference_videos, 'La orden conserva todos los que se usaron.');
+    }
 }

@@ -49,8 +49,11 @@ class MantenimientoDesdeElQrTest extends TestCase
         $equipo = $this->equipo();
         $jefa = $this->persona(User::ROL_SUPERADMIN);
 
+        $equipo->update(['maintenance_resources' => [['tipo' => 'video', 'titulo' => 'Cambio de boquilla', 'url' => 'https://youtu.be/boquilla']]]);
+
         $this->actingAs($jefa)->get('/e/prusa1')
             ->assertOk()
+            ->assertSee('Cambio de boquilla')
             ->assertSee('Mandar a mantenimiento')
             ->assertDontSee('Reportar falla');
 
@@ -77,6 +80,7 @@ class MantenimientoDesdeElQrTest extends TestCase
         $this->actingAs($ana)->get('/e/prusa1')
             ->assertOk()
             ->assertSee('Reportar falla')
+            ->assertDontSee('Manuales y videos')
             ->assertDontSee('Mandar a mantenimiento');
 
         $this->actingAs($ana)
