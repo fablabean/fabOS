@@ -352,6 +352,13 @@ class BackofficePreinscripcionTest extends TestCase
         $this->assertSame('Fab Academy: ya puedes hacer tu registro oficial', $vista['asunto']);
         $this->assertStringContainsString('form.jotform.com/FabAcademy/2027-student-registration-form', $vista['cuerpo']);
         $this->assertStringContainsString(route('fab-academy'), $vista['cuerpo']);
+        $this->assertStringContainsString('EAN Colombia (Bogotá, Colombia)', $vista['cuerpo']);
+
+        // Sin mensaje no queda un hueco antes de la despedida.
+        $sinMensaje = app(\App\Services\Notifications\NotificationService::class)->previsualizar(
+            'curso.registro_oficial', null, 'Ana María', app(PreinscripcionService::class)->datosDelRegistro($cohorte->fresh()),
+        );
+        $this->assertDoesNotMatchRegularExpression('/\n\s*\n\s*\n/', $sinMensaje['cuerpo']);
 
         $this->assertDatabaseHas('notification_logs', ['key' => 'curso.registro_oficial', 'user_id' => $yo->id]);
         $this->assertDatabaseMissing('notification_logs', ['key' => 'curso.registro_oficial', 'to' => 'ana@test.co']);

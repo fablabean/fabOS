@@ -299,7 +299,8 @@ class PreinscripcionService
             'registro'    => (string) ($registro['url'] ?? ''),
             'condiciones' => collect(\App\Support\PaginaFabAcademy::lineas($registro['condiciones'] ?? null))
                 ->map(fn ($c) => '- ' . $c)->implode("\n"),
-            'mensaje'     => trim((string) $mensaje),
+            // Con su propio párrafo si lo hay; vacío no deja un hueco.
+            'mensaje'     => filled(trim((string) $mensaje)) ? "\n\n" . trim((string) $mensaje) : '',
         ];
     }
 

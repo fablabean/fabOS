@@ -135,7 +135,7 @@ class PaginaFabAcademy
             // abierta, quien ya está preinscrito ve el enlace y lo que acepta.
             'registro' => [
                 'url'         => 'https://form.jotform.com/FabAcademy/2027-student-registration-form',
-                'condiciones' => "El registro oficial lo recibe Fab Academy, no el laboratorio: es ahí donde quedas inscrito al programa.\nCuando el formulario pregunte por el laboratorio, elige el nuestro.\nLee las condiciones de pago, calendario y dedicación del formulario antes de enviarlo: al enviarlo las aceptas.",
+                'condiciones' => "El registro oficial lo recibe Fab Academy, no el laboratorio: es ahí donde quedas inscrito al programa.\nEn «Please select a Fab Lab / Node» elige EAN Colombia (Bogotá, Colombia): es el único nodo con el que quedas en nuestra cohorte.\nLee las condiciones de pago, calendario y dedicación del formulario antes de enviarlo: al enviarlo las aceptas.",
             ],
 
             'enlaces' => [

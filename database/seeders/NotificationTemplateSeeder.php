@@ -867,9 +867,7 @@ class NotificationTemplateSeeder extends Seeder
                     {registro}
 
                     Antes de enviarlo, ten en cuenta:
-                    {condiciones}
-
-                    {mensaje}
+                    {condiciones}{mensaje}
 
                     Si tienes dudas, responde este correo.
 
