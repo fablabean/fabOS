@@ -197,4 +197,32 @@ class RecorridoDeProyectosTest extends TestCase
         $pestanas = Livewire::test(ListProjects::class)->removeTableFilter('mios')->instance()->getCachedTabs();
         $this->assertEquals([3, 2], [$pestanas['todos']->getBadge(), $pestanas['estudiante']->getBadge()]);
     }
+
+    /**
+     * «Sin abrir» hasta que quien lo lleva abre la ficha. Otro que lo mire no
+     * cuenta, y con otro responsable vuelve a estar sin abrir.
+     */
+    public function test_sin_abrir_hasta_que_lo_abre_quien_lo_lleva(): void
+    {
+        $admin = $this->conRol(User::ROL_SUPERADMIN);
+        $otra = $this->conRol(User::ROL_SUPERADMIN);
+        $p = $this->proyecto($admin);
+
+        $this->assertTrue($p->fresh()->sinAbrir());
+
+        $this->entra($otra);
+        $this->get(ProjectResource::getUrl('edit', ['record' => $p]))->assertOk();
+        $this->assertTrue($p->fresh()->sinAbrir(), 'Otra persona no lo marca como visto.');
+
+        $this->entra($admin);
+        Livewire::test(ListProjects::class)->assertTableColumnFormattedStateSet('status', 'Sin abrir', $p)
+            ->filterTable('sin_abrir')->assertCanSeeTableRecords([$p]);
+
+        $this->get(ProjectResource::getUrl('edit', ['record' => $p]))->assertOk();
+        $this->assertFalse($p->fresh()->sinAbrir());
+        Livewire::test(ListProjects::class)->assertTableColumnFormattedStateSet('status', 'Activo', $p->fresh());
+
+        $p->fresh()->update(['lead_id' => $otra->id]);
+        $this->assertTrue($p->fresh()->sinAbrir());
+    }
 }

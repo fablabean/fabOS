@@ -219,8 +219,11 @@ class ProjectsTable
                     ->width('1px')
                     ->label('Estado')
                     ->badge()
-                    ->formatStateUsing(fn (string $state) => Project::ESTADOS[$state] ?? $state)
-                    ->color(fn (string $state) => match ($state) {
+                    // Lo que quien lo lleva todavía no ha abierto, distinto de
+                    // lo activo: así se ve qué nadie ha mirado. Abrir la ficha
+                    // lo pasa a «Activo».
+                    ->formatStateUsing(fn (string $state, Project $record) => $record->sinAbrir() ? 'Sin abrir' : (Project::ESTADOS[$state] ?? $state))
+                    ->color(fn (string $state, Project $record) => $record->sinAbrir() ? 'info' : match ($state) {
                         'activo'  => 'success',
                         'pausado' => 'warning',
                         'ganado'  => 'success',
@@ -256,6 +259,10 @@ class ProjectsTable
                     ->query(fn ($query) => $query->where(fn ($q) => $q
                         ->where('lead_id', auth()->id())
                         ->orWhereNull('lead_id'))),
+
+                Filter::make('sin_abrir')
+                    ->label('Sin abrir por quien lo lleva')
+                    ->query(fn ($query) => $query->where('status', 'activo')->whereNull('opened_at')),
 
                 Filter::make('sin_respuesta')
                     ->label('Sin respuesta hace más de un día hábil')

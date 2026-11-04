@@ -19,7 +19,7 @@ class Project extends Model
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
-        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
+        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at', 'opened_at',
         'accepted_at', 'accepted_by', 'acceptance_note',
         'modality', 'alliance_open', 'alliance_public', 'alliance_pitch', 'market_value',
         'paused_at', 'awaits_client', 'pause_reminded_at',
@@ -35,6 +35,7 @@ class Project extends Model
             'starts_on' => 'date',
             'due_on'    => 'date',
             'closed_at'        => UtcDateTime::class,
+            'opened_at'        => UtcDateTime::class,
             'proposal_sent_at' => UtcDateTime::class,
             'accepted_at'      => UtcDateTime::class,
             'paused_at'         => UtcDateTime::class,
@@ -781,6 +782,33 @@ class Project extends Model
             ->whereIn('status', Reservation::BLOQUEANTES));
     }
 
+    /** Activo y sin que quien lo lleva lo haya abierto todavía. */
+    public function sinAbrir(): bool
+    {
+        return $this->status === 'activo' && $this->opened_at === null;
+    }
+
+    /**
+     * Quien lo lleva acaba de abrir la ficha: deja de estar sin abrir. Si no
+     * tiene responsable, cuenta cualquiera del equipo. Sin tocar nada más —ni
+     * la fecha de actualización ni los avisos—: mirar no es cambiar.
+     */
+    public function marcarAbierto(?User $quien): void
+    {
+        if ($this->opened_at !== null || ! $quien) {
+            return;
+        }
+
+        $cuenta = $this->lead_id
+            ? $this->lead_id === $quien->id
+            : $quien->hasAnyRole(User::rolesDelEquipo());
+
+        if ($cuenta) {
+            static::whereKey($this->id)->whereNull('opened_at')->update(['opened_at' => now()->utc()]);
+            $this->opened_at = now();
+        }
+    }
+
     /** Lo último que se dijo: va en la lista, debajo del nombre. */
     public function ultimoComentario(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
@@ -1053,6 +1081,12 @@ class Project extends Model
         // sin esto no se puede anotar una idea, que es justo lo primero que
         // hace cualquiera. Vacio significa "sin acordar", y eso son 0 pesos.
         static::saving(function (self $proyecto) {
+            // Con otro responsable, vuelve a estar sin abrir: quien lo recibe
+            // todavía no lo ha mirado.
+            if ($proyecto->exists && $proyecto->isDirty('lead_id')) {
+                $proyecto->opened_at = null;
+            }
+
             $proyecto->agreed_value ??= 0;
             $proyecto->estimated_value ??= 0;
 
