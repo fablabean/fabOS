@@ -2,6 +2,9 @@
 
     @php
         $pesos = fn ($v) => config('fabos.money.symbol') . number_format((float) $v, 0, ',', '.');
+        // En las tablas, el signo aparte, pegado a la izquierda, y la cifra a
+        // la derecha: se lee la columna de números sin tropezar con el «$».
+        $celda = fn ($v) => new \Illuminate\Support\HtmlString('<span class="m"><span class="s">' . e(config('fabos.money.symbol')) . '</span>' . number_format((float) $v, 0, ',', '.') . '</span>');
         $columnas = \App\Services\Reports\IngresosPorProyectos::COLUMNAS;
         // Cada cifra del histórico se abre: qué proyectos la forman.
         $abrir = fn (?string $mes, string $col) => 'mountAction(\'origen\', { mes: ' . ($mes ? "'" . $mes . "'" : 'null') . ', columna: \'' . $col . '\' })';
@@ -19,6 +22,9 @@
         .ipp th,.ipp td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid rgba(128,128,128,.2);vertical-align:top}
         .ipp th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:rgb(107 114 128)}
         .ipp td.num,.ipp th.num{text-align:right;white-space:nowrap}
+        .ipp .m{display:inline-flex;justify-content:space-between;gap:.6rem;min-width:7.5rem;font-variant-numeric:tabular-nums}
+        .ipp .m .s{color:rgb(156 163 175)}
+        .ipp button.dato .m{min-width:7.5rem}
         .ipp tr.total td{font-weight:700;border-top:2px solid rgba(128,128,128,.35)}
         .ipp .gris{color:rgb(107 114 128)}
         .ipp .interno{color:rgb(107 114 128);font-style:italic}
@@ -81,7 +87,7 @@
                             <td>{{ $m['nombre'] }}</td>
                             @foreach ([...array_keys($columnas), 'cobrado', 'internos', 'total', 'n'] as $clave)
                                 <td class="num {{ $clave === 'internos' ? 'interno' : '' }}">
-                                    @php $texto = $clave === 'n' ? $m[$clave] : $pesos($m[$clave]); @endphp
+                                    @php $texto = $clave === 'n' ? $m[$clave] : $celda($m[$clave]); @endphp
                                     @if ($m[$clave])
                                         <button type="button" class="dato" wire:click="{{ $abrir($m['mes'], $clave) }}"
                                                 title="Ver de qué proyectos sale">
@@ -187,11 +193,11 @@
                     @foreach ($proyeccion as $m)
                         <tr>
                             <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· ajustado a la baja</span>@endif</td>
-                            <td class="num"><strong>{{ $pesos($m['optimista']) }}</strong></td>
-                            <td class="num">{{ $pesos($m['realista']) }}</td>
-                            <td class="num">{{ $pesos($m['acumulado_optimista']) }}</td>
-                            <td class="num">{{ $pesos($m['acumulado_realista']) }}</td>
-                            <td class="num interno">{{ $pesos($m['internos']) }}</td>
+                            <td class="num"><strong>{{ $celda($m['optimista']) }}</strong></td>
+                            <td class="num">{{ $celda($m['realista']) }}</td>
+                            <td class="num">{{ $celda($m['acumulado_optimista']) }}</td>
+                            <td class="num">{{ $celda($m['acumulado_realista']) }}</td>
+                            <td class="num interno">{{ $celda($m['internos']) }}</td>
                         </tr>
                     @endforeach
                     </tbody>

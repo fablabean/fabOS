@@ -149,7 +149,7 @@ class IngresosPorProyectosTest extends TestCase
         $detalle = view('filament.pages.ingresos-por-proyectos-origen', [
             'filas' => app(IngresosPorProyectos::class)->origen('2026-09', 'interno'),
         ])->render();
-        $this->assertStringContainsString('$204.000', $detalle);
+        $this->assertStringContainsString('204.000', $detalle);
         $this->assertStringContainsString('Acordado', $detalle);
 
         $this->assertSame(40, IngresosPorProyectos::ajusteGuardado()['realista']);

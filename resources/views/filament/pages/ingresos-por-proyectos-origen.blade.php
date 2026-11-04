@@ -35,7 +35,9 @@
                     <td style="padding:.35rem .4rem">{{ \App\Models\Project::CLIENTES[$p->client_kind] ?? $p->client_kind }}{{ $p->is_internal ? ' · interno' : '' }}</td>
                     <td style="padding:.35rem .4rem">{{ \App\Models\Project::ETAPAS[$p->stage] ?? $p->stage }}{{ $p->status !== 'cerrado' && $p->status !== 'activo' ? ' · ' . (\App\Models\Project::ESTADOS[$p->status] ?? $p->status) : '' }}</td>
                     <td style="padding:.35rem .4rem">{{ $p->lead?->name ?? '—' }}</td>
-                    <td style="padding:.35rem .4rem;text-align:right;white-space:nowrap">{{ $pesos($f['valor']) }}</td>
+                    <td style="padding:.35rem .4rem;text-align:right;white-space:nowrap">
+                        <span style="display:inline-flex;justify-content:space-between;gap:.6rem;min-width:7.5rem;font-variant-numeric:tabular-nums"><span style="color:rgb(156 163 175)">{{ config('fabos.money.symbol') }}</span>{{ number_format((float) $f['valor'], 0, ',', '.') }}</span>
+                    </td>
                     <td style="padding:.35rem .4rem;color:{{ $f['fuente'] === 'Sin valor' ? '#C53030' : ($f['fuente'] === 'Estimado' ? '#B7791F' : 'inherit') }}">{{ $f['fuente'] }}</td>
                 </tr>
             @endforeach
