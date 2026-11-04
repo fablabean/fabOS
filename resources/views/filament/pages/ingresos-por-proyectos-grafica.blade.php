@@ -62,7 +62,7 @@
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-opt)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/></svg>Optimista · ritmo de hoy</span>
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-rea)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg>Realista · {{ $ajuste['realista'] }}%</span>
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-int)" stroke-width="1.25" stroke-dasharray="6 3 1.5 3" stroke-linecap="round"/><rect x="10" y="1" width="6" height="6" fill="var(--g-surface)" stroke="var(--g-int)" stroke-width="1.25"/></svg>Internos · no suman</span>
-        <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--g-bajo)" stroke="var(--g-rule)"/></svg>Mes ajustado a la baja</span>
+        <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--g-bajo)" stroke="var(--g-rule)"/></svg>Mes bajo</span>
     </div>
 
     <svg class="lienzo" viewBox="0 0 {{ $W }} {{ $H }}" role="img"
@@ -123,7 +123,7 @@
             @php $cx = $x($real->count() + $i); @endphp
             <g class="grupo">
                 <rect class="hit" x="{{ $cx - 10 }}" y="{{ $arriba }}" width="20" height="{{ $altoUtil }}">
-                    <title>{{ $p['nombre'] }}{{ $p['bajo'] ? ' (ajustado a la baja)' : '' }}
+                    <title>{{ $p['nombre'] }}{{ $p['bajo'] ? ' (mes bajo)' : '' }}
 Optimista: {{ $pesosLargo($p['optimista']) }}
 Realista: {{ $pesosLargo($p['realista']) }}
 Internos (no suman): {{ $pesosLargo($p['internos']) }}</title>

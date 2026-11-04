@@ -31,6 +31,15 @@
         .ipp td:first-letter{text-transform:uppercase}
         .ipp .barra{height:.55rem;border-radius:999px;background:rgba(128,128,128,.18);overflow:hidden}
         .ipp .barra i{display:block;height:100%;background:#D69E2E}
+        .ipp .contra-meta{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem;max-width:48rem}
+        .ipp .contra-meta .fila{display:grid;grid-template-columns:5.5rem minmax(0,1fr) 15rem;align-items:center;gap:.75rem;font-size:.85rem}
+        .ipp .contra-meta .pista{position:relative;height:.7rem;border-radius:4px;background:rgba(128,128,128,.14)}
+        .ipp .contra-meta .pista.sin-fondo{background:none;height:1rem}
+        .ipp .contra-meta .pista i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+        .ipp .contra-meta .pista b.meta{position:absolute;top:-.25rem;bottom:-.25rem;width:2px;margin-left:-1px;background:currentColor}
+        .ipp .contra-meta .pista.sin-fondo span{position:absolute;transform:translateX(-50%);font-size:.7rem;color:rgb(107 114 128)}
+        .ipp .contra-meta .cifra-meta{font-variant-numeric:tabular-nums;white-space:nowrap}
+        @media (max-width:640px){.ipp .contra-meta .fila{grid-template-columns:4.5rem minmax(0,1fr)}.ipp .contra-meta .cifra-meta{grid-column:2}}
         .ipp button.dato{all:unset;cursor:pointer;border-bottom:1px dotted currentColor}
         .ipp .ajuste summary{cursor:pointer;font-size:.9rem}
         .ipp .ajuste-cuerpo{margin-top:.8rem}
@@ -165,16 +174,30 @@
 
             @if ($meta)
                 @php
-                    $avOpt = min(100, (int) round($meta['optimista'] / $meta['meta'] * 100));
-                    $avRea = min(100, (int) round($meta['realista'] / $meta['meta'] * 100));
+                    // Una sola escala para la meta y los dos escenarios: la
+                    // del mayor. La meta es una raya; cada barra, su largo.
+                    $escala = max($meta['meta'], $meta['optimista'], $meta['realista'], 1);
+                    $largo = fn ($v) => round($v / $escala * 100, 1);
+                    $deLaMeta = fn ($v) => (int) round($v / $meta['meta'] * 100);
                 @endphp
-                <p style="margin:1rem 0 .4rem">
+                <p style="margin:1rem 0 .5rem">
                     Meta de venta {{ $meta['ano'] }}: <strong>{{ $pesos($meta['meta']) }}</strong>. En los próximos doce meses:
-                    optimista <strong>{{ $pesos($meta['optimista']) }}</strong> ({{ $avOpt }}%),
-                    realista <strong>{{ $pesos($meta['realista']) }}</strong> ({{ $avRea }}%).
                 </p>
-                <div class="barra" style="margin-bottom:.3rem" title="Optimista"><i style="width:{{ $avOpt }}%"></i></div>
-                <div class="barra" style="margin-bottom:1rem" title="Realista"><i style="width:{{ $avRea }}%;background:#1baf7a"></i></div>
+                <div class="contra-meta">
+                    @foreach ([['Optimista', $meta['optimista'], 'var(--g-opt, #eb6834)'], ['Realista', $meta['realista'], 'var(--g-rea, #1baf7a)']] as [$nombre, $valor, $color])
+                        <div class="fila">
+                            <span class="nombre">{{ $nombre }}</span>
+                            <div class="pista">
+                                <i style="width:{{ $largo($valor) }}%;background:{{ $color }}"></i>
+                                <b class="meta" style="left:{{ $largo($meta['meta']) }}%" title="Meta {{ $pesos($meta['meta']) }}"></b>
+                            </div>
+                            <span class="cifra-meta">{{ $pesos($valor) }} · <strong>{{ $deLaMeta($valor) }}%</strong> de la meta</span>
+                        </div>
+                    @endforeach
+                    <div class="fila leyenda-meta"><span class="nombre"></span>
+                        <div class="pista sin-fondo"><span style="left:{{ $largo($meta['meta']) }}%">meta</span></div><span></span>
+                    </div>
+                </div>
             @endif
 
             <div class="tabla">
@@ -192,7 +215,7 @@
                     <tbody>
                     @foreach ($proyeccion as $m)
                         <tr>
-                            <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· ajustado a la baja</span>@endif</td>
+                            <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· mes bajo</span>@endif</td>
                             <td class="num"><strong>{{ $celda($m['optimista']) }}</strong></td>
                             <td class="num">{{ $celda($m['realista']) }}</td>
                             <td class="num">{{ $celda($m['acumulado_optimista']) }}</td>

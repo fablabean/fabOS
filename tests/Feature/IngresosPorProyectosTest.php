@@ -97,6 +97,16 @@ class IngresosPorProyectosTest extends TestCase
         $conAjuste = collect($d2['proyeccion'])->keyBy('mes');
         $this->assertEqualsWithDelta($p2['estudiante'] + $p2['interno'] + 2 * $p2['externo'], $conAjuste['2027-09']['optimista'], 3);
         $this->assertSame((int) round($conAjuste['2027-09']['optimista'] * 0.3), $conAjuste['2027-09']['realista']);
+
+        // Bajar un tipo todo el año no vuelve «bajo» a cada mes: solo los que
+        // quedan muy por debajo de los demás.
+        foreach (range(1, 12) as $num) {
+            $ajuste['meses'][$num]['externo'] = min($ajuste['meses'][$num]['externo'], 60);
+        }
+        $bajos = collect(app(IngresosPorProyectos::class)->calcular(null, $ajuste)['proyeccion'])->where('bajo', true)->pluck('mes')->all();
+        $this->assertContains('2026-12', $bajos);
+        $this->assertContains('2027-01', $bajos);
+        $this->assertNotContains('2027-03', $bajos);
     }
 
     public function test_compara_con_la_meta_de_venta_del_ano_que_viene(): void
@@ -116,6 +126,7 @@ class IngresosPorProyectosTest extends TestCase
     {
         $this->ejecutado('interno', 204_000);
         $sin = $this->ejecutado('estudiante', 0);
+        Budget::create(['name' => 'Venta 2027', 'kind' => 'venta', 'year' => 2027, 'amount' => 1_000_000, 'status' => 'borrador']);
 
         foreach (User::ROLES_BACKOFFICE as $r) {
             Role::findOrCreate($r, 'web');
@@ -132,7 +143,8 @@ class IngresosPorProyectosTest extends TestCase
             ->assertSee('Proyección a doce meses')
             ->assertSee('Optimista · ritmo de hoy')
             ->assertSee('Ajustar la proyección')
-            ->assertSee('ajustado a la baja')
+            ->assertSee('mes bajo')
+            ->assertSee('de la meta')
             ->set('ajuste.realista', 40)
             ->assertSee('sin guardar')
             ->assertSee('Realista · 40%')

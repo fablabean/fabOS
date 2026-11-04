@@ -205,7 +205,7 @@ class IngresosPorProyectos
             $proyeccion[] = $porTipo + [
                 'mes'       => $m->format('Y-m'),
                 'nombre'    => $m->locale('es')->isoFormat('MMMM YYYY'),
-                'bajo'      => min($pct['estudiante'], $pct['interno'], $pct['externo']) < 100,
+                'bajo'      => false,
                 'optimista' => $optimista,
                 'realista'  => $realista,
                 'internos'  => $internos,
@@ -213,6 +213,17 @@ class IngresosPorProyectos
                 'acumulado_realista'  => $acumulado['realista'],
                 'acumulado_internos'  => $acumulado['internos'],
             ];
+        }
+
+        /*
+         * Mes bajo es el que queda muy por debajo de los demás —menos de la
+         * mitad del mes típico—, no cualquiera con algún tipo por debajo de
+         * 100%: con un ajuste que baja «De fuera» todo el año, todos lo
+         * serían y la marca ya no diría nada.
+         */
+        $tipico = collect($proyeccion)->pluck('optimista')->median();
+        foreach ($proyeccion as $i => $fila) {
+            $proyeccion[$i]['bajo'] = $tipico > 0 && $fila['optimista'] < $tipico * 0.5;
         }
 
         return [
