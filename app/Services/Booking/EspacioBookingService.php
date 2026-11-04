@@ -123,6 +123,21 @@ class EspacioBookingService
     /** La reserva madre del grupo de salas que se está armando. */
     private ?int $grupoEnCurso = null;
 
+    /** Quien reserva vio con qué chocan los acompañantes fuera de fabOS, y decide que no estorba. */
+    private bool $aceptarChoquesDeAcompanantes = false;
+
+    /**
+     * Reservar aunque quien acompaña tenga algo en su calendario, un bloqueo
+     * o su descanso a esa hora: lo decide quien agenda. Lo reservado en fabOS
+     * no se salta.
+     */
+    public function aceptandoChoquesDeAcompanantes(): static
+    {
+        $this->aceptarChoquesDeAcompanantes = true;
+
+        return $this;
+    }
+
     public const SIN_QUIEN_HAGA_LA_DEMO = 'Nadie del equipo está libre toda esa hora para hacer la demo: queda pendiente del visto bueno.';
 
     /** Cuántas personas hacen un grupo de recorrido. Informa; el tope real es el aforo. */
@@ -655,7 +670,17 @@ class EspacioBookingService
                         $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta, $this->grupoEnCurso);
 
                         if ($ocupado) {
-                            throw new BookingException($ocupado . ' Elige a otra persona para acompañar.');
+                            // Con qué choca, para verlo y —si es solo su
+                            // calendario, un bloqueo o su descanso— poder
+                            // decidir reservar igual.
+                            $conflictos = app(BookingService::class)->queOcupaA($quien, $desde, $hasta);
+                            $soloDeFuera = $conflictos !== [] && collect($conflictos)->doesntContain('tipo', 'reserva');
+
+                            if ($this->aceptarChoquesDeAcompanantes && $soloDeFuera) {
+                                continue;
+                            }
+
+                            throw new BookingException($ocupado . ' Elige a otra persona para acompañar.', conflictos: $conflictos);
                         }
                     }
 

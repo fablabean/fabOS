@@ -440,8 +440,11 @@ class CreateReservation extends CreateRecord
 
         $reservas = app(BookingService::class);
 
+        $espacios = app(EspacioBookingService::class);
+
         if ($this->aceptarChoques) {
             $reservas->aceptandoChoquesDelAcompanante();
+            $espacios->aceptandoChoquesDeAcompanantes();
         }
 
         $crear = fn (Carbon $desde, Carbon $hasta): Reservation => match ($data['tipo']) {
@@ -451,7 +454,7 @@ class CreateReservation extends CreateRecord
             'herramientas' => $reservas->reservarHerramientas(
                 $quien, Asset::whereIn('id', array_map('intval', (array) ($data['herramienta_ids'] ?? [])))->get(), $desde, $hasta, $paraQue, $acompanante,
             ),
-            'espacio' => app(EspacioBookingService::class)->reservarVarios(
+            'espacio' => $espacios->reservarVarios(
                 $quien, Space::whereIn('id', array_map('intval', (array) ($data['space_ids'] ?? [])))->get()->all(),
                 $desde, $hasta, (int) ($data['participantes'] ?? 1), [], $paraQue,
                 $data['modalidad'] ?? null, array_map('intval', $data['acompanantes'] ?? []),
