@@ -29,16 +29,61 @@ use Illuminate\Support\Collection;
  */
 class IngresosPorProyectos
 {
+    /** Dónde queda el ajuste de la proyección que se decidió guardar. */
+    public const CLAVE_AJUSTE = 'finanzas.ajuste_de_proyeccion';
+
+    /** Lo que se ajusta mes a mes: los tres que facturan y los internos. */
+    public const TIPOS_DEL_AJUSTE = ['estudiante' => 'Estudiantes', 'interno' => 'Universidad', 'externo' => 'De fuera', 'internos' => 'Internos'];
+
     /**
-     * Los meses en que casi no se vende: intersemestral y fin de año. Valen
-     * esta fracción de un mes normal en la proyección.
+     * El ajuste de fábrica, en porcentaje de un mes normal.
+     *
+     * Fin de año e inicio (diciembre, enero): casi nada para nadie. El
+     * intersemestral (junio, julio): sin estudiantes, pero la Universidad y
+     * los de fuera siguen encargando. La realista, la mitad de la optimista.
+     *
+     * @return array{realista:int, meses:array<int,array<string,int>>}
      */
-    public const MESES_BAJOS = [12, 1, 6, 7];
+    public static function ajusteDeFabrica(): array
+    {
+        $meses = [];
+        foreach (range(1, 12) as $m) {
+            $meses[$m] = match (true) {
+                in_array($m, [12, 1], true) => ['estudiante' => 10, 'interno' => 10, 'externo' => 10, 'internos' => 10],
+                in_array($m, [6, 7], true)  => ['estudiante' => 5, 'interno' => 100, 'externo' => 100, 'internos' => 100],
+                default                     => ['estudiante' => 100, 'interno' => 100, 'externo' => 100, 'internos' => 100],
+            };
+        }
 
-    public const FACTOR_MES_BAJO = 0.1;
+        return ['realista' => 50, 'meses' => $meses];
+    }
 
-    /** La realista es esta parte de la optimista, que es el ritmo de hoy. */
-    public const FACTOR_REALISTA = 0.5;
+    /** El que está guardado, o el de fábrica; siempre completo y en rango. */
+    public static function ajusteGuardado(): array
+    {
+        return self::normalizar((array) \App\Models\Setting::get(self::CLAVE_AJUSTE, []));
+    }
+
+    public static function guardarAjuste(array $ajuste): void
+    {
+        \App\Models\Setting::put(self::CLAVE_AJUSTE, self::normalizar($ajuste), 'finanzas');
+    }
+
+    /** Lo que llegue —de un formulario a medio escribir— queda completo y entre 0 y 300%. */
+    public static function normalizar(array $ajuste): array
+    {
+        $base = self::ajusteDeFabrica();
+        $limpio = ['realista' => max(0, min(100, (int) ($ajuste['realista'] ?? $base['realista']))), 'meses' => []];
+
+        foreach (range(1, 12) as $m) {
+            foreach (array_keys(self::TIPOS_DEL_AJUSTE) as $t) {
+                $v = $ajuste['meses'][$m][$t] ?? $ajuste['meses'][(string) $m][$t] ?? $base['meses'][$m][$t];
+                $limpio['meses'][$m][$t] = max(0, min(300, (int) (is_numeric($v) ? $v : $base['meses'][$m][$t])));
+            }
+        }
+
+        return $limpio;
+    }
 
     public const COLUMNAS = [
         'estudiante' => 'Estudiantes',
@@ -73,8 +118,9 @@ class IngresosPorProyectos
      *   meta: ?array{ano:int, meta:int, proyectado:int}, desde: ?Carbon, diasObservados: int,
      * }
      */
-    public function calcular(?Carbon $hoy = null): array
+    public function calcular(?Carbon $hoy = null, ?array $ajuste = null): array
     {
+        $ajuste = $ajuste !== null ? self::normalizar($ajuste) : self::ajusteGuardado();
         $tz = config('fabos.lab.timezone');
         $hoy = ($hoy ?? now())->copy()->timezone($tz);
         $proyectos = $this->ejecutados();
@@ -135,26 +181,31 @@ class IngresosPorProyectos
         }
 
         /*
-         * Dos escenarios, y los dos con temporada. La optimista es el ritmo
-         * de hoy —lo observado no tiene ningún mes bajo—; la realista, la
-         * mitad. En intersemestral y fin de año casi no se vende, y esos meses
-         * pesan una fracción de uno normal.
+         * Dos escenarios, con temporada por tipo de cliente. La optimista es
+         * el ritmo de hoy —lo observado no tiene ningún mes bajo— ajustado mes
+         * a mes; la realista, una parte de ella. El ajuste dice cuánto pesa
+         * cada mes para cada tipo: en el intersemestral no hay estudiantes,
+         * pero la Universidad y los de fuera siguen encargando.
          */
         $proyeccion = [];
         $acumulado = ['optimista' => 0, 'realista' => 0, 'internos' => 0];
         for ($i = 1; $i <= 12; $i++) {
             $m = $hoy->copy()->startOfMonth()->addMonths($i);
-            $factor = in_array($m->month, self::MESES_BAJOS, true) ? self::FACTOR_MES_BAJO : 1.0;
-            $optimista = (int) round($promedio['cobrado'] * $factor);
-            $realista = (int) round($optimista * self::FACTOR_REALISTA);
-            $internos = (int) round($promedio['internos'] * $factor);
+            $pct = $ajuste['meses'][$m->month];
+            $porTipo = [];
+            foreach (array_keys(self::COLUMNAS) as $t) {
+                $porTipo[$t] = (int) round($promedio[$t] * $pct[$t] / 100);
+            }
+            $optimista = array_sum($porTipo);
+            $realista = (int) round($optimista * $ajuste['realista'] / 100);
+            $internos = (int) round($promedio['internos'] * $pct['internos'] / 100);
             $acumulado['optimista'] += $optimista;
             $acumulado['realista'] += $realista;
             $acumulado['internos'] += $internos;
-            $proyeccion[] = [
+            $proyeccion[] = $porTipo + [
                 'mes'       => $m->format('Y-m'),
                 'nombre'    => $m->locale('es')->isoFormat('MMMM YYYY'),
-                'bajo'      => $factor < 1,
+                'bajo'      => min($pct['estudiante'], $pct['interno'], $pct['externo']) < 100,
                 'optimista' => $optimista,
                 'realista'  => $realista,
                 'internos'  => $internos,
@@ -173,6 +224,7 @@ class IngresosPorProyectos
             'meta'           => $this->meta($hoy->year + 1, $acumulado['optimista'], $acumulado['realista']),
             'desde'          => $desde,
             'diasObservados' => $dias,
+            'ajuste'         => $ajuste,
         ];
     }
 
@@ -227,9 +279,9 @@ class IngresosPorProyectos
     }
 
     /** Las dos tablas en un .xlsx: el histórico, la proyección y lo que falta valorar. */
-    public function excel(?Carbon $hoy = null): string
+    public function excel(?Carbon $hoy = null, ?array $ajuste = null): string
     {
-        $d = $this->calcular($hoy);
+        $d = $this->calcular($hoy, $ajuste);
         $base = tempnam(sys_get_temp_dir(), 'ingresos');
         @unlink($base);
         $ruta = $base . '.xlsx';
@@ -247,10 +299,17 @@ class IngresosPorProyectos
         $fila(['Total', $t['estudiante'], $t['interno'], $t['externo'], $t['cobrado'], $t['internos'], $t['total'], $t['n']]);
 
         $hoja->addNewSheetAndMakeItCurrent()->setName('Proyección');
-        $fila(['Mes', 'Temporada', 'Optimista (ritmo de hoy)', 'Realista (' . (int) (self::FACTOR_REALISTA * 100) . '%)', 'Internos', 'Acumulado optimista', 'Acumulado realista', 'Acumulado internos']);
+        $fila(['Mes', ...array_values(self::COLUMNAS), 'Optimista (ritmo de hoy)', 'Realista (' . $d['ajuste']['realista'] . '%)', 'Internos', 'Acumulado optimista', 'Acumulado realista', 'Acumulado internos']);
         foreach ($d['proyeccion'] as $m) {
-            $fila([$m['nombre'], $m['bajo'] ? 'Baja' : 'Normal', $m['optimista'], $m['realista'], $m['internos'], $m['acumulado_optimista'], $m['acumulado_realista'], $m['acumulado_internos']]);
+            $fila([$m['nombre'], $m['estudiante'], $m['interno'], $m['externo'], $m['optimista'], $m['realista'], $m['internos'], $m['acumulado_optimista'], $m['acumulado_realista'], $m['acumulado_internos']]);
         }
+
+        $hoja->addNewSheetAndMakeItCurrent()->setName('Ajuste usado');
+        $fila(['Mes', ...array_map(fn ($t) => $t . ' (%)', array_values(self::TIPOS_DEL_AJUSTE))]);
+        foreach ($d['ajuste']['meses'] as $num => $pct) {
+            $fila([Carbon::create(2000, $num, 1)->locale('es')->isoFormat('MMMM'), ...array_values($pct)]);
+        }
+        $fila(['Realista (% de la optimista)', $d['ajuste']['realista']]);
 
         $hoja->addNewSheetAndMakeItCurrent()->setName('Sin valor registrado');
         $fila(['Código', 'Proyecto', 'Cliente', 'Interno', 'Etapa', 'Estado', 'Responsable', 'Mes']);

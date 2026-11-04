@@ -26,6 +26,14 @@
         .ipp .barra{height:.55rem;border-radius:999px;background:rgba(128,128,128,.18);overflow:hidden}
         .ipp .barra i{display:block;height:100%;background:#D69E2E}
         .ipp button.dato{all:unset;cursor:pointer;border-bottom:1px dotted currentColor}
+        .ipp .ajuste summary{cursor:pointer;font-size:.9rem}
+        .ipp .ajuste-cuerpo{margin-top:.8rem}
+        .ipp .ajuste .realista{display:inline-flex;flex-direction:column;gap:.25rem;margin-bottom:.8rem;font-size:.85rem}
+        .ipp .ajuste .realista input{width:7rem}
+        .ipp .ajuste table{max-width:40rem}
+        .ipp input.pct{width:4.2rem;text-align:right;padding:.15rem .35rem;border-radius:.35rem;border:1px solid rgba(128,128,128,.35);background:transparent;font-variant-numeric:tabular-nums}
+        .ipp input.pct.baja{border-color:#D69E2E;background:color-mix(in srgb,#D69E2E 10%,transparent)}
+        .ipp .sin-guardar{margin-left:.5rem;padding:.05rem .5rem;border-radius:999px;font-size:.7rem;font-weight:600;background:#D69E2E;color:#fff}
         .ipp button.dato:hover,.ipp button.dato:focus-visible{color:#B7791F}
     </style>
 
@@ -94,13 +102,60 @@
         <x-filament::section>
             <x-slot name="heading">Proyección a doce meses</x-slot>
             <x-slot name="description">
-                Optimista: el promedio facturable por mes de lo observado ({{ $diasObservados }} días). Realista: la mitad.
-                En diciembre, enero, junio y julio —intersemestral y fin de año— casi no se vende: esos meses cuentan
-                el {{ (int) (\App\Services\Reports\IngresosPorProyectos::FACTOR_MES_BAJO * 100) }}% de uno normal.
-                Se recalcula sola; mientras haya proyectos sin valor, se queda corta.
+                Optimista: el promedio por mes de lo observado ({{ $diasObservados }} días), para cada tipo de cliente,
+                por el porcentaje de cada mes en «Ajustar la proyección». Realista: el {{ $ajuste['realista'] }}% de la
+                optimista. Mientras haya proyectos sin valor, se queda corta.
             </x-slot>
 
             @include('filament.pages.ingresos-por-proyectos-grafica')
+
+            {{-- Jugar con la proyección: cada cambio redibuja; solo queda al guardarlo. --}}
+            <details class="ajuste" {{ $sinGuardar ? 'open' : '' }} style="margin-top:1rem">
+                <summary>
+                    <strong>Ajustar la proyección</strong>
+                    <span class="gris">· cuánto pesa cada mes para cada tipo, en % de un mes normal</span>
+                    @if ($sinGuardar) <span class="sin-guardar">sin guardar</span> @endif
+                </summary>
+
+                <div class="ajuste-cuerpo">
+                    <label class="realista">
+                        <span>Realista, en % de la optimista</span>
+                        <input type="number" min="0" max="100" step="5" wire:model.live.debounce.400ms="ajuste.realista"
+                               class="fi-input block rounded-lg border-gray-300 dark:border-white/10 dark:bg-white/5">
+                    </label>
+
+                    <div class="tabla">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mes</th>
+                                    @foreach (\App\Services\Reports\IngresosPorProyectos::TIPOS_DEL_AJUSTE as $nombre) <th class="num">{{ $nombre }}</th> @endforeach
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (range(1, 12) as $num)
+                                <tr>
+                                    <td>{{ \Illuminate\Support\Carbon::create(2000, $num, 1)->locale('es')->isoFormat('MMMM') }}</td>
+                                    @foreach (\App\Services\Reports\IngresosPorProyectos::TIPOS_DEL_AJUSTE as $tipo => $nombre)
+                                        <td class="num">
+                                            <input type="number" min="0" max="300" step="5" aria-label="{{ $nombre }} en {{ $num }}"
+                                                   wire:model.live.debounce.400ms="ajuste.meses.{{ $num }}.{{ $tipo }}"
+                                                   class="pct {{ ($ajuste['meses'][$num][$tipo] ?? 100) < 100 ? 'baja' : '' }}">%
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.8rem">
+                        <x-filament::button wire:click="guardarAjuste" icon="heroicon-o-check" :disabled="! $sinGuardar">Guardar este ajuste</x-filament::button>
+                        <x-filament::button wire:click="volverAlGuardado" color="gray" :disabled="! $sinGuardar">Volver a lo guardado</x-filament::button>
+                        <x-filament::button wire:click="ajusteDeFabrica" color="gray">Valores de fábrica</x-filament::button>
+                    </div>
+                </div>
+            </details>
 
             @if ($meta)
                 @php
@@ -131,7 +186,7 @@
                     <tbody>
                     @foreach ($proyeccion as $m)
                         <tr>
-                            <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· temporada baja</span>@endif</td>
+                            <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· ajustado a la baja</span>@endif</td>
                             <td class="num"><strong>{{ $pesos($m['optimista']) }}</strong></td>
                             <td class="num">{{ $pesos($m['realista']) }}</td>
                             <td class="num">{{ $pesos($m['acumulado_optimista']) }}</td>

@@ -76,17 +76,27 @@ class IngresosPorProyectosTest extends TestCase
         $this->assertEqualsWithDelta(1_250_000, $d['promedio']['cobrado'], 30_000);
         $this->assertCount(12, $d['proyeccion']);
 
-        // Optimista es el ritmo de hoy, realista la mitad; diciembre, enero,
-        // junio y julio casi no venden.
-        [$octubre, $noviembre, $diciembre, $enero] = array_slice($d['proyeccion'], 0, 4);
-        $this->assertSame('2026-10', $octubre['mes']);
-        $this->assertFalse($octubre['bajo']);
-        $this->assertSame($d['promedio']['cobrado'], $octubre['optimista']);
-        $this->assertSame((int) round($octubre['optimista'] * 0.5), $octubre['realista']);
-        $this->assertTrue($diciembre['bajo']);
-        $this->assertTrue($enero['bajo']);
-        $this->assertSame((int) round($d['promedio']['cobrado'] * 0.1), $diciembre['optimista']);
-        $this->assertSame(8 * $d['promedio']['cobrado'] + 4 * (int) round($d['promedio']['cobrado'] * 0.1), $d['proyeccion'][11]['acumulado_optimista']);
+        // De fábrica: optimista es el ritmo de hoy y realista la mitad;
+        // diciembre y enero casi nada; junio y julio, sin estudiantes.
+        $p = $d['promedio'];
+        $porMes = collect($d['proyeccion'])->keyBy('mes');
+        $this->assertFalse($porMes['2026-10']['bajo']);
+        $this->assertEqualsWithDelta($p['cobrado'], $porMes['2026-10']['optimista'], 3);
+        $this->assertSame((int) round($porMes['2026-10']['optimista'] * 0.5), $porMes['2026-10']['realista']);
+        $this->assertTrue($porMes['2026-12']['bajo']);
+        $this->assertEqualsWithDelta($p['cobrado'] * 0.1, $porMes['2027-01']['optimista'], 3);
+        $this->assertEqualsWithDelta($p['estudiante'] * 0.05 + $p['interno'] + $p['externo'], $porMes['2027-06']['optimista'], 3);
+        $this->assertSame($p['internos'], $porMes['2027-07']['internos']);
+
+        // Un ajuste a mano: la realista al 30% y septiembre con el doble de externos.
+        $ajuste = IngresosPorProyectos::ajusteDeFabrica();
+        $ajuste['realista'] = 30;
+        $ajuste['meses'][9]['externo'] = 200;
+        $d2 = app(IngresosPorProyectos::class)->calcular(null, $ajuste);
+        $p2 = $d2['promedio'];
+        $conAjuste = collect($d2['proyeccion'])->keyBy('mes');
+        $this->assertEqualsWithDelta($p2['estudiante'] + $p2['interno'] + 2 * $p2['externo'], $conAjuste['2027-09']['optimista'], 3);
+        $this->assertSame((int) round($conAjuste['2027-09']['optimista'] * 0.3), $conAjuste['2027-09']['realista']);
     }
 
     public function test_compara_con_la_meta_de_venta_del_ano_que_viene(): void
@@ -121,7 +131,13 @@ class IngresosPorProyectosTest extends TestCase
             ->assertSee('Mes a mes')
             ->assertSee('Proyección a doce meses')
             ->assertSee('Optimista · ritmo de hoy')
-            ->assertSee('temporada baja')
+            ->assertSee('Ajustar la proyección')
+            ->assertSee('ajustado a la baja')
+            ->set('ajuste.realista', 40)
+            ->assertSee('sin guardar')
+            ->assertSee('Realista · 40%')
+            ->call('guardarAjuste')
+            ->assertDontSee('sin guardar')
             ->assertSeeHtml('<polyline')
             ->assertSee('Sin valor registrado (1)')
             ->assertSee($sin->code)
@@ -135,6 +151,8 @@ class IngresosPorProyectosTest extends TestCase
         ])->render();
         $this->assertStringContainsString('$204.000', $detalle);
         $this->assertStringContainsString('Acordado', $detalle);
+
+        $this->assertSame(40, IngresosPorProyectos::ajusteGuardado()['realista']);
 
         $ruta = app(IngresosPorProyectos::class)->excel();
         $this->assertFileExists($ruta);

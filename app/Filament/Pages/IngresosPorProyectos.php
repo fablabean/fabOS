@@ -41,10 +41,42 @@ class IngresosPorProyectos extends Page
         return 'Ingresos por proyectos';
     }
 
+    /**
+     * El ajuste de la proyección que se está probando. Cada cambio redibuja la
+     * gráfica; solo queda para todos al guardarlo.
+     *
+     * @var array{realista:int, meses:array<int,array<string,int>>}
+     */
+    public array $ajuste = [];
+
+    public function mount(): void
+    {
+        $this->ajuste = Calculo::ajusteGuardado();
+    }
+
+    public function guardarAjuste(): void
+    {
+        Calculo::guardarAjuste($this->ajuste);
+        $this->ajuste = Calculo::ajusteGuardado();
+
+        \Filament\Notifications\Notification::make()->success()->title('Ajuste guardado')
+            ->body('La proyección queda así para todos, y el Excel sale con este ajuste.')->send();
+    }
+
+    public function volverAlGuardado(): void
+    {
+        $this->ajuste = Calculo::ajusteGuardado();
+    }
+
+    public function ajusteDeFabrica(): void
+    {
+        $this->ajuste = Calculo::ajusteDeFabrica();
+    }
+
     public function descargar(): BinaryFileResponse
     {
         return response()
-            ->download(app(Calculo::class)->excel(), 'ingresos-por-proyectos-' . now(config('fabos.lab.timezone'))->format('Y-m-d') . '.xlsx')
+            ->download(app(Calculo::class)->excel(null, $this->ajuste), 'ingresos-por-proyectos-' . now(config('fabos.lab.timezone'))->format('Y-m-d') . '.xlsx')
             ->deleteFileAfterSend();
     }
 
@@ -71,6 +103,8 @@ class IngresosPorProyectos extends Page
 
     public function getViewData(): array
     {
-        return app(Calculo::class)->calcular();
+        return app(Calculo::class)->calcular(null, $this->ajuste) + [
+            'sinGuardar' => Calculo::normalizar($this->ajuste) !== Calculo::ajusteGuardado(),
+        ];
     }
 }

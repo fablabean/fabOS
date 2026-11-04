@@ -55,8 +55,8 @@
     <div class="leyenda" aria-hidden="true">
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-real)" stroke-width="2" stroke-linecap="round"/><circle cx="13" cy="4" r="3" fill="var(--g-real)"/></svg>Real</span>
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-opt)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/></svg>Optimista · ritmo de hoy</span>
-        <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-rea)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg>Realista · {{ (int) (\App\Services\Reports\IngresosPorProyectos::FACTOR_REALISTA * 100) }}%</span>
-        <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--g-bajo)" stroke="var(--g-rule)"/></svg>Temporada baja</span>
+        <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-rea)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg>Realista · {{ $ajuste['realista'] }}%</span>
+        <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--g-bajo)" stroke="var(--g-rule)"/></svg>Mes ajustado a la baja</span>
     </div>
 
     <svg class="lienzo" viewBox="0 0 {{ $W }} {{ $H }}" role="img"
@@ -108,7 +108,7 @@
             @php $cx = $x($real->count() + $i); @endphp
             <g class="grupo">
                 <rect class="hit" x="{{ $cx - 10 }}" y="{{ $arriba }}" width="20" height="{{ $altoUtil }}">
-                    <title>{{ $p['nombre'] }}{{ $p['bajo'] ? ' (temporada baja)' : '' }}
+                    <title>{{ $p['nombre'] }}{{ $p['bajo'] ? ' (ajustado a la baja)' : '' }}
 Optimista: {{ $pesosLargo($p['optimista']) }}
 Realista: {{ $pesosLargo($p['realista']) }}</title>
                 </rect>
