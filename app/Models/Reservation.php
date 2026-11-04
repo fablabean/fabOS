@@ -465,4 +465,60 @@ class Reservation extends Model
             ? 'Asesoría general'
             : 'General de ' . $this->advisoryArea->name;
     }
+
+
+    /**
+     * Quien acompaña cambia en la ficha, y su tiempo apartado lo sigue.
+     *
+     * La ficha deja cambiar a quien supervisa, pero el bloque con el tiempo de
+     * esa persona —la hija «Acompañamiento en…»— se quedaba a nombre del
+     * anterior: quien se quitaba de una reserva seguía ocupado todo el día, y
+     * el nuevo quedaba libre para que le asignaran otra cosa encima.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $r) {
+            if ($r->wasChanged('supervisor_id') && ! $r->parent_reservation_id && $r->reservable_type !== User::class) {
+                static::seguirAlSupervisor($r, (int) $r->getOriginal('supervisor_id') ?: null);
+            }
+        });
+    }
+
+    /** Pasa el tiempo apartado del supervisor anterior al nuevo; sin nuevo, se suelta. */
+    public static function seguirAlSupervisor(self $r, ?int $anterior): void
+    {
+        $bloques = static::query()
+            ->where('parent_reservation_id', $r->id)
+            ->where('reservable_type', User::class)
+            ->when($anterior, fn ($q) => $q->where('reservable_id', $anterior))
+            ->where('reservable_id', '!=', (int) $r->supervisor_id)
+            ->whereIn('status', self::BLOQUEANTES)
+            ->get();
+
+        foreach ($bloques as $bloque) {
+            $nuevo = $r->supervisor_id ? User::find($r->supervisor_id) : null;
+
+            if ($nuevo) {
+                // Sus revisiones le ceden el paso; lo demás que tenga lo
+                // impide la base, y entonces el bloque se suelta y se dice.
+                app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($nuevo, $bloque->starts_at, $bloque->ends_at);
+
+                try {
+                    \Illuminate\Support\Facades\DB::transaction(fn () => $bloque->update(['reservable_id' => $nuevo->id]));
+
+                    continue;
+                } catch (\Illuminate\Database\QueryException) {
+                    // Cae abajo: se suelta.
+                }
+            }
+
+            $bloque->update([
+                'status'        => 'cancelada',
+                'status_reason' => $nuevo
+                    ? $nuevo->name . ' ya tenía algo a esa hora: su tiempo no se pudo apartar.'
+                    : 'Quien acompañaba se quitó de la reserva.',
+            ]);
+        }
+    }
+
 }
