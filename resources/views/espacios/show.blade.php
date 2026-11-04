@@ -29,7 +29,7 @@
 
     @error('fecha') <p class="msg error">{{ $message }}</p> @enderror
 
-    <form method="POST" action="{{ route('espacios.store', $espacio) }}">
+    <form method="POST" action="{{ route('espacios.store', $espacio) }}" enctype="multipart/form-data">
         @csrf
 
         <div class="panel">
@@ -123,6 +123,10 @@
                         <input type="radio" name="modalidad" value="recorrido" @checked(old('modalidad') === 'recorrido')>
                         <span><strong>Recorrido</strong> <small style="opacity:.6">· se pasa por ahí; no bloquea nada</small></span>
                     </label>
+                    <label class="herramienta">
+                        <input type="radio" name="modalidad" value="demo" @checked(old('modalidad') === 'demo')>
+                        <span><strong>Demo</strong> <small style="opacity:.6">· te mostramos las máquinas; una hora</small></span>
+                    </label>
                 </div>
             @endunless
 
@@ -130,6 +134,7 @@
                  el taller y la sala de al lado, y pedirlas de a una es dos
                  formularios por lo mismo. Se cancelan juntas. --}}
             @if (isset($otros) && $otros->isNotEmpty())
+                <div id="otros-espacios">
                 <p style="margin:1rem 0 .4rem;font-weight:600">¿También otro espacio, a la misma hora?</p>
                 <div class="herramientas">
                     @foreach ($otros as $o)
@@ -147,14 +152,35 @@
                     Va todo en una sola reserva. Si alguno cae fuera de la jornada del equipo, la reserva
                     entera queda pendiente del visto bueno.
                 </p>
+                </div>
             @endif
         </div>
 
         {{-- Las herramientas se toman DENTRO del espacio: es el uso normal del
              laboratorio, y por eso no se piden sueltas desde el catálogo. En un
              recorrido no se toma nada: se mira. --}}
+        {{-- La demo es controlada: una hora, este espacio, nada más que pedir.
+             Solo los archivos que se van a usar, en el formato de la zona. --}}
         @unless ($espacio->esTodoElLaboratorio())
-        <div class="panel">
+        @php($formatos = \App\Support\FormatosDeDemo::para($espacio))
+        <div class="panel" id="panel-demo" hidden>
+            <h2 style="margin-top:0">Archivos para la demo</h2>
+            <p class="help" style="margin-top:0">
+                La demo dura una hora y la hace alguien del equipo con las máquinas de {{ $espacio->name }}.
+                No se piden herramientas ni otros espacios. Si quieres ver tu propio diseño, súbelo aquí (opcional).
+            </p>
+            <p class="help"><strong>Cómo prepararlo:</strong> {{ $formatos['consejo'] }}</p>
+            <input type="file" name="archivos[]" multiple
+                   accept="{{ collect($formatos['extensiones'])->map(fn ($e) => '.' . $e)->implode(',') }}">
+            <p class="foot" style="margin-top:.5rem">
+                Se reciben .{{ implode(', .', $formatos['extensiones']) }} · hasta {{ \App\Support\FormatosDeDemo::MAXIMO }}
+                archivos de {{ intdiv(\App\Support\FormatosDeDemo::TAMANO_KB, 1024) }} MB.
+            </p>
+            @error('archivos') <p class="msg error">{{ $message }}</p> @enderror
+            @error('archivos.*') <p class="msg error">{{ $message }}</p> @enderror
+        </div>
+
+        <div class="panel" id="panel-herramientas">
             <h2 style="margin-top:0">¿Qué vas a necesitar?</h2>
 
             @if ($herramientas->isEmpty())
@@ -203,6 +229,7 @@
     </form>
 
     <style>
+        form [hidden] { display: none !important; }
         .agenda { display: grid; gap: .75rem 1rem; align-items: end; }
         .agenda-campo { display: flex; flex-direction: column; gap: .3rem; margin: 0; }
         .agenda-campo > label { margin: 0; }
@@ -336,6 +363,37 @@
                     pedir();
                 }
             });
+
+            // La demo: una hora fija, y nada de otros espacios ni herramientas.
+            // Lo que estuviera marcado se desmarca: no viaja con la demo.
+            const demo = () => {
+                const esDemo = form.querySelector('input[name="modalidad"][value="demo"]')?.checked ?? false;
+                const duracion = campo('duracion');
+
+                document.getElementById('panel-demo')?.toggleAttribute('hidden', ! esDemo);
+                document.getElementById('panel-herramientas')?.toggleAttribute('hidden', esDemo);
+                document.getElementById('otros-espacios')?.toggleAttribute('hidden', esDemo);
+
+                if (esDemo) {
+                    form.querySelectorAll('input[name="espacios[]"], input[name="herramientas[]"]').forEach((c) => { c.checked = false; });
+                    duracion.value = '{{ \App\Services\Booking\EspacioBookingService::MINUTOS_DEMO }}';
+                }
+
+                [...duracion.options].forEach((o) => {
+                    o.disabled = esDemo && o.value !== '{{ \App\Services\Booking\EspacioBookingService::MINUTOS_DEMO }}';
+                });
+
+                if (enviar) {
+                    enviar.dataset.dentro = esDemo ? 'Reservar la demo' : '{{ $etiquetaDentro }}';
+
+                    if (enviar.textContent.trim() !== enviar.dataset.fuera) {
+                        enviar.textContent = enviar.dataset.dentro;
+                    }
+                }
+            };
+
+            form.querySelectorAll('input[name="modalidad"]').forEach((r) => r.addEventListener('change', () => { demo(); consultar(); }));
+            demo();
             form.addEventListener('input', (e) => {
                 if (e.target.matches('#fecha, #inicio')) {
                     pedir();

@@ -48,8 +48,23 @@ class ReservationForm
                                 $record === null => '—',
                                 $record->esProduccion() => 'Producción (se programa desde el proyecto)',
                                 $record->esAsesoria() => 'Asesoría',
+                                (bool) $record->is_demo => 'Demo de las máquinas del espacio',
                                 default => Reservation::MODOS[$record->mode] ?? $record->mode,
                             }),
+
+                        // Lo que la persona subió para la demo: se baja desde
+                        // aquí para tenerlo listo en la máquina.
+                        Placeholder::make('archivos_demo')
+                            ->label('Archivos para la demo')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->is_demo)
+                            ->columnSpanFull()
+                            ->content(fn (?Reservation $record) => $record?->evidence->isEmpty()
+                                ? 'No subió archivos: la demo va con lo que tenga el laboratorio.'
+                                : new \Illuminate\Support\HtmlString($record->evidence
+                                    ->map(fn ($e) => '<a class="underline" target="_blank" rel="noopener" href="'
+                                        . e(\App\Filament\Componentes\ArchivoPrivado::url($e->file_path, $e->original_name, descargar: true)) . '">'
+                                        . e($e->original_name) . '</a>')
+                                    ->implode('<br>'))),
 
                         Select::make('user_id')
                             ->label('Para quién')
