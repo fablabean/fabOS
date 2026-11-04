@@ -306,5 +306,12 @@ class SemanaDelLaboratorioTest extends TestCase
             ->getContent();
 
         $this->assertSame(2, substr_count($html, ' · se cruza'));
+
+        // La producción de un proyecto que se reservó para sí también sale en su fila.
+        $this->reserva($jhon, '14:00', '15:30', ['is_production' => true, 'project_id' => $this->proyecto($jhon)->id]);
+
+        $this->actingAs($admin)
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
+            ->assertSeeInOrder(['Jhonatan Cortés', '14:00–15:30', 'Producción']);
     }
 }

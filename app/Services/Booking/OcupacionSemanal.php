@@ -308,9 +308,9 @@ class OcupacionSemanal
      * Quién del equipo está en esta reserva, y haciendo qué. `ocupa` dice si
      * ese papel le toma la franja entera: recibir en una sala no —son los
      * cinco minutos de ubicar a quien llega—; asesorar, acompañar, llevar un
-     * recorrido o una demo, sí. Su propio uso de una máquina se muestra y se
-     * cuenta para ver choques, aunque el sistema no lo impida: una impresora
-     * que trabaja sola no ocupa a nadie.
+     * recorrido o una demo, sí. Su propio uso de una máquina —también la
+     * producción de un proyecto— se muestra y se cuenta para ver choques,
+     * aunque el sistema no lo impida.
      *
      * @return list<array{id:int,nombre:string,rol:string,ocupa:bool}>
      */
@@ -347,9 +347,13 @@ class OcupacionSemanal
             $poner($c, $r->esRecorrido() ? 'Acompaña el recorrido' : 'Acompaña', true);
         }
 
-        if ($r->user && isset($this->delEquipo[$r->user->id]) && ! $r->reservable instanceof User && ! $r->esProduccion()
+        // Lo que se reservó para sí, también si es la producción de un
+        // proyecto: la termofijadora la opera alguien. Sale en su fila y se
+        // marca si se cruza; no impide nada, porque una impresión que corre
+        // sola no ocupa a nadie y desde aquí no se distingue una de otra.
+        if ($r->user && isset($this->delEquipo[$r->user->id]) && ! $r->reservable instanceof User
             && ! ($r->reservable instanceof Asset && $r->reservable->esHerramienta())) {
-            $poner($r->user, 'Su uso', true);
+            $poner($r->user, $r->esProduccion() ? 'Producción' : 'Su uso', true);
         }
 
         return array_values($lista);
