@@ -97,6 +97,11 @@ class ApprovalService
         // Quien va a atender tiene que estar libre: si tiene una asesoria,
         // tiempo apartado para un proyecto o una clase en su calendario a esa
         // hora, no esta.
+        if ($acompanante) {
+            // Elegido a mano: sus horas de revisión le ceden el paso.
+            app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($acompanante, $solicitud->starts_at, $solicitud->ends_at);
+        }
+
         $ocupado = $acompanante
             ? app(BookingService::class)->porQueNoEstaLibre($acompanante, $solicitud->starts_at, $solicitud->ends_at)
             : null;

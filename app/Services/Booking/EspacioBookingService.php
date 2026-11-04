@@ -650,6 +650,8 @@ class EspacioBookingService
                     // no esta: se dice quien y que tiene, para que el
                     // operador elija a otro.
                     foreach ($acompanan as $quien) {
+                        // Elegido a mano: sus horas de revisión le ceden el paso.
+                        app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($quien, $desde, $hasta);
                         $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta, $this->grupoEnCurso);
 
                         if ($ocupado) {

@@ -251,7 +251,7 @@ class TraspasosTest extends TestCase
         ]);
 
         $this->expectException(BookingException::class);
-        $this->expectExceptionMessage('Beto ya tiene algo a esa hora');
+        $this->expectExceptionMessage('Beto ya tiene una asesoría');
 
         $this->traspasos()->proponer($r, $ana, $beto);
     }
@@ -296,7 +296,7 @@ class TraspasosTest extends TestCase
             $this->traspasos()->aceptar($t, $beto);
             $this->fail('no debía aceptarse');
         } catch (BookingException $e) {
-            $this->assertStringContainsString('ya tiene algo a esa hora', $e->getMessage());
+            $this->assertStringContainsString('ya tiene tiempo apartado', $e->getMessage());
         }
 
         $this->assertSame($ana->id, $r->fresh()->reservable_id);

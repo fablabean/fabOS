@@ -327,6 +327,8 @@ class TraspasoDeAtencion
             $hasta = $desde->copy()->addMinutes(\App\Services\Booking\EspacioBookingService::MINUTOS_RECIBIR)->min($reserva->ends_at);
         }
 
+        // Quien la recibe por decisión de alguien: sus revisiones ceden.
+        app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($a, $desde, $hasta);
         $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $hasta);
 
         if ($ocupado) {

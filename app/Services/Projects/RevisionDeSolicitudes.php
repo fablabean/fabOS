@@ -49,7 +49,7 @@ class RevisionDeSolicitudes
      * proyecto. Nula si no tiene responsable o no hay franja en la ventana:
      * entonces la solicitud espera como antes, sin fecha prometida.
      */
-    public function apartar(Project $proyecto): ?Reservation
+    public function apartar(Project $proyecto, ?CarbonInterface $desde = null): ?Reservation
     {
         $lider = $proyecto->lead;
 
@@ -62,7 +62,7 @@ class RevisionDeSolicitudes
         }
 
         for ($intento = 0; $intento < 3; $intento++) {
-            $franja = $this->siguienteFranja($lider);
+            $franja = $this->siguienteFranja($lider, $desde);
 
             if (! $franja) {
                 return null;
@@ -141,6 +141,39 @@ class RevisionDeSolicitudes
         }
 
         $franja->update(['ends_at' => now(), 'status_reason' => $porQue]);
+    }
+
+    /**
+     * Las revisiones ceden. Cuando alguien elige a mano a esta persona para
+     * algo en esa franja —acompañar, recibir una sala, atender una solicitud—,
+     * sus horas de revisión que se cruzan se sueltan y cada una pasa a su
+     * siguiente hora libre después de la franja. La cola es para repartir lo
+     * que nadie decidió; lo que alguien decide, gana.
+     *
+     * @return int cuántas se movieron
+     */
+    public function cederA(User $persona, CarbonInterface $desde, CarbonInterface $hasta): int
+    {
+        $revisiones = Reservation::with('project')
+            ->where('reservable_type', User::class)
+            ->where('reservable_id', $persona->id)
+            ->where('mode', TiempoDeProyecto::MODO)
+            ->whereNull('project_task_id')
+            ->where('purpose', 'like', self::MOTIVO . '%')
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->get();
+
+        foreach ($revisiones as $r) {
+            $r->update(['status' => 'cancelada', 'status_reason' => 'Cedió su hora: a esa hora se le asignó otra cosa']);
+
+            if ($r->project) {
+                $this->apartar($r->project, $hasta);
+            }
+        }
+
+        return $revisiones->count();
     }
 
     /** La franja de revisión que tiene el proyecto, si la tiene. */

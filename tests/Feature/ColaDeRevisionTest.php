@@ -155,4 +155,34 @@ class ColaDeRevisionTest extends TestCase
         $this->assertSame('confirmada', $franjaC->fresh()->status);
         $this->assertSame('09:15', $franjaC->fresh()->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i'));
     }
+
+    /**
+     * Elegido a mano para algo, quien tiene una hora de revisión en esa
+     * franja queda asignado igual: la revisión le cede el paso y pasa a su
+     * siguiente hora libre.
+     */
+    public function test_la_revision_cede_cuando_alguien_lo_elige_a_mano(): void
+    {
+        foreach (\App\Models\User::ROLES_BACKOFFICE as $r) {
+            \Spatie\Permission\Models\Role::findOrCreate($r, 'web');
+        }
+        $this->lider->assignRole(\App\Models\User::ROL_PRACTICANTE);
+
+        $p = $this->solicitud('Base lámpara');
+        $this->assertSame('24/08 08:30', RevisionDeSolicitudes::de($p)->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i'));
+
+        // Se lo elige para acompañar una sala de 08:00 a 10:00.
+        $sala = \App\Models\Space::create(['slug' => 'sala', 'name' => 'Sala', 'capacity' => 10, 'is_reservable' => true]);
+        $quien = User::create(['name' => 'Alguien', 'email' => 'alguien@test.co', 'status' => 'activo']);
+
+        $this->assertNull(app(\App\Services\Booking\BookingService::class)->porQueNoSePuedeElegir($this->lider, $this->hora('2026-08-24', '08:00'), $this->hora('2026-08-24', '10:00')));
+        $this->assertStringContainsString('Revisión de la solicitud', (string) app(\App\Services\Booking\BookingService::class)->porQueNoEstaLibre($this->lider, $this->hora('2026-08-24', '08:00'), $this->hora('2026-08-24', '10:00')));
+
+        $reserva = app(\App\Services\Booking\EspacioBookingService::class)->reservar(
+            $quien, $sala, $this->hora('2026-08-24', '08:00'), $this->hora('2026-08-24', '10:00'), 4, [], null, null, [$this->lider->id],
+        );
+
+        $this->assertSame([$this->lider->id], $reserva->companions->pluck('id')->all());
+        $this->assertSame('24/08 10:00', RevisionDeSolicitudes::de($p->fresh())->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i'));
+    }
 }

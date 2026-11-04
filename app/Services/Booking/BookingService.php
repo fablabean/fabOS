@@ -53,6 +53,24 @@ class BookingService
      */
     private bool $recorridoNoOcupa = false;
 
+    /** Mientras se ofrece a quién elegir a mano: las revisiones ceden. */
+    private bool $revisionesCeden = false;
+
+    /**
+     * Por qué no se puede elegir a esta persona a mano, sin contar sus horas
+     * de revisión: esas se mueven solas si se la elige.
+     */
+    public function porQueNoSePuedeElegir(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?string
+    {
+        $this->revisionesCeden = true;
+
+        try {
+            return $this->porQueNoEstaLibre($persona, $desde, $hasta);
+        } finally {
+            $this->revisionesCeden = false;
+        }
+    }
+
     private function segunElEquipo(Asset $asset, \Closure $paso): mixed
     {
         $antes = $this->recorridoNoOcupa;
@@ -137,6 +155,8 @@ class BookingService
          * que reserve, y que quien acompaña este habilitado y libre.
          */
         if ($acompanante !== null) {
+            // Elegido a mano: sus horas de revisión le ceden el paso.
+            app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($acompanante, $desde, $hasta);
             $this->exigirQuePuedaAcompanar($acompanante, $user, $asset, $desde, $hasta);
 
             if (! $veredicto->puedeReservar() && ! $this->soloLeFaltaElCertifab($veredicto)) {
@@ -643,6 +663,11 @@ class BookingService
     {
         return ! Reservation::where('reservable_type', $tipo)
             ->where('reservable_id', $id)
+            // Al elegir a mano, las horas de revisión no ocupan: ceden.
+            ->when($this->revisionesCeden && $tipo === User::class, fn ($q) => $q->where(fn ($r) => $r
+                ->where('mode', '!=', \App\Services\Projects\TiempoDeProyecto::MODO)
+                ->orWhereNotNull('project_task_id')
+                ->orWhere('purpose', 'not like', \App\Services\Projects\RevisionDeSolicitudes::MOTIVO . '%')))
             ->whereIn('status', Reservation::BLOQUEANTES)
             // A UTC antes de comparar: si no, se contrasta la hora de pared
             // contra un instante y la disponibilidad sale corrida.
@@ -677,7 +702,7 @@ class BookingService
     public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta, ?int $salvo = null): ?string
     {
         if (! $this->estaLibre(User::class, $persona->id, $desde, $hasta)) {
-            return $persona->name . ' ya tiene algo a esa hora (una asesoría, un acompañamiento o tiempo apartado para un proyecto).';
+            return $persona->name . ' ya tiene ' . $this->queTieneYa($persona, $desde, $hasta) . '.';
         }
 
         if (! $this->recorridoNoOcupa && ($recorrido = $this->recorridoDe($persona, $desde, $hasta, $salvo))) {
@@ -717,6 +742,42 @@ class BookingService
         }
 
         return null;
+    }
+
+    /**
+     * Qué es eso que ya tiene, dicho con nombre y hora: «acompaña Robot
+     * Unitree · Evento del colegio, de 7:00 a 16:00 (reserva #828)». Decir
+     * «una asesoría, un acompañamiento o tiempo apartado» no le dice a nadie
+     * qué mover.
+     */
+    private function queTieneYa(User $persona, CarbonInterface $desde, CarbonInterface $hasta): string
+    {
+        $r = Reservation::with(['madre.reservable', 'reservable'])
+            ->where('reservable_type', User::class)
+            ->where('reservable_id', $persona->id)
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->orderBy('starts_at')
+            ->first();
+
+        if (! $r) {
+            return 'algo a esa hora';
+        }
+
+        $tz = config('fabos.lab.timezone');
+        $m = $r->madre ?? $r;
+        $franja = ', de ' . $r->starts_at->copy()->setTimezone($tz)->format('H:i') . ' a ' . $r->ends_at->copy()->setTimezone($tz)->format('H:i');
+
+        $que = match (true) {
+            $r->mode === 'asesoria'  => 'una asesoría' . ($r->purpose ? ' («' . \Illuminate\Support\Str::limit($r->purpose, 50) . '»)' : ''),
+            $r->mode === 'practica'  => 'una evaluación práctica',
+            $r->mode === 'proyecto'  => 'tiempo apartado: ' . \Illuminate\Support\Str::limit((string) $r->purpose, 70),
+            $r->parent_reservation_id !== null => 'que acompañar ' . ($m->reservable?->name ?? 'una reserva') . ($m->purpose ? ' · ' . \Illuminate\Support\Str::limit($m->purpose, 50) : ''),
+            default                  => \Illuminate\Support\Str::limit((string) ($r->purpose ?: 'tiempo apartado'), 70),
+        };
+
+        return $que . $franja . ' (reserva #' . $m->id . ')';
     }
 
     /**

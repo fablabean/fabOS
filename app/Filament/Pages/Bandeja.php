@@ -345,7 +345,9 @@ class Bandeja extends Page
                         'en_jornada' => $enJornada->contains($u->id),
                         // Si esta libre a esa hora, y si no, por que: se
                         // dice antes de elegir, no despues como un error.
-                        'ocupado'    => $reservas->porQueNoEstaLibre($u, $s->starts_at, $s->ends_at),
+                        // Sus horas de revisión no cuentan: si se elige,
+                        // ceden y se mueven solas.
+                        'ocupado'    => $reservas->porQueNoSePuedeElegir($u, $s->starts_at, $s->ends_at),
                         'extras_mes' => round($extras->minutosMes($u, $s->starts_at->copy()) / 60, 1),
                     ]),
                 ];
