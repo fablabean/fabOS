@@ -47,6 +47,25 @@ class BookingService
     private bool $aceptarChoquesDelAcompanante = false;
 
     /**
+     * Prestar una herramienta es lo único que cabe mientras se lleva un
+     * recorrido: es entregarla y recibirla. Una asesoría o un acompañamiento
+     * piden a la persona entera, y en un recorrido no la tienen.
+     */
+    private bool $recorridoNoOcupa = false;
+
+    private function segunElEquipo(Asset $asset, \Closure $paso): mixed
+    {
+        $antes = $this->recorridoNoOcupa;
+        $this->recorridoNoOcupa = $asset->esHerramienta();
+
+        try {
+            return $paso();
+        } finally {
+            $this->recorridoNoOcupa = $antes;
+        }
+    }
+
+    /**
      * Reservar aunque quien acompaña tenga algo a esa hora fuera de fabOS: una
      * reunión a la que no va a ir, su descanso. Lo decide quien agenda, que
      * conoce la agenda de esa persona mejor que su calendario publicado. Lo
@@ -417,10 +436,10 @@ class BookingService
      */
     public function acompanantesDisponibles(Asset $asset, CarbonInterface $desde, CarbonInterface $hasta): Collection
     {
-        return $this->coverage
+        return $this->segunElEquipo($asset, fn () => $this->coverage
             ->acompanantesPara($asset, $desde, $hasta)
             ->filter(fn (User $u) => $this->personaLibre($u, $desde, $hasta))
-            ->values();
+            ->values());
     }
 
 
@@ -547,7 +566,7 @@ class BookingService
         }
 
         if (! $this->sinApartarAlAcompanante && ! $this->aceptarChoquesDelAcompanante
-            && ($porQue = $this->porQueNoEstaLibre($acompanante, $desde, $hasta))) {
+            && ($porQue = $this->segunElEquipo($asset, fn () => $this->porQueNoEstaLibre($acompanante, $desde, $hasta)))) {
             throw new BookingException($porQue, conflictos: $this->queOcupaA($acompanante, $desde, $hasta));
         }
     }
@@ -593,9 +612,11 @@ class BookingService
     {
         $inicio = $desde->copy()->addMinutes(min(30, (int) $desde->diffInMinutes($hasta)));
 
-        return $this->coverage->acompanantesPara($asset, $desde, $inicio)
+        return $this->segunElEquipo($asset, fn () => $this->coverage->acompanantesPara($asset, $desde, $inicio)
             ->first(fn (User $u) => $this->personaLibre($u, $desde, $inicio)
-                && $this->estaLibre(User::class, $u->id, $desde, $hasta));
+                && $this->estaLibre(User::class, $u->id, $desde, $hasta)
+                // El recorrido, por la franja entera: no se sale de él a la media hora.
+                && ($this->recorridoNoOcupa || ! $this->recorridoDe($u, $desde, $hasta))));
     }
 
     /**
@@ -655,6 +676,14 @@ class BookingService
             return $persona->name . ' ya tiene algo a esa hora (una asesoría, un acompañamiento o tiempo apartado para un proyecto).';
         }
 
+        if (! $this->recorridoNoOcupa && ($recorrido = $this->recorridoDe($persona, $desde, $hasta))) {
+            $tz = config('fabos.lab.timezone');
+
+            return $persona->name . ' lleva un recorrido a esa hora (' . ($recorrido->reservable?->name ?? 'el laboratorio') . ', de '
+                . $recorrido->starts_at->copy()->setTimezone($tz)->format('H:i') . ' a '
+                . $recorrido->ends_at->copy()->setTimezone($tz)->format('H:i') . '). Mientras tanto solo se le pueden pedir préstamos de herramientas.';
+        }
+
         if ($this->agenda->ocupadoEn($persona, $desde, $hasta)) {
             return $persona->name . ' tiene un compromiso en su calendario a esa hora (una clase o una reunión).';
         }
@@ -675,6 +704,24 @@ class BookingService
         }
 
         return null;
+    }
+
+    /**
+     * El recorrido que lleva esta persona a esa hora, como responsable o como
+     * acompañante. No es tiempo apartado a su nombre —el recorrido es una
+     * reserva del espacio—, y por eso se busca aparte.
+     */
+    public function recorridoDe(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?Reservation
+    {
+        return Reservation::with('reservable')
+            ->where('mode', Reservation::MODO_RECORRIDO)
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
+            ->where(fn ($q) => $q->where('supervisor_id', $persona->id)
+                ->orWhereHas('companions', fn ($c) => $c->where('users.id', $persona->id)))
+            ->orderBy('starts_at')
+            ->first();
     }
 
     /**
@@ -717,6 +764,16 @@ class BookingService
                     'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $m]),
                 ];
             });
+
+        if ($recorrido = $this->recorridoDe($persona, $desde, $hasta)) {
+            $choques[] = [
+                'tipo'    => 'reserva',
+                'cuando'  => $franja($recorrido->starts_at, $recorrido->ends_at),
+                'que'     => 'Recorrido: ' . ($recorrido->reservable?->name ?? 'el laboratorio') . ($recorrido->purpose ? ' · ' . $recorrido->purpose : ''),
+                'detalle' => 'Lo lleva como responsable o acompañante',
+                'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $recorrido]),
+            ];
+        }
 
         // Lo de su calendario de Outlook: se ajusta allá, no aquí.
         foreach ($this->agenda->choquesEn($persona, $desde, $hasta) as $e) {

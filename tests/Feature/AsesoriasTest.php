@@ -724,4 +724,72 @@ class AsesoriasTest extends TestCase
             );
         }
     }
+
+    /** Un recorrido del laboratorio a cargo de alguien: responsable o acompañante. */
+    private function recorridoCon(User $persona, bool $comoAcompanante): Reservation
+    {
+        $r = Reservation::create([
+            'reservable_type' => \App\Models\Space::class,
+            'reservable_id'   => \App\Models\Space::todoElLaboratorio()->id,
+            'user_id'         => $this->alguien()->id,
+            'supervisor_id'   => $comoAcompanante ? null : $persona->id,
+            'status'          => 'confirmada',
+            'mode'            => Reservation::MODO_RECORRIDO,
+            'participants'    => 20,
+            'starts_at'       => $this->hora('10:00'),
+            'ends_at'         => $this->hora('12:00'),
+            'purpose'         => 'Inducción al FabLab',
+        ]);
+
+        if ($comoAcompanante) {
+            $r->companions()->attach($persona->id);
+        }
+
+        return $r;
+    }
+
+    /**
+     * Quien lleva un recorrido —como responsable o acompañando— no recibe
+     * asesorías ni acompaña máquinas en esa franja. Lo único que cabe es
+     * prestar herramientas.
+     */
+    public function test_quien_lleva_un_recorrido_no_recibe_asesorias_ni_acompana(): void
+    {
+        foreach ([true, false] as $comoAcompanante) {
+            Reservation::query()->delete();
+
+            $ana = $this->colaborador('Ana ' . (int) $comoAcompanante);
+            $this->asesora($ana);
+            $this->certificar($ana);
+            $this->recorridoCon($ana, $comoAcompanante);
+
+            $servicio = app(BookingService::class);
+
+            $this->assertNull(app(AsesoriaService::class)->agendar(
+                $this->alguien(), $this->equipo, $this->hora('11:15'), $this->hora('12:00'),
+            ));
+            $this->assertFalse($servicio->acompanantesDisponibles($this->equipo, $this->hora('10:30'), $this->hora('11:15'))->contains('id', $ana->id));
+            $this->assertStringContainsString('recorrido', (string) $servicio->porQueNoEstaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+            $this->assertNotEmpty(array_filter($servicio->queOcupaA($ana, $this->hora('10:30'), $this->hora('11:15')),
+                fn ($c) => str_starts_with($c['que'], 'Recorrido')));
+
+            // Una herramienta sí se le puede pedir.
+            $herramienta = Asset::create([
+                'name' => 'Taladro ' . uniqid(), 'slug' => 'taladro-' . uniqid(), 'area_id' => $this->equipo->area_id,
+                'status' => 'operativo', 'is_reservable' => true, 'kind' => Asset::DE_PRESTAMO[0],
+            ]);
+            \App\Models\Certifab::create([
+                'public_code' => 'CFH-' . $herramienta->id, 'user_id' => $ana->id, 'asset_id' => $herramienta->id,
+                'level' => 'autonomo', 'granted_at' => now()->subMonth(),
+            ]);
+            $this->assertTrue($servicio->acompanantesDisponibles($herramienta, $this->hora('10:30'), $this->hora('11:15'))->contains('id', $ana->id));
+
+            // Y después del recorrido, todo vuelve.
+            $this->assertNotNull(app(AsesoriaService::class)->agendar(
+                $this->alguien(), $this->equipo, $this->hora('12:00'), $this->hora('12:45'),
+            ));
+
+            AssetAdvisor::query()->delete();
+        }
+    }
 }
