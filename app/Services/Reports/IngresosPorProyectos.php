@@ -15,7 +15,8 @@ use Illuminate\Support\Collection;
  * para completarlo en su ficha, y la cifra mejora sola a medida que se llena.
  *
  * Dos lecturas que no se mezclan:
- *  · **Ingreso**: lo que se cobra —estudiantes, la Universidad, de fuera—.
+ *  · **Facturable**: lo que se cobra —estudiantes, la Universidad, de fuera—.
+ *    Es el valor de lo hecho, no el dinero que ya entró: eso vive en Pagos.
  *  · **Interno**: compromisos del laboratorio que se valoran igual pero por
  *    los que no entra dinero. Dicen cuánto servicio se dio, no cuánto entró.
  *
@@ -158,11 +159,13 @@ class IngresosPorProyectos
     public function excel(?Carbon $hoy = null): string
     {
         $d = $this->calcular($hoy);
-        $ruta = tempnam(sys_get_temp_dir(), 'ingresos') . '.xlsx';
+        $base = tempnam(sys_get_temp_dir(), 'ingresos');
+        @unlink($base);
+        $ruta = $base . '.xlsx';
         $hoja = new \OpenSpout\Writer\XLSX\Writer();
         $hoja->openToFile($ruta);
         $fila = fn (array $celdas) => $hoja->addRow(\OpenSpout\Common\Entity\Row::fromValues($celdas));
-        $titulos = ['Mes', ...array_values(self::COLUMNAS), 'Total cobrado', 'Internos (valor de servicio)', 'Total con internos', 'Proyectos ejecutados'];
+        $titulos = ['Mes', ...array_values(self::COLUMNAS), 'Facturable', 'Internos (valor de servicio)', 'Total con internos', 'Proyectos ejecutados'];
 
         $hoja->getCurrentSheet()->setName('Histórico');
         $fila($titulos);
@@ -173,7 +176,7 @@ class IngresosPorProyectos
         $fila(['Total', $t['estudiante'], $t['interno'], $t['externo'], $t['cobrado'], $t['internos'], $t['total'], $t['n']]);
 
         $hoja->addNewSheetAndMakeItCurrent()->setName('Proyección');
-        $fila([...$titulos, 'Acumulado cobrado', 'Acumulado con internos']);
+        $fila([...$titulos, 'Acumulado facturable', 'Acumulado con internos']);
         foreach ($d['proyeccion'] as $m) {
             $fila([$m['nombre'], $m['estudiante'], $m['interno'], $m['externo'], $m['cobrado'], $m['internos'], $m['total'], $m['n'], $m['acumulado_cobrado'], $m['acumulado_total']]);
         }

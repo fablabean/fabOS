@@ -32,14 +32,14 @@
             <x-slot name="description">
                 Proyectos que llegaron a ejecución, a pago o a cierre, sin descartarse. Vale lo acordado, o lo
                 estimado mientras no haya acuerdo; lo que no tiene ninguno de los dos no suma y se lista abajo.
-                <strong>Cobrado</strong> es lo de estudiantes, la Universidad y de fuera; <strong>internos</strong> es
+                <strong>Facturable</strong> es el valor de lo hecho para estudiantes, la Universidad y de fuera —lo que se cobra, no lo que ya entró: eso está en Pagos—; <strong>internos</strong> es
                 el valor de lo que el laboratorio hizo sin cobrar, aparte. Las alianzas no entran.
             </x-slot>
 
             <div class="rejilla">
-                <div class="cifra"><b>{{ $pesos($totales['cobrado']) }}</b><span>cobrado desde {{ $desde?->locale('es')->isoFormat('D MMM YYYY') ?? '—' }}</span></div>
+                <div class="cifra"><b>{{ $pesos($totales['cobrado']) }}</b><span>facturable desde {{ $desde?->locale('es')->isoFormat('D MMM YYYY') ?? '—' }}</span></div>
                 <div class="cifra"><b>{{ $pesos($totales['internos']) }}</b><span>en proyectos internos</span></div>
-                <div class="cifra"><b>{{ $pesos($promedio['cobrado']) }}</b><span>cobrado por mes, en promedio</span></div>
+                <div class="cifra"><b>{{ $pesos($promedio['cobrado']) }}</b><span>facturable por mes, en promedio</span></div>
                 <div class="cifra"><b>{{ $totales['n'] }}</b><span>proyectos ejecutados · {{ $sinValor->count() }} sin valor</span></div>
             </div>
 
@@ -56,7 +56,7 @@
                         <tr>
                             <th>Mes</th>
                             @foreach ($columnas as $nombre) <th class="num">{{ $nombre }}</th> @endforeach
-                            <th class="num">Cobrado</th>
+                            <th class="num">Facturable</th>
                             <th class="num">Internos</th>
                             <th class="num">Con internos</th>
                             <th class="num">Proyectos</th>
@@ -108,9 +108,9 @@
                         <tr>
                             <th>Mes</th>
                             @foreach ($columnas as $nombre) <th class="num">{{ $nombre }}</th> @endforeach
-                            <th class="num">Cobrado</th>
+                            <th class="num">Facturable</th>
                             <th class="num">Internos</th>
-                            <th class="num">Acumulado cobrado</th>
+                            <th class="num">Acumulado facturable</th>
                             <th class="num">Acumulado con internos</th>
                         </tr>
                     </thead>
