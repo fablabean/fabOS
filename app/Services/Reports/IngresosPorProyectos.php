@@ -29,6 +29,17 @@ use Illuminate\Support\Collection;
  */
 class IngresosPorProyectos
 {
+    /**
+     * Los meses en que casi no se vende: intersemestral y fin de año. Valen
+     * esta fracción de un mes normal en la proyección.
+     */
+    public const MESES_BAJOS = [12, 1, 6, 7];
+
+    public const FACTOR_MES_BAJO = 0.1;
+
+    /** La realista es esta parte de la optimista, que es el ritmo de hoy. */
+    public const FACTOR_REALISTA = 0.5;
+
     public const COLUMNAS = [
         'estudiante' => 'Estudiantes',
         'interno'    => 'Universidad',
@@ -123,18 +134,34 @@ class IngresosPorProyectos
             $promedio[$k] = $dias ? (int) round($totales[$k] / $dias * 30.44) : 0;
         }
 
+        /*
+         * Dos escenarios, y los dos con temporada. La optimista es el ritmo
+         * de hoy —lo observado no tiene ningún mes bajo—; la realista, la
+         * mitad. En intersemestral y fin de año casi no se vende, y esos meses
+         * pesan una fracción de uno normal.
+         */
         $proyeccion = [];
-        $acumulado = ['cobrado' => 0, 'total' => 0];
+        $acumulado = ['optimista' => 0, 'realista' => 0, 'internos' => 0];
         for ($i = 1; $i <= 12; $i++) {
             $m = $hoy->copy()->startOfMonth()->addMonths($i);
-            $acumulado['cobrado'] += $promedio['cobrado'];
-            $acumulado['total'] += $promedio['total'];
+            $factor = in_array($m->month, self::MESES_BAJOS, true) ? self::FACTOR_MES_BAJO : 1.0;
+            $optimista = (int) round($promedio['cobrado'] * $factor);
+            $realista = (int) round($optimista * self::FACTOR_REALISTA);
+            $internos = (int) round($promedio['internos'] * $factor);
+            $acumulado['optimista'] += $optimista;
+            $acumulado['realista'] += $realista;
+            $acumulado['internos'] += $internos;
             $proyeccion[] = [
-                'mes'      => $m->format('Y-m'),
-                'nombre'   => $m->locale('es')->isoFormat('MMMM YYYY'),
-                'acumulado_cobrado' => $acumulado['cobrado'],
-                'acumulado_total'   => $acumulado['total'],
-            ] + $promedio;
+                'mes'       => $m->format('Y-m'),
+                'nombre'    => $m->locale('es')->isoFormat('MMMM YYYY'),
+                'bajo'      => $factor < 1,
+                'optimista' => $optimista,
+                'realista'  => $realista,
+                'internos'  => $internos,
+                'acumulado_optimista' => $acumulado['optimista'],
+                'acumulado_realista'  => $acumulado['realista'],
+                'acumulado_internos'  => $acumulado['internos'],
+            ];
         }
 
         return [
@@ -143,7 +170,7 @@ class IngresosPorProyectos
             'sinValor'       => $proyectos->filter(fn (Project $p) => $p->valorDeReferencia() <= 0)->values(),
             'promedio'       => $promedio,
             'proyeccion'     => $proyeccion,
-            'meta'           => $this->meta($hoy->year + 1, $promedio['cobrado']),
+            'meta'           => $this->meta($hoy->year + 1, $acumulado['optimista'], $acumulado['realista']),
             'desde'          => $desde,
             'diasObservados' => $dias,
         ];
@@ -192,11 +219,11 @@ class IngresosPorProyectos
     }
 
     /** La meta de venta del año que viene contra lo que daría el promedio en doce meses. */
-    private function meta(int $ano, int $porMes): ?array
+    private function meta(int $ano, int $optimista, int $realista): ?array
     {
         $meta = (int) Budget::where('kind', 'venta')->where('year', $ano)->where('status', '!=', 'cerrado')->sum('amount');
 
-        return $meta > 0 ? ['ano' => $ano, 'meta' => $meta, 'proyectado' => $porMes * 12] : null;
+        return $meta > 0 ? ['ano' => $ano, 'meta' => $meta, 'optimista' => $optimista, 'realista' => $realista] : null;
     }
 
     /** Las dos tablas en un .xlsx: el histórico, la proyección y lo que falta valorar. */
@@ -220,9 +247,9 @@ class IngresosPorProyectos
         $fila(['Total', $t['estudiante'], $t['interno'], $t['externo'], $t['cobrado'], $t['internos'], $t['total'], $t['n']]);
 
         $hoja->addNewSheetAndMakeItCurrent()->setName('Proyección');
-        $fila([...$titulos, 'Acumulado facturable', 'Acumulado con internos']);
+        $fila(['Mes', 'Temporada', 'Optimista (ritmo de hoy)', 'Realista (' . (int) (self::FACTOR_REALISTA * 100) . '%)', 'Internos', 'Acumulado optimista', 'Acumulado realista', 'Acumulado internos']);
         foreach ($d['proyeccion'] as $m) {
-            $fila([$m['nombre'], $m['estudiante'], $m['interno'], $m['externo'], $m['cobrado'], $m['internos'], $m['total'], $m['n'], $m['acumulado_cobrado'], $m['acumulado_total']]);
+            $fila([$m['nombre'], $m['bajo'] ? 'Baja' : 'Normal', $m['optimista'], $m['realista'], $m['internos'], $m['acumulado_optimista'], $m['acumulado_realista'], $m['acumulado_internos']]);
         }
 
         $hoja->addNewSheetAndMakeItCurrent()->setName('Sin valor registrado');

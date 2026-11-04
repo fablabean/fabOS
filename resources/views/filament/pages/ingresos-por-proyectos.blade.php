@@ -94,17 +94,26 @@
         <x-filament::section>
             <x-slot name="heading">Proyección a doce meses</x-slot>
             <x-slot name="description">
-                El promedio por mes de lo observado ({{ $diasObservados }} días), repetido. Es una línea de base: si
-                cambia el ritmo, cambia sola al recalcular. Mientras haya proyectos sin valor, se queda corta.
+                Optimista: el promedio facturable por mes de lo observado ({{ $diasObservados }} días). Realista: la mitad.
+                En diciembre, enero, junio y julio —intersemestral y fin de año— casi no se vende: esos meses cuentan
+                el {{ (int) (\App\Services\Reports\IngresosPorProyectos::FACTOR_MES_BAJO * 100) }}% de uno normal.
+                Se recalcula sola; mientras haya proyectos sin valor, se queda corta.
             </x-slot>
 
+            @include('filament.pages.ingresos-por-proyectos-grafica')
+
             @if ($meta)
-                @php $avance = min(100, (int) round($meta['proyectado'] / $meta['meta'] * 100)); @endphp
-                <p style="margin:0 0 .4rem">
-                    Meta de venta {{ $meta['ano'] }}: <strong>{{ $pesos($meta['meta']) }}</strong>.
-                    Al ritmo de hoy, doce meses dan <strong>{{ $pesos($meta['proyectado']) }}</strong> ({{ $avance }}%).
+                @php
+                    $avOpt = min(100, (int) round($meta['optimista'] / $meta['meta'] * 100));
+                    $avRea = min(100, (int) round($meta['realista'] / $meta['meta'] * 100));
+                @endphp
+                <p style="margin:1rem 0 .4rem">
+                    Meta de venta {{ $meta['ano'] }}: <strong>{{ $pesos($meta['meta']) }}</strong>. En los próximos doce meses:
+                    optimista <strong>{{ $pesos($meta['optimista']) }}</strong> ({{ $avOpt }}%),
+                    realista <strong>{{ $pesos($meta['realista']) }}</strong> ({{ $avRea }}%).
                 </p>
-                <div class="barra" style="margin-bottom:1rem"><i style="width:{{ $avance }}%"></i></div>
+                <div class="barra" style="margin-bottom:.3rem" title="Optimista"><i style="width:{{ $avOpt }}%"></i></div>
+                <div class="barra" style="margin-bottom:1rem" title="Realista"><i style="width:{{ $avRea }}%;background:#1baf7a"></i></div>
             @endif
 
             <div class="tabla">
@@ -112,22 +121,22 @@
                     <thead>
                         <tr>
                             <th>Mes</th>
-                            @foreach ($columnas as $nombre) <th class="num">{{ $nombre }}</th> @endforeach
-                            <th class="num">Facturable</th>
+                            <th class="num">Optimista</th>
+                            <th class="num">Realista</th>
+                            <th class="num">Acumulado optimista</th>
+                            <th class="num">Acumulado realista</th>
                             <th class="num">Internos</th>
-                            <th class="num">Acumulado facturable</th>
-                            <th class="num">Acumulado con internos</th>
                         </tr>
                     </thead>
                     <tbody>
                     @foreach ($proyeccion as $m)
                         <tr>
-                            <td>{{ $m['nombre'] }}</td>
-                            @foreach ($columnas as $clave => $nombre) <td class="num">{{ $pesos($m[$clave]) }}</td> @endforeach
-                            <td class="num"><strong>{{ $pesos($m['cobrado']) }}</strong></td>
+                            <td>{{ $m['nombre'] }}@if ($m['bajo']) <span class="gris">· temporada baja</span>@endif</td>
+                            <td class="num"><strong>{{ $pesos($m['optimista']) }}</strong></td>
+                            <td class="num">{{ $pesos($m['realista']) }}</td>
+                            <td class="num">{{ $pesos($m['acumulado_optimista']) }}</td>
+                            <td class="num">{{ $pesos($m['acumulado_realista']) }}</td>
                             <td class="num interno">{{ $pesos($m['internos']) }}</td>
-                            <td class="num">{{ $pesos($m['acumulado_cobrado']) }}</td>
-                            <td class="num">{{ $pesos($m['acumulado_total']) }}</td>
                         </tr>
                     @endforeach
                     </tbody>

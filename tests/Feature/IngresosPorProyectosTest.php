@@ -75,7 +75,18 @@ class IngresosPorProyectosTest extends TestCase
         // Treinta días observados: el promedio mensual es casi lo de todo el mes.
         $this->assertEqualsWithDelta(1_250_000, $d['promedio']['cobrado'], 30_000);
         $this->assertCount(12, $d['proyeccion']);
-        $this->assertSame($d['promedio']['cobrado'] * 12, $d['proyeccion'][11]['acumulado_cobrado']);
+
+        // Optimista es el ritmo de hoy, realista la mitad; diciembre, enero,
+        // junio y julio casi no venden.
+        [$octubre, $noviembre, $diciembre, $enero] = array_slice($d['proyeccion'], 0, 4);
+        $this->assertSame('2026-10', $octubre['mes']);
+        $this->assertFalse($octubre['bajo']);
+        $this->assertSame($d['promedio']['cobrado'], $octubre['optimista']);
+        $this->assertSame((int) round($octubre['optimista'] * 0.5), $octubre['realista']);
+        $this->assertTrue($diciembre['bajo']);
+        $this->assertTrue($enero['bajo']);
+        $this->assertSame((int) round($d['promedio']['cobrado'] * 0.1), $diciembre['optimista']);
+        $this->assertSame(8 * $d['promedio']['cobrado'] + 4 * (int) round($d['promedio']['cobrado'] * 0.1), $d['proyeccion'][11]['acumulado_optimista']);
     }
 
     public function test_compara_con_la_meta_de_venta_del_ano_que_viene(): void
@@ -87,7 +98,8 @@ class IngresosPorProyectosTest extends TestCase
 
         $this->assertSame(2027, $d['meta']['ano']);
         $this->assertSame(50_000_000, $d['meta']['meta']);
-        $this->assertSame($d['promedio']['cobrado'] * 12, $d['meta']['proyectado']);
+        $this->assertSame($d['proyeccion'][11]['acumulado_optimista'], $d['meta']['optimista']);
+        $this->assertSame($d['proyeccion'][11]['acumulado_realista'], $d['meta']['realista']);
     }
 
     public function test_la_pantalla_y_la_descarga(): void
@@ -108,6 +120,9 @@ class IngresosPorProyectosTest extends TestCase
         Livewire::test(Pagina::class)
             ->assertSee('Mes a mes')
             ->assertSee('Proyección a doce meses')
+            ->assertSee('Optimista · ritmo de hoy')
+            ->assertSee('temporada baja')
+            ->assertSeeHtml('<polyline')
             ->assertSee('Sin valor registrado (1)')
             ->assertSee($sin->code)
             ->mountAction('origen', ['mes' => '2026-09', 'columna' => 'interno'])
