@@ -46,8 +46,8 @@
 
 <div class="ipp-graf">
     <style>
-        .ipp-graf{--g-real:#2a78d6;--g-opt:#eb6834;--g-rea:#1baf7a;--g-int:#eda100;--g-ink:#0b0b0b;--g-soft:#52514e;--g-rule:rgba(11,11,11,.09);--g-bajo:rgba(11,11,11,.035);--g-surface:#fcfcfb}
-        .dark .ipp-graf{--g-real:#3987e5;--g-opt:#d95926;--g-rea:#199e70;--g-int:#c98500;--g-ink:#f0efec;--g-soft:#c3c2b7;--g-rule:rgba(240,239,236,.1);--g-bajo:rgba(240,239,236,.05);--g-surface:#1a1a19}
+        .ipp-graf{--g-real:#2a78d6;--g-opt:#eb6834;--g-rea:#1baf7a;--g-int:#8a8984;--g-ink:#0b0b0b;--g-soft:#52514e;--g-rule:rgba(11,11,11,.09);--g-bajo:rgba(11,11,11,.035);--g-surface:#fcfcfb}
+        .dark .ipp-graf{--g-real:#3987e5;--g-opt:#d95926;--g-rea:#199e70;--g-int:#8f8e88;--g-ink:#f0efec;--g-soft:#c3c2b7;--g-rule:rgba(240,239,236,.1);--g-bajo:rgba(240,239,236,.05);--g-surface:#1a1a19}
         .ipp-graf .leyenda{display:flex;flex-wrap:wrap;gap:1.1rem;font-size:.8rem;color:var(--g-soft);margin-bottom:.4rem}
         .ipp-graf .leyenda span{display:inline-flex;align-items:center;gap:.4rem}
         .ipp-graf .leyenda svg{flex:none}
@@ -61,7 +61,7 @@
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-real)" stroke-width="2" stroke-linecap="round"/><circle cx="13" cy="4" r="3" fill="var(--g-real)"/></svg>Real</span>
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-opt)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/></svg>Optimista · ritmo de hoy</span>
         <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-rea)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg>Realista · {{ $ajuste['realista'] }}%</span>
-        <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-int)" stroke-width="2" stroke-dasharray="8 3 2 3" stroke-linecap="round"/><rect x="10" y="1" width="6" height="6" fill="var(--g-surface)" stroke="var(--g-int)" stroke-width="1.5"/></svg>Internos · no suman</span>
+        <span><svg width="26" height="8"><line x1="1" y1="4" x2="25" y2="4" stroke="var(--g-int)" stroke-width="1.25" stroke-dasharray="6 3 1.5 3" stroke-linecap="round"/><rect x="10" y="1" width="6" height="6" fill="var(--g-surface)" stroke="var(--g-int)" stroke-width="1.25"/></svg>Internos · no suman</span>
         <span><svg width="14" height="10"><rect width="14" height="10" rx="2" fill="var(--g-bajo)" stroke="var(--g-rule)"/></svg>Mes ajustado a la baja</span>
     </div>
 
@@ -97,11 +97,11 @@
             @endif
         @endforeach
 
-        {{-- Internos detrás: se miran, no compiten con lo que se factura. --}}
-        <polyline points="{{ $linea($internosReal) }}" fill="none" stroke="var(--g-int)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="{{ $linea($internosFuturo) }}" fill="none" stroke="var(--g-int)" stroke-width="2" stroke-dasharray="8 3 2 3" stroke-linecap="round" stroke-linejoin="round"/>
+        {{-- Internos detrás, en gris y más delgados: se miran, no compiten con lo que se factura. --}}
+        <polyline points="{{ $linea($internosReal) }}" fill="none" stroke="var(--g-int)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="{{ $linea($internosFuturo) }}" fill="none" stroke="var(--g-int)" stroke-width="1.25" stroke-dasharray="6 3 1.5 3" stroke-linecap="round" stroke-linejoin="round"/>
         @foreach ($real->values() as $i => $p)
-            <rect x="{{ $x($i) - 3.5 }}" y="{{ $y($p['i']) - 3.5 }}" width="7" height="7" fill="var(--g-surface)" stroke="var(--g-int)" stroke-width="1.5">
+            <rect x="{{ $x($i) - 3 }}" y="{{ $y($p['i']) - 3 }}" width="6" height="6" fill="var(--g-surface)" stroke="var(--g-int)" stroke-width="1.25">
                 <title>{{ $nombreMes($p['mes']) }} · internos: {{ $pesosLargo($p['i']) }} (no suman)</title>
             </rect>
         @endforeach
@@ -142,7 +142,7 @@ Internos (no suman): {{ $pesosLargo($p['internos']) }}</title>
             @endphp
             @foreach ($etiquetas as [$texto, $punto])
                 @php $ty = max($punto[1] + 4, $yAnterior + 14); $yAnterior = $ty; @endphp
-                <text x="{{ $punto[0] + 8 }}" y="{{ $ty }}" style="fill:var(--g-ink);font-weight:600">{{ $texto }}</text>
+                <text x="{{ $punto[0] + 8 }}" y="{{ $ty }}" style="{{ $texto === 'Internos' ? 'fill:var(--g-soft);font-weight:400' : 'fill:var(--g-ink);font-weight:600' }}">{{ $texto }}</text>
             @endforeach
         @endif
         @if ($ultimo >= 0)
