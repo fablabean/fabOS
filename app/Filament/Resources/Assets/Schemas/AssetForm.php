@@ -222,6 +222,11 @@ class AssetForm
                             ->helperText('Impresión 3D: el trabajo corre sin la persona presente.')
                             ->visible(fn ($get) => $get('is_reservable')),
 
+                        Toggle::make('ocupa_a_quien_la_usa')
+                            ->label('Ocupa a quien la opera')
+                            ->helperText('Termofijadora, láser: alguien la opera de principio a fin. Si la reserva alguien del equipo, en esa franja no se le asignan asesorías, acompañamientos ni revisiones.')
+                            ->visible(fn ($get) => $get('is_reservable')),
+
                         /*
                          * La excepcion a «lo que se presta no exige certifab».
                          *

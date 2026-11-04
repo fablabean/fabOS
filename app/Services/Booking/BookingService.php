@@ -689,6 +689,14 @@ class BookingService
                 . $recorrido->ends_at->copy()->setTimezone($tz)->format('H:i') . '). Mientras tanto solo se le pueden pedir préstamos de herramientas.';
         }
 
+        if ($uso = $this->usoQueLoOcupa($persona, $desde, $hasta)) {
+            $tz = config('fabos.lab.timezone');
+
+            return $persona->name . ' está operando ' . ($uso->reservable?->name ?? 'una máquina') . ' a esa hora (de '
+                . $uso->starts_at->copy()->setTimezone($tz)->format('H:i') . ' a '
+                . $uso->ends_at->copy()->setTimezone($tz)->format('H:i') . ').';
+        }
+
         if ($this->agenda->ocupadoEn($persona, $desde, $hasta)) {
             return $persona->name . ' tiene un compromiso en su calendario a esa hora (una clase o una reunión).';
         }
@@ -731,6 +739,24 @@ class BookingService
             ->where(fn ($q) => $q
                 ->where(fn ($r) => $r->where('mode', Reservation::MODO_RECORRIDO)->where('supervisor_id', $persona->id))
                 ->orWhereHas('companions', fn ($c) => $c->where('users.id', $persona->id)))
+            ->orderBy('starts_at')
+            ->first();
+    }
+
+    /**
+     * Lo que esta persona reservó para sí en una máquina que se opera de
+     * principio a fin («Ocupa a quien la opera»). Las demás —una impresora
+     * que trabaja sola— no la ocupan.
+     */
+    public function usoQueLoOcupa(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?Reservation
+    {
+        return Reservation::with('reservable')
+            ->where('user_id', $persona->id)
+            ->where('reservable_type', Asset::class)
+            ->whereIn('reservable_id', Asset::where('ocupa_a_quien_la_usa', true)->select('id'))
+            ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('starts_at', '<', $hasta->copy()->utc())
+            ->where('ends_at', '>', $desde->copy()->utc())
             ->orderBy('starts_at')
             ->first();
     }
@@ -785,6 +811,16 @@ class BookingService
                 'que'     => ($recorrido->esRecorrido() ? 'Recorrido: ' : 'Acompaña: ') . ($recorrido->reservable?->name ?? 'el laboratorio') . ($recorrido->purpose ? ' · ' . $recorrido->purpose : ''),
                 'detalle' => $recorrido->esRecorrido() ? 'Lo lleva como responsable o acompañante' : 'Figura entre quienes acompañan',
                 'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $recorrido]),
+            ];
+        }
+
+        if (($uso = $this->usoQueLoOcupa($persona, $desde, $hasta)) && ! in_array($uso->id, $yaDichas, true)) {
+            $choques[] = [
+                'tipo'    => 'reserva',
+                'cuando'  => $franja($uso->starts_at, $uso->ends_at),
+                'que'     => 'Opera ' . ($uso->reservable?->name ?? 'una máquina') . ($uso->purpose ? ' · ' . $uso->purpose : ''),
+                'detalle' => 'La reservó para sí, y esa máquina ocupa a quien la opera',
+                'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $uso]),
             ];
         }
 

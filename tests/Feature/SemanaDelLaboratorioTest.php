@@ -295,8 +295,11 @@ class SemanaDelLaboratorioTest extends TestCase
             'starts_at' => $this->martes('10:00'), 'ends_at' => $this->martes('10:45'),
         ]);
         // …y él mismo se reservó la sala de 10:30 a 12:00.
-        $taller = Space::create(['slug' => 'taller', 'name' => 'Taller', 'type' => 'fisico', 'is_reservable' => true]);
-        $this->reserva($jhon, '10:30', '12:00', ['purpose' => 'Una sublimación', 'reservable_id' => $taller->id]);
+        $termo = \App\Models\Asset::create([
+            'name' => 'Termofijadora', 'slug' => 'termofijadora', 'status' => 'operativo', 'is_reservable' => true,
+            'space_id' => $this->sala->id, 'ocupa_a_quien_la_usa' => true,
+        ]);
+        $this->reserva($jhon, '10:30', '12:00', ['purpose' => 'Una sublimación', 'reservable_type' => \App\Models\Asset::class, 'reservable_id' => $termo->id]);
 
         $html = $this->actingAs($admin)
             ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
@@ -307,11 +310,21 @@ class SemanaDelLaboratorioTest extends TestCase
 
         $this->assertSame(2, substr_count($html, ' · se cruza'));
 
-        // La producción de un proyecto que se reservó para sí también sale en su fila.
-        $this->reserva($jhon, '14:00', '15:30', ['is_production' => true, 'project_id' => $this->proyecto($jhon)->id]);
+        // La producción de un proyecto que se reservó para sí también sale en su
+        // fila; en una impresora, que trabaja sola, no lo ocupa ni se marca.
+        $impresora = \App\Models\Asset::create(['name' => 'Impresora', 'slug' => 'impresora', 'status' => 'operativo', 'is_reservable' => true, 'space_id' => $this->sala->id]);
+        Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $jhon->id, 'user_id' => $estudiante->id,
+            'mode' => 'asesoria', 'status' => 'confirmada',
+            'starts_at' => $this->martes('14:30'), 'ends_at' => $this->martes('15:00'),
+        ]);
+        $this->reserva($jhon, '14:00', '15:30', ['reservable_type' => \App\Models\Asset::class, 'reservable_id' => $impresora->id,
+            'is_production' => true, 'project_id' => $this->proyecto($jhon)->id]);
 
-        $this->actingAs($admin)
+        $html = $this->actingAs($admin)
             ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
-            ->assertSeeInOrder(['Jhonatan Cortés', '14:00–15:30', 'Producción']);
+            ->assertSeeInOrder(['Jhonatan Cortés', '14:00–15:30', 'Producción'])
+            ->getContent();
+        $this->assertSame(2, substr_count($html, ' · se cruza'));
     }
 }

@@ -816,4 +816,26 @@ class AsesoriasTest extends TestCase
         $this->assertStringContainsString('acompaña una actividad', (string) app(BookingService::class)->porQueNoEstaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
         $this->assertNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('10:30'), $this->hora('11:15')));
     }
+
+    /** Lo que alguien del equipo reserva para sí ocupa solo si la máquina está marcada. */
+    public function test_operar_una_maquina_marcada_ocupa_y_una_que_trabaja_sola_no(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+
+        $impresora = Asset::create(['name' => 'Impresora', 'slug' => 'impresora', 'area_id' => $this->equipo->area_id, 'status' => 'operativo', 'is_reservable' => true]);
+        $termo = Asset::create(['name' => 'Termofijadora', 'slug' => 'termo', 'area_id' => $this->equipo->area_id, 'status' => 'operativo', 'is_reservable' => true, 'ocupa_a_quien_la_usa' => true]);
+
+        $suya = fn (Asset $a, string $d, string $h) => Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $a->id, 'user_id' => $ana->id,
+            'status' => 'confirmada', 'mode' => 'directa', 'starts_at' => $this->hora($d), 'ends_at' => $this->hora($h),
+        ]);
+
+        $suya($impresora, '09:00', '12:00');
+        $this->assertNotNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('10:45')));
+
+        $suya($termo, '14:00', '15:30');
+        $this->assertStringContainsString('está operando Termofijadora', (string) app(BookingService::class)->porQueNoEstaLibre($ana, $this->hora('14:30'), $this->hora('15:15')));
+        $this->assertNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('14:30'), $this->hora('15:15')));
+    }
 }

@@ -309,8 +309,8 @@ class OcupacionSemanal
      * ese papel le toma la franja entera: recibir en una sala no —son los
      * cinco minutos de ubicar a quien llega—; asesorar, acompañar, llevar un
      * recorrido o una demo, sí. Su propio uso de una máquina —también la
-     * producción de un proyecto— se muestra y se cuenta para ver choques,
-     * aunque el sistema no lo impida.
+     * producción de un proyecto— se muestra siempre, y ocupa solo si la
+     * máquina está marcada como «Ocupa a quien la opera».
      *
      * @return list<array{id:int,nombre:string,rol:string,ocupa:bool}>
      */
@@ -348,12 +348,13 @@ class OcupacionSemanal
         }
 
         // Lo que se reservó para sí, también si es la producción de un
-        // proyecto: la termofijadora la opera alguien. Sale en su fila y se
-        // marca si se cruza; no impide nada, porque una impresión que corre
-        // sola no ocupa a nadie y desde aquí no se distingue una de otra.
+        // proyecto. Sale siempre en su fila, pero solo lo ocupa —y se marca si
+        // se cruza— en una máquina que se opera de principio a fin: una
+        // impresión que corre sola no ocupa a nadie.
         if ($r->user && isset($this->delEquipo[$r->user->id]) && ! $r->reservable instanceof User
             && ! ($r->reservable instanceof Asset && $r->reservable->esHerramienta())) {
-            $poner($r->user, $r->esProduccion() ? 'Producción' : 'Su uso', true);
+            $poner($r->user, $r->esProduccion() ? 'Producción' : 'Su uso',
+                $r->reservable instanceof Asset && $r->reservable->ocupa_a_quien_la_usa);
         }
 
         return array_values($lista);
