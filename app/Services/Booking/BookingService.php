@@ -670,16 +670,21 @@ class BookingService
      * si esta libre. Quien elige a mano a alguien necesita saber que tiene,
      * no solo que no se puede.
      */
-    public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?string
+    /**
+     * @param  int|null  $salvo  una reserva que no cuenta: la del mismo grupo de
+     *                           salas que se está armando, donde ya acompaña.
+     */
+    public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta, ?int $salvo = null): ?string
     {
         if (! $this->estaLibre(User::class, $persona->id, $desde, $hasta)) {
             return $persona->name . ' ya tiene algo a esa hora (una asesoría, un acompañamiento o tiempo apartado para un proyecto).';
         }
 
-        if (! $this->recorridoNoOcupa && ($recorrido = $this->recorridoDe($persona, $desde, $hasta))) {
+        if (! $this->recorridoNoOcupa && ($recorrido = $this->recorridoDe($persona, $desde, $hasta, $salvo))) {
             $tz = config('fabos.lab.timezone');
 
-            return $persona->name . ' lleva un recorrido a esa hora (' . ($recorrido->reservable?->name ?? 'el laboratorio') . ', de '
+            return $persona->name . ($recorrido->esRecorrido() ? ' lleva un recorrido' : ' acompaña una actividad') . ' a esa hora ('
+                . ($recorrido->reservable?->name ?? 'el laboratorio') . ', de '
                 . $recorrido->starts_at->copy()->setTimezone($tz)->format('H:i') . ' a '
                 . $recorrido->ends_at->copy()->setTimezone($tz)->format('H:i') . '). Mientras tanto solo se le pueden pedir préstamos de herramientas.';
         }
@@ -707,18 +712,24 @@ class BookingService
     }
 
     /**
-     * El recorrido que lleva esta persona a esa hora, como responsable o como
-     * acompañante. No es tiempo apartado a su nombre —el recorrido es una
-     * reserva del espacio—, y por eso se busca aparte.
+     * La actividad que lleva esta persona a esa hora: un recorrido, como
+     * responsable o acompañante, o cualquier reserva en la que figura entre
+     * quienes acompañan. No es tiempo apartado a su nombre —es una reserva del
+     * espacio—, y por eso se busca aparte.
+     *
+     * Recibir en una sala no cuenta: son los cinco minutos de ubicar a quien
+     * llega, y por eso ese rol no aparta a nadie.
      */
-    public function recorridoDe(User $persona, CarbonInterface $desde, CarbonInterface $hasta): ?Reservation
+    public function recorridoDe(User $persona, CarbonInterface $desde, CarbonInterface $hasta, ?int $salvo = null): ?Reservation
     {
         return Reservation::with('reservable')
-            ->where('mode', Reservation::MODO_RECORRIDO)
+            ->whereNull('parent_reservation_id')
+            ->when($salvo, fn ($q) => $q->whereKeyNot($salvo))
             ->whereIn('status', Reservation::BLOQUEANTES)
             ->where('starts_at', '<', $hasta->copy()->utc())
             ->where('ends_at', '>', $desde->copy()->utc())
-            ->where(fn ($q) => $q->where('supervisor_id', $persona->id)
+            ->where(fn ($q) => $q
+                ->where(fn ($r) => $r->where('mode', Reservation::MODO_RECORRIDO)->where('supervisor_id', $persona->id))
                 ->orWhereHas('companions', fn ($c) => $c->where('users.id', $persona->id)))
             ->orderBy('starts_at')
             ->first();
@@ -739,6 +750,7 @@ class BookingService
             . '–' . $h->copy()->setTimezone($tz)->format('H:i');
 
         $choques = [];
+        $yaDichas = [];
 
         // Lo apartado aquí: el tiempo de la persona cuelga de la reserva que
         // lo pidió —la asesoría, el equipo acompañado—, y es esa la que se edita.
@@ -750,8 +762,9 @@ class BookingService
             ->where('ends_at', '>', $desde->copy()->utc())
             ->orderBy('starts_at')
             ->get()
-            ->each(function (Reservation $r) use (&$choques, $franja) {
+            ->each(function (Reservation $r) use (&$choques, &$yaDichas, $franja) {
                 $m = $r->madre ?? $r;
+                $yaDichas[] = $m->id;
                 $que = $m->reservable instanceof User
                     ? 'Tiempo apartado' . ($m->purpose ? ': ' . $m->purpose : '')
                     : ($m->reservable?->name ?? 'Reserva') . ($m->purpose ? ' · ' . $m->purpose : '');
@@ -765,12 +778,12 @@ class BookingService
                 ];
             });
 
-        if ($recorrido = $this->recorridoDe($persona, $desde, $hasta)) {
+        if (($recorrido = $this->recorridoDe($persona, $desde, $hasta)) && ! in_array($recorrido->id, $yaDichas, true)) {
             $choques[] = [
                 'tipo'    => 'reserva',
                 'cuando'  => $franja($recorrido->starts_at, $recorrido->ends_at),
-                'que'     => 'Recorrido: ' . ($recorrido->reservable?->name ?? 'el laboratorio') . ($recorrido->purpose ? ' · ' . $recorrido->purpose : ''),
-                'detalle' => 'Lo lleva como responsable o acompañante',
+                'que'     => ($recorrido->esRecorrido() ? 'Recorrido: ' : 'Acompaña: ') . ($recorrido->reservable?->name ?? 'el laboratorio') . ($recorrido->purpose ? ' · ' . $recorrido->purpose : ''),
+                'detalle' => $recorrido->esRecorrido() ? 'Lo lleva como responsable o acompañante' : 'Figura entre quienes acompañan',
                 'url'     => \App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $recorrido]),
             ];
         }

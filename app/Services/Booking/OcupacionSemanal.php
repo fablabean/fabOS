@@ -68,7 +68,7 @@ class OcupacionSemanal
             'todoElLaboratorio' => $delEquipo,
             'espacio' => $espacio ?: null,
             'solo'    => $solo,
-            'vista'   => $vista === 'espacios' ? 'espacios' : 'horas',
+            'vista'   => in_array($vista, ['espacios', 'personas'], true) ? $vista : 'horas',
         ];
     }
 
@@ -154,6 +154,10 @@ class OcupacionSemanal
         $bloques = [];
         $horaDesde = 7;
         $horaHasta = 19;
+
+        // Quiénes son del equipo, una vez: su propio uso de una máquina sale
+        // en su fila de la vista por persona.
+        $this->delEquipo = User::role(User::rolesDelEquipo())->pluck('id')->flip()->all();
 
         foreach ($reservas as $r) {
             $inicio = $r->starts_at->copy()->timezone($tz);
@@ -293,7 +297,62 @@ class OcupacionSemanal
             'estadoTxt'  => Reservation::ESTADOS[$r->status] ?? $r->status,
             'tipo'       => $r->esProduccion() ? 'produccion' : $r->tipoDeRecurso(),
             'delProyecto' => $delProyecto,
+            'personas'   => $this->personasDe($r),
         ];
+    }
+
+    /** @var array<int,int> ids del equipo, para la vista por persona */
+    private array $delEquipo = [];
+
+    /**
+     * Quién del equipo está en esta reserva, y haciendo qué. `ocupa` dice si
+     * ese papel le toma la franja entera: recibir en una sala no —son los
+     * cinco minutos de ubicar a quien llega—; asesorar, acompañar, llevar un
+     * recorrido o una demo, sí. Su propio uso de una máquina se muestra y se
+     * cuenta para ver choques, aunque el sistema no lo impida: una impresora
+     * que trabaja sola no ocupa a nadie.
+     *
+     * @return list<array{id:int,nombre:string,rol:string,ocupa:bool}>
+     */
+    private function personasDe(Reservation $r): array
+    {
+        $lista = [];
+        $poner = function (?User $u, string $rol, bool $ocupa) use (&$lista) {
+            if ($u && ! isset($lista[$u->id])) {
+                $lista[$u->id] = ['id' => $u->id, 'nombre' => $u->name, 'rol' => $rol, 'ocupa' => $ocupa];
+            }
+        };
+
+        if ($r->reservable instanceof User) {
+            $poner($r->reservable, match (true) {
+                $r->mode === 'practica' => 'Evaluación práctica',
+                $r->esAtencionPersonal() => 'Asesoría',
+                str_starts_with((string) $r->purpose, \App\Services\Projects\RevisionDeSolicitudes::MOTIVO) => 'Revisión de solicitud',
+                $r->esBloqueDeProyecto() => 'Tiempo de proyecto',
+                default => 'Tiempo apartado',
+            }, true);
+        }
+
+        if ($r->supervisor) {
+            $enSala = $r->reservable instanceof Space;
+            $poner($r->supervisor, match (true) {
+                $r->esRecorrido() => 'Lleva el recorrido',
+                (bool) $r->is_demo => 'Hace la demo',
+                $enSala => 'Recibe',
+                default => 'Acompaña',
+            }, ! $enSala || $r->esRecorrido() || $r->is_demo);
+        }
+
+        foreach ($r->companions as $c) {
+            $poner($c, $r->esRecorrido() ? 'Acompaña el recorrido' : 'Acompaña', true);
+        }
+
+        if ($r->user && isset($this->delEquipo[$r->user->id]) && ! $r->reservable instanceof User && ! $r->esProduccion()
+            && ! ($r->reservable instanceof Asset && $r->reservable->esHerramienta())) {
+            $poner($r->user, 'Su uso', true);
+        }
+
+        return array_values($lista);
     }
 
     private function reloj(int $minutos): string

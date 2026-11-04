@@ -792,4 +792,28 @@ class AsesoriasTest extends TestCase
             AssetAdvisor::query()->delete();
         }
     }
+
+    /** Quien figura entre los acompañantes de una actividad tampoco recibe asesorías; quien solo la recibe, sí. */
+    public function test_acompanar_una_actividad_ocupa_y_recibirla_no(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $sala = \App\Models\Space::create(['slug' => 'taller', 'name' => 'Taller', 'capacity' => 10, 'is_reservable' => true]);
+
+        $evento = Reservation::create([
+            'reservable_type' => \App\Models\Space::class, 'reservable_id' => $sala->id,
+            'user_id' => $this->alguien()->id, 'supervisor_id' => $ana->id,
+            'status' => 'confirmada', 'mode' => 'directa',
+            'starts_at' => $this->hora('10:00'), 'ends_at' => $this->hora('12:00'),
+        ]);
+
+        // Solo la recibe: sigue libre.
+        $this->assertTrue(app(BookingService::class)->personaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+
+        $evento->update(['supervisor_id' => null]);
+        $evento->companions()->attach($ana->id);
+
+        $this->assertStringContainsString('acompaña una actividad', (string) app(BookingService::class)->porQueNoEstaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+        $this->assertNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('10:30'), $this->hora('11:15')));
+    }
 }

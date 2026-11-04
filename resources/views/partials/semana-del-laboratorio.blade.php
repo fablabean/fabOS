@@ -51,7 +51,7 @@
     $filtros = array_filter([
         'espacio' => $s['espacio'],
         'solo'    => $s['solo'] ? 1 : null,
-        'vista'   => $s['vista'] === 'espacios' ? 'espacios' : null,
+        'vista'   => $s['vista'] !== 'horas' ? $s['vista'] : null,
     ]);
     $conservar = array_filter($conservar ?? []);
     $url = fn (array $cambios) => ($base ?? '') . '?'
@@ -101,9 +101,11 @@
             @if ($livewire)
                 <button type="button" wire:click="$set('vista', 'horas')" class="{{ $s['vista'] === 'horas' ? 'activa' : '' }}">Por horas</button>
                 <button type="button" wire:click="$set('vista', 'espacios')" class="{{ $s['vista'] === 'espacios' ? 'activa' : '' }}">Por espacios</button>
+                <button type="button" wire:click="$set('vista', 'personas')" class="{{ $s['vista'] === 'personas' ? 'activa' : '' }}">Por persona</button>
             @else
                 <a href="{{ $url(['vista' => null]) }}" class="{{ $s['vista'] === 'horas' ? 'activa' : '' }}">Por horas</a>
                 <a href="{{ $url(['vista' => 'espacios']) }}" class="{{ $s['vista'] === 'espacios' ? 'activa' : '' }}">Por espacios</a>
+                <a href="{{ $url(['vista' => 'personas']) }}" class="{{ $s['vista'] === 'personas' ? 'activa' : '' }}">Por persona</a>
             @endif
         </div>
 
@@ -127,7 +129,7 @@
                 @foreach ($conservar as $clave => $valor)
                     <input type="hidden" name="{{ $clave }}" value="{{ $valor }}">
                 @endforeach
-                @if ($s['vista'] === 'espacios') <input type="hidden" name="vista" value="espacios"> @endif
+                @if ($s['vista'] !== 'horas') <input type="hidden" name="vista" value="{{ $s['vista'] }}"> @endif
                 <select name="espacio" onchange="this.form.submit()" aria-label="Espacio">
                     <option value="">Todos los espacios</option>
                     @foreach ($s['espacios'] as $esp)
@@ -147,6 +149,76 @@
         <p class="sem-vacio">
             Nada reservado {{ $desdeHoy ? 'en estos días' : 'esta semana' }}{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
         </p>
+    @elseif ($s['vista'] === 'personas')
+        {{-- Una fila por persona del equipo: lo que se pregunta es «¿qué
+             tiene Jhonatan el jueves?», y si algo se le monta encima. Lo que
+             le toma la franja entera y se cruza con otra cosa igual sale en
+             rojo; recibir en una sala sale tenue, porque son cinco minutos. --}}
+        @php
+            $porPersona = [];
+            foreach ($s['bloques'] as $fecha => $delDia) {
+                foreach ($delDia as $b) {
+                    foreach ($b['personas'] ?? [] as $p) {
+                        $porPersona[$p['id']]['nombre'] = $p['nombre'];
+                        $porPersona[$p['id']]['dias'][$fecha][] = $b + ['rol' => $p['rol'], 'ocupa' => $p['ocupa'], 'choca' => false];
+                    }
+                }
+            }
+            foreach ($porPersona as $id => $persona) {
+                foreach ($persona['dias'] as $fecha => $lista) {
+                    usort($lista, fn ($a, $b) => $a['desde'] <=> $b['desde']);
+                    foreach ($lista as $i => $x) {
+                        foreach ($lista as $j => $y) {
+                            if ($i !== $j && $x['ocupa'] && $y['ocupa'] && $x['desde'] < $y['hasta'] && $y['desde'] < $x['hasta']) {
+                                $lista[$i]['choca'] = true;
+                            }
+                        }
+                    }
+                    $porPersona[$id]['dias'][$fecha] = $lista;
+                }
+            }
+            uasort($porPersona, fn ($a, $b) => strcmp($a['nombre'], $b['nombre']));
+        @endphp
+        @if (empty($porPersona))
+            <p class="sem-vacio">Nadie del equipo tiene algo asignado {{ $desdeHoy ? 'en estos días' : 'esta semana' }}.</p>
+        @else
+        <div class="sem-scroll">
+            <table class="sem-tabla">
+                <thead>
+                    <tr>
+                        <th></th>
+                        @foreach ($s['dias'] as $dia)
+                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                                {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                            </th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($porPersona as $persona)
+                    <tr>
+                        <th scope="row">{{ $persona['nombre'] }}</th>
+                        @foreach ($s['dias'] as $dia)
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                                @foreach ($persona['dias'][$dia->toDateString()] ?? [] as $b)
+                                    @php $href = $enlaceDe($b); @endphp
+                                    <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
+                                        class="sem-f {{ $clasesDe($b) }} {{ $b['choca'] ? 'choca' : '' }} {{ $b['ocupa'] ? '' : 'tenue' }}"
+                                        title="{{ $b['rol'] }} · {{ $tituloDe($b) }}{{ $b['choca'] ? "\nSe cruza con otra cosa que también lo ocupa" : '' }}{{ $href ? "\nClic para abrir la reserva" : '' }}">
+                                        <span class="h">{{ $b['hora'] }}</span>
+                                        <span class="q">{{ $b['rol'] }}{{ $b['choca'] ? ' · se cruza' : '' }}</span>
+                                        <span class="r">{{ $b['que'] }}</span>
+                                        @if ($b['para'])<span class="p">{{ $b['para'] }}</span>@endif
+                                    </{{ $href ? 'a' : 'div' }}>
+                                @endforeach
+                            </td>
+                        @endforeach
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     @elseif ($s['vista'] === 'espacios')
         {{-- Una fila por espacio: lo que se pregunta es «¿cuándo está libre
              la sala de corte?», y eso se lee de corrido en su fila. --}}
@@ -373,6 +445,10 @@
         a.sem-b:hover, a.sem-f:hover, a.sem-b:focus-visible, a.sem-f:focus-visible {
             outline:2px solid var(--s-ink); outline-offset:-1px; filter:brightness(.97); z-index:3; }
         .sem-f span { display:block; }
+        /* Por persona: lo que se le monta encima, en rojo; recibir, tenue. */
+        .sem-f.choca { box-shadow: inset 3px 0 0 #C53030; background: color-mix(in srgb, #C53030 14%, var(--s-surface, #fff)); }
+        .sem-f.choca .q { color: #C53030; }
+        .sem-f.tenue { opacity: .55; }
         .sem-b .h, .sem-f .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--s-soft); }
         .sem-b .q, .sem-f .q { font-weight:600; }
         .sem-b .r, .sem-f .r { color:var(--s-soft); }

@@ -274,4 +274,37 @@ class SemanaDelLaboratorioTest extends TestCase
                 ->assertDontSee($ficha, false);
         }
     }
+
+    /**
+     * Por persona: una fila por cada quien del equipo, con lo que hace en cada
+     * franja. Lo que le toma la franja entera y se cruza sale marcado; recibir
+     * en una sala no cuenta, son cinco minutos.
+     */
+    public function test_por_persona_se_ve_lo_que_se_le_monta_encima(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $jhon = $this->persona('Jhonatan Cortés', User::ROL_PRACTICANTE);
+        $estudiante = $this->persona('Estudiante');
+
+        // Recibe en la sala de 09:00 a 11:00: no lo ocupa.
+        $this->reserva($estudiante, '09:00', '11:00', ['supervisor_id' => $jhon->id, 'purpose' => 'Trabajo de clase']);
+        // Una asesoría a las 10:00…
+        Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $jhon->id, 'user_id' => $estudiante->id,
+            'mode' => 'asesoria', 'status' => 'confirmada',
+            'starts_at' => $this->martes('10:00'), 'ends_at' => $this->martes('10:45'),
+        ]);
+        // …y él mismo se reservó la sala de 10:30 a 12:00.
+        $taller = Space::create(['slug' => 'taller', 'name' => 'Taller', 'type' => 'fisico', 'is_reservable' => true]);
+        $this->reserva($jhon, '10:30', '12:00', ['purpose' => 'Una sublimación', 'reservable_id' => $taller->id]);
+
+        $html = $this->actingAs($admin)
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
+            ->assertOk()
+            ->assertSee('Por persona')
+            ->assertSeeInOrder(['Jhonatan Cortés', '09:00–11:00', 'Recibe', '10:00–10:45', 'Asesoría · se cruza', '10:30–12:00', 'Su uso · se cruza'])
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, ' · se cruza'));
+    }
 }

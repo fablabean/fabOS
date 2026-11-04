@@ -120,6 +120,9 @@ class EspacioBookingService
 
     public const MINUTOS_DEMO = 60;
 
+    /** La reserva madre del grupo de salas que se está armando. */
+    private ?int $grupoEnCurso = null;
+
     public const SIN_QUIEN_HAGA_LA_DEMO = 'Nadie del equipo está libre toda esa hora para hacer la demo: queda pendiente del visto bueno.';
 
     /** Cuántas personas hacen un grupo de recorrido. Informa; el tope real es el aforo. */
@@ -647,7 +650,7 @@ class EspacioBookingService
                     // no esta: se dice quien y que tiene, para que el
                     // operador elija a otro.
                     foreach ($acompanan as $quien) {
-                        $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta);
+                        $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta, $this->grupoEnCurso);
 
                         if ($ocupado) {
                             throw new BookingException($ocupado . ' Elige a otra persona para acompañar.');
@@ -858,6 +861,11 @@ class EspacioBookingService
                 $espacios->count() > 1 ? $notaConjunta : null,
             );
 
+            // Quien acompaña en la primera sala está en la misma actividad: no
+            // cuenta como ocupado para las demás del grupo.
+            $this->grupoEnCurso = $madre->id;
+
+            try {
             $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre, $modalidad, $porEspacio, $acompanantesIds) {
                 // Sin nota propia: la del conjunto ya esta en la madre. Con su
                 // propia gente, o con la lista general si no se repartio.
@@ -869,6 +877,9 @@ class EspacioBookingService
 
                 return $hija;
             });
+            } finally {
+                $this->grupoEnCurso = null;
+            }
 
             $todas = $hijas->prepend($madre);
 
