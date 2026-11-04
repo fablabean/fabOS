@@ -147,6 +147,48 @@ class IngresosPorProyectos
         ];
     }
 
+    /** Lo que dice cada columna, para el título de su detalle. */
+    public const QUE_ES = [
+        'estudiante' => 'Facturable a estudiantes',
+        'interno'    => 'Facturable a la Universidad',
+        'externo'    => 'Facturable a clientes de fuera',
+        'cobrado'    => 'Facturable',
+        'internos'   => 'Proyectos internos (valor de servicio)',
+        'total'      => 'Facturable más internos',
+        'n'          => 'Proyectos ejecutados',
+    ];
+
+    /**
+     * De dónde sale una cifra: los proyectos que la componen, con su valor y
+     * de qué campo viene. `n` trae todos, también los que no tienen valor.
+     *
+     * @return Collection<int,array{proyecto:Project,valor:int,fuente:string}>
+     */
+    public function origen(?string $mes, string $columna): Collection
+    {
+        return $this->ejecutados()
+            ->filter(fn (Project $p) => $mes === null || self::mesDe($p) === $mes)
+            ->filter(function (Project $p) use ($columna) {
+                $conValor = $p->valorDeReferencia() > 0;
+                $cliente = isset(self::COLUMNAS[$p->client_kind]) ? $p->client_kind : 'externo';
+
+                return match ($columna) {
+                    'n'        => true,
+                    'total'    => $conValor,
+                    'internos' => $conValor && $p->is_internal,
+                    'cobrado'  => $conValor && ! $p->is_internal,
+                    default    => $conValor && ! $p->is_internal && $cliente === $columna,
+                };
+            })
+            ->map(fn (Project $p) => [
+                'proyecto' => $p,
+                'valor'    => $p->valorDeReferencia(),
+                'fuente'   => $p->agreed_value > 0 ? 'Acordado' : ($p->estimated_value > 0 ? 'Estimado' : 'Sin valor'),
+            ])
+            ->sortByDesc('valor')
+            ->values();
+    }
+
     /** La meta de venta del año que viene contra lo que daría el promedio en doce meses. */
     private function meta(int $ano, int $porMes): ?array
     {

@@ -3,6 +3,8 @@
     @php
         $pesos = fn ($v) => config('fabos.money.symbol') . number_format((float) $v, 0, ',', '.');
         $columnas = \App\Services\Reports\IngresosPorProyectos::COLUMNAS;
+        // Cada cifra del histórico se abre: qué proyectos la forman.
+        $abrir = fn (?string $mes, string $col) => 'mountAction(\'origen\', { mes: ' . ($mes ? "'" . $mes . "'" : 'null') . ', columna: \'' . $col . '\' })';
     @endphp
 
     {{-- Estilos propios: el CSS de Filament viene compilado con un conjunto
@@ -23,6 +25,8 @@
         .ipp td:first-letter{text-transform:uppercase}
         .ipp .barra{height:.55rem;border-radius:999px;background:rgba(128,128,128,.18);overflow:hidden}
         .ipp .barra i{display:block;height:100%;background:#D69E2E}
+        .ipp button.dato{all:unset;cursor:pointer;border-bottom:1px dotted currentColor}
+        .ipp button.dato:hover,.ipp button.dato:focus-visible{color:#B7791F}
     </style>
 
     <div class="ipp">
@@ -50,6 +54,7 @@
 
         <x-filament::section>
             <x-slot name="heading">Mes a mes</x-slot>
+            <x-slot name="description">Pulsa cualquier cifra para ver de qué proyectos sale.</x-slot>
             <div class="tabla">
                 <table>
                     <thead>
@@ -63,24 +68,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach ($meses as $m)
-                        <tr>
+                    @foreach ([...$meses, ['mes' => null, 'nombre' => 'Total'] + $totales] as $m)
+                        <tr class="{{ $m['mes'] ? '' : 'total' }}">
                             <td>{{ $m['nombre'] }}</td>
-                            @foreach ($columnas as $clave => $nombre) <td class="num">{{ $pesos($m[$clave]) }}</td> @endforeach
-                            <td class="num"><strong>{{ $pesos($m['cobrado']) }}</strong></td>
-                            <td class="num interno">{{ $pesos($m['internos']) }}</td>
-                            <td class="num">{{ $pesos($m['total']) }}</td>
-                            <td class="num">{{ $m['n'] }}</td>
+                            @foreach ([...array_keys($columnas), 'cobrado', 'internos', 'total', 'n'] as $clave)
+                                <td class="num {{ $clave === 'internos' ? 'interno' : '' }}">
+                                    @php $texto = $clave === 'n' ? $m[$clave] : $pesos($m[$clave]); @endphp
+                                    @if ($m[$clave])
+                                        <button type="button" class="dato" wire:click="{{ $abrir($m['mes'], $clave) }}"
+                                                title="Ver de qué proyectos sale">
+                                            @if ($clave === 'cobrado' && $m['mes'])<strong>{{ $texto }}</strong>@else{{ $texto }}@endif
+                                        </button>
+                                    @else
+                                        <span class="gris">{{ $texto }}</span>
+                                    @endif
+                                </td>
+                            @endforeach
                         </tr>
                     @endforeach
-                        <tr class="total">
-                            <td>Total</td>
-                            @foreach ($columnas as $clave => $nombre) <td class="num">{{ $pesos($totales[$clave]) }}</td> @endforeach
-                            <td class="num">{{ $pesos($totales['cobrado']) }}</td>
-                            <td class="num interno">{{ $pesos($totales['internos']) }}</td>
-                            <td class="num">{{ $pesos($totales['total']) }}</td>
-                            <td class="num">{{ $totales['n'] }}</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>

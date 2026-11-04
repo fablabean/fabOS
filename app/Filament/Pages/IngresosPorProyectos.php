@@ -48,6 +48,27 @@ class IngresosPorProyectos extends Page
             ->deleteFileAfterSend();
     }
 
+    /**
+     * El detalle de una cifra: qué proyectos la forman, con su valor y de
+     * dónde viene, y el enlace a cada ficha para corregirlo.
+     */
+    public function origenAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('origen')
+            ->modalHeading(function (array $arguments) {
+                $mes = $arguments['mes'] ?? null;
+
+                return (Calculo::QUE_ES[$arguments['columna'] ?? 'n'] ?? 'Proyectos') . ' · '
+                    . ($mes ? \Illuminate\Support\Carbon::parse($mes . '-01')->locale('es')->isoFormat('MMMM YYYY') : 'todo el periodo');
+            })
+            ->modalWidth('4xl')
+            ->modalContent(fn (array $arguments) => view('filament.pages.ingresos-por-proyectos-origen', [
+                'filas' => app(Calculo::class)->origen($arguments['mes'] ?? null, $arguments['columna'] ?? 'n'),
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
+    }
+
     public function getViewData(): array
     {
         return app(Calculo::class)->calcular();

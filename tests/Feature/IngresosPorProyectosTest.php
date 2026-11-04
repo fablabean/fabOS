@@ -60,6 +60,13 @@ class IngresosPorProyectosTest extends TestCase
         $this->assertSame(4, $d['totales']['n']);
         $this->assertSame([$sinValor->id], $d['sinValor']->pluck('id')->all());
 
+        // De dónde sale cada cifra: los proyectos, con su valor y su campo.
+        $calculo = app(IngresosPorProyectos::class);
+        $this->assertSame([1_200_000], $calculo->origen('2026-09', 'externo')->pluck('valor')->all());
+        $this->assertSame(['Estimado'], $calculo->origen('2026-09', 'externo')->pluck('fuente')->all());
+        $this->assertSame(2, $calculo->origen(null, 'cobrado')->count());
+        $this->assertSame(4, $calculo->origen('2026-09', 'n')->count());
+
         // Treinta días observados: el promedio mensual es casi lo de todo el mes.
         $this->assertEqualsWithDelta(1_250_000, $d['promedio']['cobrado'], 30_000);
         $this->assertCount(12, $d['proyeccion']);
@@ -98,8 +105,16 @@ class IngresosPorProyectosTest extends TestCase
             ->assertSee('Proyección a doce meses')
             ->assertSee('Sin valor registrado (1)')
             ->assertSee($sin->code)
+            ->mountAction('origen', ['mes' => '2026-09', 'columna' => 'interno'])
+            ->assertActionMounted('origen')
             ->call('descargar')
             ->assertFileDownloaded('ingresos-por-proyectos-2026-09-01.xlsx');
+
+        $detalle = view('filament.pages.ingresos-por-proyectos-origen', [
+            'filas' => app(IngresosPorProyectos::class)->origen('2026-09', 'interno'),
+        ])->render();
+        $this->assertStringContainsString('$204.000', $detalle);
+        $this->assertStringContainsString('Acordado', $detalle);
 
         $ruta = app(IngresosPorProyectos::class)->excel();
         $this->assertFileExists($ruta);
