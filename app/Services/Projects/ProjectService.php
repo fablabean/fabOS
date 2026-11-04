@@ -279,7 +279,7 @@ class ProjectService
      */
     public function solicitarDesdeLaWeb(array $datos): Project
     {
-        return DB::transaction(function () use ($datos) {
+        $proyecto = DB::transaction(function () use ($datos) {
             $correo = mb_strtolower(trim($datos['correo']));
 
             // Si ya tiene cuenta se reutiliza: dos cuentas con el mismo correo
@@ -343,6 +343,12 @@ class ProjectService
 
             return $proyecto->refresh();
         });
+
+        // Y su hora de revisión en la agenda de quien lo recibe. Fuera de la
+        // transacción: si no hay franja, la solicitud igual queda anotada.
+        app(RevisionDeSolicitudes::class)->apartar($proyecto);
+
+        return $proyecto;
     }
 
     /** Un texto de varias líneas, limpio de viñetas escritas a mano. */

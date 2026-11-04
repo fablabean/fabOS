@@ -38,7 +38,11 @@
 
         <h2>Qué sigue</h2>
         <ol>
-            <li>Alguien del laboratorio la revisa: si cabe, con qué máquinas y cuánto tomaría.</li>
+            @if (! empty($recibida['revision']))
+                <li><strong>La revisamos {{ $recibida['revision'] }}.</strong> Tu solicitud ya tiene turno en la cola: ese día alguien del laboratorio mira si cabe, con qué máquinas y cuánto tomaría.</li>
+            @else
+                <li>Alguien del laboratorio la revisa: si cabe, con qué máquinas y cuánto tomaría.</li>
+            @endif
             <li>Cuando tengamos una propuesta te llega por correo, con un enlace donde la ves completa.</li>
             <li>Mientras tanto, la sigues en <strong>Mi cuenta → Mis proyectos</strong>.</li>
         </ol>

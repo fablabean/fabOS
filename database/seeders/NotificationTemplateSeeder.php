@@ -46,7 +46,7 @@ class NotificationTemplateSeeder extends Seeder
                     Proyecto: {proyecto}
                     Código: {codigo}
 
-                    Ahora alguien del laboratorio la va a mirar: si cabe, con qué
+                    {revision}Ahora alguien del laboratorio la va a mirar: si cabe, con qué
                     máquinas y cuánto tomaría. Cuando tengamos una propuesta te llega
                     por correo con el detalle.
 

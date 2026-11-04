@@ -38,7 +38,7 @@ class ProjectsTable
     {
         return $table
             ->defaultSort('id', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with('ultimoComentario.user:id,name'))
+            ->modifyQueryUsing(fn ($query) => $query->with(['ultimoComentario.user:id,name', 'revision']))
             // El semaforo de la entrega: la fila se tiñe segun cuanto falta,
             // y en rojo si ya paso sin cerrarse. Los estilos van en el panel.
             //
@@ -84,6 +84,10 @@ class ProjectsTable
                             : ($r->proposal_sent_at
                                 ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
                                 : ''))
+                        // Su turno en la cola de revisión, mientras no se le haya respondido.
+                        . (($rev = $r->revision) && $r->stage === 'idea' && ! $r->proposal_sent_at
+                            ? ' · revisión ' . $rev->starts_at->timezone(config('fabos.lab.timezone'))->locale('es')->isoFormat('ddd D/MM H:mm')
+                            : '')
                         // El pago que espera algo, a la vista sin abrir la ficha.
                         . (($pago = $r->pagoPendiente())
                             ? ' · pago ' . mb_strtolower(\App\Models\ProjectPayment::ESTADOS[$pago->status] ?? $pago->status)

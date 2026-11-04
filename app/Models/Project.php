@@ -771,6 +771,16 @@ class Project extends Model
         return $this->hasMany(ProjectComment::class)->orderBy('created_at');
     }
 
+    /** Su turno en la cola de revisión (App\Services\Projects\RevisionDeSolicitudes). */
+    public function revision(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Reservation::class)->ofMany(['starts_at' => 'min'], fn ($q) => $q
+            ->where('mode', 'proyecto')
+            ->whereNull('project_task_id')
+            ->where('purpose', 'like', \App\Services\Projects\RevisionDeSolicitudes::MOTIVO . '%')
+            ->whereIn('status', Reservation::BLOQUEANTES));
+    }
+
     /** Lo último que se dijo: va en la lista, debajo del nombre. */
     public function ultimoComentario(): \Illuminate\Database\Eloquent\Relations\HasOne
     {

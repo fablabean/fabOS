@@ -335,11 +335,22 @@ class SolicitudDeProyectoController extends Controller
         $this->avisos->enviar('proyecto.recibido', $proyecto->requestedBy, [
             'proyecto' => $proyecto->name,
             'codigo'   => $proyecto->code,
+            'revision' => ($cuando = $this->cuandoSeRevisa($proyecto))
+                ? 'Tu solicitud ya tiene turno de revisión: la revisamos ' . $cuando . ".\n\n"
+                : '',
         ], $proyecto);
 
         app(\App\Services\Analitica\Analitica::class)->evento('solicitud_proyecto', $proyecto);
 
         return $this->aLaConfirmacion($request, $proyecto, $avisoPresupuesto);
+    }
+
+    /** «hoy», «mañana», «el jueves 6 de noviembre»: cuándo le toca en la cola. */
+    private function cuandoSeRevisa(Project $proyecto): ?string
+    {
+        $franja = \App\Services\Projects\RevisionDeSolicitudes::de($proyecto);
+
+        return $franja ? \App\Services\Projects\RevisionDeSolicitudes::cuandoSeDice($franja) : null;
     }
 
     /**
@@ -355,6 +366,7 @@ class SolicitudDeProyectoController extends Controller
             'correo'   => $proyecto->requestedBy?->email,
             'aviso'    => $aviso,
             'repetido' => $repetido,
+            'revision' => $this->cuandoSeRevisa($proyecto),
         ]);
 
         return redirect()->route('proyectos.recibida');

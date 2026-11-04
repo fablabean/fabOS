@@ -338,6 +338,14 @@ return [
         'dias_sin_respuesta' => (int) env('PROYECTO_DIAS_SIN_RESPUESTA', 7),
 
         /*
+         * La cola de revisión: cada solicitud que llega aparta este tiempo en
+         * la agenda de quien la recibe, en su siguiente franja libre, y se le
+         * dice a quien pidió qué día se revisa. Se busca hasta estos días.
+         */
+        'minutos_de_revision' => (int) env('PROYECTO_MINUTOS_DE_REVISION', 60),
+        'dias_para_buscar_revision' => (int) env('PROYECTO_DIAS_PARA_BUSCAR_REVISION', 21),
+
+        /*
          * Y el paso anterior: un proyecto ACTIVO al que se le escribió y que
          * lleva estos días sin que quien lo pidió conteste pasa solo a pausa
          * esperando respuesta, y ahí empieza el plazo de arriba.
