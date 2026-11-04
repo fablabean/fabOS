@@ -211,18 +211,6 @@ class AgendaExterna
                 continue;
             }
 
-            // Y lo provisional: una invitación que no se ha aceptado no
-            // compromete a nadie. Outlook, cuando publica solo la
-            // disponibilidad, lo dice en el título —«Provisional»— y no en
-            // un campo; se miran las tres formas.
-            $titulo = mb_strtolower(trim((string) ($evento->SUMMARY ?? '')));
-
-            if (strtoupper((string) ($evento->STATUS ?? '')) === 'TENTATIVE'
-                || strtoupper((string) ($evento->{'X-MICROSOFT-CDO-BUSYSTATUS'} ?? '')) === 'TENTATIVE'
-                || in_array($titulo, ['provisional', 'tentative', 'tentativo'], true)) {
-                continue;
-            }
-
             if (! isset($evento->DTSTART)) {
                 continue;
             }

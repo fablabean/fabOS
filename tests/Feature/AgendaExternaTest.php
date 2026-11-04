@@ -167,38 +167,6 @@ class AgendaExternaTest extends TestCase
         ));
     }
 
-    /** Lo provisional tampoco: una invitación sin aceptar no compromete a nadie. */
-    public function test_lo_provisional_no_ocupa(): void
-    {
-        Http::fake(['*' => Http::response($this->ics(
-            $this->evento('1', '20260824T140000Z', '20260824T150000Z', "STATUS:TENTATIVE
-")
-            . "BEGIN:VEVENT
-UID:2
-DTSTAMP:20260820T120000Z
-DTSTART:20260824T160000Z
-DTEND:20260824T170000Z
-SUMMARY:Provisional
-END:VEVENT
-"
-            . "BEGIN:VEVENT
-UID:3
-DTSTAMP:20260820T120000Z
-DTSTART:20260824T180000Z
-DTEND:20260824T190000Z
-SUMMARY:Ocupado
-END:VEVENT
-",
-        ))]);
-
-        $ana = $this->persona();
-        $tz = config('fabos.lab.timezone');
-
-        $this->assertFalse($this->agenda()->ocupadoEn($ana, Carbon::parse('2026-08-24 09:15', $tz), Carbon::parse('2026-08-24 09:45', $tz)));
-        $this->assertFalse($this->agenda()->ocupadoEn($ana, Carbon::parse('2026-08-24 11:15', $tz), Carbon::parse('2026-08-24 11:45', $tz)));
-        $this->assertTrue($this->agenda()->ocupadoEn($ana, Carbon::parse('2026-08-24 13:15', $tz), Carbon::parse('2026-08-24 13:45', $tz)), 'Ocupado sí ocupa.');
-    }
-
     /** Lo cancelado no ocupa, y lo marcado como libre tampoco. */
     public function test_lo_cancelado_y_lo_libre_no_ocupan(): void
     {
