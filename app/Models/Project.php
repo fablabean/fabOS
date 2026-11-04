@@ -1039,6 +1039,14 @@ class Project extends Model
             );
         });
 
+        // Su turno en la cola de revisión sigue a lo que le pase: cambia de
+        // responsable, se le responde o se cierra.
+        static::updated(function (self $proyecto) {
+            if ($proyecto->wasChanged(['lead_id', 'proposal_sent_at', 'status', 'stage'])) {
+                app(\App\Services\Projects\RevisionDeSolicitudes::class)->ajustar($proyecto);
+            }
+        });
+
         // Un proyecto en la etapa de idea todavia no tiene valor acordado, y el
         // formulario manda ese campo vacio. La columna es NOT NULL con default
         // 0, pero un NULL explicito se salta el default y revienta el insert:

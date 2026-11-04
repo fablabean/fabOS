@@ -93,6 +93,56 @@ class RevisionDeSolicitudes
         return null;
     }
 
+    /**
+     * Pone el turno al día con lo que le pasó al proyecto.
+     *
+     * Ya respondido —con propuesta, o movido más allá de idea— o cerrado o en
+     * pausa: la hora que quedaba por delante se suelta y vuelve a estar libre.
+     * Con otro responsable: se suelta la del anterior y se busca la siguiente
+     * del nuevo, que es quien la va a revisar.
+     */
+    public function ajustar(Project $proyecto): void
+    {
+        $franja = self::de($proyecto);
+
+        if (! $franja) {
+            return;
+        }
+
+        $sigueEnCola = $proyecto->stage === 'idea'
+            && ! $proyecto->proposal_sent_at
+            && $proyecto->status === 'activo';
+
+        if ($sigueEnCola && $franja->reservable_id === $proyecto->lead_id) {
+            return;
+        }
+
+        $this->soltar($franja, $sigueEnCola ? 'Pasó a otro responsable' : 'Ya no hace falta: se respondió o se cerró');
+
+        if ($sigueEnCola) {
+            $this->apartar($proyecto->fresh());
+        }
+    }
+
+    /**
+     * Lo que no ha empezado se cancela; lo que está corriendo se corta en
+     * este momento. Lo que ya pasó queda: es historia de cuándo se revisó.
+     */
+    private function soltar(Reservation $franja, string $porQue): void
+    {
+        if ($franja->ends_at->lte(now())) {
+            return;
+        }
+
+        if ($franja->starts_at->gt(now())) {
+            $franja->update(['status' => 'cancelada', 'status_reason' => $porQue]);
+
+            return;
+        }
+
+        $franja->update(['ends_at' => now(), 'status_reason' => $porQue]);
+    }
+
     /** La franja de revisión que tiene el proyecto, si la tiene. */
     public static function de(Project $proyecto): ?Reservation
     {
@@ -101,6 +151,7 @@ class RevisionDeSolicitudes
             ->whereNull('project_task_id')
             ->where('purpose', 'like', self::MOTIVO . '%')
             ->whereIn('status', Reservation::BLOQUEANTES)
+            ->where('ends_at', '>', now())
             ->orderBy('starts_at')
             ->first();
     }

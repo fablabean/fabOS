@@ -111,4 +111,48 @@ class ColaDeRevisionTest extends TestCase
 
         $this->assertSame('el lunes 31 de agosto', RevisionDeSolicitudes::cuandoSeDice($r));
     }
+
+    /** Con otro responsable, la hora se va a la agenda del nuevo. */
+    public function test_cambiar_el_responsable_mueve_la_revision(): void
+    {
+        $p = $this->solicitud('Base lámpara');
+        $vieja = RevisionDeSolicitudes::de($p);
+
+        $michael = User::create(['name' => 'Michael', 'email' => 'mich@lab.co', 'status' => 'activo']);
+        WorkSchedule::create([
+            'user_id' => $michael->id, 'weekday' => 1, 'starts_at' => '10:00', 'ends_at' => '12:00',
+            'break_minutes' => 0, 'modalidad' => WorkSchedule::REMOTA, 'effective_from' => '2026-01-01',
+        ]);
+
+        $p->update(['lead_id' => $michael->id]);
+
+        $this->assertSame('cancelada', $vieja->fresh()->status);
+        $nueva = RevisionDeSolicitudes::de($p->fresh());
+        $this->assertSame($michael->id, $nueva->reservable_id);
+        $this->assertSame('24/08 10:00', $nueva->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i'));
+    }
+
+    /** Respondida o cerrada, la hora que quedaba se suelta. */
+    public function test_al_responder_o_descartar_se_suelta_la_hora(): void
+    {
+        $a = $this->solicitud('Uno');
+        $b = $this->solicitud('Dos');
+        $franjaA = RevisionDeSolicitudes::de($a);
+        $franjaB = RevisionDeSolicitudes::de($b);
+
+        $a->update(['proposal_sent_at' => now()]);
+        app(ProjectService::class)->descartar($b->fresh(), 'No era para el laboratorio', avisar: false);
+
+        $this->assertSame('cancelada', $franjaB->fresh()->status);
+        // La que está corriendo cuando se responde se corta en ese momento.
+        $this->travelTo(Carbon::parse('2026-08-24 08:40', config('fabos.lab.timezone')));
+        $c = $this->solicitud('Tres');
+        $franjaC = RevisionDeSolicitudes::de($c);
+        $this->travelTo(Carbon::parse('2026-08-24 09:15', config('fabos.lab.timezone')));
+        $c->update(['proposal_sent_at' => now()]);
+
+        $this->assertSame('cancelada', $franjaA->fresh()->status);
+        $this->assertSame('confirmada', $franjaC->fresh()->status);
+        $this->assertSame('09:15', $franjaC->fresh()->ends_at->timezone(config('fabos.lab.timezone'))->format('H:i'));
+    }
 }
