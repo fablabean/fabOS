@@ -275,10 +275,101 @@ class IngresosPorProyectos
             ->map(fn (Project $p) => [
                 'proyecto' => $p,
                 'valor'    => $p->valorDeReferencia(),
-                'fuente'   => $p->agreed_value > 0 ? 'Acordado' : ($p->estimated_value > 0 ? 'Estimado' : 'Sin valor'),
+                'fuente'   => match (true) {
+                    $p->agreed_value > 0     => 'Acordado',
+                    $p->aproximado_de !== null => 'Aproximado por área',
+                    $p->estimated_value > 0  => 'Estimado',
+                    default                  => 'Sin valor',
+                },
             ])
             ->sortByDesc('valor')
             ->values();
+    }
+
+    /** Dónde quedan los valores por área que se decidieron. */
+    public const CLAVE_VALORES_POR_AREA = 'finanzas.valor_aproximado_por_area';
+
+    /**
+     * Los proyectos sin valor, por área, con lo que valen hoy los de esa
+     * misma área que sí tienen: la mediana, que un proyecto de treinta
+     * millones no arrastra. Y el valor que se guardó, si se guardó uno.
+     *
+     * La clave 0 es «sin área».
+     *
+     * @return array<int,array{area:string,cuantos:int,mediana:int,con_valor:int,valor:int}>
+     */
+    public function porArea(): array
+    {
+        $ejecutados = $this->ejecutados();
+        $nombres = \App\Models\Area::pluck('name', 'id');
+        $guardados = (array) \App\Models\Setting::get(self::CLAVE_VALORES_POR_AREA, []);
+        $filas = [];
+
+        foreach ($ejecutados->filter(fn (Project $p) => $p->valorDeReferencia() <= 0)->groupBy(fn (Project $p) => (int) $p->area_id) as $area => $grupo) {
+            $conValor = $ejecutados->filter(fn (Project $p) => (int) $p->area_id === $area && $p->valorDeReferencia() > 0);
+            $mediana = (int) round($conValor->map->valorDeReferencia()->median() ?? 0);
+
+            $filas[$area] = [
+                'area'      => $area ? ($nombres[$area] ?? 'Área ' . $area) : 'Sin área',
+                'cuantos'   => $grupo->count(),
+                'mediana'   => $mediana,
+                'con_valor' => $conValor->count(),
+                'valor'     => (int) ($guardados[$area] ?? $mediana),
+            ];
+        }
+
+        uasort($filas, fn ($a, $b) => $b['cuantos'] <=> $a['cuantos']);
+
+        return $filas;
+    }
+
+    /**
+     * Le pone a cada ejecutado sin valor el de su área, y lo deja como
+     * interno: es trabajo del laboratorio, aunque nadie lo pagara.
+     *
+     * Directo en la base y no por el modelo: guardar el proyecto dispara los
+     * avisos de etapa, de estado y la cola de revisión, y esto no le cambia
+     * nada a nadie —es una cuenta del laboratorio—. Queda marcado como
+     * aproximado, con cómo estaba antes, para poder deshacerlo.
+     *
+     * @param  array<int|string,int|string|null>  $valores  área => pesos; 0 es «sin área»
+     * @return int cuántos se valoraron
+     */
+    public function aplicarAproximados(array $valores): int
+    {
+        $valores = collect($valores)->mapWithKeys(fn ($v, $k) => [(int) $k => max(0, (int) $v)])->all();
+        \App\Models\Setting::put(self::CLAVE_VALORES_POR_AREA, $valores, 'finanzas');
+
+        $hechos = 0;
+
+        foreach ($this->ejecutados()->filter(fn (Project $p) => $p->valorDeReferencia() <= 0) as $p) {
+            $valor = $valores[(int) $p->area_id] ?? 0;
+
+            if ($valor <= 0) {
+                continue;
+            }
+
+            $hechos += Project::whereKey($p->id)->where('agreed_value', 0)->where('estimated_value', 0)->update([
+                'estimated_value' => $valor,
+                'aproximado_de'   => $p->is_internal ? 'interno' : 'cliente',
+                'is_internal'     => true,
+            ]);
+        }
+
+        return $hechos;
+    }
+
+    /** Los devuelve a como estaban: sin valor, y de cliente si lo eran. */
+    public function deshacerAproximados(): int
+    {
+        $n = Project::where('aproximado_de', 'cliente')->update(['estimated_value' => 0, 'is_internal' => false, 'aproximado_de' => null]);
+
+        return $n + Project::where('aproximado_de', 'interno')->update(['estimated_value' => 0, 'aproximado_de' => null]);
+    }
+
+    public static function aproximados(): int
+    {
+        return Project::whereNotNull('aproximado_de')->count();
     }
 
     /** La meta de venta del año que viene contra lo que daría el promedio en doce meses. */

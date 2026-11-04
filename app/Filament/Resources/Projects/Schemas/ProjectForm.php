@@ -325,9 +325,12 @@ class ProjectForm
                             ->numeric()
                             ->minValue(0)
                             ->prefix(config('fabos.money.symbol'))
-                            ->helperText(fn (Get $get) => $get('is_internal')
-                                ? 'En cuánto se valora lo que obtiene la institución. No es plata que entra.'
-                                : 'Lo que se puso en la propuesta. En pesos.'),
+                            ->helperText(fn (Get $get, ?Project $record) => ($record?->aproximado_de
+                                    ? 'Aproximado por el laboratorio según el área (Ingresos por proyectos). Si lo cambias, queda como tuyo. '
+                                    : '')
+                                . ($get('is_internal')
+                                    ? 'En cuánto se valora lo que obtiene la institución. No es plata que entra.'
+                                    : 'Lo que se puso en la propuesta. En pesos.')),
 
                         TextInput::make('agreed_value')
                             ->label('Valor acordado')

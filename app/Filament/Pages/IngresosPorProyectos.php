@@ -49,9 +49,49 @@ class IngresosPorProyectos extends Page
      */
     public array $ajuste = [];
 
+    /** @var array<int,int> el valor aproximado de cada área, mientras se decide */
+    public array $valoresPorArea = [];
+
     public function mount(): void
     {
         $this->ajuste = Calculo::ajusteGuardado();
+        $this->valoresPorArea = collect(app(Calculo::class)->porArea())->map(fn ($f) => $f['valor'])->all();
+    }
+
+    public function aplicarAproximadosAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('aplicarAproximados')
+            ->label('Aplicar a los proyectos sin valor')
+            ->icon('heroicon-o-calculator')
+            ->requiresConfirmation()
+            ->modalHeading('Valorar los proyectos sin valor')
+            ->modalDescription(fn () => 'Cada ejecutado sin valor toma el de su área como valor estimado y queda como interno. '
+                . 'No se avisa a nadie ni cambia su etapa. Quedan marcados como «Aproximado por área» y se puede deshacer.')
+            ->modalSubmitActionLabel('Aplicar')
+            ->action(function () {
+                $n = app(Calculo::class)->aplicarAproximados($this->valoresPorArea);
+
+                \Filament\Notifications\Notification::make()->success()
+                    ->title($n . ' ' . ($n === 1 ? 'proyecto valorado' : 'proyectos valorados'))
+                    ->body('Ahora cuentan como internos. Las áreas con valor en cero se quedaron sin valor.')->send();
+            });
+    }
+
+    public function deshacerAproximadosAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('deshacerAproximados')
+            ->label('Deshacer los aproximados')
+            ->color('gray')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->requiresConfirmation()
+            ->modalDescription('Los proyectos valorados por área vuelven a quedar sin valor, y los que eran de un cliente dejan de ser internos. Los que alguien corrigió a mano se quedan como están.')
+            ->visible(fn () => Calculo::aproximados() > 0)
+            ->action(function () {
+                $n = app(Calculo::class)->deshacerAproximados();
+                $this->valoresPorArea = collect(app(Calculo::class)->porArea())->map(fn ($f) => $f['valor'])->all();
+
+                \Filament\Notifications\Notification::make()->success()->title($n . ' vueltos a como estaban')->send();
+            });
     }
 
     public function guardarAjuste(): void
@@ -104,6 +144,8 @@ class IngresosPorProyectos extends Page
     public function getViewData(): array
     {
         return app(Calculo::class)->calcular(null, $this->ajuste) + [
+            'porArea'     => app(Calculo::class)->porArea(),
+            'aproximados' => Calculo::aproximados(),
             'sinGuardar' => Calculo::normalizar($this->ajuste) !== Calculo::ajusteGuardado(),
         ];
     }

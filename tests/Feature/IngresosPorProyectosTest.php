@@ -152,6 +152,7 @@ class IngresosPorProyectosTest extends TestCase
             ->assertDontSee('sin guardar')
             ->assertSeeHtml('<polyline')
             ->assertSee('Sin valor registrado (1)')
+            ->assertSee('Valor aproximado por área')
             ->assertSee($sin->code)
             ->mountAction('origen', ['mes' => '2026-09', 'columna' => 'interno'])
             ->assertActionMounted('origen')
@@ -169,5 +170,55 @@ class IngresosPorProyectosTest extends TestCase
         $ruta = app(IngresosPorProyectos::class)->excel();
         $this->assertFileExists($ruta);
         $this->assertGreaterThan(1000, filesize($ruta));
+    }
+
+    /**
+     * Lo que no tiene valor se valora por área como interno, sin avisar a
+     * nadie; se puede deshacer, y quien escribe el valor a mano lo hace suyo.
+     */
+    public function test_valor_aproximado_por_area_sin_avisar_y_reversible(): void
+    {
+        $impresion = \App\Models\Area::create(['name' => 'Impresión 3D', 'slug' => 'impresion-3d']);
+        $conValor = $this->ejecutado('estudiante', 20_000);
+        $conValor->forceFill(['area_id' => $impresion->id])->saveQuietly();
+        $otro = $this->ejecutado('estudiante', 40_000);
+        $otro->forceFill(['area_id' => $impresion->id])->saveQuietly();
+        $sin = $this->ejecutado('estudiante', 0);
+        $sin->forceFill(['area_id' => $impresion->id])->saveQuietly();
+        $sinArea = $this->ejecutado('externo', 0);
+        $yaInterno = $this->ejecutado('interno', 0, interno: true);
+
+        $calculo = app(IngresosPorProyectos::class);
+        $areas = $calculo->porArea();
+        $this->assertSame(30_000, $areas[$impresion->id]['mediana']);
+        $this->assertSame(1, $areas[$impresion->id]['cuantos']);
+        $this->assertSame(2, $areas[0]['cuantos']);
+
+        $avisosAntes = \App\Models\NotificationLog::count();
+        $hechos = $calculo->aplicarAproximados([$impresion->id => 30_000, 0 => 0]);
+
+        $this->assertSame(1, $hechos, 'Sin área quedó en cero: no se valora.');
+        $sin->refresh();
+        $this->assertSame(30_000, (int) $sin->estimated_value);
+        $this->assertTrue($sin->is_internal);
+        $this->assertSame('cliente', $sin->aproximado_de);
+        $this->assertSame($avisosAntes, \App\Models\NotificationLog::count(), 'No se avisa a nadie.');
+        Mail::assertNothingSent();
+        $this->assertSame('Aproximado por área', $calculo->origen(null, 'internos')->firstWhere('proyecto.id', $sin->id)['fuente']);
+
+        // Ahora sin área también, y el que ya era interno sigue siéndolo al deshacer.
+        $calculo->aplicarAproximados([$impresion->id => 30_000, 0 => 15_000]);
+        $this->assertSame('interno', $yaInterno->fresh()->aproximado_de);
+        $this->assertSame(3, IngresosPorProyectos::aproximados());
+
+        // A mano deja de ser aproximado y no se deshace.
+        $sinArea->fresh()->update(['estimated_value' => 99_000]);
+        $this->assertNull($sinArea->fresh()->aproximado_de);
+
+        $this->assertSame(2, $calculo->deshacerAproximados());
+        $this->assertSame(0, (int) $sin->fresh()->estimated_value);
+        $this->assertFalse($sin->fresh()->is_internal);
+        $this->assertTrue($yaInterno->fresh()->is_internal);
+        $this->assertSame(99_000, (int) $sinArea->fresh()->estimated_value);
     }
 }

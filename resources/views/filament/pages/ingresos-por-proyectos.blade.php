@@ -228,6 +228,53 @@
             </div>
         </x-filament::section>
 
+        {{-- Lo que no tiene valor, valorado por área como trabajo interno: al
+             final es trabajo. Se decide aquí, se ve el total y se aplica sin
+             avisar a nadie; se puede deshacer. --}}
+        <x-filament::section>
+            <x-slot name="heading">Valor aproximado por área</x-slot>
+            <x-slot name="description">
+                Para los ejecutados que no tienen valor: cada uno toma el de su área y cuenta como interno. Viene
+                prellenado con la mediana de los proyectos de esa área que sí tienen valor; cámbialo si no se parece.
+                No se avisa a nadie ni cambia nada más del proyecto.
+                @if ($aproximados) Hoy hay <strong>{{ $aproximados }}</strong> proyectos valorados así. @endif
+            </x-slot>
+
+            @if (empty($porArea))
+                <p class="text-sm gris">No queda ningún ejecutado sin valor.</p>
+            @else
+                @php $totalAprox = collect($porArea)->sum(fn ($f, $area) => $f['cuantos'] * (int) ($valoresPorArea[$area] ?? 0)); @endphp
+                <div class="tabla">
+                    <table style="max-width:46rem">
+                        <thead>
+                            <tr><th>Área</th><th class="num">Sin valor</th><th class="num">Mediana de su área</th><th class="num">Valor por proyecto</th><th class="num">Suma</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach ($porArea as $area => $f)
+                            <tr>
+                                <td>{{ $f['area'] }}</td>
+                                <td class="num">{{ $f['cuantos'] }}</td>
+                                <td class="num gris">{!! $f['con_valor'] ? $celda($f['mediana']) . ' <small>(' . $f['con_valor'] . ')</small>' : '—' !!}</td>
+                                <td class="num">
+                                    {{ config('fabos.money.symbol') }}
+                                    <input type="number" min="0" step="1000" wire:model.live.debounce.500ms="valoresPorArea.{{ $area }}"
+                                           class="pct" style="width:8rem" aria-label="Valor por proyecto en {{ $f['area'] }}">
+                                </td>
+                                <td class="num">{{ $celda($f['cuantos'] * (int) ($valoresPorArea[$area] ?? 0)) }}</td>
+                            </tr>
+                        @endforeach
+                            <tr class="total"><td>Total</td><td class="num">{{ collect($porArea)->sum('cuantos') }}</td><td></td><td></td><td class="num">{{ $celda($totalAprox) }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.8rem">
+                @if (! empty($porArea)) {{ $this->aplicarAproximadosAction }} @endif
+                {{ $this->deshacerAproximadosAction }}
+            </div>
+        </x-filament::section>
+
         <x-filament::section collapsible :collapsed="$sinValor->count() > 15">
             <x-slot name="heading">Sin valor registrado ({{ $sinValor->count() }})</x-slot>
             <x-slot name="description">

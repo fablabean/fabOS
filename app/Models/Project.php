@@ -19,7 +19,7 @@ class Project extends Model
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
-        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at', 'opened_at',
+        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at', 'opened_at', 'aproximado_de',
         'accepted_at', 'accepted_by', 'acceptance_note',
         'modality', 'alliance_open', 'alliance_public', 'alliance_pitch', 'market_value',
         'paused_at', 'awaits_client', 'pause_reminded_at',
@@ -1081,6 +1081,12 @@ class Project extends Model
         // sin esto no se puede anotar una idea, que es justo lo primero que
         // hace cualquiera. Vacio significa "sin acordar", y eso son 0 pesos.
         static::saving(function (self $proyecto) {
+            // Quien escribe el valor a mano lo hace suyo: deja de ser el
+            // aproximado por área.
+            if ($proyecto->exists && $proyecto->aproximado_de !== null && $proyecto->isDirty(['estimated_value', 'agreed_value'])) {
+                $proyecto->aproximado_de = null;
+            }
+
             // Con otro responsable, vuelve a estar sin abrir: quien lo recibe
             // todavía no lo ha mirado.
             if ($proyecto->exists && $proyecto->isDirty('lead_id')) {
