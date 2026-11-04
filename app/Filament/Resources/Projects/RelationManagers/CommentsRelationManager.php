@@ -12,6 +12,8 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -44,6 +46,21 @@ class CommentsRelationManager extends RelationManager
                 ->rows(4)
                 ->columnSpanFull()
                 ->helperText('Queda en el hilo del proyecto. Quien lo pidió lo ve en la página de la propuesta.'),
+
+            /*
+             * Avisar en el mismo paso, encendido de entrada: casi siempre se
+             * responde para que lo lean, y el botón aparte se olvidaba. Se
+             * apaga para la segunda de tres respuestas seguidas, o para lo que
+             * no hace falta contar todavía.
+             */
+            Toggle::make('avisar')
+                ->label('Enviar la novedad por correo a quien lo pidió')
+                ->default(fn () => filled($this->getOwnerRecord()->correoDeLaPropuesta()))
+                ->disabled(fn () => blank($this->getOwnerRecord()->correoDeLaPropuesta()))
+                ->helperText(fn () => ($correo = $this->getOwnerRecord()->correoDeLaPropuesta())
+                    ? 'Le llega a ' . $correo . ' con esta respuesta, las imágenes y el enlace para contestar en la plataforma.'
+                    : 'Este proyecto no tiene correo de contacto: anótalo en la ficha para poder avisar.')
+                ->columnSpanFull(),
 
             /*
              * Con fotos, si hacen falta: el avance de la pieza, una captura
@@ -135,8 +152,22 @@ class CommentsRelationManager extends RelationManager
                             auth()->user(),
                         );
 
+                        // Después de guardar los adjuntos: así las imágenes
+                        // de esta respuesta van dentro del correo.
+                        if (! ($data['avisar'] ?? false)) {
+                            Notification::make()->success()->title('Quedó en el hilo')->body('Sin aviso por correo.')->send();
+                        } else {
+                            try {
+                                $aviso = app(ProjectService::class)->avisarNovedades($proyecto, auth()->user(), $data['body']);
+                                Notification::make()->success()->title('Respuesta enviada')->body('Se le avisó a ' . $aviso->to . '.')->send();
+                            } catch (\App\Services\Projects\ProjectException $e) {
+                                Notification::make()->warning()->title('Quedó en el hilo, pero el aviso no salió')->body($e->getMessage())->persistent()->send();
+                            }
+                        }
+
                         return $comentario;
-                    }),
+                    })
+                    ->successNotification(null),
 
                 // Responder aqui no avisa a nadie: quien pidio el proyecto solo
                 // lo veia si se le ocurria entrar. Este boton se lo cuenta.
