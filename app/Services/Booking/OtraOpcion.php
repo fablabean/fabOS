@@ -81,12 +81,18 @@ class OtraOpcion
                 continue;
             }
 
+            // Quien puede atender es quien está en jornada en esa franja y
+            // libre: preguntar primero por la jornada deja fuera a casi todos
+            // sin mirar sus calendarios uno por uno.
+            $deTurno = $this->cobertura
+                ->enJornada($inicio, $fin, incluirRemota: $s->reservable instanceof Space && $s->reservable->type === 'virtual')
+                ->pluck('id');
+            $enJornada = $deTurno->isNotEmpty();
+
             $libres = $this->quienesPuedenAtender($s)
-                ->filter(fn (User $u) => $this->reservas->personaLibre($u, $inicio, $fin))
+                ->filter(fn (User $u) => $deTurno->contains($u->id) && $this->reservas->personaLibre($u, $inicio, $fin))
                 ->map(fn (User $u) => ['id' => $u->id, 'nombre' => $u->name])
                 ->values()->all();
-
-            $enJornada = $this->cobertura->hayCobertura($inicio, $fin, incluirRemota: $s->reservable instanceof Space && $s->reservable->type === 'virtual');
 
             $sugerencias[] = [
                 'desde'      => $inicio,
@@ -253,10 +259,13 @@ class OtraOpcion
             ->exists();
     }
 
+    /** @var array<int,Collection<int,User>> */
+    private array $atienden = [];
+
     /** @return Collection<int,User> */
     public function quienesPuedenAtender(Reservation $s): Collection
     {
-        return $s->reservable instanceof Asset
+        return $this->atienden[$s->id] ??= $s->reservable instanceof Asset
             ? $this->cobertura->certificadosPara($s->reservable)->values()
             : User::role(User::rolesDelEquipo())->where('status', 'activo')->orderBy('name')->get();
     }
