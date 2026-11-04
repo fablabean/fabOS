@@ -133,4 +133,51 @@ class RecorridoDeProyectosTest extends TestCase
             ->searchTable('lámpara')
             ->assertCanSeeTableRecords([$p]);
     }
+
+    /** Un clic en el estado lo cambia: pausar pide el porqué y no avisa si no se quiere. */
+    public function test_el_estado_se_cambia_desde_la_columna(): void
+    {
+        $admin = $this->conRol(User::ROL_SUPERADMIN);
+        $p = $this->proyecto($admin);
+
+        $this->entra($admin);
+
+        Livewire::test(ListProjects::class)
+            ->callAction(\Filament\Actions\Testing\TestAction::make('cambiar_estado')->table($p), ['estado' => 'pausado', 'motivo' => ''])
+            ->assertHasActionErrors(['motivo' => 'required']);
+
+        Livewire::test(ListProjects::class)
+            ->callAction(\Filament\Actions\Testing\TestAction::make('cambiar_estado')->table($p), ['estado' => 'pausado', 'motivo' => 'Espera la pieza', 'avisar' => false])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('pausado', $p->fresh()->status);
+        $this->assertSame('Espera la pieza', $p->fresh()->closing_notes);
+    }
+
+    /** Varios a la vez: estado y etapa; el que no cumple la compuerta se dice y no frena al resto. */
+    public function test_estado_y_etapa_en_bloque(): void
+    {
+        $admin = $this->conRol(User::ROL_SUPERADMIN);
+        $a = $this->proyecto($admin);
+        $b = $this->proyecto($admin);
+
+        $this->entra($admin);
+
+        Livewire::test(ListProjects::class)
+            ->selectTableRecords([$a->id, $b->id])
+            ->callAction(\Filament\Actions\Testing\TestAction::make('estado_en_bloque')->table()->bulk(), ['estado' => 'cerrado'])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(['cerrado', 'cerrado'], [$a->fresh()->status, $b->fresh()->status]);
+
+        $a->fresh()->update(['status' => 'activo']);
+        $b->fresh()->update(['status' => 'activo', 'stage' => 'propuesta']);
+
+        Livewire::test(ListProjects::class)
+            ->selectTableRecords([$a->id, $b->id])
+            ->callAction(\Filament\Actions\Testing\TestAction::make('etapa_en_bloque')->table()->bulk(), ['etapa' => 'idea', 'avisar' => false])
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(['idea', 'idea'], [$a->fresh()->stage, $b->fresh()->stage]);
+    }
 }
