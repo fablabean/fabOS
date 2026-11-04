@@ -27,6 +27,7 @@ class PlantillaMail extends Mailable
         public string $cuerpo,
         public array $adjuntos = [],
         public array $responderA = [],
+        public ?string $responderEnLinea = null,
     ) {}
 
     /** @return list<\Illuminate\Mail\Mailables\Attachment> */
@@ -41,8 +42,8 @@ class PlantillaMail extends Mailable
     public function envelope(): Envelope
     {
         /*
-         * Sale de una dirección que nadie lee. Si hay una persona detrás —quien
-         * pidió la compra—, «Responder» le llega a ella y no a ese buzón.
+         * Sale de una dirección que nadie lee. «Responder» le llega a quien
+         * tiene el asunto y al buzón del laboratorio (App\Support\ResponderA).
          */
         return new Envelope(
             subject: $this->asunto,

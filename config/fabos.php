@@ -9,6 +9,14 @@ return [
     | fabOS esta pensado para poder desplegarse en otros Fab Labs (§3). Nada
     | especifico de la EAN va incrustado en el codigo: vive aqui.
     */
+    /*
+    | A dónde llega lo que se responde a un aviso cuando no hay nadie asignado,
+    | y en copia cuando sí. Los avisos salen de una dirección que nadie lee.
+    */
+    'correo' => [
+        'responder_a' => env('FABOS_RESPONDER_A', 'os@fablabean.com'),
+    ],
+
     'lab' => [
         // En versales porque así está dibujado el logo: el nombre escrito y la
         // marca contando cosas distintas en la misma pantalla es lo que hace

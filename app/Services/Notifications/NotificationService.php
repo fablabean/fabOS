@@ -7,6 +7,7 @@ use App\Models\NotificationLog;
 use App\Models\NotificationPreference;
 use App\Models\NotificationTemplate;
 use App\Models\User;
+use App\Support\ResponderA;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -63,7 +64,11 @@ class NotificationService
         $cuerpo = $plantilla->render('body', $datos);
 
         try {
-            Mail::to($destinatario->email)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos));
+            Mail::to($destinatario->email)->send(new PlantillaMail(
+                $asunto, $cuerpo, $adjuntos,
+                ResponderA::para($referencia, $destinatario->email),
+                $this->responderEnLaPlataforma($referencia, $datos, $destinatario),
+            ));
         } catch (\Throwable $e) {
             return $this->anotar($clave, $destinatario, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
         }
@@ -110,12 +115,35 @@ class NotificationService
 
         try {
             // Con copia visible: quien lo recibe ve quién más está enterado.
-            Mail::to($correo)->cc($copias)->send(new PlantillaMail($asunto, $cuerpo, $adjuntos, $responderA));
+            Mail::to($correo)->cc($copias)->send(new PlantillaMail(
+                $asunto, $cuerpo, $adjuntos,
+                ResponderA::para($referencia, $correo, $responderA),
+                $this->responderEnLaPlataforma($referencia, $datos),
+            ));
         } catch (\Throwable $e) {
             return $this->anotarSuelto($clave, $correo, $plantilla, 'fallido', $e->getMessage(), $referencia, $asunto, $cuerpo);
         }
 
         return $this->anotarSuelto($clave, $correo, $plantilla, 'enviado', null, $referencia, $asunto, $cuerpo);
+    }
+
+    /**
+     * El botón para contestar donde queda la conversación: la página del
+     * proyecto, con su enlace firmado. Solo para quien lo pidió —el equipo
+     * contesta desde el panel—, y solo si el aviso trae ese enlace.
+     */
+    private function responderEnLaPlataforma(?Model $referencia, array $datos, ?User $destinatario = null): ?string
+    {
+        if (! $referencia instanceof \App\Models\Project || ! is_string($datos['enlace'] ?? null)
+            || ! str_contains($datos['enlace'], '/propuesta')) {
+            return null;
+        }
+
+        if ($destinatario && $destinatario->id === $referencia->lead_id) {
+            return null;
+        }
+
+        return $datos['enlace'] . '#responder';
     }
 
     private function anotarSuelto(
