@@ -67,15 +67,17 @@ class ListProjects extends ListRecords
      * de la Universidad pasa por traslado presupuestal— y quien administra
      * mira uno a la vez. Un filtro escondido en el desplegable obligaba a
      * tres clics cada vez; una pestaña es uno, y dice cuantos hay.
+     *
+     * Cuántos con lo que está filtrado y buscado, no del laboratorio entero:
+     * el número de la pestaña tiene que ser lo que se ve al pulsarla.
      */
     public function getTabs(): array
     {
-        $cuenta = fn (?string $tipo) => Project::query()
-            ->where('status', 'activo')
-            ->when($tipo, fn ($q) => $q->where('client_kind', $tipo))
-            ->count();
+        $cuenta = fn (?string $tipo) => $tipo === null
+            ? array_sum($this->cuentasPorCliente())
+            : ($this->cuentasPorCliente()[$tipo] ?? 0);
 
-        $pestanas = ['todos' => Tab::make('Todos')->badge($cuenta(null))];
+        $pestanas = ['todos' => Tab::make('Todos')->badge(fn () => $cuenta(null))];
 
         foreach ([
             'estudiante' => 'Estudiantes',
@@ -83,11 +85,39 @@ class ListProjects extends ListRecords
             'externo'    => 'De fuera',
         ] as $tipo => $nombre) {
             $pestanas[$tipo] = Tab::make($nombre)
-                ->badge($cuenta($tipo))
+                ->badge(fn () => $cuenta($tipo))
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('client_kind', $tipo));
         }
 
         return $pestanas;
+    }
+
+    /** @var array<string, int>|null */
+    protected ?array $cuentasPorCliente = null;
+
+    /**
+     * Una sola consulta para las cuatro pestañas, con los filtros y la
+     * búsqueda de la tabla pero sin la pestaña puesta.
+     *
+     * @return array<string, int>
+     */
+    protected function cuentasPorCliente(): array
+    {
+        if ($this->cuentasPorCliente !== null) {
+            return $this->cuentasPorCliente;
+        }
+
+        $consulta = ProjectResource::getEloquentQuery();
+        $this->applyFiltersToTableQuery($consulta);
+        $this->applySearchToTableQuery($consulta);
+
+        return $this->cuentasPorCliente = $consulta
+            ->reorder()
+            ->selectRaw('client_kind, count(*) as total')
+            ->groupBy('client_kind')
+            ->pluck('total', 'client_kind')
+            ->map(fn ($n) => (int) $n)
+            ->all();
     }
 
     /**

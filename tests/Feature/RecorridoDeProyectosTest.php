@@ -180,4 +180,21 @@ class RecorridoDeProyectosTest extends TestCase
 
         $this->assertSame(['idea', 'idea'], [$a->fresh()->stage, $b->fresh()->stage]);
     }
+
+    /** Los números de las pestañas cuentan lo filtrado, no el laboratorio entero. */
+    public function test_las_pestanas_cuentan_con_los_filtros(): void
+    {
+        $admin = $this->conRol(User::ROL_SUPERADMIN);
+        $this->proyecto($admin)->update(['client_kind' => 'estudiante']);
+        $this->proyecto($admin)->update(['client_kind' => 'externo']);
+        $this->proyecto($this->conRol(User::ROL_ADMINISTRADOR))->update(['client_kind' => 'estudiante']);
+
+        $this->entra($admin);
+
+        $pestanas = Livewire::test(ListProjects::class)->instance()->getCachedTabs();
+        $this->assertEquals([2, 1, 1], [$pestanas['todos']->getBadge(), $pestanas['estudiante']->getBadge(), $pestanas['externo']->getBadge()]);
+
+        $pestanas = Livewire::test(ListProjects::class)->removeTableFilter('mios')->instance()->getCachedTabs();
+        $this->assertEquals([3, 2], [$pestanas['todos']->getBadge(), $pestanas['estudiante']->getBadge()]);
+    }
 }
