@@ -24,6 +24,11 @@
             border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit;min-width:14rem;
         }
         .bnd .nota{font-size:.8rem;color:rgb(107 114 128);margin-top:.5rem}
+        .propuesta-enviada{margin:.6rem 0 0;padding:.6rem .8rem;border-radius:8px;border:1px solid rgba(128,128,128,.25);font-size:.85rem}
+        .propuesta-enviada .cab{font-size:.75rem;color:rgb(107 114 128);margin-bottom:.3rem}
+        .propuesta-enviada blockquote{margin:.2rem 0 .5rem;padding-left:.6rem;border-left:3px solid rgba(128,128,128,.35);font-style:italic}
+        .propuesta-enviada ul{margin:.2rem 0 0;padding-left:1.1rem}
+        .propuesta-enviada .tomada{font-weight:600;color:#15803d}
     </style>
 
     <div class="bnd">
@@ -57,6 +62,12 @@
 
                 @if ($s->status_reason)
                     <p class="motivo">{{ $s->status_reason }}</p>
+                @endif
+
+                {{-- Lo que se le propuso, tal como le llegó: el mensaje y las
+                     opciones, con su enlace por si hay que reenviárselo. --}}
+                @if ($s->propuesta)
+                    @include('filament.reservas.propuesta-enviada', ['reserva' => $s])
                 @endif
 
                 {{-- La franja ya corriendo: se aprueba igual —la persona suele

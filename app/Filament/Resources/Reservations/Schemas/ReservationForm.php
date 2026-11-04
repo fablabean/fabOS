@@ -52,6 +52,15 @@ class ReservationForm
                                 default => Reservation::MODOS[$record->mode] ?? $record->mode,
                             }),
 
+                        // Lo que se le propuso desde la bandeja, tal como le llegó.
+                        Placeholder::make('propuesta_enviada')
+                            ->label('Otra opción propuesta')
+                            ->visible(fn (?Reservation $record) => filled($record?->propuesta))
+                            ->columnSpanFull()
+                            ->content(fn (?Reservation $record) => $record
+                                ? new \Illuminate\Support\HtmlString(view('filament.reservas.propuesta-enviada', ['reserva' => $record])->render())
+                                : null),
+
                         // Lo que la persona subió para la demo: se baja desde
                         // aquí para tenerlo listo en la máquina.
                         Placeholder::make('archivos_demo')

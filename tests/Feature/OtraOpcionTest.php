@@ -123,6 +123,16 @@ class OtraOpcionTest extends TestCase
         $this->assertCount(1, $s->propuesta['opciones']);
         $this->assertStringContainsString('Esperando su respuesta', $s->status_reason);
 
+        // Y queda a la vista en la bandeja y en la ficha de la reserva.
+        $this->get(Bandeja::getUrl())->assertOk()
+            ->assertSee('Propuesta enviada')
+            ->assertSee('Se puede, pero solo una hora.')
+            ->assertSee('viernes 28 de agosto, de 12:00 a 13:00')
+            ->assertSee('su enlace');
+        $this->get(\App\Filament\Resources\Reservations\ReservationResource::getUrl('edit', ['record' => $s]))->assertOk()
+            ->assertSee('Otra opción propuesta')
+            ->assertSee('Se puede, pero solo una hora.');
+
         $correo = NotificationLog::where('key', 'reserva.otra_opcion')->where('to', 'jpablo@test.co')->sole();
         $this->assertStringContainsString('Se puede, pero solo una hora.', $correo->body);
         $this->assertStringContainsString('viernes 28 de agosto, de 12:00 a 13:00', $correo->body);

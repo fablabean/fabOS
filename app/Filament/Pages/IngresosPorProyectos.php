@@ -143,6 +143,10 @@ class IngresosPorProyectos extends Page
 
     public function getViewData(): array
     {
+        // Una pantalla abierta desde antes de un despliegue vuelve sin ajuste:
+        // se toma el guardado en vez de romper.
+        $this->ajuste = Calculo::normalizar($this->ajuste);
+
         return app(Calculo::class)->calcular(null, $this->ajuste) + [
             'porArea'     => app(Calculo::class)->porArea(),
             'aproximados' => Calculo::aproximados(),
