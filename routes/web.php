@@ -227,6 +227,13 @@ Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'creat
 // La confirmación, en su propia página: arriba del formulario, en el teléfono
 // no se veía y se volvía a enviar.
 Route::get('/proyectos/solicitud-recibida', [SolicitudDeProyectoController::class, 'recibida'])->name('proyectos.recibida');
+
+// Tomar la otra opción que la coordinación propuso para una solicitud. Por el
+// enlace firmado del correo, sin iniciar sesión; abrirlo no reserva, el botón sí.
+Route::get('/reservas/{reservation}/otra-opcion/{opcion}', [\App\Http\Controllers\OtraOpcionController::class, 'show'])
+    ->middleware('signed')->whereNumber('opcion')->name('reservas.otra-opcion');
+Route::post('/reservas/{reservation}/otra-opcion/{opcion}', [\App\Http\Controllers\OtraOpcionController::class, 'store'])
+    ->middleware(['signed', 'throttle:20,60'])->whereNumber('opcion')->name('reservas.otra-opcion.tomar');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
     ->middleware(['throttle:40,60', 'captcha:correo,diferido'])
     ->name('proyectos.solicitar.store');

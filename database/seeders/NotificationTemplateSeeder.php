@@ -876,6 +876,27 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'inicio', 'enlace', 'registro', 'condiciones', 'mensaje', 'laboratorio'],
             ],
             [
+                'key'          => 'reserva.otra_opcion',
+                'name'         => 'Otra opción para una solicitud',
+                'description'  => 'A quien pidió una reserva que no se puede tal cual, cuando la coordinación le propone otras opciones desde la bandeja.',
+                'is_essential' => true,
+                'subject'      => 'Tu solicitud de {recurso}: te proponemos otra opción',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Revisamos tu solicitud de {recurso} para el {pedida}.{mensaje}
+
+                    Estas opciones sí te las podemos confirmar. Abre la que te sirva y queda reservada:
+
+                    {opciones}
+
+                    Si ninguna te sirve, responde este correo y lo vemos.
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'recurso', 'pedida', 'mensaje', 'opciones', 'laboratorio'],
+            ],
+            [
                 'key'          => 'curso.cohorte_abierta',
                 'name'         => 'La cohorte se abrió',
                 'description'  => 'A cada preinscrito, una sola vez, cuando el equipo abre la cohorte que estaba esperando.',

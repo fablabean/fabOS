@@ -105,6 +105,12 @@
                     <x-filament::button wire:click="rechazar({{ $s->id }})" color="danger">
                         Rechazar
                     </x-filament::button>
+
+                    {{-- El medio entre aprobar y rechazar: escribirle con
+                         opciones cercanas que sí caben. --}}
+                    <x-filament::button wire:click="mountAction('proponer', { reserva: {{ $s->id }} })" color="gray" icon="heroicon-o-chat-bubble-left-right">
+                        Proponer otra opción
+                    </x-filament::button>
                 </div>
 
                 @if ($fila['ya_empezo'])

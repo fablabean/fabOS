@@ -20,7 +20,7 @@ class Reservation extends Model
         'advisory_asset_id', 'advisory_area_id', 'enrollment_id', 'participants', 'shares_seats', 'parent_reservation_id',
         'status', 'mode', 'is_production', 'is_demo', 'starts_at', 'ends_at', 'reinstated_at',
         'checked_in_at', 'checked_out_at',
-        'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'material_note', 'material_rate_card_id', 'material_estimated', 'material_used', 'status_reason',
+        'estimated_cost_minor', 'actual_cost_minor', 'purpose', 'material_note', 'material_rate_card_id', 'material_estimated', 'material_used', 'status_reason', 'propuesta',
     ];
 
     protected function casts(): array
@@ -28,6 +28,7 @@ class Reservation extends Model
         return [
             'is_production'  => 'boolean',
             'is_demo'        => 'boolean',
+            'propuesta'      => 'array',
             'material_estimated' => 'float',
             'material_used'      => 'float',
             'shares_seats'   => 'boolean',

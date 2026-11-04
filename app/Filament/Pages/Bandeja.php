@@ -167,6 +167,96 @@ class Bandeja extends Page
             ->send();
     }
 
+    /**
+     * Escribirle a quien pidió, con las opciones cercanas que sí caben.
+     *
+     * Antes había dos salidas: aprobar tal cual o rechazar. Lo común es el
+     * medio —«se puede, pero solo una hora», «mejor el jueves»— y eso se
+     * arreglaba por WhatsApp y después a mano en la reserva. Aquí va en un
+     * correo con las opciones como enlaces, y la que elija queda reservada.
+     */
+    /** @var array<int,array> las sugerencias de cada solicitud, durante esta petición */
+    protected array $sugerenciasDe = [];
+
+    public function proponerAction(): \Filament\Actions\Action
+    {
+        // Una vez por solicitud: la ventana las pide al dibujar cada campo.
+        $sugerencias = fn (array $arguments) => $this->sugerenciasDe[(int) ($arguments['reserva'] ?? 0)]
+            ??= ($s = Reservation::find($arguments['reserva'] ?? 0))
+                ? app(\App\Services\Booking\OtraOpcion::class)->sugerencias($s)
+                : [];
+
+        return \Filament\Actions\Action::make('proponer')
+            ->label('Proponer otra opción')
+            ->modalHeading(fn (array $arguments) => 'Proponer otra opción a ' . (Reservation::find($arguments['reserva'] ?? 0)?->user?->name ?? 'quien la pidió'))
+            ->modalDescription('Le llega un correo con tu mensaje y las opciones que marques. La que abra y confirme queda reservada sola, con quien elijas abajo; mientras tanto la solicitud sigue aquí.')
+            ->modalWidth('2xl')
+            ->modalSubmitActionLabel('Enviar')
+            ->fillForm(function (array $arguments) use ($sugerencias) {
+                $s = Reservation::find($arguments['reserva'] ?? 0);
+                $primera = $sugerencias($arguments)[0] ?? null;
+
+                return [
+                    'mensaje'  => $s ? 'Hola ' . str($s->user?->name)->before(' ') . ', a esa hora no lo podemos confirmar tal cual. Te propongo estas opciones:' : '',
+                    'opciones' => $primera ? [0] : [],
+                    'atiende'  => $primera['libres'][0]['id'] ?? null,
+                ];
+            })
+            ->schema(fn (array $arguments) => [
+                \Filament\Forms\Components\Textarea::make('mensaje')
+                    ->label('Qué le dices')
+                    ->rows(3)
+                    ->maxLength(1500)
+                    ->helperText('Va al principio del correo. Por ejemplo: «Se puede, pero solo una hora», o por qué no a esa hora.'),
+
+                \Filament\Forms\Components\CheckboxList::make('opciones')
+                    ->label('Opciones cercanas que sí caben')
+                    ->helperText('El recurso está libre en todas. Primero las que caen en jornada y tienen quien atienda.')
+                    ->options(collect($sugerencias($arguments))->mapWithKeys(fn ($o, $i) => [$i => $o['etiqueta']])->all())
+                    ->descriptions(collect($sugerencias($arguments))->mapWithKeys(fn ($o, $i) => [$i => $o['por_que']
+                        . ' · ' . ($o['en_jornada'] ? 'en jornada' : 'fuera de jornada: hay que abrirla')
+                        . ' · ' . ($o['libres'] ? 'libres: ' . collect($o['libres'])->pluck('nombre')->map(fn ($n) => str($n)->words(2, ''))->implode(', ') : 'nadie del equipo libre')])->all())
+                    ->columns(1)
+                    ->bulkToggleable(false),
+
+                \Filament\Forms\Components\Select::make('atiende')
+                    ->label('Quién la atiende si la toma')
+                    ->options(fn () => ($s = Reservation::find($arguments['reserva'] ?? 0))
+                        ? app(\App\Services\Booking\OtraOpcion::class)->quienesPuedenAtender($s)->pluck('name', 'id')->all()
+                        : [])
+                    ->placeholder('Quien esté libre en ese momento')
+                    ->helperText('Si cuando la tome esa persona ya no está libre, la atiende otra que sí lo esté.'),
+            ])
+            ->action(function (array $data, array $arguments) use ($sugerencias) {
+                $s = Reservation::find($arguments['reserva'] ?? 0);
+
+                if (! $s) {
+                    return;
+                }
+
+                $todas = $sugerencias($arguments);
+                $elegidas = collect($data['opciones'] ?? [])
+                    ->map(fn ($i) => $todas[(int) $i] ?? null)->filter()
+                    ->map(fn ($o) => ['desde' => $o['desde']->toIso8601String(), 'hasta' => $o['hasta']->toIso8601String()])
+                    ->values()->all();
+
+                try {
+                    app(\App\Services\Booking\OtraOpcion::class)->proponer(
+                        $s, $elegidas, $data['mensaje'] ?? null,
+                        filled($data['atiende'] ?? null) ? User::find($data['atiende']) : null,
+                        auth()->user(),
+                    );
+                } catch (BookingException $e) {
+                    Notification::make()->title('No se pudo enviar')->body($e->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('Propuesta enviada')
+                    ->body('Le llegó a ' . $s->user?->email . '. Si toma una opción, la reserva se confirma sola.')->send();
+            });
+    }
+
     public function rechazar(int $reservaId): void
     {
         $solicitud = Reservation::find($reservaId);
