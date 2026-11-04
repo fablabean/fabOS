@@ -34,7 +34,7 @@
         <x-filament::section>
             <x-slot name="heading">Cómo se cuenta</x-slot>
             <x-slot name="description">
-                Proyectos que llegaron a ejecución, a pago o a cierre, sin descartarse. Vale lo acordado, o lo
+                Proyectos que llegaron a ejecución, a pago o a cierre, sin descartarse ni estar en pausa (si se reanudan, vuelven a sumar). Vale lo acordado, o lo
                 estimado mientras no haya acuerdo; lo que no tiene ninguno de los dos no suma y se lista abajo.
                 <strong>Facturable</strong> es el valor de lo hecho para estudiantes, la Universidad y de fuera —lo que se cobra, no lo que ya entró: eso está en Pagos—; <strong>internos</strong> es
                 el valor de lo que el laboratorio hizo sin cobrar, aparte. Las alianzas no entran.

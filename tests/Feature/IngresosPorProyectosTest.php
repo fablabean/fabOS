@@ -49,6 +49,7 @@ class IngresosPorProyectosTest extends TestCase
         $sinValor = $this->ejecutado('estudiante', 0);
         $this->ejecutado('estudiante', 999_000, stage: 'idea', status: 'activo');
         $this->ejecutado('externo', 777_000, status: 'descartado');
+        $pausado = $this->ejecutado('estudiante', 5_000_000, stage: 'ejecucion', status: 'pausado');
 
         $this->travelTo(Carbon::parse('2026-09-30 18:00', config('fabos.lab.timezone')));
         $d = app(IngresosPorProyectos::class)->calcular();
@@ -60,12 +61,16 @@ class IngresosPorProyectosTest extends TestCase
         $this->assertSame(4, $d['totales']['n']);
         $this->assertSame([$sinValor->id], $d['sinValor']->pluck('id')->all());
 
+        // Reanudado, vuelve a sumar.
+        $pausado->forceFill(['status' => 'activo'])->saveQuietly();
+        $this->assertSame(1_250_000 + 5_000_000, app(IngresosPorProyectos::class)->calcular()['totales']['cobrado']);
+
         // De dónde sale cada cifra: los proyectos, con su valor y su campo.
         $calculo = app(IngresosPorProyectos::class);
         $this->assertSame([1_200_000], $calculo->origen('2026-09', 'externo')->pluck('valor')->all());
         $this->assertSame(['Estimado'], $calculo->origen('2026-09', 'externo')->pluck('fuente')->all());
-        $this->assertSame(2, $calculo->origen(null, 'cobrado')->count());
-        $this->assertSame(4, $calculo->origen('2026-09', 'n')->count());
+        $this->assertSame(3, $calculo->origen(null, 'cobrado')->count());
+        $this->assertSame(5, $calculo->origen('2026-09', 'n')->count());
 
         // Treinta días observados: el promedio mensual es casi lo de todo el mes.
         $this->assertEqualsWithDelta(1_250_000, $d['promedio']['cobrado'], 30_000);

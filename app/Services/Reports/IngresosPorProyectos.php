@@ -23,8 +23,8 @@ use Illuminate\Support\Collection;
  * Las alianzas no entran: su valor es de mercado, no una venta, y se leen en
  * su propio resumen.
  *
- * Ejecutado es lo que llegó a ejecución, a pago o a cierre sin descartarse ni
- * perderse. Cuenta en el mes en que se cerró; lo que sigue en curso, en el que
+ * Ejecutado es lo que llegó a ejecución, a pago o a cierre sin descartarse,
+ * perderse ni quedar en pausa. Cuenta en el mes en que se cerró; lo que sigue en curso, en el que
  * se aceptó, o si no en el que entró.
  */
 class IngresosPorProyectos
@@ -40,7 +40,9 @@ class IngresosPorProyectos
     {
         return Project::query()
             ->whereIn('stage', ['ejecucion', 'pago', 'cierre'])
-            ->whereNotIn('status', ['descartado', 'perdido'])
+            // En pausa no suma: lo más probable es que no se completara. Si se
+            // reanuda, vuelve a contar solo.
+            ->whereNotIn('status', ['descartado', 'perdido', 'pausado'])
             ->where(fn ($q) => $q->whereNull('modality')->orWhere('modality', '!=', 'alianza'))
             ->with('lead:id,name')
             ->orderBy('id')
