@@ -32,6 +32,34 @@ class ListProjects extends ListRecords
         ];
     }
 
+    protected bool $recorridoGuardado = false;
+
+    /**
+     * Cada vez que se pinta la lista, queda anotado su orden completo —con
+     * filtros, pestaña y búsqueda— para que la ficha sepa cuál va antes y
+     * cuál después (App\Support\RecorridoDeProyectos). Una vez por pintada:
+     * la tabla pide sus registros más de una vez.
+     */
+    public function getTableRecords(): \Illuminate\Support\Collection | \Illuminate\Contracts\Pagination\Paginator | \Illuminate\Contracts\Pagination\CursorPaginator
+    {
+        $registros = parent::getTableRecords();
+
+        if ($this->recorridoGuardado) {
+            return $registros;
+        }
+
+        $this->recorridoGuardado = true;
+
+        \App\Support\RecorridoDeProyectos::guardar(
+            $this->getFilteredSortedTableQuery()
+                ->limit(\App\Support\RecorridoDeProyectos::TOPE)
+                ->pluck('projects.id')
+                ->all()
+        );
+
+        return $registros;
+    }
+
     /**
      * Pestañas por tipo de cliente: estudiantes, la Universidad, de fuera.
      *

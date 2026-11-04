@@ -38,6 +38,7 @@ class ProjectsTable
     {
         return $table
             ->defaultSort('id', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->with('ultimoComentario.user:id,name'))
             // El semaforo de la entrega: la fila se tiñe segun cuanto falta,
             // y en rojo si ya paso sin cerrarse. Los estilos van en el panel.
             //
@@ -98,7 +99,9 @@ class ProjectsTable
 
                 TextColumn::make('name')->sortable()
                     ->label('Proyecto')
-                    ->searchable()
+                    // También por la nota interna: es como le decimos al
+                    // proyecto entre nosotros.
+                    ->searchable(['name', 'notes'])
                     ->weight('medium')
                     ->wrap()
                     // Se queda con el ancho que sobra: es lo que se viene a
@@ -107,10 +110,23 @@ class ProjectsTable
                     // Debajo, quién pide; y si lleva más de un día hábil
                     // esperándonos, desde cuándo: el latido de la fila dice
                     // que algo pasa, y esto dice qué.
-                    ->description(fn (Project $r) => $r->sinRespuesta()
-                        ? new HtmlString(e($r->quienPide()) . '<span class="aviso-sin-respuesta">Sin respuesta '
-                            . e($r->esperaRespuestaDesde()->locale('es')->diffForHumans()) . '</span>')
-                        : $r->quienPide()),
+                    //
+                    // Y la nota interna, que es como le decimos al proyecto
+                    // entre nosotros, y lo último que se dijo con quien lo
+                    // pidió: se reconoce la conversación sin abrir la ficha.
+                    ->description(fn (Project $r) => new HtmlString(e($r->quienPide())
+                        . ($r->sinRespuesta()
+                            ? '<span class="aviso-sin-respuesta">Sin respuesta '
+                                . e($r->esperaRespuestaDesde()->locale('es')->diffForHumans()) . '</span>'
+                            : '')
+                        . (filled($r->notes)
+                            ? '<span class="proyecto-nota">' . e(\Illuminate\Support\Str::limit($r->notes, 120)) . '</span>'
+                            : '')
+                        . (($c = $r->ultimoComentario)
+                            ? '<span class="proyecto-mensaje" title="' . e($c->body) . '"><b>' . e($c->quien()) . ', '
+                                . e($c->created_at->locale('es')->diffForHumans()) . ':</b> '
+                                . e(\Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($c->body)), 160)) . '</span>'
+                            : ''))),
 
                 // De quien es el encargo: estaba pegado al codigo, donde
                 // ensanchaba una columna que solo tiene que decir «PRY-2026-33».

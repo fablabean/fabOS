@@ -44,4 +44,37 @@
     @media (prefers-reduced-motion: reduce) {
         tr.sin-respuesta { animation: none; background-color: color-mix(in srgb, #E53E3E 18%, transparent); }
     }
+
+    /* En la lista, debajo del nombre: cómo le decimos al proyecto entre
+       nosotros (la nota interna), y lo último que se dijo con quien lo pidió. */
+    .proyecto-nota { display: block; margin-top: .2rem; color: #B7791F; font-size: .75rem; font-weight: 600; }
+    .dark .proyecto-nota { color: #F6E05E; }
+    .proyecto-mensaje { display: block; margin-top: .15rem; color: #6B7280; font-size: .72rem; font-style: italic;
+                        overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .proyecto-mensaje b { font-style: normal; font-weight: 600; }
+
+    /* La barra para pasar de un proyecto a otro: fija bajo la barra superior. */
+    .recorrido-proyectos { position: sticky; top: 4rem; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr);
+                           align-items: center; gap: .75rem; padding: .45rem .6rem; margin-bottom: -.5rem; border-radius: .75rem;
+                           background: rgba(255, 255, 255, .94); backdrop-filter: blur(6px);
+                           box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 0 0 1px rgba(3, 7, 18, .06); }
+    .dark .recorrido-proyectos { background: rgba(24, 24, 27, .94); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); }
+    .recorrido-paso { display: flex; align-items: center; gap: .4rem; min-width: 0; padding: .3rem .5rem; border-radius: .5rem; color: inherit; }
+    .recorrido-paso.is-siguiente { justify-content: flex-end; text-align: right; }
+    a.recorrido-paso:hover { background: color-mix(in srgb, #D69E2E 14%, transparent); }
+    .recorrido-icono { width: 1.1rem; height: 1.1rem; flex: none; color: #B7791F; }
+    .recorrido-vecino { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+    .recorrido-codigo { font-size: .68rem; color: #6B7280; font-variant-numeric: tabular-nums; }
+    .recorrido-nombre { font-size: .8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recorrido-actual { min-width: 0; text-align: center; line-height: 1.25; }
+    .recorrido-titulo { display: flex; justify-content: center; align-items: baseline; gap: .5rem; white-space: nowrap; overflow: hidden; }
+    .recorrido-titulo strong { overflow: hidden; text-overflow: ellipsis; font-size: .95rem; }
+    .recorrido-etapa { font-size: .68rem; padding: .05rem .5rem; border-radius: 999px; background: color-mix(in srgb, #D69E2E 18%, transparent); }
+    .recorrido-detalle { font-size: .72rem; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recorrido-nota { color: #B7791F; font-weight: 600; }
+    .dark .recorrido-nota, .dark .recorrido-icono { color: #F6E05E; }
+    @media (max-width: 640px) {
+        .recorrido-proyectos { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .recorrido-vecino { display: none; }
+    }
 </style>

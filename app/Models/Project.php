@@ -771,6 +771,12 @@ class Project extends Model
         return $this->hasMany(ProjectComment::class)->orderBy('created_at');
     }
 
+    /** Lo último que se dijo: va en la lista, debajo del nombre. */
+    public function ultimoComentario(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ProjectComment::class)->latestOfMany();
+    }
+
     /** Lo que se gastó por fuera del laboratorio. */
     public function costs(): HasMany
     {
