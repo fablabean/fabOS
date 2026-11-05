@@ -300,13 +300,19 @@ p{margin:0}
 @media (max-width:760px){.rail{display:none}}
 .hud{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-soft);background:var(--mat-deep);padding:4px 10px;border:1px solid var(--line)}
 .hud b{color:var(--laser)}
-.progreso{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:8px;z-index:11;background:var(--mat-deep);border-bottom:1px solid var(--line)}
+.progreso{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:16px;z-index:11;background:var(--mat-deep);border-bottom:1px solid var(--line)}
+.progreso::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100%/6 - 1px),var(--line) calc(100%/6 - 1px) calc(100%/6));pointer-events:none;z-index:1}
 .progreso .lleno{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--fab);transition:width .5s linear}
+.progreso .lleno::after{content:"";position:absolute;right:-1px;top:-3px;bottom:-3px;width:4px;background:var(--ink);box-shadow:0 0 12px var(--fab)}
 .progreso.late .lleno{background:var(--laser)}
-.progreso .plan{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.7;transition:left .3s}
-.progreso .hito{position:absolute;left:60%;top:0;bottom:0;width:2px;background:var(--robot)}
-.progreso .hito::after{content:"18 min · experiencia";position:absolute;top:10px;left:4px;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;color:var(--ink-soft);white-space:nowrap}
-.timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;align-items:center;gap:6px;background:var(--mat-deep);border:1px solid var(--line);padding:3px 4px 3px 10px;font-family:var(--f-mono)}
+.progreso.late .lleno::after{box-shadow:0 0 12px var(--laser)}
+.progreso .plan{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--ink);opacity:.8;transition:left .3s;z-index:2}
+.progreso .hito{position:absolute;left:60%;top:0;bottom:0;width:3px;background:var(--robot);z-index:2}
+.progreso .min{position:absolute;top:19px;transform:translateX(-50%);font-family:var(--f-mono);font-size:10px;color:var(--ink-soft);letter-spacing:.04em;pointer-events:none;white-space:nowrap}
+.progreso .min:first-of-type{transform:none;left:20px!important}
+.progreso .min.ult{transform:translateX(-100%);margin-left:-6px}
+.progreso .min.exp{color:var(--robot)}
+.timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;align-items:center;gap:6px;background:var(--mat-deep);border:1px solid var(--line);padding:3px;font-family:var(--f-mono)}
 .timer .t{font-size:18px;font-variant-numeric:tabular-nums;color:var(--ink);min-width:5ch;text-align:right}
 .timer .goal{font-size:12px;color:var(--ink-soft)}
 .timer .st{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);min-width:9ch}
@@ -721,10 +727,9 @@ a{color:var(--laser)}
 <div class="hud" id="hud" aria-live="polite"><b>01</b> / 15</div>
 <div class="progreso" id="progreso" role="progressbar" aria-label="Avance de la sesión de 30 minutos" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0">
   <div class="lleno" id="pLleno"></div><div class="hito" aria-hidden="true"></div><div class="plan" id="pPlan" title="Dónde deberías ir según la lámina actual"></div>
+  <span class="min" style="left:0">0</span><span class="min" style="left:16.667%">5</span><span class="min" style="left:33.333%">10</span><span class="min" style="left:50%">15</span><span class="min exp" style="left:60%">18 · experiencia</span><span class="min" style="left:83.333%">25</span><span class="min ult" style="left:100%">30 min</span>
 </div>
-<div class="timer" id="timer" role="timer" aria-label="Tiempo de la sesión">
-  <span class="t" id="tTime">00:00</span><span class="goal">/ 30:00</span>
-  <span class="st" id="tState">en pausa</span>
+<div class="timer" id="timer" aria-label="Control del tiempo de la sesión">
   <button id="tPlay" type="button" aria-label="Iniciar o pausar el cronómetro (tecla T)">▶</button>
   <button id="tReset" type="button" aria-label="Reiniciar el cronómetro">↺</button>
 </div>
@@ -771,18 +776,17 @@ a{color:var(--laser)}
     else if(e.key==='End'){e.preventDefault();go(slides.length-1)}
   });
   // Cronómetro de la sesión: compara lo transcurrido con el minuto en que termina la lámina actual
-  var tEl=document.getElementById('timer'),tTime=document.getElementById('tTime'),tState=document.getElementById('tState'),tPlay=document.getElementById('tPlay');
+  var tPlay=document.getElementById('tPlay');
   var acum=0,desde=null;
   try{var g=JSON.parse(sessionStorage.getItem('cronometro')||'null');if(g){acum=g.acum||0;desde=g.desde||null}}catch(_){}
   function guardar(){try{sessionStorage.setItem('cronometro',JSON.stringify({acum:acum,desde:desde}))}catch(_){}}
   function ms(){return acum+(desde?Date.now()-desde:0)}
   function fin(i){var r=/[–-](\d+)/.exec(MIN[i]||'');return r?+r[1]:null}
   function pintar(){
-    var s=Math.floor(ms()/1000);tTime.textContent=pad(Math.floor(s/60))+':'+pad(s%60);
-    tPlay.textContent=desde?'❚❚':'▶';
+    var s=Math.floor(ms()/1000);
+    tPlay.textContent=desde?'❚❚':'▶';tPlay.title=desde?'Pausar (T)':(s?'Seguir (T)':'Comenzar (T)');
     var f=fin(cur),tarde=f!==null&&s>f*60;
-    tEl.classList.toggle('late',tarde);tEl.classList.toggle('ok',!!desde&&!tarde&&f!==null);
-    tState.textContent=!desde?(s?'en pausa':'listo'):f===null?'':tarde?'vas tarde':'a tiempo';
+    prog.title=Math.floor(s/60)+' de 30 minutos';
     var pct=Math.min(100,s/(30*60)*100);
     pLleno.style.width=pct+'%';prog.classList.toggle('late',tarde);prog.setAttribute('aria-valuenow',Math.floor(s/60));
     pPlan.hidden=f===null;if(f!==null)pPlan.style.left='calc('+(f/30*100)+'% - 1px)';
