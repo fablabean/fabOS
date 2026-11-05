@@ -161,8 +161,8 @@ class SemanaDelLaboratorioTest extends TestCase
     }
 
     /**
-     * Abre con hoy a la izquierda, sin flecha hacia atrás, y con la raya de
-     * la hora de ahora en la columna de hoy.
+     * Abre con hoy a la izquierda y con la raya de la hora de ahora en la
+     * columna de hoy; «Anterior» lleva a los días que ya pasaron.
      */
     public function test_el_widget_abre_en_hoy_con_la_hora_marcada(): void
     {
@@ -174,14 +174,18 @@ class SemanaDelLaboratorioTest extends TestCase
 
         \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
             ->assertSee('29/09 – 05/10/2026')
-            ->assertDontSee('← Anterior')
+            ->assertSee('← Anterior')
             ->assertDontSeeHtml('>Hoy</button>')
             ->assertSeeHtml('class="sem-ahora"')
             ->assertSee('10:30')
             ->call('irA', '2026-10-06')
             ->assertSee('← Anterior')
             ->assertSeeHtml('>Hoy</button>')
-            ->assertDontSeeHtml('class="sem-ahora"');
+            ->assertDontSeeHtml('class="sem-ahora"')
+            ->call('irA', '2026-09-29')
+            ->call('irA', '2026-09-22')
+            ->assertSee('22/09 – 28/09/2026')
+            ->assertSeeHtml('>Hoy</button>');
 
         Carbon::setTestNow();
     }

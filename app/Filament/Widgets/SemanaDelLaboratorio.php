@@ -56,8 +56,8 @@ class SemanaDelLaboratorio extends Widget
 
     protected function getViewData(): array
     {
-        // Desde hoy y no por semanas: lo que ya pasó está en la tabla de abajo,
-        // y aquí se mira lo que viene.
+        // Desde hoy y no por semanas: abre en lo que viene, y con «Anterior»
+        // se mira lo que ya pasó.
         return [
             's' => app(OcupacionSemanal::class)->paraVer(
                 $this->semana,

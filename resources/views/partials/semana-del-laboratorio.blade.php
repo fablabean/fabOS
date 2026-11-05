@@ -21,8 +21,8 @@
     $hoy = now($tz)->toDateString();
     $estaSemana = now($tz)->startOfWeek()->toDateString();
     $desdeHoy = $s['desdeHoy'] ?? false;
-    // Adónde llevan las flechas. Desde hoy se avanza de seis en seis días, y
-    // hacia atrás solo hasta hoy: lo que ya pasó está en la tabla.
+    // Adónde llevan las flechas. Desde hoy se avanza y se retrocede de seis en
+    // seis días; también antes de hoy, para mirar lo que ya pasó.
     if ($desdeHoy) {
         $siguiente = $s['hasta']->copy()->addDay()->toDateString();
         $atras = $s['desde']->copy();
@@ -30,7 +30,10 @@
             $atras->subDay();
             $n += $atras->isSunday() ? 0 : 1;
         }
-        $anterior = $s['desde']->toDateString() > $hoy ? max($hoy, $atras->toDateString()) : null;
+        // Si el tramo de atrás se pasaría de hoy, cae justo en hoy.
+        $anterior = $s['desde']->toDateString() > $hoy && $atras->toDateString() < $hoy
+            ? $hoy
+            : $atras->toDateString();
         $volver = $s['desde']->toDateString() !== $hoy ? ['dia' => $hoy, 'txt' => 'Hoy'] : null;
     } else {
         $siguiente = $s['desde']->copy()->addWeek()->toDateString();
