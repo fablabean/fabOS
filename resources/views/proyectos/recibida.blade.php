@@ -38,6 +38,9 @@
 
         <h2>Qué sigue</h2>
         <ol>
+            @if (! empty($recibida['semana']))
+                <li><strong>Un proyecto por semana.</strong> {{ $recibida['semana'] }}</li>
+            @endif
             @if (! empty($recibida['revision']))
                 <li><strong>La revisamos {{ $recibida['revision'] }}.</strong> Tu solicitud ya tiene turno en la cola: ese día alguien del laboratorio mira si cabe, con qué máquinas y cuánto tomaría.</li>
             @else

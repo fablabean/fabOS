@@ -185,4 +185,42 @@ class ColaDeRevisionTest extends TestCase
         $this->assertSame([$this->lider->id], $reserva->companions->pluck('id')->all());
         $this->assertSame('24/08 10:00', RevisionDeSolicitudes::de($p->fresh())->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i'));
     }
+
+    /**
+     * Un proyecto por semana por estudiante: el segundo queda asignado a la
+     * semana siguiente, se revisa en ella y se le dice.
+     */
+    public function test_el_segundo_proyecto_de_un_estudiante_pasa_a_la_semana_siguiente(): void
+    {
+        $datos = fn (string $titulo) => [
+            'titulo' => $titulo, 'resumen' => 'Algo para fabricar en el laboratorio.', 'cliente' => 'estudiante',
+            'nombre' => 'Sofía Barriga', 'correo' => 'sofia@test.co', 'telefono' => '3001234567',
+        ];
+
+        $this->post(route('proyectos.solicitar.store'), $datos('Base lámpara'))->assertRedirect();
+        $this->get(route('proyectos.recibida'))->assertDontSee('Un proyecto por semana');
+
+        $this->post(route('proyectos.solicitar.store'), $datos('Llavero'))->assertRedirect();
+        $this->get(route('proyectos.recibida'))->assertSee('Un proyecto por semana')
+            ->assertSee('semana del lunes 31 de agosto');
+
+        $segundo = Project::where('name', 'Llavero')->first();
+        $this->assertSame('2026-08-31', $segundo->review_week->toDateString());
+        $this->assertSame('31/08 08:00', RevisionDeSolicitudes::de($segundo)->starts_at->timezone(config('fabos.lab.timezone'))->format('d/m H:i'));
+
+        $correo = \App\Models\NotificationLog::where('key', 'proyecto.recibido')->latest('id')->value('body');
+        $this->assertStringContainsString('semana del lunes 31 de agosto', $correo);
+
+        // El tercero, a la otra; y si uno se descarta, su semana vuelve a quedar libre.
+        $tercero = app(ProjectService::class)->solicitarDesdeLaWeb($datos('Maceta') + ['correo' => 'sofia@test.co']);
+        $this->assertSame('2026-09-07', $tercero->review_week->toDateString());
+
+        $segundo->update(['status' => 'descartado']);
+        $cuarto = app(ProjectService::class)->solicitarDesdeLaWeb($datos('Soporte'));
+        $this->assertSame('2026-08-31', $cuarto->review_week->toDateString());
+
+        // Lo de fuera no tiene ese límite.
+        $externo = app(ProjectService::class)->solicitarDesdeLaWeb(['cliente' => 'externo'] + $datos('Otro'));
+        $this->assertNull($externo->review_week);
+    }
 }

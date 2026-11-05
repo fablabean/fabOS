@@ -335,14 +335,32 @@ class SolicitudDeProyectoController extends Controller
         $this->avisos->enviar('proyecto.recibido', $proyecto->requestedBy, [
             'proyecto' => $proyecto->name,
             'codigo'   => $proyecto->code,
-            'revision' => ($cuando = $this->cuandoSeRevisa($proyecto))
-                ? 'Tu solicitud ya tiene turno de revisión: la revisamos ' . $cuando . ".\n\n"
-                : '',
+            'revision' => $this->semanaAplazadaDicha($proyecto, correo: true)
+                . (($cuando = $this->cuandoSeRevisa($proyecto))
+                    ? 'Tu solicitud ya tiene turno de revisión: la revisamos ' . $cuando . ".\n\n"
+                    : ''),
         ], $proyecto);
 
         app(\App\Services\Analitica\Analitica::class)->evento('solicitud_proyecto', $proyecto);
 
         return $this->aLaConfirmacion($request, $proyecto, $avisoPresupuesto);
+    }
+
+    /**
+     * Un proyecto por semana por estudiante: si este quedó para otra semana,
+     * se le dice por qué y cuál.
+     */
+    private function semanaAplazadaDicha(Project $proyecto, bool $correo = false): string
+    {
+        $semana = \App\Services\Projects\RevisionDeSolicitudes::semanaAplazada($proyecto);
+
+        if (! $semana) {
+            return '';
+        }
+
+        return 'Evaluamos un proyecto por semana por estudiante, y esta semana ya tienes uno. '
+            . 'Este queda asignado a la semana ' . $semana . ' y lo evaluamos en ella.'
+            . ($correo ? "\n\n" : '');
     }
 
     /** «hoy», «mañana», «el jueves 6 de noviembre»: cuándo le toca en la cola. */
@@ -367,6 +385,7 @@ class SolicitudDeProyectoController extends Controller
             'aviso'    => $aviso,
             'repetido' => $repetido,
             'revision' => $this->cuandoSeRevisa($proyecto),
+            'semana'   => $this->semanaAplazadaDicha($proyecto) ?: null,
         ]);
 
         return redirect()->route('proyectos.recibida');

@@ -61,6 +61,13 @@ class RevisionDeSolicitudes
             return $ya;
         }
 
+        // El proyecto de un estudiante que quedó para otra semana se revisa
+        // en ella, no antes.
+        if ($proyecto->review_week) {
+            $lunes = Carbon::parse($proyecto->review_week->toDateString(), config('fabos.lab.timezone'));
+            $desde = $lunes->gt($desde ?? now()) ? $lunes : $desde;
+        }
+
         for ($intento = 0; $intento < 3; $intento++) {
             $franja = $this->siguienteFranja($lider, $desde);
 
@@ -231,6 +238,25 @@ class RevisionDeSolicitudes
         }
 
         return null;
+    }
+
+    /**
+     * «del lunes 9 de noviembre» si el proyecto quedó para una semana que no
+     * es esta; nulo si se evalúa en la semana en que llegó.
+     */
+    public static function semanaAplazada(Project $proyecto): ?string
+    {
+        $tz = config('fabos.lab.timezone');
+
+        if (! $proyecto->review_week) {
+            return null;
+        }
+
+        $lunes = Carbon::parse($proyecto->review_week->toDateString(), $tz)->locale('es');
+
+        return $lunes->gt(now($tz)->startOfWeek(CarbonInterface::MONDAY)->endOfDay())
+            ? 'del ' . $lunes->isoFormat('dddd D [de] MMMM')
+            : null;
     }
 
     /** «hoy», «mañana» o «el jueves 6 de noviembre», para decírselo a quien pidió. */
