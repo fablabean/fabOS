@@ -186,7 +186,10 @@ class TarifaConDecimalesTest extends TestCase
         $this->get('/admin/reglas')
             ->assertOk()
             ->assertSee('MDF 5.5 (cm2)')
-            ->assertSee('0,004');
+            ->assertSee('0,004')
+            ->assertSee('Cuándo una persona del equipo está ocupada')
+            ->assertSee('Un proyecto por semana por estudiante')
+            ->assertSee('18 · Decisiones pendientes');
     }
 
     public function test_una_tarifa_en_fabcoins_sigue_escribiendose_igual(): void
