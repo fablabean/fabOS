@@ -7,7 +7,7 @@
 <meta name="description" content="Diseño centrado en el humano, los tres escenarios del laboratorio y cómo se pide un servicio, contado para quienes hablan con los futuros estudiantes de la Universidad Ean.">
 <meta name="robots" content="noindex">
 <meta property="og:title" content="FABLAB EAN en 30 minutos">
-<meta property="og:description" content="Aquí las ideas se pueden tocar: diseño centrado en el humano, tangible, intangible y robótica en el edificio Fundadores, piso 3.">
+<meta property="og:description" content="Aquí las ideas se pueden tocar: diseño centrado en el humano, tangible, mixto e intangible en el edificio Fundadores, piso 3.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://fablabean.com/conoce-el-fablab">
 <style>body{margin:0}</style>
@@ -141,7 +141,8 @@ p{margin:0}
 .ladder .step:last-child{border-right:0}
 .ladder .step .n{font-family:var(--f-display);font-weight:900;font-size:44px;line-height:1;color:var(--laser)}
 .ladder .step:nth-child(-n+2) .n{color:var(--wood)}
-.ladder .step:nth-child(n+5) .n{color:var(--virtual)}
+.ladder .step:nth-child(5) .n{color:var(--robot)}
+.ladder .step:nth-child(6) .n{color:var(--virtual)}
 .ladder .step h3{font-size:22px}
 .ladder .step p{font-size:15px;color:var(--ink-soft)}
 .ladder-axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
@@ -337,7 +338,7 @@ a{color:var(--laser)}
     <div class="stat-row">
       <div><span class="big-num t-laser">82</span><span class="label">equipos y herramientas registrados</span></div>
       <div><span class="big-num t-wood">8</span><span class="label">áreas de trabajo</span></div>
-      <div><span class="big-num t-virtual">3</span><span class="label">escenarios: tangible · intangible · robótica</span></div>
+      <div><span class="big-num t-virtual">3</span><span class="label">escenarios: tangible · mixto · intangible</span></div>
     </div>
     <div class="say">
       <span class="label">Dilo así</span>
@@ -444,12 +445,12 @@ a{color:var(--laser)}
     <h2>Tres <span class="cut">escenarios</span></h2>
     <div class="scen">
       <a href="#tangible" class="t-wood"><span class="tag">01</span><h3>Tangible</h3><p>Lo que se toca: madera, acrílico, filamento, resina, tela, metal grabado.</p><span class="go">Ver equipos →</span></a>
-      <a href="#intangible" class="t-virtual"><span class="tag">02</span><h3>Intangible</h3><p>Lo que se vive: realidad virtual, experiencias interactivas, recorridos gamificados.</p><span class="go">Ver experiencias →</span></a>
-      <a href="#robotica" class="t-robot"><span class="tag">03</span><h3>Robótica</h3><p>Lo que se mueve: un perro robot, un humanoide y la electrónica para construir los propios.</p><span class="go">Ver robots →</span></a>
+      <a href="#mixto" class="t-robot"><span class="tag">02</span><h3>Mixto</h3><p>Lo que se mueve: lo físico con código. Un perro robot, un humanoide y la electrónica para construir los propios.</p><span class="go">Ver robots →</span></a>
+      <a href="#intangible" class="t-virtual"><span class="tag">03</span><h3>Intangible</h3><p>Lo que se vive: realidad virtual, experiencias interactivas, recorridos gamificados.</p><span class="go">Ver experiencias →</span></a>
     </div>
     <div class="say">
       <span class="label">Dilo así</span>
-      <p>«Lo que imagines cae en uno de tres mundos: algo que se toca, algo que se vive o algo que se mueve. En el FabLab tenemos los tres.»</p>
+      <p>«Lo que imagines cae en uno de tres mundos: algo que se toca, algo que se mueve o algo que se vive. En el FabLab tenemos los tres.»</p>
     </div>
   </div>
 </section>
@@ -488,6 +489,25 @@ a{color:var(--laser)}
   </div>
 </section>
 
+<!-- MIXTO -->
+<section class="slide" id="mixto" data-min="13–15">
+  <div class="inner">
+    <div class="coord"><span>X 120.0 · Y 060.0</span><b style="color:var(--robot)">MIXTO</b><span class="min">min 13–15</span></div>
+    <h2 class="t-robot"><span class="cut">Lo que se mueve</span></h2>
+    <p class="lead">Lo mixto es donde lo físico y lo digital se encuentran: un objeto que se toca y además responde, porque lleva código, sensores o motores.</p>
+    <div class="grid g3">
+      <div class="piece"><span class="tag t-robot">Unitree Go2</span><p>Robot cuadrúpedo, el «perro robot». Camina, sube escaleras y reconoce su entorno.</p></div>
+      <div class="piece"><span class="tag t-robot">Unitree G1 EDU</span><p>Robot humanoide educativo. Sirve para estudiar cómo una máquina se mueve y convive con personas.</p></div>
+      <div class="piece"><span class="tag t-robot">Banco de electrónica</span><p>Estación de soldadura, cautines y kits de electrónica básica para construir prototipos propios con sensores y motores.</p></div>
+    </div>
+    <p class="lead soft">Los robots se usan siempre con acompañamiento del equipo del laboratorio. La electrónica es la puerta para que un estudiante de cualquier carrera haga que su objeto responda.</p>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Tenemos un humanoide y un perro robot para aprender. Y si quieres que tu propio diseño se mueva o encienda, te enseñamos electrónica desde cero.»</p>
+    </div>
+  </div>
+</section>
+
 <!-- 06 · INTANGIBLE -->
 <section class="slide" id="intangible" data-min="11–13">
   <div class="inner">
@@ -509,24 +529,6 @@ a{color:var(--laser)}
     <div class="say">
       <span class="label">Dilo así</span>
       <p>«Aquí no solo haces objetos. Diseñas cómo se siente una experiencia y la pruebas con gafas de realidad virtual antes de construirla.»</p>
-    </div>
-  </div>
-</section>
-
-<!-- 07 · ROBÓTICA -->
-<section class="slide" id="robotica" data-min="13–15">
-  <div class="inner">
-    <div class="coord"><span>X 120.0 · Y 060.0</span><b style="color:var(--robot)">ROBÓTICA</b><span class="min">min 13–15</span></div>
-    <h2 class="t-robot"><span class="cut">Lo que se mueve</span></h2>
-    <div class="grid g3">
-      <div class="piece"><span class="tag t-robot">Unitree Go2</span><p>Robot cuadrúpedo, el «perro robot». Camina, sube escaleras y reconoce su entorno.</p></div>
-      <div class="piece"><span class="tag t-robot">Unitree G1 EDU</span><p>Robot humanoide educativo. Sirve para estudiar cómo una máquina se mueve y convive con personas.</p></div>
-      <div class="piece"><span class="tag t-robot">Banco de electrónica</span><p>Estación de soldadura, cautines y kits de electrónica básica para construir prototipos propios con sensores y motores.</p></div>
-    </div>
-    <p class="lead soft">Los robots se usan siempre con acompañamiento del equipo del laboratorio. La electrónica es la puerta para que un estudiante de cualquier carrera haga que su objeto responda.</p>
-    <div class="say">
-      <span class="label">Dilo así</span>
-      <p>«Tenemos un humanoide y un perro robot para aprender. Y si quieres que tu propio diseño se mueva o encienda, te enseñamos electrónica desde cero.»</p>
     </div>
   </div>
 </section>
@@ -645,7 +647,7 @@ a{color:var(--laser)}
     <p class="lead">Frente a la Tadeo, los Andes, la Javeriana o la Nacional, el aspirante va a comparar talleres. Lo que conviene decir no es que tenemos máquinas: es cómo se usan.</p>
     <div class="diff">
       <div><span class="k">A</span><div><h3>Acceso desde el primer semestre</h3><p>Una inducción de dos horas abre la puerta. No hay que esperar a una materia avanzada.</p></div></div>
-      <div><span class="k">B</span><div><h3>Tres escenarios en un solo piso</h3><p>Tangible, intangible y robótica conviven. Un proyecto puede pasar por los tres sin cambiar de edificio.</p></div></div>
+      <div><span class="k">B</span><div><h3>Tres escenarios en un solo piso</h3><p>Tangible, mixto e intangible conviven. Un proyecto puede pasar por los tres sin cambiar de edificio.</p></div></div>
       <div><span class="k">C</span><div><h3>Robots humanoides para aprender</h3><p>Un Unitree G1 y un Go2 disponibles para formación, con acompañamiento.</p></div></div>
       <div><span class="k">D</span><div><h3>Único nodo de Fab Academy en Colombia</h3><p>El laboratorio pertenece a la red Fab Lab y es el único nodo del país de la Fab Academy, el programa global que dirige Neil Gershenfeld desde el MIT.</p></div></div>
       <div><span class="k">E</span><div><h3>Diseño con propósito sostenible</h3><p>El ADN de emprendimiento sostenible de la Ean y la sede de Heatherwick dan al diseño una historia que nadie más cuenta.</p></div></div>
@@ -653,7 +655,7 @@ a{color:var(--laser)}
     </div>
     <div class="say">
       <span class="label">Dilo así</span>
-      <p>«Muchas universidades tienen talleres. En la Ean el taller es tuyo desde el primer semestre, une lo que se toca con lo virtual y la robótica, y es el único lugar de Colombia donde se cursa la Fab Academy del MIT.»</p>
+      <p>«Muchas universidades tienen talleres. En la Ean el taller es tuyo desde el primer semestre, une lo que se toca, lo que se mueve y lo que se vive, y es el único lugar de Colombia donde se cursa la Fab Academy del MIT.»</p>
     </div>
   </div>
 </section>
