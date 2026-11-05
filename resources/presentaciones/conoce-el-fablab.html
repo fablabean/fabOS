@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FABLAB EAN en 30 minutos</title>
+<meta name="description" content="Diseño centrado en el humano, los tres escenarios del laboratorio y cómo se pide un servicio, contado para quienes hablan con los futuros estudiantes de la Universidad Ean.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="FABLAB EAN en 30 minutos">
+<meta property="og:description" content="Aquí las ideas se pueden tocar: diseño centrado en el humano, tangible, intangible y robótica en el edificio Fundadores, piso 3.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fablabean.com/conoce-el-fablab">
+<style>body{margin:0}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una tabla de corte (cutting mat) a pantalla completa; cada sección es una lámina que encaja al desplazarse.
+   Regla milimétrica en el borde, lectura de coordenadas como marcador de sección. Un solo mundo visual, oscuro. */
+:root{
+  --mat:#173d38;        /* verde de tabla de corte */
+  --mat-deep:#0f2c28;
+  --grid:rgba(214,240,226,.07);
+  --grid-strong:rgba(214,240,226,.14);
+  --ink:#eef4ee;        /* texto */
+  --ink-soft:#b6cbc1;
+  --laser:#ff7a3d;      /* acrílico naranja de seguridad láser */
+  --wood:#e6c697;       /* tangible: contrachapado de abedul */
+  --virtual:#9db2ff;    /* intangible: luz de visor */
+  --robot:#f1d34a;      /* robótica: amarillo de señal */
+  --card:rgba(10,32,29,.72);
+  --line:rgba(214,240,226,.22);
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html{scroll-snap-type:y mandatory;scroll-behavior:smooth;background:var(--mat-deep)}
+@media (max-width:760px),(max-height:620px){html{scroll-snap-type:y proximity}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{
+  background:var(--mat);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55;
+  background-image:
+    linear-gradient(var(--grid-strong) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-strong) 1px,transparent 1px),
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:100px 100px,100px 100px,20px 20px,20px 20px;
+  background-attachment:fixed;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--mat-deep)}
+
+/* Regla en el borde izquierdo */
+.ruler{position:fixed;left:0;top:0;bottom:0;width:14px;z-index:5;pointer-events:none;
+  background:
+    repeating-linear-gradient(to bottom,var(--ink-soft) 0 1px,transparent 1px 10px) left/6px 100% no-repeat,
+    repeating-linear-gradient(to bottom,var(--ink) 0 1px,transparent 1px 50px) left/11px 100% no-repeat;
+  opacity:.35}
+
+section.slide{
+  min-height:100svh;scroll-snap-align:start;position:relative;
+  display:flex;flex-direction:column;justify-content:center;
+  padding-block:72px 64px;
+  padding-left:max(40px,env(safe-area-inset-left,0px));
+  padding-right:max(76px,env(safe-area-inset-right,0px));
+}
+@media (max-width:760px){section.slide{padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:56px 48px}}
+.inner{max-width:1120px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+
+.coord{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-soft);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.coord b{color:var(--laser);font-weight:600}
+.coord .min{border:1px solid var(--line);padding:2px 8px;border-radius:2px}
+
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:.95;letter-spacing:.005em}
+h1{font-size:clamp(56px,10vw,148px);font-weight:900;text-transform:uppercase}
+h2{font-size:clamp(40px,6.2vw,88px);font-weight:900;text-transform:uppercase}
+h3{font-size:clamp(24px,2.4vw,32px);font-weight:700;text-transform:uppercase;line-height:1.05}
+p{margin:0}
+.lead{font-size:clamp(18px,1.6vw,22px);max-width:62ch;color:var(--ink)}
+.soft{color:var(--ink-soft)}
+.mono{font-family:var(--f-mono);font-size:13px;letter-spacing:.04em}
+.label{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft)}
+
+/* Línea de corte láser que recorre el título de la sección activa */
+.cut{position:relative;display:inline-block}
+.cut::after{content:"";position:absolute;left:0;bottom:-10px;height:3px;width:0;background:var(--laser);box-shadow:0 0 14px var(--laser)}
+.slide.on .cut::after{animation:cut 1.1s cubic-bezier(.6,0,.2,1) .15s forwards}
+@keyframes cut{to{width:100%}}
+
+/* «Dilo así»: el discurso para el centro de contacto */
+.say{border:1.5px dashed var(--laser);padding:18px 22px;max-width:780px;background:rgba(255,122,61,.06);display:grid;gap:6px}
+.say .label{color:var(--laser)}
+.say p{font-size:clamp(17px,1.5vw,20px);font-style:italic}
+
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:980px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+
+.piece{background:var(--card);border:1px solid var(--line);padding:20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.piece ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.piece li{color:var(--ink-soft)}
+.piece li b{color:var(--ink);font-weight:700}
+
+.tag{display:inline-block;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border:1px solid currentColor}
+.t-wood{color:var(--wood)} .t-virtual{color:var(--virtual)} .t-robot{color:var(--robot)} .t-laser{color:var(--laser)}
+
+/* Portada */
+.hero h1 .amp{color:var(--laser)}
+.hero .where{font-family:var(--f-mono);font-size:14px;letter-spacing:.06em;display:flex;gap:10px 28px;flex-wrap:wrap}
+.hero .where span::before{content:"+ ";color:var(--laser)}
+.crosshair{position:absolute;right:max(76px,env(safe-area-inset-right,0px));top:90px;width:90px;height:90px;border:1px solid var(--line);border-radius:50%;opacity:.7}
+.crosshair::before,.crosshair::after{content:"";position:absolute;background:var(--laser)}
+.crosshair::before{left:50%;top:-14px;bottom:-14px;width:1px}
+.crosshair::after{top:50%;left:-14px;right:-14px;height:1px}
+@media (max-width:760px){.crosshair{display:none}}
+
+/* Escalera análogo → digital */
+.ladder{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+.ladder .step{padding:16px 14px 10px;border-right:1px dashed var(--line);display:flex;flex-direction:column;gap:8px;min-width:0;position:relative}
+.ladder .step:last-child{border-right:0}
+.ladder .step .n{font-family:var(--f-display);font-weight:900;font-size:44px;line-height:1;color:var(--laser)}
+.ladder .step:nth-child(-n+2) .n{color:var(--wood)}
+.ladder .step:nth-child(n+5) .n{color:var(--virtual)}
+.ladder .step h3{font-size:22px}
+.ladder .step p{font-size:15px;color:var(--ink-soft)}
+.ladder-axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.ladder-axis span:last-child{color:var(--virtual)} .ladder-axis span:first-child{color:var(--wood)}
+@media (max-width:980px){.ladder{grid-template-columns:repeat(3,minmax(0,1fr))}.ladder .step:nth-child(3){border-right:0}.ladder .step:nth-child(n+4){border-top:1px dashed var(--line)}}
+@media (max-width:560px){.ladder{grid-template-columns:minmax(0,1fr)}.ladder .step{border-right:0;border-top:1px dashed var(--line)}}
+
+/* Los tres escenarios */
+.scen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media (max-width:860px){.scen{grid-template-columns:minmax(0,1fr)}}
+.scen a{color:inherit;text-decoration:none;display:flex;flex-direction:column;gap:12px;padding:24px;border:2px solid currentColor;min-width:0;transition:transform .2s}
+.scen a:hover,.scen a:focus-visible{transform:translateY(-4px)}
+.scen a h3{font-size:clamp(36px,4vw,56px);font-weight:900}
+.scen a p{color:var(--ink);font-size:16px}
+.scen .go{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-top:auto}
+
+.big-num{font-family:var(--f-display);font-weight:900;font-size:clamp(64px,8vw,120px);line-height:.85}
+.stat-row{display:flex;gap:28px 48px;flex-wrap:wrap;align-items:flex-end}
+.stat-row div{display:flex;flex-direction:column;gap:4px}
+
+/* Principios */
+.principles{counter-reset:p;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--line)}
+.principles > div{padding:22px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;min-width:0}
+.principles > div:nth-child(3n){border-right:0}
+.principles > div:nth-child(n+4){border-bottom:0}
+.principles h3{font-size:26px}
+.principles p{color:var(--ink-soft);font-size:15.5px}
+.principles .lab{font-family:var(--f-mono);font-size:12px;color:var(--laser)}
+@media (max-width:860px){.principles{grid-template-columns:minmax(0,1fr)}.principles > div{border-right:0;border-bottom:1px solid var(--line)!important}.principles > div:last-child{border-bottom:0!important}}
+
+/* Humanización: tres escalas */
+.scales{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+@media (max-width:860px){.scales{grid-template-columns:minmax(0,1fr)}}
+.scale{border-top:4px solid var(--laser);padding-top:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.scale .who{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.scale:nth-child(1){border-color:var(--virtual)}
+.scale:nth-child(2){border-color:var(--wood)}
+.scale p{color:var(--ink-soft)}
+.quote{font-family:var(--f-display);font-size:clamp(28px,3.4vw,46px);font-weight:700;line-height:1.05;max-width:24ch;text-transform:uppercase}
+.quote small{display:block;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:none;color:var(--ink-soft);font-weight:400;margin-top:10px}
+
+/* Facultades */
+.fac{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+@media (max-width:980px){.fac{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.fac{grid-template-columns:minmax(0,1fr)}}
+.fac .piece.new{border:2px solid var(--laser);background:rgba(255,122,61,.08)}
+.fac .ex{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);border-top:1px dashed var(--line);padding-top:10px;margin-top:auto}
+
+/* Cinco caminos */
+.paths{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:1060px){.paths{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.paths{grid-template-columns:minmax(0,1fr)}}
+.path{background:var(--card);border:1px solid var(--line);padding:18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.path .q{font-family:var(--f-mono);font-size:12.5px;color:var(--laser)}
+.path h3{font-size:24px}
+.path p{font-size:15px;color:var(--ink-soft)}
+.guide{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);padding:14px 18px;background:var(--mat-deep)}
+.guide .prompt{font-family:var(--f-mono);font-size:14px;color:var(--ink);flex:1 1 300px;min-width:0}
+.guide .prompt::before{content:"> ";color:var(--laser)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--f-mono);font-size:13px}
+.flow span{border:1px solid var(--line);padding:4px 10px}
+.flow i{color:var(--laser);font-style:normal}
+
+/* Escalera bit → tera */
+.levels{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;gap:10px}
+.levels .lv{display:flex;flex-direction:column;gap:6px;min-width:0}
+.levels .bar{background:var(--laser);opacity:.85}
+.levels .lv:nth-child(1) .bar{height:24px}
+.levels .lv:nth-child(2) .bar{height:48px}
+.levels .lv:nth-child(3) .bar{height:76px}
+.levels .lv:nth-child(4) .bar{height:110px}
+.levels .lv:nth-child(5) .bar{height:146px}
+.levels .lv:nth-child(6) .bar{height:190px;background:var(--virtual)}
+.levels .nm{font-family:var(--f-display);font-weight:900;font-size:clamp(26px,3vw,40px);text-transform:uppercase;line-height:1}
+.levels .ds{font-size:14px;color:var(--ink-soft)}
+.levels .hr{font-family:var(--f-mono);font-size:12px;color:var(--ink)}
+@media (max-width:760px){.levels{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:22px}}
+
+/* Diferenciadores */
+.diff{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+@media (max-width:760px){.diff{grid-template-columns:minmax(0,1fr)}}
+.diff > div{padding:18px 18px 18px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;align-items:start}
+.diff .k{font-family:var(--f-display);font-weight:900;font-size:44px;line-height:.9;color:var(--laser)}
+.diff h3{font-size:22px;margin-bottom:4px}
+.diff p{color:var(--ink-soft);font-size:15.5px}
+
+/* Objeciones */
+.faq{display:grid;gap:10px}
+.faq details{border:1px solid var(--line);background:var(--card)}
+.faq summary{cursor:pointer;padding:14px 18px;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--f-mono);color:var(--laser)}
+.faq details[open] summary::after{content:"–"}
+.faq details p{padding:0 18px 16px;color:var(--ink-soft)}
+
+/* Agenda de la visita */
+.agenda{display:grid;gap:0;border-left:2px solid var(--laser)}
+.agenda > div{display:grid;grid-template-columns:110px minmax(0,1fr);gap:16px;padding:12px 0 12px 18px;border-bottom:1px dashed var(--line)}
+.agenda .t{font-family:var(--f-mono);font-size:13px;color:var(--laser)}
+.agenda h3{font-size:22px}
+.agenda p{color:var(--ink-soft);font-size:15.5px}
+@media (max-width:560px){.agenda > div{grid-template-columns:minmax(0,1fr);gap:4px}}
+
+*,*::before,*::after{box-sizing:border-box}
+
+/* Diseño centrado en el humano: tres lentes y la norma */
+.hcd{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:36px;align-items:start}
+@media (max-width:900px){.hcd{grid-template-columns:minmax(0,1fr)}}
+.venn{width:100%;max-width:430px;height:auto;display:block}
+.venn circle{stroke-width:2;fill-opacity:.13}
+.venn .c1{fill:var(--wood);stroke:var(--wood)}
+.venn .c2{fill:var(--robot);stroke:var(--robot)}
+.venn .c3{fill:var(--virtual);stroke:var(--virtual)}
+.venn text{fill:var(--ink);text-anchor:middle}
+.venn .big{font-family:var(--f-display);font-weight:900;font-size:27px;text-transform:uppercase}
+.venn .sm{font-family:var(--f-mono);font-size:13px;fill:var(--ink-soft)}
+.venn .mid{font-family:var(--f-mono);font-size:12px;fill:var(--laser)}
+.lens{display:grid;gap:6px;font-size:15px;color:var(--ink-soft);margin-top:10px}
+.lens b{color:var(--ink)}
+.iso{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.iso li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.iso .l{font-family:var(--f-mono);color:var(--laser);font-size:14px;padding-top:4px}
+.iso h3{font-size:21px}
+.iso p{font-size:15px;color:var(--ink-soft)}
+.iso .lab{font-family:var(--f-mono);font-size:12px;color:var(--laser)}
+
+/* Doble diamante */
+.dd{width:100%;height:auto;display:block}
+.dd polygon{fill:var(--laser);fill-opacity:.08;stroke:var(--laser);stroke-width:2}
+.dd line{stroke:var(--ink-soft);stroke-dasharray:4 6;stroke-width:1}
+.dd text{fill:var(--ink);font-family:var(--f-display);font-weight:700;font-size:24px;text-anchor:middle;text-transform:uppercase}
+.dd-axis{display:grid;grid-template-columns:1fr 1fr;font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);text-align:center}
+.phases{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+@media (max-width:860px){.phases{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.phases{grid-template-columns:minmax(0,1fr)}}
+.phase{display:flex;flex-direction:column;gap:6px;min-width:0;border-top:2px solid var(--laser);padding-top:10px}
+.phase .mode{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.phase h3{font-size:24px}
+.phase p{font-size:15px;color:var(--ink-soft)}
+.phase .lab{font-family:var(--f-mono);font-size:12px;color:var(--laser);margin-top:auto}
+.principles .ean{font-family:var(--f-mono);font-size:12px;color:var(--virtual)}
+
+/* Navegación */
+.rail{position:fixed;right:max(18px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:8px}
+.rail a{width:10px;height:10px;border:1px solid var(--ink-soft);display:block;transform:rotate(45deg);transition:background .2s,border-color .2s}
+.rail a.on{background:var(--laser);border-color:var(--laser)}
+.rail a:focus-visible{outline:2px solid var(--laser);outline-offset:3px}
+@media (max-width:760px){.rail{display:none}}
+.hud{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-soft);background:var(--mat-deep);padding:4px 10px;border:1px solid var(--line)}
+.hud b{color:var(--laser)}
+.keys{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;gap:6px}
+.keys button{font-family:var(--f-mono);font-size:13px;background:var(--mat-deep);color:var(--ink);border:1px solid var(--line);width:38px;height:34px;cursor:pointer}
+.keys button:hover{border-color:var(--laser)}
+.keys button:focus-visible{outline:2px solid var(--laser);outline-offset:2px}
+a{color:var(--laser)}
+.src{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-soft);max-width:90ch}
+.src a{color:var(--ink-soft)}
+</style>
+
+<div class="ruler" aria-hidden="true"></div>
+
+<!-- 01 · PORTADA -->
+<section class="slide hero" id="inicio" data-min="0–2">
+  <div class="crosshair" aria-hidden="true"></div>
+  <div class="inner">
+    <div class="coord"><span>X 000.0 · Y 000.0</span><b>ORIGEN</b><span class="min">min 0–2</span></div>
+    <h1>Aquí las ideas<br>se pueden <span class="amp cut">tocar</span></h1>
+    <p class="lead">El FabLab de la Universidad Ean, contado para quienes hablan todos los días con los futuros estudiantes. Qué hay, para qué sirve, cómo se pide y por qué nadie más en la ciudad lo ofrece de la misma manera.</p>
+    <div class="where"><span>Edificio Fundadores · piso 3</span><span>fablabean.com</span><span>Red mundial Fab Lab</span></div>
+    <p class="mono soft">Desplázate o usa ← → / espacio para avanzar.</p>
+  </div>
+</section>
+
+<!-- 02 · QUÉ ES UN FABLAB -->
+<section class="slide" id="que-es" data-min="2–4">
+  <div class="inner">
+    <div class="coord"><span>X 020.0 · Y 010.0</span><b>QUÉ ES</b><span class="min">min 2–4</span></div>
+    <h2><span class="cut">Un taller</span> con conexión al mundo</h2>
+    <p class="lead">Un FabLab es un laboratorio de fabricación digital: un lugar donde una persona pasa de una idea a un objeto real con máquinas controladas por computador. La idea nació en el Center for Bits and Atoms del MIT y hoy es una red de laboratorios en todo el mundo que comparten procesos, proyectos y formación.</p>
+    <div class="stat-row">
+      <div><span class="big-num t-laser">82</span><span class="label">equipos y herramientas registrados</span></div>
+      <div><span class="big-num t-wood">8</span><span class="label">áreas de trabajo</span></div>
+      <div><span class="big-num t-virtual">3</span><span class="label">escenarios: tangible · intangible · robótica</span></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«En la Ean no solo estudias el diseño de un producto: lo imprimes, lo cortas, lo programas y lo pruebas en el mismo campus, en un laboratorio que hace parte de una red mundial nacida en el MIT.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- BASES · DISEÑO CENTRADO EN EL HUMANO -->
+<section class="slide" id="humano" data-min="2–4">
+  <div class="inner">
+    <div class="coord"><span>X 030.0 · Y 015.0</span><b>LAS BASES</b><span class="min">min 2–4</span></div>
+    <h2>Todo empieza <span class="cut">por una persona</span></h2>
+    <p class="lead">El diseño centrado en el humano es la base de todo lo que pasa en el FabLab. Antes de pensar en la máquina, se entiende a quién se le diseña, qué necesita y en qué contexto vive. Es un método con norma internacional, la ISO 9241-210, y lo popularizaron IDEO y la d.school de Stanford.</p>
+    <div class="hcd">
+      <div>
+        <svg class="venn" viewBox="0 0 420 380" role="img" aria-label="Tres lentes que se cruzan: deseable, factible y viable">
+          <circle class="c1" cx="150" cy="140" r="115"/>
+          <circle class="c2" cx="270" cy="140" r="115"/>
+          <circle class="c3" cx="210" cy="245" r="115"/>
+          <text class="big" x="112" y="112">Deseable</text><text class="sm" x="112" y="134">personas</text>
+          <text class="big" x="308" y="112">Factible</text><text class="sm" x="308" y="134">tecnología</text>
+          <text class="big" x="210" y="318">Viable</text><text class="sm" x="210" y="340">negocio</text>
+          <text class="mid" x="210" y="182">innovación</text>
+        </svg>
+        <div class="lens">
+          <span><b class="t-wood">Deseable:</b> que la persona lo quiera. Humanidades y Diseño.</span>
+          <span><b class="t-robot">Factible:</b> que se pueda fabricar. Ingeniería y el FabLab.</span>
+          <span><b class="t-virtual">Viable:</b> que se sostenga en el tiempo. Administración y Finanzas.</span>
+        </div>
+      </div>
+      <div>
+        <span class="label">Los seis principios de la norma ISO 9241-210, y dónde se viven</span>
+        <ol class="iso">
+          <li><span class="l">a</span><div><h3>Entender a las personas y su entorno</h3><p>Quién usa, para qué y dónde.</p><span class="lab">En el lab: asesoría antes de fabricar</span></div></li>
+          <li><span class="l">b</span><div><h3>Involucrarlas durante todo el proceso</h3><p>Diseñar con ellas, no para ellas.</p><span class="lab">En el lab: el usuario prueba el prototipo en la mesa</span></div></li>
+          <li><span class="l">c</span><div><h3>Decidir evaluando con usuarios</h3><p>La prueba manda, no la opinión.</p><span class="lab">En el lab: prototipo → prueba → ajuste</span></div></li>
+          <li><span class="l">d</span><div><h3>Iterar</h3><p>Cada versión aprende de la anterior.</p><span class="lab">En el lab: una maqueta en láser en minutos</span></div></li>
+          <li><span class="l">e</span><div><h3>Diseñar la experiencia completa</h3><p>El objeto, el servicio y el momento de usarlo.</p><span class="lab">En el lab: recorrerlo en realidad virtual</span></div></li>
+          <li><span class="l">f</span><div><h3>Equipos de varias disciplinas</h3><p>Nadie lo resuelve solo.</p><span class="lab">En el lab: tres facultades en el mismo piso</span></div></li>
+        </ol>
+      </div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«En la Ean el diseño empieza escuchando a una persona real. En el FabLab le pones en la mano algo que puede tocar para que te diga si funciona.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- BASES · DOBLE DIAMANTE -->
+<section class="slide" id="diamante" data-min="4–5">
+  <div class="inner">
+    <div class="coord"><span>X 035.0 · Y 017.5</span><b>EL PROCESO</b><span class="min">min 4–5</span></div>
+    <h2>El doble diamante <span class="cut">en el taller</span></h2>
+    <p class="lead">El Design Council británico resume el proceso en dos diamantes. Primero se abre y se cierra el problema; después se abre y se cierra la solución. Cada fase tiene su lugar en el FabLab.</p>
+    <div class="dd-axis"><span>El problema correcto</span><span>La solución correcta</span></div>
+    <svg class="dd" viewBox="0 0 1000 240" role="img" aria-label="Doble diamante: descubrir, definir, desarrollar y entregar">
+      <polygon points="10,120 255,10 500,120 255,230"/>
+      <polygon points="500,120 745,10 990,120 745,230"/>
+      <line x1="255" y1="10" x2="255" y2="230"/><line x1="745" y1="10" x2="745" y2="230"/>
+      <text x="150" y="128">Descubrir</text><text x="372" y="128">Definir</text>
+      <text x="628" y="128">Desarrollar</text><text x="862" y="128">Entregar</text>
+    </svg>
+    <div class="phases">
+      <div class="phase"><span class="mode">Abrir</span><h3>Descubrir</h3><p>Observar, entrevistar, acompañar a la persona en su día.</p><span class="lab">En el lab: asesoría, recorrido, realidad virtual para ver el contexto</span></div>
+      <div class="phase"><span class="mode">Cerrar</span><h3>Definir</h3><p>Escribir el reto en una frase que todos entiendan.</p><span class="lab">En el lab: el brief del proyecto</span></div>
+      <div class="phase"><span class="mode">Abrir</span><h3>Desarrollar</h3><p>Muchas ideas, prototipos baratos, pruebas rápidas.</p><span class="lab">En el lab: láser, impresión 3D, electrónica</span></div>
+      <div class="phase"><span class="mode">Cerrar</span><h3>Entregar</h3><p>Probar, ajustar y producir la versión que funciona.</p><span class="lab">En el lab: CNC, producción por lotes, acta de cierre</span></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Primero aprendes a encontrar el problema correcto. Después fabricas la solución correcta. Las dos cosas pasan en el mismo lugar.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 03 · DE LO ANÁLOGO A LO DIGITAL -->
+<section class="slide" id="analogo-digital" data-min="4–7">
+  <div class="inner">
+    <div class="coord"><span>X 040.0 · Y 020.0</span><b>RECORRIDO</b><span class="min">min 4–7</span></div>
+    <h2>De la mano <span class="cut">al código</span></h2>
+    <p class="lead">Todo proyecto puede subir por estas seis etapas. Un estudiante entra por la que conoce y sube hasta donde lo necesite su idea. Esta es la ruta que se le explica a un aspirante.</p>
+    <div class="ladder-axis"><span>Análogo</span><span>Digital</span></div>
+    <div class="ladder">
+      <div class="step"><span class="n">1</span><h3>Bocetar</h3><p>Lápiz, papel, maqueta en cartón. La idea sale de la cabeza.</p></div>
+      <div class="step"><span class="n">2</span><h3>Hacer a mano</h3><p>Taller de madera: sierras, lijadoras, taladros, herramienta de mano.</p></div>
+      <div class="step"><span class="n">3</span><h3>Modelar</h3><p>La pieza se dibuja en el computador: 2D para cortar, 3D para imprimir o fresar.</p></div>
+      <div class="step"><span class="n">4</span><h3>Fabricar digital</h3><p>Láser, impresión 3D, CNC, bordado, vinilo, impresión UV.</p></div>
+      <div class="step"><span class="n">5</span><h3>Darle vida</h3><p>Electrónica, sensores, soldadura y robots que se mueven.</p></div>
+      <div class="step"><span class="n">6</span><h3>Habitarlo</h3><p>Realidad virtual: recorrer el proyecto antes de que exista.</p></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«No necesitas saber de máquinas para entrar. Si sabes dibujar a mano, ya estás en el primer escalón; el laboratorio te enseña los demás.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 04 · TRES ESCENARIOS -->
+<section class="slide" id="escenarios" data-min="7–8">
+  <div class="inner">
+    <div class="coord"><span>X 060.0 · Y 030.0</span><b>ESCENARIOS</b><span class="min">min 7–8</span></div>
+    <h2>Tres <span class="cut">escenarios</span></h2>
+    <div class="scen">
+      <a href="#tangible" class="t-wood"><span class="tag">01</span><h3>Tangible</h3><p>Lo que se toca: madera, acrílico, filamento, resina, tela, metal grabado.</p><span class="go">Ver equipos →</span></a>
+      <a href="#intangible" class="t-virtual"><span class="tag">02</span><h3>Intangible</h3><p>Lo que se vive: realidad virtual, experiencias interactivas, recorridos gamificados.</p><span class="go">Ver experiencias →</span></a>
+      <a href="#robotica" class="t-robot"><span class="tag">03</span><h3>Robótica</h3><p>Lo que se mueve: un perro robot, un humanoide y la electrónica para construir los propios.</p><span class="go">Ver robots →</span></a>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Lo que imagines cae en uno de tres mundos: algo que se toca, algo que se vive o algo que se mueve. En el FabLab tenemos los tres.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 05 · TANGIBLE -->
+<section class="slide" id="tangible" data-min="8–11">
+  <div class="inner">
+    <div class="coord"><span>X 080.0 · Y 040.0</span><b style="color:var(--wood)">TANGIBLE</b><span class="min">min 8–11</span></div>
+    <h2 class="t-wood"><span class="cut">Lo que se toca</span></h2>
+    <div class="grid g3">
+      <div class="piece"><span class="tag t-wood">Impresión 3D</span><ul>
+        <li><b>13 impresoras de filamento</b>: Bambu Lab A1, Creality Hi Combo y K1 Max, Elegoo Neptune, Ender 3, Fusion T1 Pro</li>
+        <li><b>3 de resina</b> para detalle fino, con lavado y curado</li>
+        <li><b>Impresora de arcilla</b> para cerámica</li></ul></div>
+      <div class="piece"><span class="tag t-wood">Corte y grabado</span><ul>
+        <li><b>Láser CO₂</b>: corta y graba madera, MDF, acrílico, cartón</li>
+        <li><b>Láser de fibra xTool F1 Ultra</b>: marca metal</li>
+        <li><b>Cricut Maker 3</b>: vinilo y stickers</li></ul></div>
+      <div class="piece"><span class="tag t-wood">Fresado CNC</span><ul>
+        <li><b>CNC de gran formato</b> para mobiliario y piezas grandes</li>
+        <li><b>Carvera y Carvera Air</b>: CNC de escritorio para piezas de precisión</li></ul></div>
+      <div class="piece"><span class="tag t-wood">Textil e impresión</span><ul>
+        <li><b>Máquina de bordar Brother</b> y termofijadora</li>
+        <li><b>Impresora UV</b> sobre objetos, gran formato, sublimación</li></ul></div>
+      <div class="piece"><span class="tag t-wood">Taller</span><ul>
+        <li><b>Sierra de banco, caladora, ingleteadoras</b>, taladro de árbol, lijadoras</li>
+        <li>Herramienta de mano y acabados: aerógrafo, motortool</li></ul></div>
+      <div class="piece"><span class="tag t-wood">Lo que sale de aquí</span><ul>
+        <li>Prototipos, maquetas, mobiliario, empaques</li>
+        <li>Gorras y tote bags bordadas, señalética en madera, placas en acero grabadas, pósteres para congreso</li></ul></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Desde el primer semestre puedes imprimir en 3D, cortar en láser y bordar tus propios diseños. Sales con un portafolio de objetos reales, no solo de renders.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 06 · INTANGIBLE -->
+<section class="slide" id="intangible" data-min="11–13">
+  <div class="inner">
+    <div class="coord"><span>X 100.0 · Y 050.0</span><b style="color:var(--virtual)">INTANGIBLE</b><span class="min">min 11–13</span></div>
+    <h2 class="t-virtual"><span class="cut">Lo que se vive</span></h2>
+    <p class="lead">Diseñar también es diseñar experiencias, servicios y espacios que todavía no existen. Este escenario trabaja con lo que no se puede sostener en la mano.</p>
+    <div class="grid g3">
+      <div class="piece"><span class="tag t-virtual">Realidad virtual</span><ul>
+        <li><b>12 visores</b>: 6 Meta Quest 2 y 6 Meta Quest 3</li>
+        <li>Kinect para capturar movimiento y un televisor táctil</li>
+        <li>Recorrer un espacio o un producto antes de fabricarlo</li></ul></div>
+      <div class="piece"><span class="tag t-virtual">Experiencias que se juegan</span><ul>
+        <li><b>Recorridos gamificados</b>: equipos que buscan pistas con QR por el laboratorio, resuelven retos en el celular y marcan la secuencia en las gafas</li>
+        <li>Diseño de interacción, de servicio y de experiencia</li></ul></div>
+      <div class="piece"><span class="tag t-virtual">Lo digital que respalda</span><ul>
+        <li><b>Certificados verificables</b> con código QR, legibles en cualquier parte del mundo</li>
+        <li>Una plataforma propia del laboratorio para reservar, aprender y gestionar proyectos</li></ul></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Aquí no solo haces objetos. Diseñas cómo se siente una experiencia y la pruebas con gafas de realidad virtual antes de construirla.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 07 · ROBÓTICA -->
+<section class="slide" id="robotica" data-min="13–15">
+  <div class="inner">
+    <div class="coord"><span>X 120.0 · Y 060.0</span><b style="color:var(--robot)">ROBÓTICA</b><span class="min">min 13–15</span></div>
+    <h2 class="t-robot"><span class="cut">Lo que se mueve</span></h2>
+    <div class="grid g3">
+      <div class="piece"><span class="tag t-robot">Unitree Go2</span><p>Robot cuadrúpedo, el «perro robot». Camina, sube escaleras y reconoce su entorno.</p></div>
+      <div class="piece"><span class="tag t-robot">Unitree G1 EDU</span><p>Robot humanoide educativo. Sirve para estudiar cómo una máquina se mueve y convive con personas.</p></div>
+      <div class="piece"><span class="tag t-robot">Banco de electrónica</span><p>Estación de soldadura, cautines y kits de electrónica básica para construir prototipos propios con sensores y motores.</p></div>
+    </div>
+    <p class="lead soft">Los robots se usan siempre con acompañamiento del equipo del laboratorio. La electrónica es la puerta para que un estudiante de cualquier carrera haga que su objeto responda.</p>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Tenemos un humanoide y un perro robot para aprender. Y si quieres que tu propio diseño se mueva o encienda, te enseñamos electrónica desde cero.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 08 · PRINCIPIOS DE DISEÑO -->
+<section class="slide" id="principios" data-min="15–18">
+  <div class="inner">
+    <div class="coord"><span>X 140.0 · Y 070.0</span><b>PRINCIPIOS</b><span class="min">min 15–18</span></div>
+    <h2>Más allá <span class="cut">del usuario</span></h2>
+    <p class="lead">El diseño centrado en el humano sigue siendo la base, pero la disciplina ya mira más lejos. Proponemos estos seis principios para la Ean y su nuevo programa de diseño. Cada uno ya tiene un lugar en la universidad y en el laboratorio.</p>
+    <div class="principles">
+      <div><span class="tag t-laser" style="align-self:flex-start">Propuesta</span><h3>Centrado en la vida</h3><p>Diseñar para las personas y también para los ecosistemas de los que dependen.</p><span class="ean">En la Ean: un edificio que trae el bosque de niebla a la calle 72</span><span class="lab">En el lab: impresión en arcilla y materiales de origen natural</span></div>
+      <div><h3>Circular, de la cuna a la cuna</h3><p>Cada material vuelve a ser útil. Nada se diseña para terminar en la basura.</p><span class="ean">En la Ean: el Ean Legacy, de William McDonough, bajo Cradle to Cradle</span><span class="lab">En el lab: se declara el trozo exacto de material que se corta</span></div>
+      <div><h3>Humanizar</h3><p>Espacios y objetos con carácter, que inviten a tocarlos y a encontrarse.</p><span class="ean">En la Ean: la sede de Heatherwick y su manifiesto Humanise</span><span class="lab">En el lab: objetos que se prueban con las manos</span></div>
+      <div><h3>Inclusivo</h3><p>Diseñar desde la diversidad: edades, cuerpos y capacidades distintas.</p><span class="ean">En la Ean: abierto a estudiantes, docentes, empresas y colegios</span><span class="lab">En el lab: prototipos probados por personas diversas</span></div>
+      <div><h3>Con el territorio</h3><p>Co-diseñar con las comunidades y reconocer sus saberes y oficios.</p><span class="ean">En la Ean: una fachada inspirada en la cestería Werregue del pueblo Wounaan</span><span class="lab">En el lab: el oficio a mano junto a la máquina</span></div>
+      <div><h3>Local y abierto</h3><p>Producir cerca de quien lo necesita y compartir el conocimiento con el mundo.</p><span class="ean">En la Ean: emprendimiento sostenible como ADN</span><span class="lab">En el lab: red Fab Lab, Fab Academy y software propio abierto</span></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Aquí no solo aprendes a diseñar para un cliente. Aprendes a diseñar para las personas, para el planeta y con las comunidades.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 09 · HUMANIZACIÓN -->
+<section class="slide" id="humanizacion" data-min="18–21">
+  <div class="inner">
+    <div class="coord"><span>X 160.0 · Y 080.0</span><b>HUMANIZAR</b><span class="min">min 18–21</span></div>
+    <h2>Humanizar, <span class="cut">a tres escalas</span></h2>
+    <p class="quote">Un objeto, un salón o un edificio son humanos cuando dan ganas de tocarlos.<small>La idea, en una frase, para explicarla en cualquier llamada.</small></p>
+    <div class="scales">
+      <div class="scale"><span class="who">Escala ciudad · el edificio</span><h3>Heatherwick Studio</h3><p>La nueva sede de diseño sostenible de la Ean, sobre la calle 72, es el primer proyecto de Thomas Heatherwick en Suramérica. Siete pisos, columnas de colores, terrazas con plantas del bosque de niebla de Chicaque y una fachada que rinde homenaje a la cestería Werregue del pueblo Wounaan. Heatherwick defiende en <i>Humanise</i> que los edificios deben tener carácter y generar vida pública.</p></div>
+      <div class="scale"><span class="who">Escala comunidad · la universidad</span><h3>Universidad Ean</h3><p>La Ean forma emprendedores sostenibles. Humanizar es que lo que se crea sirva a las personas y al planeta, y que el estudiante aprenda con otras personas, no frente a una pantalla.</p></div>
+      <div class="scale"><span class="who">Escala mano · el objeto</span><h3>El FabLab</h3><p>Aquí la humanización se vuelve práctica: el estudiante fabrica con sus manos, prueba con usuarios reales y conoce el material, el tiempo y el esfuerzo que cuesta cada objeto.</p></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Lo que el edificio de Heatherwick hace con la ciudad, el FabLab lo hace con cada objeto: diseño pensado para que la gente lo quiera usar, tocar y cuidar.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · FACULTADES -->
+<section class="slide" id="facultades" data-min="21–23">
+  <div class="inner">
+    <div class="coord"><span>X 180.0 · Y 090.0</span><b>FACULTADES</b><span class="min">min 21–23</span></div>
+    <h2>Un laboratorio <span class="cut">para todas</span></h2>
+    <p class="lead">El FabLab no es de una carrera. Cada facultad tiene una razón concreta para subir al tercer piso, y el nuevo programa de diseño lo convierte en su casa.</p>
+    <div class="fac">
+      <div class="piece"><span class="tag t-wood">Administración, Finanzas y Ciencias Económicas</span><p>Emprender con un producto real. Del plan de negocio al prototipo, al empaque y a la primera tanda para vender.</p><span class="ex">Ej.: validar un producto con 20 unidades impresas antes de invertir</span></div>
+      <div class="piece"><span class="tag t-virtual">Humanidades y Ciencias Sociales</span><p>Comunicar, narrar y diseñar experiencias. Museografía, piezas gráficas, realidad virtual para contar historias.</p><span class="ex">Ej.: una exposición recorrible en realidad virtual</span></div>
+      <div class="piece"><span class="tag t-robot">Ingeniería</span><p>Prototipar, medir y automatizar. CNC, electrónica, robótica y pruebas con piezas fabricadas a medida.</p><span class="ex">Ej.: un sensor con su carcasa impresa en 3D</span></div>
+      <div class="piece new"><span class="tag t-laser">Nuevo · Diseño</span><p>Esté en Humanidades o en una facultad propia, el programa de diseño encuentra en el FabLab su taller principal: aquí cada materia se vuelve objeto.</p><span class="ex">Ej.: portafolio de objetos fabricados desde el primer semestre</span></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Estudies lo que estudies en la Ean, el FabLab es tuyo. Y si vienes por diseño, es tu salón principal.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · CÓMO SE PIDE -->
+<section class="slide" id="como-se-pide" data-min="23–26">
+  <div class="inner">
+    <div class="coord"><span>X 200.0 · Y 100.0</span><b>CÓMO SE PIDE</b><span class="min">min 23–26</span></div>
+    <h2>Cinco puertas, <span class="cut">una página</span></h2>
+    <p class="lead">Todo se pide en <b>fablabean.com</b>. Quien no sabe por dónde empezar escribe lo que necesita y el sistema le dice cuál de estas cinco puertas le sirve.</p>
+    <div class="guide"><span class="label">Guía de reservas</span><span class="prompt">Quiero hacer un llavero con el logo de mi emprendimiento</span></div>
+    <div class="paths">
+      <div class="path"><span class="q">«No sé cómo empezar»</span><h3>Asesoría</h3><p>Una cita con quien conoce el equipo: revisar un diseño, elegir material, planear el trabajo. No bloquea la máquina.</p></div>
+      <div class="path"><span class="q">«Háganlo ustedes»</span><h3>Fabricación con acompañamiento</h3><p>El laboratorio produce el proyecto. Se cotiza, se acepta, se fabrica y se entrega.</p></div>
+      <div class="path"><span class="q">«Yo lo hago»</span><h3>Hago mi pieza</h3><p>Reservar la máquina y usarla. Quien ya tiene su certificación va solo; quien no, va acompañado.</p></div>
+      <div class="path"><span class="q">«Necesito dónde»</span><h3>Un espacio</h3><p>Reservar un espacio del laboratorio para trabajar, una clase o un taller.</p></div>
+      <div class="path"><span class="q">«Necesito con qué»</span><h3>Herramientas</h3><p>Préstamo de herramientas sueltas, varias en una sola reserva.</p></div>
+    </div>
+    <div class="grid g2">
+      <div class="piece"><span class="label">Un proyecto grande avanza así</span>
+        <div class="flow"><span>Idea</span><i>→</i><span>Propuesta</span><i>→</i><span>Acuerdo</span><i>→</i><span>Brief</span><i>→</i><span>Ejecución</span><i>→</i><span>Cierre</span></div>
+        <p class="soft" style="font-size:15px">Las ideas también llegan por correo o WhatsApp, de personas sin cuenta. Cada proyecto tiene un responsable.</p></div>
+      <div class="piece"><span class="label">Al llegar</span><p class="soft" style="font-size:15px">Se entra con el carné digital Ean o con un código al correo. La llegada se marca con el QR de la máquina, el sistema envía recordatorios y la disponibilidad se ve en vivo.</p></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Entras a fablabean.com, escribes lo que quieres hacer y la página te dice el camino: una asesoría, que lo hagamos nosotros, o que lo hagas tú.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · BIT → TERA -->
+<section class="slide" id="formacion" data-min="26–27">
+  <div class="inner">
+    <div class="coord"><span>X 220.0 · Y 110.0</span><b>FORMACIÓN</b><span class="min">min 26–27</span></div>
+    <h2>De bit <span class="cut">a tera</span></h2>
+    <p class="lead">La formación sube por niveles con nombre de unidad digital. Cada curso aprobado entrega un <b>certifab</b>: la habilitación verificable para usar más máquinas con más autonomía.</p>
+    <div class="levels">
+      <div class="lv"><div class="bar"></div><span class="nm">bit</span><span class="hr">2 h</span><span class="ds">Inducción al laboratorio</span></div>
+      <div class="lv"><div class="bar"></div><span class="nm">byte</span><span class="hr">8 h c/u</span><span class="ds">Impresión 3D · Corte láser</span></div>
+      <div class="lv"><div class="bar"></div><span class="nm">kilo</span><span class="hr">12 h c/u</span><span class="ds">Resina y acabados · Electrónica</span></div>
+      <div class="lv"><div class="bar"></div><span class="nm">mega</span><span class="hr">20 h</span><span class="ds">Fresado CNC</span></div>
+      <div class="lv"><div class="bar"></div><span class="nm">giga</span><span class="hr">16 h</span><span class="ds">Acompañar a otros</span></div>
+      <div class="lv"><div class="bar"></div><span class="nm">tera</span><span class="hr">500 h</span><span class="ds">Fab Academy, clase global con el MIT</span></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Empiezas con una inducción de dos horas y puedes llegar a la Fab Academy, el programa internacional de la red de FabLabs. Cada nivel queda certificado.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · DIFERENCIADORES -->
+<section class="slide" id="diferencia" data-min="27–28">
+  <div class="inner">
+    <div class="coord"><span>X 240.0 · Y 120.0</span><b>DIFERENCIA</b><span class="min">min 27–28</span></div>
+    <h2>Por qué <span class="cut">la Ean</span></h2>
+    <p class="lead">Frente a la Tadeo, los Andes, la Javeriana o la Nacional, el aspirante va a comparar talleres. Lo que conviene decir no es que tenemos máquinas: es cómo se usan.</p>
+    <div class="diff">
+      <div><span class="k">A</span><div><h3>Acceso desde el primer semestre</h3><p>Una inducción de dos horas abre la puerta. No hay que esperar a una materia avanzada.</p></div></div>
+      <div><span class="k">B</span><div><h3>Tres escenarios en un solo piso</h3><p>Tangible, intangible y robótica conviven. Un proyecto puede pasar por los tres sin cambiar de edificio.</p></div></div>
+      <div><span class="k">C</span><div><h3>Robots humanoides para aprender</h3><p>Un Unitree G1 y un Go2 disponibles para formación, con acompañamiento.</p></div></div>
+      <div><span class="k">D</span><div><h3>Único nodo de Fab Academy en Colombia</h3><p>El laboratorio pertenece a la red Fab Lab y es el único nodo del país de la Fab Academy, el programa global que dirige Neil Gershenfeld desde el MIT.</p></div></div>
+      <div><span class="k">E</span><div><h3>Diseño con propósito sostenible</h3><p>El ADN de emprendimiento sostenible de la Ean y la sede de Heatherwick dan al diseño una historia que nadie más cuenta.</p></div></div>
+      <div><span class="k">F</span><div><h3>Un laboratorio con su propio sistema</h3><p>Reservas, certificaciones verificables y proyectos en una plataforma hecha aquí. El estudiante sabe en todo momento qué puede usar y cuándo.</p></div></div>
+    </div>
+    <div class="say">
+      <span class="label">Dilo así</span>
+      <p>«Muchas universidades tienen talleres. En la Ean el taller es tuyo desde el primer semestre, une lo que se toca con lo virtual y la robótica, y es el único lugar de Colombia donde se cursa la Fab Academy del MIT.»</p>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · PREGUNTAS DE ASPIRANTES -->
+<section class="slide" id="preguntas" data-min="28–29">
+  <div class="inner">
+    <div class="coord"><span>X 260.0 · Y 130.0</span><b>PREGUNTAS</b><span class="min">min 28–29</span></div>
+    <h2>Lo que <span class="cut">preguntan</span></h2>
+    <div class="faq">
+      <details open><summary>¿Qué es eso del diseño centrado en el humano?</summary><p>Es diseñar empezando por las personas: se observa a quien va a usar algo, se le hacen prototipos y se prueba con esa persona hasta que funcione. En la Ean se aprende en clase y se practica en el FabLab, donde el prototipo se puede tocar.</p></details>
+      <details><summary>¿Necesito saber de tecnología para usar el FabLab?</summary><p>No. La inducción (nivel bit) dura dos horas y parte de cero. Mientras no tengas la certificación de una máquina, la usas con alguien del equipo a tu lado.</p></details>
+      <details><summary>¿Es solo para estudiantes de diseño o ingeniería?</summary><p>Es para toda la Ean: administración, humanidades, ingeniería y el nuevo programa de diseño. También atiende proyectos de profesores y de Educación Continua.</p></details>
+      <details><summary>¿Dónde queda y cómo pido algo?</summary><p>En el tercer piso del edificio Fundadores. Todo se pide en fablabean.com: asesoría, fabricación, reserva de máquina, espacio o herramientas.</p></details>
+      <details><summary>¿Qué me llevo al graduarme?</summary><p>Un portafolio de objetos fabricados y certificaciones verificables con código QR que cualquier empresa puede comprobar.</p></details>
+      <details><summary>¿Puedo traer a mi colegio de visita?</summary><p>Sí. Hay recorridos para grupos de hasta 30 personas, en grupos de 15, sin detener las máquinas. Pueden ser gamificados: los equipos buscan pistas con QR y usan gafas de realidad virtual. El profesor recibe un reporte.</p></details>
+      <details><summary>¿Una empresa puede encargar un proyecto?</summary><p>Sí. El laboratorio acompaña proyectos de la Universidad y de empresas, desde la idea hasta el acta de cierre. Se pide en fablabean.com, con al menos 15 días de anticipación para externos.</p></details>
+      <details><summary>¿Qué tiene que ver el edificio de Heatherwick?</summary><p>Es la nueva sede de diseño sostenible de la Ean. Comparte con el FabLab la misma idea: diseño que la gente quiere tocar y usar.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · LA VISITA -->
+<section class="slide" id="visita" data-min="29–30">
+  <div class="inner">
+    <div class="coord"><span>X 280.0 · Y 140.0</span><b>LA VISITA</b><span class="min">propuesta · 30 min</span></div>
+    <h2>Que se vayan <span class="cut">con algo en la mano</span></h2>
+    <p class="lead">Propuesta para la sesión con el centro de contacto. La presentación toma unos 18 minutos; el resto es para vivirlo.</p>
+    <div class="agenda">
+      <div><span class="t">00–18</span><div><h3>Esta presentación</h3><p>Diseño centrado en el humano, escenarios, principios nuevos, humanización, facultades y cómo se pide.</p></div></div>
+      <div><span class="t">18–22</span><div><h3>Escribe tu idea en la guía</h3><p>Cada persona escribe en fablabean.com lo que haría y ve qué camino le propone el sistema.</p></div></div>
+      <div><span class="t">22–26</span><div><h3>Su pieza en el láser</h3><p>Un llavero o una placa con su nombre grabado mientras miran el corte. Se la llevan.</p></div></div>
+      <div><span class="t">26–28</span><div><h3>El robot saluda</h3><p>Demostración del Unitree Go2 y un minuto con un visor de realidad virtual.</p></div></div>
+      <div><span class="t">28–30</span><div><h3>Su discurso en una frase</h3><p>Cada persona dice en voz alta su versión de «Dilo así». La mejor queda como guion del equipo.</p></div></div>
+    </div>
+    <p class="src">Fuentes externas: <a href="https://www.architecturalrecord.com/articles/16795-heatherwick-studios-first-project-in-south-america-promises-to-be-an-eyeful" target="_blank" rel="noopener">Architectural Record, 2024</a> · <a href="https://www.elespectador.com/contenido-patrocinado/los-edificios-actuan-como-las-paredes-de-nuestra-vida-publica-thomas-heatherwick-en-la-universidad-ean/" target="_blank" rel="noopener">El Espectador, 2024</a>. Equipos, cursos y caminos de solicitud: plataforma del FabLab Ean.</p>
+  </div>
+</section>
+
+<nav class="rail" id="rail" aria-label="Secciones"></nav>
+<div class="hud" id="hud" aria-live="polite"><b>01</b> / 15</div>
+<div class="keys"><button id="prev" type="button" aria-label="Sección anterior">↑</button><button id="next" type="button" aria-label="Sección siguiente">↓</button></div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('section.slide'));
+  var rail=document.getElementById('rail'),hud=document.getElementById('hud');
+  var titles={};
+  // Minutos de cada sección, en orden: la presentación ocupa 18 de los 30
+  var MIN=['0–1','1–2','2–4','4–5','5–6','6–7','7–8','8–9','9–10','10–12','12–13','13–14','14–16','16–17','17–18','a demanda','18–30'];
+  function z(n){var t=n.toFixed(1);while(t.length<5)t='0'+t;return t}
+  slides.forEach(function(s,i){
+    var m=MIN[i]||'',lbl=/\d/.test(m)?'min '+m:m;
+    s.dataset.min=lbl;
+    var c=s.querySelector('.coord');
+    if(c){c.firstElementChild.textContent='X '+z(i*20)+' · Y '+z(i*10);var mm=c.querySelector('.min');if(mm)mm.textContent=lbl}
+    var a=document.createElement('a');a.href='#'+s.id;
+    var h=s.querySelector('h1,h2');titles[s.id]=h?h.textContent.trim():s.id;
+    a.title=titles[s.id];a.setAttribute('aria-label',titles[s.id]);rail.appendChild(a);
+  });
+  var dots=[].slice.call(rail.children),cur=0;
+  function pad(n){return (n<10?'0':'')+n}
+  function mark(i){
+    cur=i;slides.forEach(function(s,j){s.classList.toggle('on',j===i)});
+    dots.forEach(function(d,j){d.classList.toggle('on',j===i)});
+    hud.innerHTML='<b>'+pad(i+1)+'</b> / '+slides.length+' · '+slides[i].dataset.min;
+  }
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)mark(slides.indexOf(e.target))})},{threshold:.5});
+    slides.forEach(function(s){io.observe(s)});
+  }
+  mark(0);
+  function go(i){i=Math.max(0,Math.min(slides.length-1,i));slides[i].scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
+  document.getElementById('prev').addEventListener('click',function(){go(cur-1)});
+  document.getElementById('next').addEventListener('click',function(){go(cur+1)});
+  document.addEventListener('keydown',function(e){
+    if(e.target.closest&&e.target.closest('summary,input,textarea'))return;
+    if(['ArrowRight','ArrowDown','PageDown',' '].indexOf(e.key)>-1){e.preventDefault();go(cur+1)}
+    else if(['ArrowLeft','ArrowUp','PageUp'].indexOf(e.key)>-1){e.preventDefault();go(cur-1)}
+    else if(e.key==='Home'){e.preventDefault();go(0)}
+    else if(e.key==='End'){e.preventDefault();go(slides.length-1)}
+  });
+  var h=location.hash.slice(1);if(h&&document.getElementById(h)){var k=slides.indexOf(document.getElementById(h));if(k>-1)setTimeout(function(){go(k)},50)}
+})();
+</script>
+
+</body>
+</html>

@@ -108,6 +108,17 @@ Route::get('/qr/{codigo}', EnlaceCortoController::class)
     ->middleware('throttle:120,1')
     ->name('qr');
 
+/*
+ * La presentacion del laboratorio para quienes hablan con los aspirantes
+ * (centro de contacto, admisiones). Es una pagina hecha a mano, sin layout del
+ * sitio: se comparte por enlace y se proyecta a pantalla completa.
+ */
+Route::get('/conoce-el-fablab', fn () => response(
+    file_get_contents(resource_path('presentaciones/conoce-el-fablab.html')),
+    200,
+    ['Content-Type' => 'text/html; charset=UTF-8'],
+))->name('conoce-el-fablab');
+
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
 
