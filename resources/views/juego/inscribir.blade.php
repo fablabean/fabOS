@@ -45,7 +45,7 @@
             @error('nombre') <p class="error">{{ $message }}</p> @enderror
 
             <h2 style="margin-top:1.2rem">Integrantes</h2>
-            <p class="muted" style="margin-top:0">Escriban el nombre de cada uno. El correo es opcional y solo para mayores de edad.</p>
+            <p class="muted" style="margin-top:0">Escriban el nombre de cada uno y si es mayor de edad. A los mayores les pedimos el correo; a los menores, no.</p>
             {{-- Cuatro filas a la vista y el resto plegado. --}}
             @foreach (range(0, \App\Http\Controllers\JuegoController::INTEGRANTES - 1) as $n)
                 @if ($n === 4)
@@ -63,25 +63,29 @@
                         <label class="casilla"><input type="radio" class="mayor" name="integrantes[{{ $n }}][menor]" value="0" @checked(old("integrantes.$n.menor") === '0')> Sí</label>
                         <label class="casilla"><input type="radio" class="menor" name="integrantes[{{ $n }}][menor]" value="1" @checked(old("integrantes.$n.menor") === '1')> No, es menor</label>
                     </div>
+                    @error("integrantes.$n.menor") <p class="error">{{ $message }}</p> @enderror
 
                     <p class="es-menor muted">A los menores de edad no les pedimos correo.</p>
 
                     <div class="adulto">
                         <input type="email" class="correo" name="integrantes[{{ $n }}][correo]" maxlength="160" autocomplete="off" inputmode="email"
-                               placeholder="Correo (opcional)" aria-label="Correo del integrante {{ $n + 1 }}" value="{{ old("integrantes.$n.correo") }}">
+                               placeholder="Correo" aria-label="Correo del integrante {{ $n + 1 }}" value="{{ old("integrantes.$n.correo") }}">
                         @error("integrantes.$n.correo") <p class="error">{{ $message }}</p> @enderror
 
-                        {{-- Ley 1581 de 2012. Lo acepta cada persona, no quien llena por
-                             todos: por eso es un texto para leerle, corto y en voz alta. --}}
+                        {{-- Ley 1581 de 2012. El correo es obligatorio para el registro de
+                             la actividad; que le escribamos después lo acepta cada persona,
+                             no quien llena por todos: por eso es un texto para leerle,
+                             corto y en voz alta. --}}
                         <div class="aviso-correo">
                             <div class="leer">
                                 <strong>Léanle esto a esta persona</strong>
-                                «Vamos a guardar tu correo para escribirte sobre talleres, cursos y eventos de {{ config('fabos.lab.name') }}.
-                                No lo compartimos con nadie y puedes pedir que lo borremos cuando quieras. ¿Estás de acuerdo?»
+                                «Tu correo queda en el registro de esta actividad de {{ config('fabos.lab.name') }}.
+                                ¿Te podemos escribir también sobre talleres, cursos y eventos?
+                                No lo compartimos con nadie y puedes pedir que lo borremos cuando quieras.»
                             </div>
                             <label class="casilla">
                                 <input type="checkbox" name="integrantes[{{ $n }}][autoriza]" value="1" @checked(old("integrantes.$n.autoriza"))>
-                                <span><strong>Sí, aceptó.</strong> Si no acepta, borren el correo.</span>
+                                <span><strong>Sí, aceptó que le escribamos.</strong> Si no acepta, déjenla sin marcar: el correo queda solo en el registro.</span>
                             </label>
                             @error("integrantes.$n.autoriza") <p class="error">{{ $message }}</p> @enderror
                         </div>

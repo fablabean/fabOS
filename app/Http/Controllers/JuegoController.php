@@ -116,24 +116,22 @@ class JuegoController extends Controller
             'nombre' => ['required', 'string', 'max:80'],
             'integrantes' => ['nullable', 'array', 'max:' . self::INTEGRANTES],
             'integrantes.*.nombre' => ['nullable', 'string', 'max:80', 'required_with:integrantes.*.correo'],
-            'integrantes.*.menor' => ['nullable', 'boolean'],
-            'integrantes.*.correo' => ['nullable', 'email', 'max:160'],
+            // A cada quien se le pregunta la edad: sin ella no se sabe si
+            // pedirle el correo o no.
+            'integrantes.*.menor' => ['nullable', 'boolean', 'required_with:integrantes.*.nombre'],
+            // El correo es obligatorio para los adultos. A un menor ni se le
+            // pide: guardarlo exige la autorización de sus padres (Ley 1581).
+            'integrantes.*.correo' => ['nullable', 'email', 'max:160', 'required_if:integrantes.*.menor,0'],
+            // Aceptar que se le escriba sobre talleres y cursos es aparte y
+            // opcional: sin marcarlo, el correo queda solo en el registro de
+            // quienes participaron.
             'integrantes.*.autoriza' => ['nullable', 'boolean'],
         ], [
             'integrantes.*.nombre.required_with' => 'A ese correo le falta el nombre.',
+            'integrantes.*.menor.required_with' => 'Marquen si es mayor de edad.',
+            'integrantes.*.correo.required_if' => 'Falta el correo: es obligatorio para los mayores de edad.',
             'integrantes.*.correo.email' => 'Ese correo no está bien escrito.',
         ], ['nombre' => 'nombre del equipo']);
-
-        // Ley 1581 de 2012: el correo de un adulto se guarda solo si esa
-        // persona aceptó. El de un menor ni se mira: no se guarda.
-        $faltan = collect($datos['integrantes'] ?? [])
-            ->filter(fn ($p) => filled($p['correo'] ?? null) && ($p['menor'] ?? null) === '0' && empty($p['autoriza']));
-
-        if ($faltan->isNotEmpty()) {
-            return back()->withInput()->withErrors($faltan->mapWithKeys(fn ($p, $n) => [
-                "integrantes.$n.autoriza" => 'Léanle el aviso a ' . (trim($p['nombre'] ?? '') ?: 'esta persona') . ' y marquen si aceptó. Si no acepta, borren el correo.',
-            ])->all());
-        }
 
         try {
             $equipo = $juego->inscribir($partida, $datos['nombre'], $datos['integrantes'] ?? []);

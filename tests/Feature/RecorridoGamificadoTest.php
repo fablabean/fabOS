@@ -640,38 +640,44 @@ class RecorridoGamificadoTest extends TestCase
         $this->get(route('juego.inscribir', $p->codigo))->assertOk()->assertSee('Inscriban a su equipo');
 
         $integrantes = [
-            ['nombre' => 'Ana', 'menor' => '0', 'correo' => ' Ana@Colegio.edu.co '],
-            ['nombre' => 'Luis', 'menor' => '0', 'correo' => ''],
+            ['nombre' => 'Ana', 'menor' => '0', 'correo' => ' Ana@Colegio.edu.co ', 'autoriza' => '1'],
+            // Un adulto da el correo aunque no acepte que le escribamos.
+            ['nombre' => 'Luis', 'menor' => '0', 'correo' => 'luis@colegio.edu.co'],
             // Un menor no deja correo, aunque llegue uno escrito.
             ['nombre' => 'Tomás', 'menor' => '1', 'correo' => 'tomas@colegio.edu.co', 'autoriza' => '1'],
-            // Sin responder la edad tampoco: no se supone que es mayor.
-            ['nombre' => 'Sofía', 'correo' => 'sofia@colegio.edu.co', 'autoriza' => '1'],
             ['nombre' => '', 'correo' => ''],
         ];
 
-        // Un adulto que deja correo tiene que haber aceptado él, no quien llena.
-        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes])
-            ->assertSessionHasErrors('integrantes.0.autoriza');
+        // El correo es obligatorio para un adulto…
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Ana', 'menor' => '0', 'correo' => '']]])
+            ->assertSessionHasErrors(['integrantes.0.correo' => 'Falta el correo: es obligatorio para los mayores de edad.']);
+        // …y bien escrito.
         $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Ana', 'menor' => '0', 'correo' => 'no-es-correo', 'autoriza' => '1']]])
             ->assertSessionHasErrors('integrantes.0.correo');
-        $this->assertSame(0, Equipo::count());
+        // Sin responder la edad no se sabe si pedírselo: se pregunta.
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Sofía', 'correo' => '']]])
+            ->assertSessionHasErrors(['integrantes.0.menor' => 'Marquen si es mayor de edad.']);
+        // A un menor no se le exige.
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => [['nombre' => 'Tomás', 'menor' => '1']]])
+            ->assertSessionDoesntHaveErrors('integrantes.0.correo');
+        $this->assertSame(1, Equipo::count());
+        Equipo::query()->delete();
 
-        $integrantes[0]['autoriza'] = '1';
         $r = $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Lobos', 'integrantes' => $integrantes]);
         $e = Equipo::where('nombre', 'Lobos')->firstOrFail();
         $r->assertRedirect(route('juego.equipo', $e->token))->assertCookie(JuegoController::COOKIE);
-        [$ana, $luis, $tomas, $sofia] = $e->integrantes->all();
-        $this->assertSame(['Ana', 'Luis', 'Tomás', 'Sofía'], $e->integrantes->pluck('nombre')->all());
+        [$ana, $luis, $tomas] = $e->integrantes->all();
+        $this->assertSame(['Ana', 'Luis', 'Tomás'], $e->integrantes->pluck('nombre')->all());
         $this->assertSame('ana@colegio.edu.co', $ana->correo);
         $this->assertNotNull($ana->autoriza_contacto_at);
+        $this->assertSame('luis@colegio.edu.co', $luis->correo);
         $this->assertNull($luis->autoriza_contacto_at);
         $this->assertTrue($tomas->menor_de_edad);
         $this->assertNull($tomas->correo);
         $this->assertNull($tomas->autoriza_contacto_at);
-        $this->assertNull($sofia->correo);
 
-        // Sin correos, no hay nada que aceptar.
-        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Osos', 'integrantes' => [['nombre' => 'Sara']]])
+        // Un equipo de solo menores no deja ningún correo.
+        $this->post(route('juego.inscribirse', $p->codigo), ['nombre' => 'Osos', 'integrantes' => [['nombre' => 'Sara', 'menor' => '1']]])
             ->assertSessionHasNoErrors();
 
         Livewire::test(Celular::class, ['equipoId' => $e->id])
@@ -685,7 +691,7 @@ class RecorridoGamificadoTest extends TestCase
         $this->withCookie(JuegoController::COOKIE, $e->token)
             ->get(route('juego.inscribir', $p->codigo))->assertSee('Volver al juego');
 
-        $this->get(route('juego.tablero', $p->codigo))->assertOk()->assertSee('Lobos')->assertSee('inscriban a su equipo');
+        $this->get(route('juego.tablero', $p->codigo))->assertOk()->assertSee('Lobos')->assertSee('3 integrantes')->assertSee('inscriban a su equipo');
 
         // A una simultánea no se inscribe nadie por su cuenta.
         $simultanea = $this->partida($this->circuito(1), 1);
