@@ -74,9 +74,54 @@
 
         <label>
             De qué se trata <span class="obligatorio" aria-hidden="true">*</span>
-            <textarea name="resumen" rows="4" required
+            <textarea name="resumen" id="resumen" rows="4" required
+                      aria-describedby="resumen-error"
+                      @error('resumen') aria-invalid="true" @enderror
                       placeholder="Qué es, para qué lo necesitas y para quién. Con dos o tres frases basta.">{{ old('resumen') }}</textarea>
+            {{-- El aviso, debajo del campo. En el teléfono el de arriba de la
+                 página y el del botón quedaban lejos, y quien no podía enviar
+                 no sabía qué le faltaba. --}}
+            <span class="error-campo" id="resumen-error" role="alert" @error('resumen') @else hidden @enderror>@error('resumen'){{ $message }}@enderror</span>
         </label>
+        <script>
+            (function () {
+                const campo = document.getElementById('resumen');
+                const aviso = document.getElementById('resumen-error');
+                if (! campo || ! aviso) return;
+                const palabras = () => campo.value.trim().split(/\s+/).filter(Boolean).length;
+
+                function senalar() {
+                    aviso.textContent = '«De qué se trata» necesita al menos dos palabras.';
+                    aviso.hidden = false;
+                    campo.setAttribute('aria-invalid', 'true');
+                    campo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    campo.focus({ preventScroll: true });
+                }
+
+                campo.addEventListener('input', function () {
+                    if (palabras() >= 2) {
+                        aviso.hidden = true;
+                        campo.removeAttribute('aria-invalid');
+                    }
+                });
+
+                // En captura sobre window: corre antes que la espera del
+                // captcha y que el botón se apague, así el envío ni sale.
+                window.addEventListener('submit', function (e) {
+                    if (e.target !== campo.form || palabras() >= 2) return;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    senalar();
+                }, true);
+
+                // Si volvió del servidor con este error, se lleva la vista al campo.
+                if (! aviso.hidden) {
+                    window.addEventListener('load', function () {
+                        campo.scrollIntoView({ block: 'center' });
+                    });
+                }
+            })();
+        </script>
 
         <label>
             Qué esperas recibir
@@ -509,6 +554,10 @@
                           background:color-mix(in srgb, #b91c1c 8%, transparent); font-size:.88rem; }
         .aviso-archivos ul { margin:.3rem 0 .4rem; padding-left:1.1rem; }
         form.panel .obligatorio { color:#b91c1c; font-weight:700; margin-left:.1rem; }
+        form.panel .error-campo { display:block; margin-top:.35rem; padding:.45rem .7rem; border-left:3px solid #b91c1c;
+                                  border-radius:4px; background:color-mix(in srgb, #b91c1c 8%, transparent);
+                                  color:#b91c1c; font-size:.85rem; font-weight:600; text-transform:none; letter-spacing:0; }
+        form.panel textarea[aria-invalid="true"] { border-color:#b91c1c; outline-color:#b91c1c; }
 
         details.contrato > summary { cursor:pointer; list-style:none; display:flex; gap:.8rem;
                                      justify-content:space-between; align-items:center; font-weight:600; font-size:.92rem; }

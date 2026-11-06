@@ -105,6 +105,22 @@ class SolicitudDeProyectoTest extends TestCase
      * Aquí sí se crea cuenta, y es deliberado: quien escribe por la web va a
      * querer seguir su proyecto, y sin cuenta no hay dónde seguirlo.
      */
+    public function test_de_que_se_trata_pide_al_menos_dos_palabras_y_lo_dice_junto_al_campo(): void
+    {
+        $this->from(route('proyectos.solicitar'))
+            ->post(route('proyectos.solicitar.store'), $this->solicitud(['resumen' => 'Llavero']))
+            ->assertRedirect(route('proyectos.solicitar'))
+            ->assertSessionHasErrors(['resumen' => '«De qué se trata» necesita al menos dos palabras.']);
+
+        $this->get(route('proyectos.solicitar'))
+            ->assertSee('id="resumen-error"', false)
+            ->assertSee('«De qué se trata» necesita al menos dos palabras.');
+
+        $this->post(route('proyectos.solicitar.store'), $this->solicitud(['resumen' => 'Llavero acrílico']))
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, Project::count());
+    }
+
     public function test_una_solicitud_crea_la_cuenta_de_quien_pide(): void
     {
         $this->post(route('proyectos.solicitar.store'), $this->solicitud());
