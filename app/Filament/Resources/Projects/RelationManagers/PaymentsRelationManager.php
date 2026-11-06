@@ -180,8 +180,9 @@ class PaymentsRelationManager extends RelationManager
                     ->required()
                     ->live()
                     ->default(fn () => $this->getOwnerRecord()->requested_by)
-                    ->getSearchResultsUsing(fn (string $buscar) => \App\Models\User::query()
-                        ->where(fn ($q) => $q->where('name', 'ilike', '%' . $buscar . '%')->orWhere('email', 'ilike', '%' . $buscar . '%'))
+                    // Filament le pasa el texto por nombre: tiene que llamarse $search.
+                    ->getSearchResultsUsing(fn (string $search) => \App\Models\User::query()
+                        ->where(fn ($q) => $q->where('name', 'ilike', '%' . $search . '%')->orWhere('email', 'ilike', '%' . $search . '%'))
                         ->orderBy('name')->limit(20)->pluck('name', 'id'))
                     ->getOptionLabelUsing(fn ($value) => \App\Models\User::find($value)?->name)
                     ->helperText(fn (Get $get) => ($s = $saldo($get('persona'))) ? 'Saldo disponible: ' . $s . '.' : null),

@@ -300,6 +300,14 @@ class PagosDeProyectoTest extends TestCase
             10_00, 'dotacion',
         );
 
+        // Se puede buscar a otra persona por nombre o correo.
+        User::create(['name' => 'Juan Ortiz', 'email' => 'jortiz@est.co', 'status' => 'activo']);
+        $pantalla = Livewire::test(PaymentsRelationManager::class, ['ownerRecord' => $p, 'pageClass' => EditProject::class])
+            ->mountAction(TestAction::make('descontarFabcoins')->table());
+        $esquema = (fn () => $this->getMountedActionSchema())->call($pantalla->instance());
+        $campo = collect($esquema->getFlatComponents())->first(fn ($c) => $c instanceof \Filament\Forms\Components\Select);
+        $this->assertContains('Juan Ortiz', collect($campo->getSearchResultsForJs('jortiz'))->pluck('label')->all());
+
         Livewire::test(PaymentsRelationManager::class, ['ownerRecord' => $p, 'pageClass' => EditProject::class])
             ->callAction(TestAction::make('descontarFabcoins')->table(), ['fabcoins' => 8, 'motivo' => 'Vale 10: 8 en FabCoins y 2 en pesos.'])
             ->assertHasNoActionErrors()
