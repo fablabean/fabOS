@@ -75,53 +75,9 @@
         <label>
             De qué se trata <span class="obligatorio" aria-hidden="true">*</span>
             <textarea name="resumen" id="resumen" rows="4" required
-                      aria-describedby="resumen-error"
-                      @error('resumen') aria-invalid="true" @enderror
+                      data-palabras="2"
                       placeholder="Qué es, para qué lo necesitas y para quién. Con dos o tres frases basta.">{{ old('resumen') }}</textarea>
-            {{-- El aviso, debajo del campo. En el teléfono el de arriba de la
-                 página y el del botón quedaban lejos, y quien no podía enviar
-                 no sabía qué le faltaba. --}}
-            <span class="error-campo" id="resumen-error" role="alert" @error('resumen') @else hidden @enderror>@error('resumen'){{ $message }}@enderror</span>
         </label>
-        <script>
-            (function () {
-                const campo = document.getElementById('resumen');
-                const aviso = document.getElementById('resumen-error');
-                if (! campo || ! aviso) return;
-                const palabras = () => campo.value.trim().split(/\s+/).filter(Boolean).length;
-
-                function senalar() {
-                    aviso.textContent = '«De qué se trata» necesita al menos dos palabras.';
-                    aviso.hidden = false;
-                    campo.setAttribute('aria-invalid', 'true');
-                    campo.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    campo.focus({ preventScroll: true });
-                }
-
-                campo.addEventListener('input', function () {
-                    if (palabras() >= 2) {
-                        aviso.hidden = true;
-                        campo.removeAttribute('aria-invalid');
-                    }
-                });
-
-                // En captura sobre window: corre antes que la espera del
-                // captcha y que el botón se apague, así el envío ni sale.
-                window.addEventListener('submit', function (e) {
-                    if (e.target !== campo.form || palabras() >= 2) return;
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    senalar();
-                }, true);
-
-                // Si volvió del servidor con este error, se lleva la vista al campo.
-                if (! aviso.hidden) {
-                    window.addEventListener('load', function () {
-                        campo.scrollIntoView({ block: 'center' });
-                    });
-                }
-            })();
-        </script>
 
         <label>
             Qué esperas recibir
@@ -512,6 +468,116 @@
             })();
         </script>
 
+        {{-- Los avisos de cada campo, debajo de él y con nuestras palabras.
+             El globo del navegador («el valor debe ser…») en el teléfono
+             apenas se ve o ni sale: alguien de fuera eligió una fecha antes
+             de los quince días y no supo por qué no lo dejaba enviar; en el
+             computador sí lo vio. Aquí se dice al elegirla, y al enviar se
+             lleva la vista al primer campo que falla. Lo que rechaza el
+             servidor se pinta igual, en su campo. --}}
+        <script>
+            (function () {
+                const form = document.getElementById('solicitud');
+                if (! form) return;
+                const delServidor = @json($errors->getMessages());
+
+                function caja(campo) {
+                    const id = (campo.id || campo.name).replace(/[^\w-]/g, '') + '-error';
+                    let s = document.getElementById(id);
+                    if (! s) {
+                        s = document.createElement('span');
+                        s.className = 'error-campo';
+                        s.id = id;
+                        s.setAttribute('role', 'alert');
+                        s.hidden = true;
+                        (campo.closest('label') || campo.parentNode).appendChild(s);
+                        campo.setAttribute('aria-describedby', ((campo.getAttribute('aria-describedby') || '') + ' ' + id).trim());
+                    }
+                    return s;
+                }
+
+                function mostrar(campo, texto) {
+                    const s = caja(campo);
+                    s.textContent = texto;
+                    s.hidden = false;
+                    campo.setAttribute('aria-invalid', 'true');
+                }
+
+                function ocultar(campo) {
+                    const s = document.getElementById((campo.id || campo.name).replace(/[^\w-]/g, '') + '-error');
+                    if (s) s.hidden = true;
+                    campo.removeAttribute('aria-invalid');
+                }
+
+                function mensaje(campo) {
+                    const v = campo.validity;
+                    if (v.customError) return campo.validationMessage;
+                    if (v.valueMissing) return campo.type === 'checkbox' ? 'Hay que marcar esta casilla.' : 'Falta este dato: es obligatorio.';
+                    if (v.rangeUnderflow && campo.dataset.mensaje) return campo.dataset.mensaje;
+                    if (v.typeMismatch && campo.type === 'email') return 'Revisa el correo: no parece una dirección válida.';
+                    return campo.validationMessage;
+                }
+
+                // alEnviar: lo que falta solo se reclama al enviar; lo que
+                // está mal escrito, en cuanto se sale del campo.
+                function revisar(campo, alEnviar) {
+                    if (! campo || ! campo.willValidate) return true;
+                    if (campo.dataset.palabras) {
+                        const n = campo.value.trim().split(/\s+/).filter(Boolean).length;
+                        campo.setCustomValidity(campo.value.trim() && n < +campo.dataset.palabras
+                            ? '«De qué se trata» necesita al menos dos palabras.' : '');
+                    }
+                    if (campo.validity.valid || (! alEnviar && campo.validity.valueMissing)) {
+                        ocultar(campo);
+                        return campo.validity.valid;
+                    }
+                    mostrar(campo, mensaje(campo));
+                    return false;
+                }
+                window.revisarCampo = (campo) => revisar(campo, false);
+
+                let primero = null;
+                form.addEventListener('invalid', function (e) {
+                    e.preventDefault();               // sin el globo del navegador
+                    revisar(e.target, true);
+                    if (! primero) {
+                        primero = e.target;
+                        primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        try { primero.focus({ preventScroll: true }); } catch (err) {}
+                        setTimeout(() => { primero = null; }, 0);
+                    }
+                }, true);
+
+                form.addEventListener('change', (e) => revisar(e.target, false));
+                // Mientras escribe no se le reclama nada; solo se quita el
+                // aviso en cuanto queda bien. Las palabras se cuentan siempre,
+                // para que al enviar el campo ya sepa si vale.
+                form.addEventListener('input', function (e) {
+                    const campo = e.target;
+                    if (campo.getAttribute('aria-invalid') === 'true') {
+                        revisar(campo, false);
+                    } else if (campo.dataset.palabras) {
+                        revisar(campo, false);
+                        ocultar(campo);
+                    }
+                });
+
+                // Lo que devolvió el servidor, en su campo; y la vista, al primero.
+                let alPrimero = null;
+                Object.keys(delServidor).forEach(function (clave) {
+                    const nombre = clave.split('.')[0];
+                    let campo = form.elements[nombre] || form.elements[nombre + '[]'];
+                    if (campo && ! campo.tagName && campo.length) campo = campo[0];
+                    if (! campo || ! campo.tagName || campo.type === 'hidden') return;
+                    mostrar(campo, delServidor[clave][0]);
+                    alPrimero = alPrimero || campo;
+                });
+                if (alPrimero) {
+                    window.addEventListener('load', () => alPrimero.scrollIntoView({ block: 'center' }));
+                }
+            })();
+        </script>
+
         <x-captcha accion="proyectos.solicitar.store"/>
 
         {{-- El error también aquí, al lado del botón: arriba del todo, en
@@ -556,7 +622,8 @@
         form.panel .obligatorio { color:#b91c1c; font-weight:700; margin-left:.1rem; }
         form.panel .error-campo { display:block; margin-top:.35rem; padding:.45rem .7rem; border-left:3px solid #b91c1c;
                                   border-radius:4px; background:color-mix(in srgb, #b91c1c 8%, transparent);
-                                  color:#b91c1c; font-size:.85rem; font-weight:600; text-transform:none; letter-spacing:0; }
+                                  color:#b91c1c; font-size:.88rem; font-weight:600; text-transform:none; letter-spacing:0;
+                                  font-family:system-ui,"Segoe UI","Helvetica Neue",Arial,sans-serif; line-height:1.45; }
         form.panel textarea[aria-invalid="true"] { border-color:#b91c1c; outline-color:#b91c1c; }
 
         details.contrato > summary { cursor:pointer; list-style:none; display:flex; gap:.8rem;
@@ -648,9 +715,18 @@
 
                 if (dias > 0) {
                     fecha.min = enDias(dias);
+                    // Lo que se le dice si elige antes: con el plazo y la
+                    // primera fecha que sí sirve, no «el valor debe ser…».
+                    const primera = new Date(fecha.min + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+                    fecha.dataset.mensaje = (rol === 'externo'
+                        ? 'Un encargo de fuera necesita al menos ' + dias + ' días calendario: hay cotización, contrato y compra de material.'
+                        : 'Necesitamos al menos ' + dias + ' días calendario para poder cumplir.')
+                        + ' Elige el ' + primera + ' o después. Si es urgente, escríbenos y lo miramos.';
                 } else {
                     fecha.removeAttribute('min');
+                    delete fecha.dataset.mensaje;
                 }
+                if (window.revisarCampo) window.revisarCampo(fecha);
 
                 if (rol === 'interno') {
                     // No se le exige minimo, porque no todo encargo interno

@@ -112,13 +112,23 @@ class SolicitudDeProyectoTest extends TestCase
             ->assertRedirect(route('proyectos.solicitar'))
             ->assertSessionHasErrors(['resumen' => '«De qué se trata» necesita al menos dos palabras.']);
 
-        $this->get(route('proyectos.solicitar'))
-            ->assertSee('id="resumen-error"', false)
-            ->assertSee('«De qué se trata» necesita al menos dos palabras.');
+        $this->from(route('proyectos.solicitar'))->followingRedirects()
+            ->post(route('proyectos.solicitar.store'), $this->solicitud(['resumen' => 'Llavero']))
+            ->assertSee('data-palabras="2"', false)
+            // Va al script que lo pinta debajo del campo.
+            ->assertSee(json_encode(['resumen' => ['«De qué se trata» necesita al menos dos palabras.']]), false);
 
         $this->post(route('proyectos.solicitar.store'), $this->solicitud(['resumen' => 'Llavero acrílico']))
             ->assertSessionHasNoErrors();
         $this->assertSame(1, Project::count());
+    }
+
+    public function test_la_fecha_corta_de_un_externo_se_dice_en_su_campo(): void
+    {
+        $this->from(route('proyectos.solicitar'))->followingRedirects()
+            ->post(route('proyectos.solicitar.store'), $this->solicitud(['para_cuando' => now()->addDays(5)->toDateString()]))
+            ->assertSee('"para_cuando":[', false)
+            ->assertSee('rangeUnderflow', false);
     }
 
     public function test_una_solicitud_crea_la_cuenta_de_quien_pide(): void
