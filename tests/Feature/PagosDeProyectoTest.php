@@ -285,4 +285,32 @@ class PagosDeProyectoTest extends TestCase
         $this->assertSame(['Otra Persona'], app(\App\Services\Reports\VentasPorQr::class)
             ->delMes(now()->subMonthNoOverflow())->pluck('nombre')->all());
     }
+
+    /**
+     * Vale 10 FabCoins: se le descuentan 8 de su saldo y los 2 que faltan se
+     * cobran como siempre. Sale de su cuenta al ingreso, queda en la
+     * conversación y encima de la tabla; sin saldo, no se descuenta.
+     */
+    public function test_se_descuentan_fabcoins_del_saldo_de_quien_pidio(): void
+    {
+        $p = $this->proyecto();
+        $libro = app(\App\Services\Ledger\LedgerService::class);
+        $libro->transferir(
+            $libro->cuentaDeSistema(\App\Models\LedgerAccount::EMISION), $libro->cuentaDe($p->requestedBy),
+            10_00, 'dotacion',
+        );
+
+        Livewire::test(PaymentsRelationManager::class, ['ownerRecord' => $p, 'pageClass' => EditProject::class])
+            ->callAction(TestAction::make('descontarFabcoins')->table(), ['fabcoins' => 8, 'motivo' => 'Vale 10: 8 en FabCoins y 2 en pesos.'])
+            ->assertHasNoActionErrors()
+            ->assertSee('Descontado en FabCoins: 8 FBC a Marcela Ruiz');
+
+        $this->assertSame(2_00, $libro->saldoDe($p->requestedBy));
+        $this->assertSame(8_00, $libro->cuentaDeSistema(\App\Models\LedgerAccount::INGRESO)->saldoMenor());
+        $this->assertStringContainsString('Se descontaron 8 FBC del saldo de Marcela Ruiz', $p->comments()->reorder('id', 'desc')->first()->body);
+
+        // Le quedan 2: no alcanza para otros 5.
+        $this->expectException(ProjectException::class);
+        app(PagosDeProyecto::class)->descontarFabcoins($p, $p->requestedBy, 5, null, $p->lead);
+    }
 }

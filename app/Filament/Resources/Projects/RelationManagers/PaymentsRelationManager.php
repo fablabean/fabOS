@@ -9,10 +9,12 @@ use App\Services\Projects\PagosDeProyecto;
 use App\Services\Projects\ProjectException;
 use App\Support\Settings;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -86,7 +88,9 @@ class PaymentsRelationManager extends RelationManager
                     ->placeholder('—')
                     ->description(fn (ProjectPayment $p) => $p->validated_at?->timezone(config('fabos.lab.timezone'))->format('d/m/Y H:i')),
             ])
+            ->description(fn () => $this->descuentosDichos())
             ->headerActions([
+                $this->descontar(),
                 self::pedir()->record(fn () => $this->getOwnerRecord()),
             ])
             ->recordActions([
@@ -136,6 +140,84 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->emptyStateHeading('Sin pagos pedidos')
             ->emptyStateDescription('Pide un pago con «Pedir un pago»: el cliente recibe el valor con el QR del banco y responde aquí con el comprobante.');
+    }
+
+    /** Lo ya descontado en FabCoins, encima de la tabla. Nulo si no hay nada. */
+    private function descuentosDichos(): ?string
+    {
+        $moneda = config('fabos.currency.code');
+
+        $lineas = PagosDeProyecto::descuentosDe($this->getOwnerRecord())
+            ->map(fn (array $d) => $d['fabcoins'] . ' ' . $moneda . ' a ' . $d['persona'] . ' (' . $d['cuando']
+                . ($d['quien'] ? ', ' . $d['quien'] : '') . ')');
+
+        return $lineas->isEmpty() ? null : 'Descontado en FabCoins: ' . $lineas->join(' · ') . '.';
+    }
+
+    /**
+     * Descontar FabCoins: una parte del valor acordado se paga con el saldo
+     * de la persona, y el resto se cobra en pesos con «Pedir un pago».
+     */
+    private function descontar(): Action
+    {
+        $moneda = config('fabos.currency.code');
+        $saldo = fn ($id) => ($u = \App\Models\User::find($id))
+            ? PagosDeProyecto::fabcoins(app(\App\Services\Ledger\LedgerService::class)->saldoDe($u)) . ' ' . $moneda
+            : null;
+
+        return Action::make('descontarFabcoins')
+            ->label('Descontar FabCoins')
+            ->icon('heroicon-o-minus-circle')
+            ->color('gray')
+            ->modalHeading(fn () => 'Descontar FabCoins por ' . $this->getOwnerRecord()->code)
+            ->modalDescription('Sale del saldo de la persona y queda en la conversación del proyecto. '
+                . 'Lo que falte por pagar se cobra con «Pedir un pago».')
+            ->modalSubmitActionLabel('Descontar')
+            ->schema([
+                Select::make('persona')
+                    ->label('A quién')
+                    ->searchable()
+                    ->required()
+                    ->live()
+                    ->default(fn () => $this->getOwnerRecord()->requested_by)
+                    ->getSearchResultsUsing(fn (string $buscar) => \App\Models\User::query()
+                        ->where(fn ($q) => $q->where('name', 'ilike', '%' . $buscar . '%')->orWhere('email', 'ilike', '%' . $buscar . '%'))
+                        ->orderBy('name')->limit(20)->pluck('name', 'id'))
+                    ->getOptionLabelUsing(fn ($value) => \App\Models\User::find($value)?->name)
+                    ->helperText(fn (Get $get) => ($s = $saldo($get('persona'))) ? 'Saldo disponible: ' . $s . '.' : null),
+
+                TextInput::make('fabcoins')
+                    ->label('Cuántos ' . $moneda)
+                    ->numeric()
+                    ->minValue(0.01)
+                    ->step(0.01)
+                    ->required(),
+
+                Textarea::make('motivo')
+                    ->label('Por qué')
+                    ->rows(2)
+                    ->maxLength(200)
+                    ->placeholder('Vale 10 ' . $moneda . ': se descuentan 8 y se cobran 2 en pesos.')
+                    ->helperText('Queda en la conversación y en su historial de movimientos.'),
+            ])
+            ->action(function (array $data) {
+                $persona = \App\Models\User::findOrFail($data['persona']);
+
+                try {
+                    app(PagosDeProyecto::class)->descontarFabcoins(
+                        $this->getOwnerRecord(), $persona, (float) $data['fabcoins'], $data['motivo'] ?? null, auth()->user(),
+                    );
+                } catch (ProjectException $e) {
+                    Notification::make()->danger()->title('No se pudo descontar')->body($e->getMessage())->persistent()->send();
+
+                    return;
+                }
+
+                Notification::make()->success()
+                    ->title('Descontados ' . PagosDeProyecto::fabcoins((int) round($data['fabcoins'] * (int) config('fabos.currency.minor_units'))) . ' ' . config('fabos.currency.code'))
+                    ->body('A ' . $persona->name . '. Le quedan ' . PagosDeProyecto::fabcoins(app(\App\Services\Ledger\LedgerService::class)->saldoDe($persona)) . '.')
+                    ->send();
+            });
     }
 
     /** La accion de pedir un pago, compartida con la lista de proyectos. */
