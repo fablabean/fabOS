@@ -773,6 +773,12 @@ class Project extends Model
         return $this->hasMany(ProjectComment::class)->orderBy('created_at');
     }
 
+    /** El historial: responsables, etapas y estados, del más reciente al primero. */
+    public function changes(): HasMany
+    {
+        return $this->hasMany(ProjectChange::class)->latest('created_at')->latest('id');
+    }
+
     /** Su turno en la cola de revisión (App\Services\Projects\RevisionDeSolicitudes). */
     public function revision(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
@@ -1066,6 +1072,36 @@ class Project extends Model
                 (string) $proyecto->getOriginal('stage'),
                 auth()->user(),
             );
+        });
+
+        // El historial: con qué responsable llegó, y cada cambio de
+        // responsable, etapa o estado, con quién lo hizo. Aquí y no en el
+        // formulario, para que lo anote venga de donde venga el cambio.
+        static::created(function (self $proyecto) {
+            if ($proyecto->lead_id) {
+                ProjectChange::anotar($proyecto, 'responsable', null, User::find($proyecto->lead_id)?->name);
+            }
+        });
+
+        static::updated(function (self $proyecto) {
+            if ($proyecto->wasChanged('lead_id')) {
+                ProjectChange::anotar(
+                    $proyecto,
+                    'responsable',
+                    ($antes = $proyecto->getOriginal('lead_id')) ? User::find($antes)?->name : null,
+                    $proyecto->lead_id ? User::find($proyecto->lead_id)?->name : null,
+                );
+            }
+
+            if ($proyecto->wasChanged('stage')) {
+                $antes = (string) $proyecto->getOriginal('stage');
+                ProjectChange::anotar($proyecto, 'etapa', self::ETAPAS[$antes] ?? ($antes ?: null), self::ETAPAS[$proyecto->stage] ?? $proyecto->stage);
+            }
+
+            if ($proyecto->wasChanged('status')) {
+                $antes = (string) $proyecto->getOriginal('status');
+                ProjectChange::anotar($proyecto, 'estado', self::ESTADOS[$antes] ?? ($antes ?: null), self::ESTADOS[$proyecto->status] ?? $proyecto->status);
+            }
         });
 
         // Su turno en la cola de revisión sigue a lo que le pase: cambia de
