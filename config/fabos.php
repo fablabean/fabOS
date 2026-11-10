@@ -274,6 +274,20 @@ return [
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),
     ],
 
+    /*
+     * Las zonas de conocimiento: robotica.fablabean.com y las que vengan.
+     *
+     * `dominio` es la base de los subdominios; sale del APP_URL. Los
+     * subdominios se anuncian solo con ZONAS_SUBDOMINIOS=true, cuando el
+     * comodín *.fablabean.com ya esté en Cloudflare (docs/TUNEL.md): antes de
+     * eso, cada zona vive en /zonas/{zona} del dominio principal, que funciona
+     * siempre.
+     */
+    'zonas' => [
+        'dominio' => env('ZONAS_DOMINIO', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+        'subdominios' => (bool) env('ZONAS_SUBDOMINIOS', false),
+    ],
+
     'formacion' => [
         // Cuanto dura la prueba practica de un curso, delante de la maquina.
         'practica_minutos' => (int) env('PRACTICA_MINUTOS', 60),

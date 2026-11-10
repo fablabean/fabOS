@@ -211,5 +211,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Certificar tiene reglas propias: no basta con ser administrador.
         Gate::policy(Certifab::class, CertifabPolicy::class);
+
+        // Un módulo es una pieza de su zona: lo maneja quien maneja las zonas.
+        Gate::policy(\App\Models\Modulo::class, \App\Policies\ModuloPolicy::class);
     }
 }

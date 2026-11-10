@@ -38,6 +38,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
+/*
+ * Las zonas de conocimiento por su subdominio: robotica.fablabean.com.
+ *
+ * Van ANTES que todo lo demás: una ruta sin dominio responde a cualquier host,
+ * y la portada del sitio se comería la de cada zona. «www» no es una zona.
+ * Lo que pide cuenta no se abre aquí sino en el dominio principal, donde vive
+ * la sesión: el controlador lo manda allá.
+ */
+Route::domain('{zona}.' . config('fabos.zonas.dominio'))
+    ->where(['zona' => '(?!www\.)[a-z0-9][a-z0-9-]{0,39}'])
+    ->middleware(\App\Http\Middleware\EnlacesAlSitioPrincipal::class)
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\ZonaController::class, 'subInicio'])->name('zonas.sub.inicio');
+        Route::get('/{modulo}', [\App\Http\Controllers\ZonaController::class, 'subModulo'])
+            ->where('modulo', '[a-z0-9][a-z0-9-]{0,79}')
+            ->name('zonas.sub.modulo');
+    });
+
+// Y por el dominio principal, que funciona siempre, con o sin subdominios.
+Route::get('/zonas', [\App\Http\Controllers\ZonaController::class, 'lista'])->name('zonas.lista');
+Route::get('/zonas/{zona}', [\App\Http\Controllers\ZonaController::class, 'inicio'])->name('zonas.inicio');
+Route::get('/zonas/{zona}/{modulo}', [\App\Http\Controllers\ZonaController::class, 'modulo'])
+    ->where('modulo', '[a-z0-9][a-z0-9-]{0,79}')
+    ->name('zonas.modulo');
+
 // Cara publica: no exige sesion (§3, portal publico).
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
 
@@ -113,11 +138,9 @@ Route::get('/qr/{codigo}', EnlaceCortoController::class)
  * (centro de contacto, admisiones). Es una pagina hecha a mano, sin layout del
  * sitio: se comparte por enlace y se proyecta a pantalla completa.
  */
-Route::get('/conoce-el-fablab', fn () => response(
-    file_get_contents(resource_path('presentaciones/conoce-el-fablab.html')),
-    200,
-    ['Content-Type' => 'text/html; charset=UTF-8'],
-))->name('conoce-el-fablab');
+// Desde que hay zonas, es un módulo de «Conocimiento general» y se cambia desde
+// el panel. El enlace de siempre sigue sirviendo: ya circula por WhatsApp.
+Route::get('/conoce-el-fablab', [\App\Http\Controllers\ZonaController::class, 'conoceElFablab'])->name('conoce-el-fablab');
 
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
