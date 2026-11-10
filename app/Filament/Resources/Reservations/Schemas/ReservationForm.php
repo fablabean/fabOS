@@ -99,6 +99,13 @@ class ReservationForm
                             ->disabled(fn () => ! auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
                             ->helperText('Tiene que estar libre a esa hora; se le avisa a ella, a quien la tenía y a quien la pidió.'),
 
+                        \Filament\Forms\Components\Checkbox::make('atiende_aunque')
+                            ->label('Asignarla aunque su calendario diga que está ocupado')
+                            ->helperText('Su Outlook, un bloqueo o su descanso. Lo que ya tiene en fabOS no se pisa.')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->esAtencionPersonal())
+                            ->disabled(fn () => ! auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+                            ->dehydrated(false),
+
                         Select::make('supervisor_id')
                             ->label('Supervisa')
                             ->visible(fn (?Reservation $record) => ! $record?->esAtencionPersonal())

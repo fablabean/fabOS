@@ -49,7 +49,7 @@ class EditReservation extends EditRecord
         }
 
         try {
-            app(TraspasoDeAtencion::class)->reasignar($this->record, User::findOrFail($nuevo), auth()->user());
+            app(TraspasoDeAtencion::class)->reasignar($this->record, User::findOrFail($nuevo), auth()->user(), (bool) ($this->data['atiende_aunque'] ?? false));
         } catch (BookingException $e) {
             $this->data['atiende'] = $this->record->reservable_id;
             Notification::make()->danger()->persistent()

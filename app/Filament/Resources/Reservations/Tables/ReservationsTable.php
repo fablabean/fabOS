@@ -551,11 +551,14 @@ class ReservationsTable
                                 ->all())
                             ->searchable()
                             ->required(),
+                        \Filament\Forms\Components\Checkbox::make('aunque')
+                            ->label('Aunque su calendario diga que está ocupado')
+                            ->helperText('Su Outlook, un bloqueo o su descanso. Lo que ya tiene en fabOS no se pisa.'),
                     ])
                     ->action(function (Reservation $r, array $data) {
                         try {
                             app(\App\Services\Booking\TraspasoDeAtencion::class)->reasignar(
-                                $r, \App\Models\User::findOrFail($data['a']), auth()->user(),
+                                $r, \App\Models\User::findOrFail($data['a']), auth()->user(), (bool) ($data['aunque'] ?? false),
                             );
                         } catch (\App\Services\Booking\BookingException $e) {
                             Notification::make()->danger()->title('No se pudo reasignar')->body($e->getMessage())->persistent()->send();

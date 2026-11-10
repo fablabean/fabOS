@@ -276,6 +276,35 @@ class TraspasosTest extends TestCase
         $this->traspasos()->proponer($r, $ana, $beto->fresh());
     }
 
+    /**
+     * La coordinación puede asignarla aunque su calendario de fuera diga
+     * «Ocupado»: muchas veces es algo que se mueve. El aviso dice a qué hora
+     * es el choque, para saber de qué se habla.
+     */
+    public function test_la_coordinacion_la_asigna_aunque_su_calendario_diga_ocupado(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $jefa = $this->colaborador('Jefa');
+        $r = $this->asesoria($ana);
+
+        Http::fake(['*' => Http::response(
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20260820T120000Z\r\n"
+            . "DTSTART:20260824T150000Z\r\nDTEND:20260824T160000Z\r\nSUMMARY:Ocupado\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+        )]);
+        $beto->forceFill(['external_calendar_url' => 'https://outlook.office365.com/owa/calendar/x/reachcalendar.ics'])->save();
+
+        try {
+            $this->traspasos()->reasignar($r, $beto->fresh(), $jefa);
+            $this->fail('sin la casilla no debía pasar');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('de 10:00 a 11:00', $e->getMessage());
+        }
+
+        $r = $this->traspasos()->reasignar($r->fresh(), $beto->fresh(), $jefa, aunqueSuCalendario: true);
+        $this->assertSame($beto->id, $r->reservable_id);
+    }
+
     /** Lo que valía al proponer tiene que seguir valiendo al aceptar. */
     public function test_si_al_aceptar_ya_esta_ocupado_no_se_acepta(): void
     {

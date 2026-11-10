@@ -698,8 +698,11 @@ class BookingService
     /**
      * @param  int|null  $salvo  una reserva que no cuenta: la del mismo grupo de
      *                           salas que se está armando, donde ya acompaña.
+     * @param  bool  $soloFabos  solo lo que está en fabOS: su calendario de
+     *                           fuera, sus bloqueos y su descanso los decide
+     *                           quien asigna, que sabe si de verdad estorban.
      */
-    public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta, ?int $salvo = null): ?string
+    public function porQueNoEstaLibre(User $persona, CarbonInterface $desde, CarbonInterface $hasta, ?int $salvo = null, bool $soloFabos = false): ?string
     {
         if (! $this->estaLibre(User::class, $persona->id, $desde, $hasta)) {
             return $persona->name . ' ya tiene ' . $this->queTieneYa($persona, $desde, $hasta) . '.';
@@ -722,8 +725,18 @@ class BookingService
                 . $uso->ends_at->copy()->setTimezone($tz)->format('H:i') . ').';
         }
 
-        if ($this->agenda->ocupadoEn($persona, $desde, $hasta)) {
-            return $persona->name . ' tiene un compromiso en su calendario a esa hora (una clase o una reunión).';
+        if ($soloFabos) {
+            return null;
+        }
+
+        if ($choque = $this->agenda->choquesEn($persona, $desde, $hasta)->first()) {
+            $tz = config('fabos.lab.timezone');
+
+            return $persona->name . ' tiene un compromiso en su calendario de '
+                . $choque['desde']->copy()->setTimezone($tz)->format('H:i') . ' a '
+                . $choque['hasta']->copy()->setTimezone($tz)->format('H:i')
+                . (filled($choque['titulo']) ? ' («' . $choque['titulo'] . '»)' : '')
+                . ' (una clase o una reunión).';
         }
 
         // Y lo que se bloqueo desde Jornadas: la clase de ingles de los

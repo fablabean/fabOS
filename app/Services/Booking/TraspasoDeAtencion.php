@@ -201,10 +201,12 @@ class TraspasoDeAtencion
      * coordina decide que esta asesoria o esta practica la atiende tal persona
      * —muchas veces ella misma—, y eso vale aunque no este declarada para el
      * equipo. Lo que no se salta es la agenda: la persona tiene que estar libre.
+     * Salvo su calendario de fuera, si quien coordina dice que no estorba
+     * (`$aunqueSuCalendario`): lo que está en fabOS no se pisa nunca.
      *
      * @throws BookingException
      */
-    public function reasignar(Reservation $reserva, User $a, User $porQuien): Reservation
+    public function reasignar(Reservation $reserva, User $a, User $porQuien, bool $aunqueSuCalendario = false): Reservation
     {
         $de = $reserva->esAtencionPersonal()
             ? User::find($reserva->reservable_id)
@@ -229,7 +231,7 @@ class TraspasoDeAtencion
             throw new BookingException('Esa atención ya terminó: ya no se puede reasignar.');
         }
 
-        $this->exigirQuePuedaRecibirla($reserva, $de, $a);
+        $this->exigirQuePuedaRecibirla($reserva, $de, $a, $aunqueSuCalendario);
 
         try {
             DB::transaction(function () use ($reserva, $de, $a, $porQuien) {
@@ -303,7 +305,7 @@ class TraspasoDeAtencion
     /**
      * @throws BookingException
      */
-    private function exigirQuePuedaRecibirla(Reservation $reserva, User $de, User $a): void
+    private function exigirQuePuedaRecibirla(Reservation $reserva, User $de, User $a, bool $soloFabos = false): void
     {
         if ($a->id === $de->id) {
             throw new BookingException('No puedes pasártela a ti mismo.');
@@ -329,7 +331,7 @@ class TraspasoDeAtencion
 
         // Quien la recibe por decisión de alguien: sus revisiones ceden.
         app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($a, $desde, $hasta);
-        $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $hasta);
+        $ocupado = $this->reservas->porQueNoEstaLibre($a, $desde, $hasta, soloFabos: $soloFabos);
 
         if ($ocupado) {
             throw new BookingException($ocupado . ' Elige a otra persona.');
