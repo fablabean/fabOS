@@ -191,7 +191,7 @@
                     <tr>
                         <th></th>
                         @foreach ($s['dias'] as $dia)
-                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
                             </th>
                         @endforeach
@@ -202,7 +202,7 @@
                     <tr>
                         <th scope="row">{{ $persona['nombre'] }}</th>
                         @foreach ($s['dias'] as $dia)
-                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 @foreach ($persona['dias'][$dia->toDateString()] ?? [] as $b)
                                     @php $href = $enlaceDe($b); @endphp
                                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
@@ -231,7 +231,7 @@
                     <tr>
                         <th></th>
                         @foreach ($s['dias'] as $dia)
-                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
                             </th>
                         @endforeach
@@ -242,7 +242,7 @@
                     <tr>
                         <th scope="row">Bloqueo de reservas</th>
                         @foreach ($s['dias'] as $dia)
-                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
                                     <div class="sem-f bloqueo" title="{{ $tituloBq($q) }}">
                                         <span class="h">{{ $q['desde'] === 0 && $q['hasta'] === 1440 ? 'Todo el día' : $hhmm($q['desde']) . '–' . $hhmm($q['hasta']) }}</span>
@@ -258,7 +258,7 @@
                     <tr>
                         <th scope="row">{{ $espacio }}</th>
                         @foreach ($s['dias'] as $dia)
-                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 @foreach (collect($s['bloques'][$dia->toDateString()] ?? [])->where('espacio', $espacio)->sortBy('desde') as $b)
                                     @php $href = $enlaceDe($b); @endphp
                                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
@@ -300,7 +300,7 @@
             <div class="sem" style="grid-template-columns:3rem {{ $columnas }}">
                 <div></div>
                 @foreach ($s['dias'] as $dia)
-                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}" @if ($loop->index > 0 && $dia->dayOfWeekIso === 1) title="Antes de este lunes va el domingo: el laboratorio no abre" @endif>
                         {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
                         @if (! empty($bloqueos[$dia->toDateString()])) <b class="sem-dia-bq">bloqueado</b> @endif
                     </div>
@@ -313,7 +313,7 @@
                 </div>
 
                 @foreach ($s['dias'] as $dia)
-                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }}"
+                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}"
                          style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
                         @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
                             @php
@@ -432,6 +432,12 @@
         .sem-col { position:relative; background-color:var(--s-ground); border-radius:3px;
                    background-image:linear-gradient(to bottom, var(--s-rule) 1px, transparent 1px); }
         .sem-col.hoy { outline:2px solid color-mix(in srgb, var(--s-accent) 45%, transparent); }
+        /* El domingo no se dibuja: una barra negra marca dónde va, para que
+           el sábado y el lunes no se lean como días seguidos. */
+        .sem-dia.dom, .sem-col.dom { margin-left:9px; position:relative; }
+        .sem-dia.dom::before, .sem-col.dom::before { content:''; position:absolute; left:-8px; top:0; bottom:0;
+                                                     width:5px; border-radius:2px; background:var(--s-ink); z-index:4; pointer-events:none; }
+        .sem-tabla th.dom, .sem-tabla td.dom { box-shadow:-5px 0 0 var(--s-ink); }
 
         .sem-b, .sem-f { border-radius:3px; line-height:1.2; color:var(--s-ink);
                          background:color-mix(in srgb, var(--s-muted) 22%, var(--s-surface));
