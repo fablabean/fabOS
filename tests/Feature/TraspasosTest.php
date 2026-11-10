@@ -594,4 +594,35 @@ class TraspasosTest extends TestCase
         $this->assertSame(ReservationTransfer::RETIRADO, $propuesta->fresh()->status);
         $this->assertSame($carla->id, $r->fresh()->reservable_id);
     }
+    /**
+     * Desde la ficha de la reserva también: en una asesoría lo que se cambia
+     * es quién atiende. Antes solo se veía «Supervisa», que en una asesoría
+     * no mueve a nadie, y quien estaba ahí ni salía en «Reasignar».
+     */
+    public function test_desde_la_ficha_se_cambia_quien_atiende_la_asesoria(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $r = $this->asesoria($ana);
+        $r->update(['supervisor_id' => $beto->id]);   // lo que se probó primero
+
+        $jefa = User::factory()->create(['name' => 'Jefa', 'status' => 'activo']);
+        $jefa->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+        $servicio = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($jefa);
+        $servicio->confirmar($jefa, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($jefa->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Reservations\Pages\EditReservation::class, ['record' => $r->getRouteKey()])
+            ->assertFormFieldExists('atiende')
+            ->assertFormSet(['atiende' => $ana->id])
+            ->fillForm(['atiende' => $beto->id])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame($beto->id, $r->fresh()->reservable_id);
+        $this->assertTrue(NotificationLog::where('key', 'atencion.asignada')->where('user_id', $beto->id)->exists());
+        $this->assertTrue(NotificationLog::where('key', 'atencion.quitada')->where('user_id', $ana->id)->exists());
+    }
 }

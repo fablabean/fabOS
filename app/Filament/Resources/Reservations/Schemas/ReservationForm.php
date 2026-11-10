@@ -82,8 +82,26 @@ class ReservationForm
                             ->searchable()
                             ->required(),
 
+                        // En una asesoría o una práctica, lo que se cambia es
+                        // quién atiende: es la persona reservada, no un
+                        // supervisor. Se guarda por el mismo camino que
+                        // «Reasignar», que mira que esté libre y avisa.
+                        Select::make('atiende')
+                            ->label('Quién atiende')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->esAtencionPersonal())
+                            ->options(fn (?Reservation $record) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
+                                ->except([(int) $record?->user_id])
+                                ->all())
+                            ->afterStateHydrated(fn (Select $component, ?Reservation $record) => $component->state($record?->reservable_id))
+                            ->dehydrated(false)
+                            ->searchable()
+                            ->required()
+                            ->disabled(fn () => ! auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+                            ->helperText('Tiene que estar libre a esa hora; se le avisa a ella, a quien la tenía y a quien la pidió.'),
+
                         Select::make('supervisor_id')
                             ->label('Supervisa')
+                            ->visible(fn (?Reservation $record) => ! $record?->esAtencionPersonal())
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
                             ->placeholder('Nadie')

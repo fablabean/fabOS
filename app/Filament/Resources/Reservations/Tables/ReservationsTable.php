@@ -547,7 +547,7 @@ class ReservationsTable
                         Select::make('a')
                             ->label(fn (Reservation $r) => $r->reservable_type === \App\Models\Space::class ? 'Quién recibe ahora' : 'Quién la atiende ahora')
                             ->options(fn (Reservation $r) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
-                                ->except([(int) $r->reservable_id, (int) $r->user_id, (int) $r->supervisor_id])
+                                ->except(array_filter([(int) $r->reservable_id, (int) $r->user_id, $r->esAtencionPersonal() ? null : (int) $r->supervisor_id]))
                                 ->all())
                             ->searchable()
                             ->required(),
