@@ -2,6 +2,7 @@
 @section('title', 'Prácticas · ' . config('fabos.lab.name'))
 
 @section('content')
+    <style>.descripcion-convocatoria p{margin:0 0 .8rem}.descripcion-convocatoria ul,.descripcion-convocatoria ol{margin:0 0 .8rem;padding-left:1.3rem}.descripcion-convocatoria li{margin-bottom:.3rem}</style>
     <a class="volver" href="{{ route('publico.home') }}">← Volver al inicio</a>
 
     <h1 style="margin-top:.6rem">Hacer la práctica en el laboratorio</h1>
@@ -29,7 +30,7 @@
                 <h2 style="margin-top:0">{{ $convocatoria->name }}</h2>
 
                 @if ($convocatoria->description)
-                    <p>{{ $convocatoria->description }}</p>
+                    <div class="descripcion-convocatoria">{!! $convocatoria->descripcionHtml() !!}</div>
                 @endif
 
                 <p class="help">

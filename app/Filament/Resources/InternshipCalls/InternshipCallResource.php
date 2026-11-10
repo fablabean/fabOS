@@ -10,6 +10,7 @@ use App\Filament\Resources\InternshipCalls\RelationManagers\ApplicationsRelation
 use App\Models\InternshipCall;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -88,9 +89,19 @@ class InternshipCallResource extends Resource
                         ->default('abierta')
                         ->required(),
 
-                    Textarea::make('description')
+                    // Con negrita y listas: «cómo funciona» en cuatro pasos se
+                    // lee mejor como lista que como un renglón con puntos.
+                    // La barra es corta a propósito, como en las páginas.
+                    RichEditor::make('description')
                         ->label('Qué se busca y qué se ofrece')
-                        ->rows(3)
+                        ->toolbarButtons([
+                            ['bold', 'italic', 'link'],
+                            ['bulletList', 'orderedList'],
+                            ['undo', 'redo'],
+                        ])
+                        // Lo escrito antes era texto plano: sus párrafos
+                        // entran al editor como párrafos y no como un bloque.
+                        ->formatStateUsing(fn (?string $state) => InternshipCall::comoHtml($state))
                         ->columnSpanFull()
                         ->helperText('Es lo que lee quien se está pensando si postularse.'),
 

@@ -155,4 +155,27 @@ class InternshipCall extends Model
     {
         return $query->where('status', 'abierta')->where('is_public', true);
     }
+
+    /**
+     * La descripción lista para el sitio, ya limpia.
+     *
+     * Las primeras se escribieron como texto plano: esas se pasan a párrafos
+     * para que sus saltos de línea no se pierdan.
+     */
+    public function descripcionHtml(): string
+    {
+        return \App\Support\TextoRico::limpiar(static::comoHtml($this->description));
+    }
+
+    /** Texto plano a párrafos; lo que ya es HTML queda como está. */
+    public static function comoHtml(?string $texto): ?string
+    {
+        if (blank($texto) || $texto !== strip_tags($texto)) {
+            return $texto;
+        }
+
+        return collect(preg_split('/\R{2,}/', trim($texto)))
+            ->map(fn ($p) => '<p>' . preg_replace('/\R/', '<br>', e(trim($p))) . '</p>')
+            ->implode('');
+    }
 }

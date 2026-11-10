@@ -2,12 +2,13 @@
 @section('title', 'Postularme · ' . $convocatoria->name . ' · ' . config('fabos.lab.name'))
 
 @section('content')
+    <style>.descripcion-convocatoria p{margin:0 0 .8rem}.descripcion-convocatoria ul,.descripcion-convocatoria ol{margin:0 0 .8rem;padding-left:1.3rem}.descripcion-convocatoria li{margin-bottom:.3rem}</style>
     <a class="volver" href="{{ route('practicas.index') }}">← Volver a las convocatorias</a>
 
     <h1 style="margin-top:.6rem">{{ $convocatoria->name }}</h1>
 
     @if ($convocatoria->description)
-        <p class="help">{{ $convocatoria->description }}</p>
+        <div class="help descripcion-convocatoria">{!! $convocatoria->descripcionHtml() !!}</div>
     @endif
 
     @if (! $convocatoria->admitePostulaciones())
