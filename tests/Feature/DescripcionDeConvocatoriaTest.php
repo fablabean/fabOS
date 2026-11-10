@@ -30,5 +30,10 @@ class DescripcionDeConvocatoriaTest extends TestCase
             ->assertDontSee('alert(1)', false);
 
         $this->get(route('practicas.postular', $c))->assertOk()->assertSee('<li>Te postulas</li>', false);
+
+        // Y con foto, sale arriba en las dos páginas.
+        $c->update(['photo_path' => 'practicas/equipo.webp']);
+        $this->get(route('practicas.index'))->assertSee('storage/practicas/equipo.webp', false);
+        $this->get(route('practicas.postular', $c))->assertSee('storage/practicas/equipo.webp', false);
     }
 }

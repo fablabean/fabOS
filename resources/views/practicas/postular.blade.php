@@ -2,10 +2,14 @@
 @section('title', 'Postularme · ' . $convocatoria->name . ' · ' . config('fabos.lab.name'))
 
 @section('content')
-    <style>.descripcion-convocatoria p{margin:0 0 .8rem}.descripcion-convocatoria ul,.descripcion-convocatoria ol{margin:0 0 .8rem;padding-left:1.3rem}.descripcion-convocatoria li{margin-bottom:.3rem}</style>
+    <style>.descripcion-convocatoria p{margin:0 0 .8rem}.descripcion-convocatoria ul,.descripcion-convocatoria ol{margin:0 0 .8rem;padding-left:1.3rem}.descripcion-convocatoria li{margin-bottom:.3rem}.foto-convocatoria{display:block;width:100%;max-height:22rem;object-fit:cover;border-radius:8px;margin:0 0 1rem}</style>
     <a class="volver" href="{{ route('practicas.index') }}">← Volver a las convocatorias</a>
 
     <h1 style="margin-top:.6rem">{{ $convocatoria->name }}</h1>
+
+    @if ($convocatoria->fotoUrl())
+        <img class="foto-convocatoria" src="{{ $convocatoria->fotoUrl() }}" alt="">
+    @endif
 
     @if ($convocatoria->description)
         <div class="help descripcion-convocatoria">{!! $convocatoria->descripcionHtml() !!}</div>

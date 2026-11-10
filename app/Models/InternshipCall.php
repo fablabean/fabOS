@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 class InternshipCall extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'period', 'description',
+        'name', 'slug', 'period', 'description', 'photo_path',
         'opens_on', 'closes_on', 'slots', 'status', 'is_public', 'created_by',
     ];
 
@@ -154,6 +154,12 @@ class InternshipCall extends Model
     public function scopeAbiertas(Builder $query): Builder
     {
         return $query->where('status', 'abierta')->where('is_public', true);
+    }
+
+    /** La foto, con su dirección pública; nula si no tiene. */
+    public function fotoUrl(): ?string
+    {
+        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
     }
 
     /**
