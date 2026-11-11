@@ -434,6 +434,18 @@ class ReporteDeNominaTest extends TestCase
         $this->assertSame('novedadesnomina@universidadean.edu.co', $reporte->enviado_a_nomina_a);
     }
 
+    public function test_el_horario_laboral_sale_de_la_jornada_del_dia_y_no_de_una_que_sale_antes_de_entrar(): void
+    {
+        $camilo = $this->persona('Camilo Rodríguez');
+        \App\Models\WorkSchedule::create(['user_id' => $camilo->id, 'weekday' => 4, 'starts_at' => '08:00', 'ends_at' => '17:30', 'effective_from' => '2026-01-01']);
+        // Un sábado que quedó guardado al revés.
+        \App\Models\WorkSchedule::create(['user_id' => $camilo->id, 'weekday' => 6, 'starts_at' => '10:00', 'ends_at' => '00:00', 'effective_from' => '2026-01-01']);
+        $servicio = app(ReporteDeNomina::class);
+
+        $this->assertSame(['08:00', '17:30'], $servicio->horarioLaboral($camilo->id, Carbon::parse('2026-09-24', $this->tz)));
+        $this->assertSame(['00:00', '00:00'], $servicio->horarioLaboral($camilo->id, Carbon::parse('2026-09-26', $this->tz)));
+    }
+
     public function test_nadie_firma_como_jefe_sus_propias_horas_extras(): void
     {
         $this->jornada($this->erick, '2026-11-07 08:00', '2026-11-07 11:00');

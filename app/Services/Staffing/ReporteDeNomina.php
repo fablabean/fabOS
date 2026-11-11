@@ -102,7 +102,11 @@ class ReporteDeNomina
             ->where('user_id', $userId)
             ->where('weekday', $dia->dayOfWeekIso)
             ->vigenteEn($dia)
-            ->get();
+            ->get()
+            // Una que sale antes de entrar —10:00 a 00:00— no es una jornada:
+            // el formulario no la deja guardar, y las que hay vienen de cuando
+            // el selector de hora corría cinco horas lo que se escribía.
+            ->filter(fn (WorkSchedule $w) => substr((string) $w->ends_at, 0, 5) > substr((string) $w->starts_at, 0, 5));
 
         if ($turnos->isEmpty()) {
             return ['00:00', '00:00'];
