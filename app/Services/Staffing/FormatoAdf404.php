@@ -86,8 +86,9 @@ class FormatoAdf404
      *
      * @param  array{area?:?string,nombre:string,documento?:?string,tipo_contrato?:?string,jefe?:?string}  $encabezado
      * @param  list<array{fecha:string,laboral_inicio:string,laboral_fin:string,extra_inicio:string,extra_fin:string,actividades:?string}>  $filas
+     * @param  array{trabajador?:?string,coordinador?:?string}  $firmas  el PNG de cada firma, si ya firmó
      */
-    public function guardar(array $encabezado, array $filas): string
+    public function guardar(array $encabezado, array $filas, array $firmas = []): string
     {
         if (count($filas) > self::FILAS) {
             throw new \InvalidArgumentException('El formato tiene ' . self::FILAS . ' filas.');
@@ -149,6 +150,7 @@ class FormatoAdf404
         $hoja = self::resultado($hoja, 'O59', $total > 48 ? '🚫 EXCESO DE HORAS PERMITIDAS' : '✔ OK');
 
         $zip->addFromString('xl/worksheets/sheet1.xml', $hoja);
+        self::ponerFirmas($zip, array_filter($firmas));
         $zip->addFromString('xl/worksheets/sheet2.xml', self::festivos(
             $zip->getFromName('xl/worksheets/sheet2.xml'),
             array_keys($años ?: [now()->year => true]),
@@ -222,6 +224,52 @@ class FormatoAdf404
         }
 
         return preg_replace_callback($patron, fn ($m) => preg_replace('/ t="[^"]*"/', '', $m[1]) . $tipo . '>' . $m[2] . $v . $m[3], $hoja, 1);
+    }
+
+    /**
+     * Dónde va cada firma: donde las ponía el formato diligenciado a mano.
+     * La del colaborador, bajo «FIRMA COLABORADOR» (desde la columna C); la
+     * del jefe, bajo «NOMBRE Y FIRMA DEL JEFE INMEDIATO» (columna L) y encima
+     * de su nombre, sin taparlo: el lienzo es blanco, no transparente. Ancho
+     * y alto en EMU, con la proporción del recuadro de firma.
+     */
+    private const FIRMAS = [
+        'trabajador'  => ['col' => 2, 'colOff' => 60000, 'row' => 62, 'rowOff' => 10000, 'cx' => 1430000, 'cy' => 449400],
+        'coordinador' => ['col' => 11, 'colOff' => 0, 'row' => 62, 'rowOff' => 10000, 'cx' => 1000000, 'cy' => 314300],
+    ];
+
+    /** @param  array<string,string>  $firmas  parte => PNG */
+    private static function ponerFirmas(\ZipArchive $zip, array $firmas): void
+    {
+        if (! $firmas) {
+            return;
+        }
+
+        $dibujo = $zip->getFromName('xl/drawings/drawing1.xml');
+        $enlaces = $zip->getFromName('xl/drawings/_rels/drawing1.xml.rels');
+        $id = 20;
+
+        foreach (self::FIRMAS as $parte => $p) {
+            if (empty($firmas[$parte])) {
+                continue;
+            }
+
+            $rid = 'rIdFirma' . ucfirst($parte);
+            $zip->addFromString("xl/media/firma-{$parte}.png", $firmas[$parte]);
+            $enlaces = str_replace('</Relationships>', '<Relationship Id="' . $rid . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/firma-' . $parte . '.png"/></Relationships>', $enlaces);
+
+            $id++;
+            $dibujo = str_replace('</xdr:wsDr>', '<xdr:oneCellAnchor>'
+                . '<xdr:from><xdr:col>' . $p['col'] . '</xdr:col><xdr:colOff>' . $p['colOff'] . '</xdr:colOff><xdr:row>' . $p['row'] . '</xdr:row><xdr:rowOff>' . $p['rowOff'] . '</xdr:rowOff></xdr:from>'
+                . '<xdr:ext cx="' . $p['cx'] . '" cy="' . $p['cy'] . '"/>'
+                . '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' . $id . '" name="Firma ' . $parte . '"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+                . '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="' . $rid . '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+                . '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $p['cx'] . '" cy="' . $p['cy'] . '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>'
+                . '<xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>', $dibujo);
+        }
+
+        $zip->addFromString('xl/drawings/drawing1.xml', $dibujo);
+        $zip->addFromString('xl/drawings/_rels/drawing1.xml.rels', $enlaces);
     }
 
     /** El número de día de Excel: días desde el 30 de diciembre de 1899. */

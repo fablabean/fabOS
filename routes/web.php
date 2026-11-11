@@ -660,6 +660,17 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('/actas/firmar/{token}', [\App\Http\Controllers\ActaController::class, 'guardarFirma'])
         ->where('token', '[A-Za-z0-9]{32,64}')
         ->name('actas.firmar.guardar');
+
+    // Lo mismo para el reporte de horas extras: quien lo genera y quien coordina (§5).
+    Route::get('/nomina/firmar/{token}', [\App\Http\Controllers\ReporteDeExtrasController::class, 'firmar'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar');
+    Route::post('/nomina/firmar/{token}', [\App\Http\Controllers\ReporteDeExtrasController::class, 'guardarFirma'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar.guardar');
+    Route::get('/nomina/firmar/{token}/archivo', [\App\Http\Controllers\ReporteDeExtrasController::class, 'archivo'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar.archivo');
 });
 
 /*

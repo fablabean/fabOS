@@ -29,13 +29,23 @@ class ReporteDeNominaTest extends TestCase
 
     private string $tz;
 
+    /** Quien firma como jefe inmediato, por defecto. */
+    private User $erick;
+
     protected function setUp(): void
     {
         parent::setUp();
         Storage::fake('local');
         $this->tz = config('fabos.lab.timezone');
         CorteDeNomina::olvidar();
+
+        $this->erick = User::factory()->create(['name' => 'Erick Hansen', 'email' => 'coordinador@fablab.test', 'status' => 'activo']);
+        $this->erick->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+        \App\Support\ConfiguracionDeNomina::guardar(['coordinador_id' => (string) $this->erick->id]);
     }
+
+    /** Un PNG de verdad, como el que manda el lienzo de firma. */
+    private const FIRMA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
     private function persona(string $nombre = 'Michael Pérez', array $datos = []): User
     {
@@ -108,7 +118,7 @@ class ReporteDeNominaTest extends TestCase
         CorteDeNomina::updateOrCreate(['mes' => '2026-11-01'], ['fecha' => '2026-11-17']);
         CorteDeNomina::olvidar();
 
-        $reporte = app(ReporteDeNomina::class)->generar($michael, ['documento' => '1020304050', 'tipo_contrato' => 'fijo', 'area' => 'FabLab Ean', 'jefe' => 'Erick Hansen']);
+        $reporte = app(ReporteDeNomina::class)->generar($michael, ['documento' => '1020304050', 'tipo_contrato' => 'fijo', 'area' => 'FabLab Ean']);
 
         $ruta = tempnam(sys_get_temp_dir(), 'x');
         file_put_contents($ruta, Storage::disk('local')->get($reporte->archivo_path));
@@ -165,17 +175,21 @@ class ReporteDeNominaTest extends TestCase
 
         $this->actingAs($michael);
         Livewire::test(MisHorasExtras::class)
-            ->assertSee('Generar mi reporte de nómina')
+            ->assertSee('Generar y firmar mi reporte')
             ->assertSee('3 h')
             ->assertDontSee('Jornada de Ana')
+            // El área y el jefe salen de la configuración.
+            ->assertSet('area', 'Unidad de Desarrollo')
+            ->assertSet('coordinadorId', (string) $this->erick->id)
             ->set('documento', '1020304050')
             ->set('tipoContrato', 'indefinido')
-            ->set('area', 'FabLab')
             ->call('generar')
             ->assertHasNoErrors()
-            ->assertFileDownloaded();
+            ->assertRedirect(route('nomina.firmar', ReporteDeExtras::where('user_id', $michael->id)->value('trabajador_token')));
 
         $reporte = ReporteDeExtras::where('user_id', $michael->id)->firstOrFail();
+        $this->assertSame('por_firmar', $reporte->estado);
+        $this->assertSame($this->erick->id, $reporte->coordinador_id);
         $this->get(route('nomina.reporte.descargar', $reporte))->assertOk();
         $this->actingAs($otra)->get(route('nomina.reporte.descargar', $reporte))->assertForbidden();
 
@@ -192,8 +206,10 @@ class ReporteDeNominaTest extends TestCase
         $this->actingAs($michael);
         Livewire::test(MisHorasExtras::class)
             ->set('documento', '')
+            ->set('area', '')
+            ->set('coordinadorId', '')
             ->call('generar')
-            ->assertHasErrors(['documento', 'tipoContrato', 'area']);
+            ->assertHasErrors(['documento', 'tipoContrato', 'area', 'coordinadorId']);
 
         $this->assertSame(0, ReporteDeExtras::count());
     }
@@ -345,12 +361,85 @@ class ReporteDeNominaTest extends TestCase
         $reporte = $servicio->generar($u, ['documento' => '1', 'tipo_contrato' => 'fijo', 'area' => 'FabLab']);
         $this->assertFalse($b->fresh()->delete());   // ya reportada: no se borra
 
+        $token = $reporte->trabajador_token;
         $servicio->anular($reporte);
         $this->assertTrue($reporte->fresh()->estaAnulado());
         $this->assertSame(ShiftAssignment::PENDIENTE, $b->fresh()->estado());
 
-        // Y se vuelve a generar sin perder nada.
+        // Y se vuelve a generar sin perder nada; el enlace del anulado ya no sirve.
+        $this->get(route('nomina.firmar', $token))->assertNotFound();
         $otra = $servicio->generar($u, []);
         $this->assertSame([$b->id], $otra->jornadas()->pluck('id')->all());
+    }
+
+    /**
+     * Como las actas de movimiento: firma quien lo genera, le llega el enlace
+     * a quien coordina, firma, y con las dos firmas se envía a nómina en Excel.
+     */
+    public function test_lo_firman_el_colaborador_y_el_coordinador_y_se_envia_a_novedades_de_nomina(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $michael = $this->persona('Michael Pérez', ['email' => 'michael@fablab.test']);
+        $this->jornada($michael, '2026-11-07 08:00', '2026-11-07 11:00');
+        $this->travelTo(Carbon::parse('2026-11-12 10:00', $this->tz));
+        $servicio = app(ReporteDeNomina::class);
+
+        $reporte = $servicio->generar($michael, ['documento' => '1020304050', 'tipo_contrato' => 'fijo', 'area' => 'Unidad de Desarrollo']);
+
+        // El coordinador no firma antes que el colaborador, ni se puede enviar sin firmas.
+        $this->get(route('nomina.firmar', $reporte->coordinador_token))->assertOk()->assertSee('Primero lo firma Michael Pérez');
+        $this->post(route('nomina.firmar.guardar', $reporte->coordinador_token), ['firma' => self::FIRMA, 'acepto' => '1'])
+            ->assertSessionHasErrors('firma');
+        $this->assertFalse($reporte->fresh()->puedeEnviarse());
+
+        // Firma Michael: le llega el enlace a Erick.
+        $this->get(route('nomina.firmar', $reporte->trabajador_token))->assertOk()
+            ->assertSee('Horas extras de Michael Pérez')->assertSee('Firmar el reporte');
+        $this->post(route('nomina.firmar.guardar', $reporte->trabajador_token), ['firma' => self::FIRMA, 'acepto' => '1'])
+            ->assertRedirect(route('nomina.firmar', $reporte->trabajador_token));
+        $this->assertTrue($reporte->fresh()->firmo('trabajador'));
+        $this->assertDatabaseHas('notification_logs', ['key' => 'nomina.firmar', 'user_id' => $this->erick->id]);
+
+        // Firma Erick: queda firmado, con las dos imágenes en el Excel.
+        $this->post(route('nomina.firmar.guardar', $reporte->coordinador_token), ['firma' => self::FIRMA, 'acepto' => '1'])
+            ->assertRedirect();
+        $reporte->refresh();
+        $this->assertSame('firmado', $reporte->estado);
+
+        $ruta = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($ruta, Storage::disk('local')->get($reporte->archivo_path));
+        $zip = new \ZipArchive();
+        $zip->open($ruta);
+        $this->assertNotFalse($zip->getFromName('xl/media/firma-trabajador.png'));
+        $this->assertNotFalse($zip->getFromName('xl/media/firma-coordinador.png'));
+        $this->assertStringContainsString('r:embed="rIdFirmaCoordinador"', $zip->getFromName('xl/drawings/drawing1.xml'));
+        $this->assertStringContainsString('ERICK HANSEN', $zip->getFromName('xl/worksheets/sheet1.xml'));
+        $zip->close();
+
+        // Ya firmado, el enlace no deja firmar otra vez.
+        $this->get(route('nomina.firmar', $reporte->trabajador_token))->assertOk()->assertSee('Ya firmaste este reporte')->assertDontSee('Firmar el reporte</button>', false);
+
+        // Michael lo envía desde «Mis horas extras».
+        $this->actingAs($michael);
+        Livewire::test(MisHorasExtras::class)
+            ->assertSee('Enviar a novedades de nómina')
+            ->call('enviarANomina', $reporte->id);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\PlantillaMail::class, fn ($m) => $m->hasTo('novedadesnomina@universidadean.edu.co')
+            && $m->hasCc('michael@fablab.test') && $m->hasCc('coordinador@fablab.test')
+            && count($m->attachments()) === 1);
+
+        $reporte->refresh();
+        $this->assertSame('enviado', $reporte->estado);
+        $this->assertSame('novedadesnomina@universidadean.edu.co', $reporte->enviado_a_nomina_a);
+    }
+
+    public function test_nadie_firma_como_jefe_sus_propias_horas_extras(): void
+    {
+        $this->jornada($this->erick, '2026-11-07 08:00', '2026-11-07 11:00');
+        $this->travelTo(Carbon::parse('2026-11-12 10:00', $this->tz));
+
+        $this->expectException(BookingException::class);
+        app(ReporteDeNomina::class)->generar($this->erick, ['documento' => '1', 'tipo_contrato' => 'fijo', 'area' => 'FabLab']);
     }
 }

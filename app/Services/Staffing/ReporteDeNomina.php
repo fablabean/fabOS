@@ -7,7 +7,10 @@ use App\Models\ReporteDeExtras;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Models\NotificationLog;
 use App\Services\Booking\BookingException;
+use App\Services\Notifications\NotificationService;
+use App\Support\ConfiguracionDeNomina;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +31,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class ReporteDeNomina
 {
-    public function __construct(private FormatoAdf404 $formato) {}
+    public function __construct(private FormatoAdf404 $formato, private NotificationService $avisos) {}
 
     /** Lo que entraría hoy en el reporte de esta persona. */
     public function porReportar(User $persona, ?Carbon $corte = null): Collection
@@ -115,7 +118,10 @@ class ReporteDeNomina
      * Genera el reporte con lo pendiente hasta el corte, lo guarda y deja sus
      * jornadas como reportadas.
      *
-     * @param  array{documento?:?string,tipo_contrato?:?string,area?:?string,jefe?:?string}  $encabezado
+     * Queda esperando firmas: primero la de quien lo generó, después la de
+     * quien coordina, que firma como jefe inmediato.
+     *
+     * @param  array{documento?:?string,tipo_contrato?:?string,area?:?string,coordinador_id?:int|string|null}  $encabezado
      * @param  array<int,array{laboral_inicio?:string,laboral_fin?:string,actividades?:string}>  $cambios  por id de jornada
      *
      * @throws BookingException si no hay nada que reportar
@@ -123,8 +129,9 @@ class ReporteDeNomina
     public function generar(User $persona, array $encabezado, array $cambios = [], ?User $por = null): ReporteDeExtras
     {
         $corte = CorteDeNomina::vigente();
+        $coordinador = $this->coordinadorValido($persona, $encabezado['coordinador_id'] ?? null);
 
-        return DB::transaction(function () use ($persona, $encabezado, $cambios, $por, $corte) {
+        return DB::transaction(function () use ($persona, $encabezado, $cambios, $por, $corte, $coordinador) {
             $jornadas = ShiftAssignment::query()
                 ->where('user_id', $persona->id)
                 ->pendientesDeReporte()
@@ -158,7 +165,7 @@ class ReporteDeNomina
                 'documento'     => trim((string) ($encabezado['documento'] ?? $persona->document_number)),
                 'tipo_contrato' => $encabezado['tipo_contrato'] ?? $persona->tipo_contrato,
                 'area'          => trim((string) ($encabezado['area'] ?? $persona->area_de_nomina)),
-                'jefe'          => trim((string) ($encabezado['jefe'] ?? $persona->jefe_inmediato)),
+                'jefe'          => $coordinador->name,
             ];
 
             $totales = $this->totales($jornadas);
@@ -170,6 +177,10 @@ class ReporteDeNomina
                 'minutos'      => $jornadas->sum(fn (ShiftAssignment $j) => $j->minutos()),
                 'datos'        => ['encabezado' => $datos, 'filas' => $filas, 'jornadas' => $jornadas->pluck('id')->all()],
                 'generado_por' => $por?->id ?? $persona->id,
+                'coordinador_id'    => $coordinador->id,
+                'estado'            => 'por_firmar',
+                'trabajador_token'  => ReporteDeExtras::nuevoToken(),
+                'coordinador_token' => ReporteDeExtras::nuevoToken(),
             ] + $totales);
 
             $temporal = $this->formato->guardar($datos, $filas);
@@ -187,7 +198,7 @@ class ReporteDeNomina
                 'document_number' => $datos['documento'] ?: null,
                 'tipo_contrato'   => in_array($datos['tipo_contrato'], ['fijo', 'indefinido'], true) ? $datos['tipo_contrato'] : null,
                 'area_de_nomina'  => $datos['area'] ?: null,
-                'jefe_inmediato'  => $datos['jefe'] ?: null,
+                'jefe_inmediato'  => $coordinador->name,
             ]))->save();
 
             return $reporte->refresh();
@@ -232,6 +243,282 @@ class ReporteDeNomina
     }
 
     /**
+     * Un reporte de antes de las firmas, que se descargó sin ellas: queda
+     * esperando firmas, con quien coordina como jefe inmediato. Las mismas
+     * jornadas y los mismos datos; solo cambia el nombre del jefe.
+     *
+     * @throws BookingException
+     */
+    public function pedirFirmas(ReporteDeExtras $reporte, int|string|null $coordinadorId = null): ReporteDeExtras
+    {
+        if ($reporte->estaAnulado() || $reporte->origen !== ReporteDeExtras::FABOS || $reporte->estado !== 'generado') {
+            throw new BookingException('Este reporte no está para firmar.');
+        }
+
+        $coordinador = $this->coordinadorValido($reporte->user, $coordinadorId ?: $reporte->coordinador_id);
+
+        $datos = $reporte->datos;
+        $datos['encabezado']['jefe'] = $coordinador->name;
+
+        $reporte->forceFill([
+            'datos'             => $datos,
+            'coordinador_id'    => $coordinador->id,
+            'estado'            => 'por_firmar',
+            'trabajador_token'  => ReporteDeExtras::nuevoToken(),
+            'coordinador_token' => ReporteDeExtras::nuevoToken(),
+        ])->save();
+
+        $this->rehacerArchivo($reporte);
+
+        return $reporte->refresh();
+    }
+
+    /**
+     * Guarda la firma dibujada de una de las partes.
+     *
+     * Cuando firma quien lo generó, le llega el enlace a quien coordina; con
+     * las dos firmas, el Excel se rehace con ellas y queda listo para nómina.
+     *
+     * @throws BookingException si el dibujo no vale o el reporte ya no admite firmas
+     */
+    public function firmar(ReporteDeExtras $reporte, string $parte, string $dataUrl, ?string $ip = null): ReporteDeExtras
+    {
+        if ($reporte->estaAnulado()) {
+            throw new BookingException('Este reporte fue anulado.');
+        }
+
+        if ($reporte->estado !== 'por_firmar') {
+            throw new BookingException('Este reporte ya no está esperando firmas.');
+        }
+
+        if ($reporte->firmo($parte)) {
+            throw new BookingException('Ya habías firmado este reporte.');
+        }
+
+        if ($parte === 'coordinador' && ! $reporte->firmo('trabajador')) {
+            throw new BookingException('Primero lo firma ' . $reporte->user->name . '.');
+        }
+
+        $binario = $this->pngDe($dataUrl);
+
+        DB::transaction(function () use ($reporte, $parte, $binario, $ip) {
+            $ruta = 'nomina/firmas/reporte-' . $reporte->id . '-' . $parte . '-' . \Illuminate\Support\Str::random(24) . '.png';
+            Storage::disk('local')->put($ruta, $binario);
+
+            $reporte->forceFill([
+                "{$parte}_firma_path" => $ruta,
+                "{$parte}_firmo_at"   => now(),
+                "{$parte}_firmo_ip"   => $ip,
+            ]);
+
+            if ($reporte->estaFirmadoPorTodos()) {
+                $reporte->estado = 'firmado';
+            }
+
+            $reporte->save();
+            $this->rehacerArchivo($reporte);
+        });
+
+        $reporte->refresh();
+
+        if ($reporte->estado === 'firmado') {
+            $this->avisos->enviar('nomina.firmado', $reporte->user, [
+                'corte'       => $reporte->corte->format('d/m/Y'),
+                'coordinador' => $reporte->coordinador?->name ?? 'Quien coordina',
+                'enlace'      => \App\Filament\Pages\Personal\MisHorasExtras::getUrl(),
+            ], $reporte);
+        } elseif ($parte === 'trabajador') {
+            $this->pedirFirmaAlCoordinador($reporte);
+        }
+
+        return $reporte;
+    }
+
+    /** Le manda —o le vuelve a mandar— el enlace a quien coordina. */
+    public function pedirFirmaAlCoordinador(ReporteDeExtras $reporte): ?NotificationLog
+    {
+        $coordinador = $reporte->coordinador;
+
+        if (! $coordinador || $reporte->firmo('coordinador') || ! $reporte->firmo('trabajador') || $reporte->estado !== 'por_firmar') {
+            return null;
+        }
+
+        return $this->avisos->enviar('nomina.firmar', $coordinador, [
+            'colaborador' => $reporte->user->name,
+            'corte'       => $reporte->corte->format('d/m/Y'),
+            'horas'       => $this->horas($reporte->minutos),
+            'jornadas'    => $this->listaDeJornadas($reporte),
+            'enlace'      => $reporte->enlaceDeFirma('coordinador'),
+        ], $reporte);
+    }
+
+    /**
+     * Envía el ADF-404-f4 firmado a novedades de nómina, en Excel.
+     *
+     * Solo con las dos firmas, y lo pulsa una persona: no sale solo. Van en
+     * copia quien lo generó y quien lo firmó como jefe, y a ellos les llega lo
+     * que conteste nómina.
+     *
+     * @throws BookingException
+     */
+    public function enviarANomina(ReporteDeExtras $reporte, User $quien): NotificationLog
+    {
+        if (! $reporte->puedeEnviarse()) {
+            throw new BookingException('El reporte todavía no tiene las dos firmas.');
+        }
+
+        $correo = ConfiguracionDeNomina::valor('correo');
+
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            throw new BookingException('No hay un correo de nómina configurado. Se pone en Jornadas → Reportes de nómina → Configuración.');
+        }
+
+        if (! $reporte->tieneArchivo() || ! Storage::disk('local')->exists($reporte->archivo_path)) {
+            $this->rehacerArchivo($reporte);
+            $reporte->refresh();
+        }
+
+        $partes = collect([$reporte->user, $reporte->coordinador])
+            ->filter(fn (?User $u) => $u && filter_var($u->email, FILTER_VALIDATE_EMAIL))
+            ->reject(fn (User $u) => mb_strtolower($u->email) === mb_strtolower($correo))
+            ->mapWithKeys(fn (User $u) => [mb_strtolower($u->email) => $u->name])
+            ->all();
+
+        $encabezado = $reporte->datos['encabezado'] ?? [];
+
+        $aviso = $this->avisos->enviarSinCuenta(
+            'nomina.novedades',
+            $correo,
+            ConfiguracionDeNomina::valor('destinatario'),
+            [
+                'colaborador' => $reporte->user->name,
+                'documento'   => $encabezado['documento'] ?? '',
+                'area'        => $encabezado['area'] ?? '',
+                'corte'       => $reporte->corte->format('d/m/Y'),
+                'horas'       => $this->horas($reporte->minutos),
+                'detalle'     => $this->detalle($reporte),
+                'coordinador' => $reporte->coordinador?->name ?? ($encabezado['jefe'] ?? ''),
+            ],
+            $reporte,
+            [['ruta' => $reporte->archivo_path, 'nombre' => $reporte->nombreDelArchivo()]],
+            array_keys($partes),
+            $partes,
+        );
+
+        if ($aviso->status === 'enviado') {
+            $reporte->update([
+                'estado'               => 'enviado',
+                'enviado_a_nomina_at'  => now(),
+                'enviado_a_nomina_a'   => $correo,
+                'enviado_a_nomina_por' => $quien->id,
+            ]);
+        }
+
+        return $aviso;
+    }
+
+    /** Vuelve a escribir el Excel con los datos guardados y las firmas que ya tenga. */
+    public function rehacerArchivo(ReporteDeExtras $reporte): void
+    {
+        $datos = $reporte->datos ?? [];
+        if (empty($datos['encabezado']) || empty($datos['filas'])) {
+            return;
+        }
+
+        $disco = Storage::disk('local');
+        $firmas = [];
+        foreach (ReporteDeExtras::PARTES as $parte) {
+            $ruta = $reporte->{"{$parte}_firma_path"};
+            if (filled($ruta) && $disco->exists($ruta)) {
+                $firmas[$parte] = $disco->get($ruta);
+            }
+        }
+
+        $temporal = $this->formato->guardar($datos['encabezado'], $datos['filas'], $firmas);
+        $ruta = $reporte->archivo_path ?: 'nomina/' . $reporte->user_id . '/reporte-' . $reporte->id . '.xlsx';
+        $disco->put($ruta, file_get_contents($temporal));
+        @unlink($temporal);
+
+        if ($reporte->archivo_path !== $ruta) {
+            $reporte->forceFill(['archivo_path' => $ruta])->save();
+        }
+    }
+
+    /**
+     * Quien firma como jefe inmediato: el elegido, o el de la configuración.
+     * Tiene que tener correo —le llega el enlace— y no puede ser la misma
+     * persona que reporta: nadie se autoriza sus propias horas extras.
+     *
+     * @throws BookingException
+     */
+    private function coordinadorValido(User $persona, int|string|null $id): User
+    {
+        $coordinador = User::find((int) ($id ?: ConfiguracionDeNomina::valor('coordinador_id')));
+
+        if (! $coordinador) {
+            throw new BookingException('Elige quién firma como jefe inmediato.');
+        }
+
+        if ($coordinador->is($persona)) {
+            throw new BookingException('Tu reporte lo firma otra persona como jefe inmediato: elige a alguien distinto de ti.');
+        }
+
+        if (! filter_var($coordinador->email, FILTER_VALIDATE_EMAIL)) {
+            throw new BookingException($coordinador->name . ' no tiene correo: sin él no le llega el enlace para firmar.');
+        }
+
+        return $coordinador;
+    }
+
+    private function horas(int $minutos): string
+    {
+        return rtrim(rtrim(number_format($minutos / 60, 2, ',', '.'), '0'), ',') ?: '0';
+    }
+
+    private function detalle(ReporteDeExtras $reporte): string
+    {
+        return collect([
+            'diurnas'            => $reporte->diurnas,
+            'nocturnas'          => $reporte->nocturnas,
+            'diurnas festivas'   => $reporte->diurnas_festivas,
+            'nocturnas festivas' => $reporte->nocturnas_festivas,
+        ])->filter()->map(fn ($m, $k) => $this->horas((int) $m) . ' h ' . $k)->implode(', ') ?: 'sin desglose';
+    }
+
+    private function listaDeJornadas(ReporteDeExtras $reporte): string
+    {
+        $tz = config('fabos.lab.timezone');
+
+        return collect($reporte->datos['filas'] ?? [])->map(fn (array $f) => '· '
+            . ucfirst(Carbon::parse($f['fecha'], $tz)->locale('es')->isoFormat('ddd D [de] MMM'))
+            . ', de ' . $f['extra_inicio'] . ' a ' . $f['extra_fin']
+            . (filled($f['actividades'] ?? null) ? ': ' . \Illuminate\Support\Str::limit($f['actividades'], 90) : ''))->implode("\n");
+    }
+
+    /**
+     * El PNG del lienzo, comprobado: lo compone el navegador de quien firma,
+     * y eso no se da por bueno.
+     *
+     * @throws BookingException
+     */
+    private function pngDe(string $dataUrl): string
+    {
+        $prefijo = 'data:image/png;base64,';
+
+        if (! str_starts_with($dataUrl, $prefijo) || strlen($dataUrl) > 1_500_000) {
+            throw new BookingException('No recibimos la firma. Dibújala en el recuadro y vuelve a intentarlo.');
+        }
+
+        $binario = base64_decode(substr($dataUrl, strlen($prefijo)), true);
+
+        if ($binario === false || ! str_starts_with($binario, "\x89PNG\r\n\x1a\n")) {
+            throw new BookingException('La firma no llegó bien. Vuelve a dibujarla.');
+        }
+
+        return $binario;
+    }
+
+    /**
      * Anula un reporte: sus jornadas vuelven a pendientes y el reporte queda
      * en el historial, marcado. Para cuando se generó por error o nómina lo
      * devolvió.
@@ -240,7 +527,9 @@ class ReporteDeNomina
     {
         DB::transaction(function () use ($reporte, $por) {
             ShiftAssignment::where('reporte_id', $reporte->id)->update(['reporte_id' => null]);
-            $reporte->update(['anulado_at' => now(), 'anulado_por' => $por?->id]);
+            // Los enlaces de firma dejan de servir.
+            $reporte->forceFill(['trabajador_token' => null, 'coordinador_token' => null])
+                ->update(['anulado_at' => now(), 'anulado_por' => $por?->id]);
         });
     }
 

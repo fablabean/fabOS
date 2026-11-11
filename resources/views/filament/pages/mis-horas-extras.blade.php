@@ -85,7 +85,7 @@
                 <div class="tarjeta t-reportada">
                     <div class="r">Reportadas para nómina</div>
                     <div class="n">{{ $h($saldos['reportada']) }} h</div>
-                    <div class="d">Ya fueron en un reporte descargado.</div>
+                    <div class="d">Ya van en un reporte.</div>
                 </div>
                 <div class="tarjeta">
                     <div class="r">Compensadas</div>
@@ -141,12 +141,18 @@
                         </label>
                         <label>
                             <span class="r">Proceso o área</span>
-                            <input type="text" wire:model="area" placeholder="Gerencia de Investigación y Transferencia">
+                            <input type="text" wire:model="area" placeholder="Unidad de Desarrollo">
                             @error('area') <div class="error">{{ $message }}</div> @enderror
                         </label>
                         <label>
-                            <span class="r">Jefe inmediato <span class="de">(opcional)</span></span>
-                            <input type="text" wire:model="jefe">
+                            <span class="r">Jefe inmediato <span class="de">(firma después de ti)</span></span>
+                            <select wire:model="coordinadorId">
+                                <option value="">Elige…</option>
+                                @foreach ($coordinadores as $id => $nombre)
+                                    <option value="{{ $id }}">{{ $nombre }}</option>
+                                @endforeach
+                            </select>
+                            @error('coordinadorId') <div class="error">{{ $message }}</div> @enderror
                         </label>
                     </div>
 
@@ -210,19 +216,19 @@
 
                     <div style="margin-top:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
                         <button type="submit" class="boton" wire:loading.attr="disabled" wire:target="generar">
-                            <x-filament::icon icon="heroicon-o-arrow-down-tray" class="h-5 w-5" />
-                            Generar mi reporte de nómina
+                            <x-filament::icon icon="heroicon-o-pencil-square" class="h-5 w-5" />
+                            Generar y firmar mi reporte
                         </button>
                         <span class="de">
                             {{ $h($minPorReportar) }} h en {{ $porReportar->count() === 1 ? 'una jornada' : $porReportar->count() . ' jornadas' }}.
-                            Al descargarlo, pasan de pendientes a reportadas.
+                            Al generarlo, pasan de pendientes a reportadas.
                         </span>
                     </div>
 
                     <ol class="pasos de" style="margin-top:.8rem">
-                        <li>Descarga el Excel.</li>
-                        <li>Fírmalo por el procedimiento de la Universidad y pide la firma de tu jefe inmediato.</li>
-                        <li>Envíalo tú a novedades de nómina, en Excel y no en PDF: el formato lleva fórmulas.</li>
+                        <li>Lo firmas en pantalla, con el dedo o con el mouse.</li>
+                        <li>Le llega a tu jefe inmediato un correo para que lo firme.</li>
+                        <li>Con las dos firmas, lo envías desde «Mis reportes» a novedades de nómina, en Excel.</li>
                     </ol>
                 </form>
             @endif
@@ -305,11 +311,33 @@
                                             ])->filter()->implode(' · ') }}
                                         </div>
                                     </td>
-                                    <td style="white-space:nowrap">
+                                    <td>
                                         @if ($r->estaAnulado())
                                             <span class="de" style="text-decoration:none">Anulado el {{ $hora($r->anulado_at)->format('d/m/Y') }}</span>
-                                        @elseif ($r->tieneArchivo())
-                                            <a class="enlace" href="{{ route('nomina.reporte.descargar', $r) }}">Descargar de nuevo</a>
+                                        @elseif ($r->origen === \App\Models\ReporteDeExtras::FABOS)
+                                            @php
+                                                $color = match ($r->estado) { 'enviado' => 'success', 'firmado' => 'info', 'por_firmar' => 'warning', default => 'gray' };
+                                            @endphp
+                                            <x-filament::badge :color="$color">{{ $r->estadoLegible() }}</x-filament::badge>
+                                            <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
+                                                @if ($r->estado === 'generado' || ($r->estado === 'por_firmar' && ! $r->firmo('trabajador')))
+                                                    <button type="button" class="boton" wire:click="firmarReporte({{ $r->id }})" wire:loading.attr="disabled">Firmar</button>
+                                                @elseif ($r->puedeEnviarse())
+                                                    <button type="button" class="boton" wire:click="enviarANomina({{ $r->id }})"
+                                                            wire:confirm="Se envía a novedades de nómina ({{ \App\Support\ConfiguracionDeNomina::valor('correo') }}) con el Excel firmado. ¿Lo envío?"
+                                                            wire:loading.attr="disabled" wire:target="enviarANomina({{ $r->id }})">
+                                                        {{ $r->estado === 'enviado' ? 'Enviar otra vez' : 'Enviar a novedades de nómina' }}
+                                                    </button>
+                                                @endif
+                                                @if ($r->tieneArchivo())
+                                                    <a class="enlace" href="{{ route('nomina.reporte.descargar', $r) }}">Descargar</a>
+                                                @endif
+                                            </div>
+                                            @if ($r->estado === 'enviado')
+                                                <div class="de">El {{ $hora($r->enviado_a_nomina_at)->format('d/m/Y H:i') }} a {{ $r->enviado_a_nomina_a }}</div>
+                                            @elseif ($r->estado === 'generado')
+                                                <div class="de">Se descargó antes de que hubiera firmas en fabOS. Si no lo enviaste, fírmalo aquí.</div>
+                                            @endif
                                         @endif
                                     </td>
                                 </tr>

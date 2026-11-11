@@ -10,18 +10,20 @@ use App\Services\Booking\BookingException;
 use App\Services\Staffing\FormatoAdf404;
 use App\Services\Staffing\OvertimeService;
 use App\Services\Staffing\ReporteDeNomina;
+use App\Support\ConfiguracionDeNomina;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Mis horas extras: cada quien gestiona las suyas (§5).
  *
  * Aquí la persona ve sus jornadas y en qué va cada una —programada, pendiente
- * de reporte, reportada, compensada—, completa lo que falte y descarga su
- * ADF-404-f4 ya diligenciado para firmarlo y mandarlo a novedades de nómina.
+ * de reporte, reportada, compensada—, completa lo que falte y genera su
+ * ADF-404-f4 ya diligenciado. Lo firma en pantalla, le llega a quien coordina
+ * para que lo firme como jefe inmediato, y con las dos firmas lo envía desde
+ * aquí a novedades de nómina.
  * Nadie le prepara el documento: lo saca ella misma, con sus datos y solo los
  * suyos.
  *
@@ -66,7 +68,8 @@ class MisHorasExtras extends Page
 
     public string $area = '';
 
-    public string $jefe = '';
+    /** Quien firma como jefe inmediato. */
+    public string $coordinadorId = '';
 
     /** Por id de jornada: horario laboral y actividades, como irán al formato. */
     public array $filas = [];
@@ -76,8 +79,14 @@ class MisHorasExtras extends Page
         $u = auth()->user();
         $this->documento = (string) $u->document_number;
         $this->tipoContrato = (string) $u->tipo_contrato;
-        $this->area = (string) $u->area_de_nomina;
-        $this->jefe = (string) $u->jefe_inmediato;
+        $this->area = (string) ($u->area_de_nomina ?: ConfiguracionDeNomina::valor('area'));
+
+        // El de su último reporte; si no, el de la configuración.
+        $ultimo = $u->reportesDeExtras()->whereNotNull('coordinador_id')->latest('id')->value('coordinador_id');
+        $opciones = ConfiguracionDeNomina::opcionesDeCoordinador($u->id);
+        $this->coordinadorId = (string) collect([$ultimo, ConfiguracionDeNomina::valor('coordinador_id')])
+            ->first(fn ($id) => $id && isset($opciones[(int) $id]));
+
         $this->cargarFilas();
     }
 
@@ -93,14 +102,14 @@ class MisHorasExtras extends Page
             ->all();
     }
 
-    /** Genera el formato, deja las horas como reportadas y lo descarga. */
+    /** Genera el formato, deja las horas como reportadas y lleva a firmarlo. */
     public function generar()
     {
         $this->validate([
             'documento'                => ['required', 'string', 'max:30'],
             'tipoContrato'             => ['required', 'in:fijo,indefinido'],
             'area'                     => ['required', 'string', 'max:255'],
-            'jefe'                     => ['nullable', 'string', 'max:255'],
+            'coordinadorId'            => ['required', 'integer'],
             'filas.*.laboral_inicio'   => ['required', 'date_format:H:i'],
             'filas.*.laboral_fin'      => ['required', 'date_format:H:i'],
             'filas.*.actividades'      => ['required', 'string', 'max:1000'],
@@ -110,14 +119,15 @@ class MisHorasExtras extends Page
             'documento.required'           => 'El formato pide tu documento de identificación.',
             'tipoContrato.required'        => 'El formato pide si tu contrato es a término fijo o indefinido.',
             'area.required'                => 'El formato pide el proceso o área.',
+            'coordinadorId.required'       => 'Elige quién firma como jefe inmediato.',
         ]);
 
         try {
             $reporte = app(ReporteDeNomina::class)->generar(auth()->user(), [
                 'documento'     => $this->documento,
                 'tipo_contrato' => $this->tipoContrato,
-                'area'          => $this->area,
-                'jefe'          => $this->jefe,
+                'area'           => $this->area,
+                'coordinador_id' => $this->coordinadorId,
             ], $this->filas, auth()->user());
         } catch (BookingException $e) {
             Notification::make()->title('No se generó el reporte')->body($e->getMessage())->danger()->send();
@@ -126,18 +136,48 @@ class MisHorasExtras extends Page
             return null;
         }
 
-        $this->cargarFilas();
+        // A firmarlo: la página de firma es la misma que le llega a quien coordina.
+        return $this->redirect(route('nomina.firmar', $reporte->trabajador_token));
+    }
 
-        Notification::make()
-            ->title('Tu reporte quedó listo')
-            ->body('Fírmalo y envíalo a novedades de nómina en Excel, no en PDF: el formato lleva fórmulas. Lo puedes volver a descargar desde «Mis reportes».')
-            ->success()
-            ->persistent()
-            ->send();
+    /** Un reporte de antes, descargado sin firmas: queda para firmar. */
+    public function firmarReporte(int $id)
+    {
+        $reporte = auth()->user()->reportesDeExtras()->findOrFail($id);
 
-        return Storage::disk('local')->download($reporte->archivo_path, $reporte->nombreDelArchivo(), [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        try {
+            if ($reporte->estado === 'generado') {
+                $reporte = app(ReporteDeNomina::class)->pedirFirmas($reporte, $this->coordinadorId ?: null);
+            }
+        } catch (BookingException $e) {
+            Notification::make()->title('No se pudo')->body($e->getMessage())->danger()->send();
+
+            return null;
+        }
+
+        abort_unless($reporte->estado === 'por_firmar' && ! $reporte->firmo('trabajador'), 404);
+
+        return $this->redirect(route('nomina.firmar', $reporte->trabajador_token));
+    }
+
+    /** Con las dos firmas: lo envía a novedades de nómina, con el Excel adjunto. */
+    public function enviarANomina(int $id): void
+    {
+        $reporte = auth()->user()->reportesDeExtras()->findOrFail($id);
+
+        try {
+            $aviso = app(ReporteDeNomina::class)->enviarANomina($reporte, auth()->user());
+        } catch (BookingException $e) {
+            Notification::make()->title('No se envió')->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+
+        $aviso->status === 'enviado'
+            ? Notification::make()->title('Enviado a novedades de nómina')
+                ->body('A ' . $aviso->to . ', con el Excel firmado. Vas en copia, y a ti te llega lo que contesten.')
+                ->success()->send()
+            : Notification::make()->title('El correo no salió')->body($aviso->reason ?: 'Inténtalo de nuevo en un momento.')->danger()->send();
     }
 
     protected function getViewData(): array
@@ -168,7 +208,7 @@ class MisHorasExtras extends Page
                 ->where('starts_at', '>', $corte->copy()->endOfDay()->utc())->get(),
             'saldos'       => $servicio->saldos($u),
             'jornadas'     => $jornadas,
-            'reportes'     => ReporteDeExtras::query()->where('user_id', $u->id)->withCount('jornadas')->latest('id')->get(),
+            'reportes'     => ReporteDeExtras::query()->where('user_id', $u->id)->with('coordinador')->withCount('jornadas')->latest('id')->get(),
             'flexible'     => $flexible,
             'recargoNocturno' => $flexible
                 ? $jornadas->filter(fn (ShiftAssignment $j) => $j->starts_at->between($desde, $hasta) && $j->ends_at->isPast())
@@ -181,6 +221,7 @@ class MisHorasExtras extends Page
                 'periodo' => [$extras->minutosMes($u), (int) config('fabos.overtime.max_mes_minutos')],
             ],
             'maxFilas'     => FormatoAdf404::FILAS,
+            'coordinadores' => ConfiguracionDeNomina::opcionesDeCoordinador($u->id),
         ];
     }
 }

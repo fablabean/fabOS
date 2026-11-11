@@ -23,19 +23,106 @@ class ReporteDeExtras extends Model
     public const FABOS = 'fabos';
     public const POR_FUERA = 'por_fuera';
 
+    /** Las dos firmas del formato: quien lo genera y su jefe inmediato. */
+    public const PARTES = ['trabajador', 'coordinador'];
+
+    public const ESTADOS = [
+        'generado'   => 'Descargado sin firmas',
+        'por_firmar' => 'Esperando firmas',
+        'firmado'    => 'Firmado',
+        'enviado'    => 'Enviado a nómina',
+    ];
+
     protected $fillable = [
-        'user_id', 'corte', 'origen', 'minutos', 'diurnas', 'nocturnas',
+        'user_id', 'coordinador_id', 'corte', 'origen', 'estado', 'minutos', 'diurnas', 'nocturnas',
         'diurnas_festivas', 'nocturnas_festivas', 'datos', 'archivo_path',
         'generado_por', 'anulado_at', 'anulado_por',
+        'trabajador_token', 'coordinador_token',
+        'enviado_a_nomina_at', 'enviado_a_nomina_a', 'enviado_a_nomina_por',
     ];
+
+    protected $attributes = ['estado' => 'generado'];
 
     protected function casts(): array
     {
         return [
-            'corte'      => 'date',
-            'datos'      => 'array',
-            'anulado_at' => UtcDateTime::class,
+            'corte'                => 'date',
+            'datos'                => 'array',
+            'anulado_at'           => UtcDateTime::class,
+            'trabajador_firmo_at'  => UtcDateTime::class,
+            'coordinador_firmo_at' => UtcDateTime::class,
+            'enviado_a_nomina_at'  => UtcDateTime::class,
         ];
+    }
+
+    public function coordinador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'coordinador_id');
+    }
+
+    public function firmo(string $parte): bool
+    {
+        return $this->{"{$parte}_firmo_at"} !== null;
+    }
+
+    public function estaFirmadoPorTodos(): bool
+    {
+        return $this->firmo('trabajador') && $this->firmo('coordinador');
+    }
+
+    /** Si se puede enviar a nómina: con las dos firmas, y otra vez si hace falta. */
+    public function puedeEnviarse(): bool
+    {
+        return ! $this->estaAnulado() && in_array($this->estado, ['firmado', 'enviado'], true);
+    }
+
+    /** A qué parte corresponde un enlace de firma, si corresponde a alguna. */
+    public function parteDelToken(string $token): ?string
+    {
+        foreach (self::PARTES as $parte) {
+            if (filled($this->{"{$parte}_token"}) && hash_equals($this->{"{$parte}_token"}, $token)) {
+                return $parte;
+            }
+        }
+
+        return null;
+    }
+
+    public static function porToken(string $token): ?self
+    {
+        return static::where('trabajador_token', $token)->orWhere('coordinador_token', $token)->first();
+    }
+
+    public function enlaceDeFirma(string $parte): ?string
+    {
+        $token = $this->{"{$parte}_token"};
+
+        return filled($token) ? route('nomina.firmar', $token) : null;
+    }
+
+    public static function nuevoToken(): string
+    {
+        return \Illuminate\Support\Str::random(48);
+    }
+
+    /** Lo que se ve en la lista: «Esperando la firma de Erick Hansen». */
+    public function estadoLegible(): string
+    {
+        if ($this->estaAnulado()) {
+            return 'Anulado';
+        }
+
+        if ($this->origen === self::POR_FUERA) {
+            return 'Reportado por fuera';
+        }
+
+        if ($this->estado === 'por_firmar') {
+            return ! $this->firmo('trabajador')
+                ? 'Falta la firma de ' . ($this->user?->name ?? 'quien lo generó')
+                : 'Falta la firma de ' . ($this->coordinador?->name ?? 'quien coordina');
+        }
+
+        return self::ESTADOS[$this->estado] ?? $this->estado;
     }
 
     public function user(): BelongsTo

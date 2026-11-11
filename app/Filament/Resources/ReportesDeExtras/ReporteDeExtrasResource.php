@@ -59,7 +59,7 @@ class ReporteDeExtrasResource extends Resource
         $h = fn (int $min) => rtrim(rtrim(number_format($min / 60, 2, ',', '.'), '0'), ',') ?: '0';
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'generadoPor']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'generadoPor', 'coordinador']))
             ->defaultSort('id', 'desc')
             ->columns([
                 TextColumn::make('user.name')->label('Persona')->searchable()->weight('medium'),
@@ -86,16 +86,18 @@ class ReporteDeExtrasResource extends Resource
                 TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
-                    ->state(fn (ReporteDeExtras $r) => match (true) {
-                        $r->estaAnulado() => 'Anulado',
-                        $r->origen === ReporteDeExtras::POR_FUERA => 'Reportado por fuera',
-                        default => 'Descargado',
+                    ->state(fn (ReporteDeExtras $r) => $r->estadoLegible())
+                    ->color(fn (ReporteDeExtras $r) => match (true) {
+                        $r->estaAnulado() => 'danger',
+                        $r->origen === ReporteDeExtras::POR_FUERA => 'gray',
+                        $r->estado === 'enviado' => 'success',
+                        $r->estado === 'firmado' => 'info',
+                        $r->estado === 'por_firmar' => 'warning',
+                        default => 'gray',
                     })
-                    ->color(fn ($state) => match ($state) {
-                        'Anulado' => 'danger',
-                        'Reportado por fuera' => 'gray',
-                        default => 'success',
-                    }),
+                    ->description(fn (ReporteDeExtras $r) => $r->estado === 'enviado' && $r->enviado_a_nomina_at
+                        ? 'El ' . $r->enviado_a_nomina_at->setTimezone($tz)->format('d/m/Y H:i')
+                        : ($r->coordinador ? 'Jefe: ' . $r->coordinador->name : null)),
             ])
             ->filters([
                 SelectFilter::make('user_id')->label('Persona')->relationship('user', 'name')->searchable()->preload(),
@@ -115,6 +117,38 @@ class ReporteDeExtrasResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->visible(fn (ReporteDeExtras $r) => $r->tieneArchivo())
                     ->url(fn (ReporteDeExtras $r) => route('nomina.reporte.descargar', $r)),
+
+                Action::make('enviarANomina')
+                    ->label(fn (ReporteDeExtras $r) => $r->estado === 'enviado' ? 'Enviar otra vez' : 'Enviar a nómina')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->visible(fn (ReporteDeExtras $r) => $r->puedeEnviarse() && static::permite('editar'))
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (ReporteDeExtras $r) => 'Enviar el reporte de ' . $r->user?->name . ' a nómina')
+                    ->modalDescription(fn () => 'Va a ' . \App\Support\ConfiguracionDeNomina::valor('correo') . ' con el Excel firmado. En copia, quien lo generó y quien lo firmó como jefe.')
+                    ->action(function (ReporteDeExtras $r) {
+                        try {
+                            $aviso = app(ReporteDeNomina::class)->enviarANomina($r, auth()->user());
+                        } catch (\App\Services\Booking\BookingException $e) {
+                            Notification::make()->title('No se envió')->body($e->getMessage())->danger()->send();
+
+                            return;
+                        }
+                        $aviso->status === 'enviado'
+                            ? Notification::make()->title('Enviado a nómina')->body('A ' . $aviso->to . ', con el Excel firmado.')->success()->send()
+                            : Notification::make()->title('El correo no salió')->body($aviso->reason ?: 'Inténtalo de nuevo.')->danger()->send();
+                    }),
+
+                Action::make('pedirFirma')
+                    ->label('Volver a pedir la firma')
+                    ->icon('heroicon-o-envelope')
+                    ->visible(fn (ReporteDeExtras $r) => ! $r->estaAnulado() && $r->estado === 'por_firmar' && $r->firmo('trabajador') && static::permite('editar'))
+                    ->requiresConfirmation()
+                    ->modalDescription(fn (ReporteDeExtras $r) => 'Le llega otra vez a ' . $r->coordinador?->name . ' el enlace para firmar como jefe inmediato.')
+                    ->action(function (ReporteDeExtras $r) {
+                        app(ReporteDeNomina::class)->pedirFirmaAlCoordinador($r);
+                        Notification::make()->title('Enlace enviado')->success()->send();
+                    }),
 
                 Action::make('anular')
                     ->label('Anular')

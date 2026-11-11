@@ -25,6 +25,30 @@ class ListReportesDeExtras extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // A dónde va el reporte firmado y quién firma como jefe, por defecto.
+            Action::make('configuracion')
+                ->label('Configuración')
+                ->icon('heroicon-o-cog-6-tooth')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->puedeEnLaSeccion('editar', 'reporte-de-extras') ?? false)
+                ->modalDescription('El buzón al que se envía el ADF-404-f4 firmado, y lo que sale por defecto al generarlo. Cada quien puede cambiar el área y el jefe en su reporte.')
+                ->modalSubmitActionLabel('Guardar')
+                ->fillForm(fn () => \App\Support\ConfiguracionDeNomina::todo())
+                ->schema([
+                    \Filament\Forms\Components\TextInput::make('correo')->label('Correo de novedades de nómina')->email()->required(),
+                    \Filament\Forms\Components\TextInput::make('destinatario')->label('A nombre de')->required(),
+                    \Filament\Forms\Components\TextInput::make('area')->label('Proceso o área, por defecto')->required(),
+                    \Filament\Forms\Components\Select::make('coordinador_id')
+                        ->label('Jefe inmediato, por defecto')
+                        ->helperText('Quien firma después del colaborador. Le llega el enlace por correo.')
+                        ->options(fn () => \App\Support\ConfiguracionDeNomina::opcionesDeCoordinador())
+                        ->searchable(),
+                ])
+                ->action(function (array $data) {
+                    \App\Support\ConfiguracionDeNomina::guardar($data);
+                    Notification::make()->title('Configuración guardada')->success()->send();
+                }),
+
             /*
              * La fecha de corte de cada mes. Nómina la mueve entre el 14 y el
              * 17; un mes sin fecha corta el día de la configuración. Cambiarla
