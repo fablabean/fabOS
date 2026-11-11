@@ -46,6 +46,33 @@ class UserForm
                         \App\Filament\Componentes\CampoDeTelefono::make('phone'),
                     ]),
 
+                /*
+                 * Lo que pide el ADF-404-f4 de horas extras. La persona lo
+                 * llena al generar su reporte; aquí se corrige. El contrato
+                 * flexible lo decide la coordinación, no la persona.
+                 */
+                Section::make('Nómina y horas extras')
+                    ->columns(2)
+                    ->collapsible()
+                    ->collapsed(fn (?\App\Models\User $record) => ! $record?->contrato_flexible && blank($record?->tipo_contrato))
+                    ->schema([
+                        Toggle::make('contrato_flexible')
+                            ->label('Contrato flexible')
+                            ->helperText('No hace horas extras: lo que trabaje fuera de su jornada (un sábado) se le compensa con tiempo dentro de la semana siguiente, y solo se le reconoce el recargo nocturno. Sus jornadas no van al reporte de horas extras.')
+                            ->columnSpanFull(),
+                        Select::make('tipo_contrato')
+                            ->label('Tipo de contrato')
+                            ->options(['fijo' => 'Término fijo', 'indefinido' => 'Término indefinido'])
+                            ->placeholder('Sin decir'),
+                        TextInput::make('area_de_nomina')
+                            ->label('Proceso o área')
+                            ->placeholder('Gerencia de Investigación y Transferencia')
+                            ->maxLength(255),
+                        TextInput::make('jefe_inmediato')
+                            ->label('Jefe inmediato')
+                            ->maxLength(255),
+                    ]),
+
                 Section::make('Categoría y acceso')
                     ->columns(2)
                     ->schema([

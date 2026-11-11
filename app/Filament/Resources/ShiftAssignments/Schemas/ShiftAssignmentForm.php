@@ -40,20 +40,35 @@ class ShiftAssignmentForm
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
                             ->required()
+                            ->live()
+                            ->disabled(fn (?ShiftAssignment $record) => $record?->reporte_id !== null)
+                            ->helperText(fn ($get) => self::esFlexible($get('user_id'))
+                                ? 'Contrato flexible: no hace horas extras. Lo que trabaje aquí se le compensa con tiempo dentro de la semana siguiente; solo se le reconoce el recargo nocturno (de 19:00 a 6:00).'
+                                : null)
                             ->columnSpanFull(),
 
                         DateTimePicker::make('starts_at')
                             ->label('Empieza')
                             ->seconds(false)
                             ->minutesStep(15)
+                            ->live(onBlur: true)
+                            ->disabled(fn (?ShiftAssignment $record) => $record?->reporte_id !== null)
                             ->required(),
 
                         DateTimePicker::make('ends_at')
                             ->label('Termina')
                             ->seconds(false)
                             ->minutesStep(15)
+                            ->disabled(fn (?ShiftAssignment $record) => $record?->reporte_id !== null)
                             ->required()
                             ->after('starts_at'),
+
+                        Placeholder::make('reportada')
+                            ->label('Reportada para nómina')
+                            ->visible(fn (?ShiftAssignment $record) => $record?->reporte_id !== null)
+                            ->content(fn (?ShiftAssignment $record) => 'Ya fue en el reporte #' . $record?->reporte_id
+                                . ' (corte del ' . $record?->reporte?->corte?->format('d/m/Y') . '). La persona, las horas y si cuenta como extra no se cambian; si hay que corregirla, se anula ese reporte en «Reportes de nómina».')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Por qué')
@@ -108,7 +123,43 @@ class ShiftAssignmentForm
                         Toggle::make('counts_as_overtime')
                             ->label('Cuenta como hora extra')
                             ->default(true)
-                            ->helperText('Apagado: se compensa con tiempo y no consume el tope semanal de extras.'),
+                            ->live()
+                            ->visible(fn ($get) => ! self::esFlexible($get('user_id')))
+                            ->disabled(fn (?ShiftAssignment $record) => $record?->reporte_id !== null)
+                            ->helperText('Apagado: se compensa con tiempo, no consume el tope de extras y no va al reporte de nómina.'),
+
+                        /*
+                         * Cuándo se compensa. Para un contrato flexible es
+                         * obligatorio y tiene que caer en la semana siguiente:
+                         * el sábado se devuelve con tiempo de lunes a domingo
+                         * de la semana que viene, no cuando se pueda.
+                         */
+                        \Filament\Forms\Components\DatePicker::make('compensa_el')
+                            ->label('Se compensa el')
+                            ->visible(fn ($get) => self::esFlexible($get('user_id')) || ! $get('counts_as_overtime'))
+                            ->required(fn ($get) => self::esFlexible($get('user_id')))
+                            ->helperText(fn ($get) => self::esFlexible($get('user_id'))
+                                ? 'Dentro de la semana siguiente a la jornada' . (($l = self::limiteDeCompensacion($get('starts_at'))) ? ': a más tardar el ' . $l->locale('es')->isoFormat('dddd D [de] MMMM') . '.' : '.')
+                                : 'El día que la persona descansa a cambio. Opcional.')
+                            ->rule(fn ($get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                if (! $value || ! self::esFlexible($get('user_id')) || ! $get('starts_at')) {
+                                    return;
+                                }
+                                $tz = config('fabos.lab.timezone');
+                                $dia = \Illuminate\Support\Carbon::parse($get('starts_at'), $tz)->startOfDay();
+                                $compensa = \Illuminate\Support\Carbon::parse($value, $tz)->startOfDay();
+                                $limite = self::limiteDeCompensacion($get('starts_at'));
+                                if ($compensa->lte($dia) || $compensa->gt($limite)) {
+                                    $fail('Con contrato flexible se compensa dentro de la semana siguiente: después del ' . $dia->format('d/m') . ' y a más tardar el ' . $limite->format('d/m') . '.');
+                                }
+                            }),
+
+                        Textarea::make('actividades')
+                            ->label('Actividades realizadas')
+                            ->rows(2)
+                            ->placeholder('Lo que va en «Actividades realizadas» del formato de nómina. Si se deja vacío, va el motivo.')
+                            ->helperText('La persona también lo puede escribir al generar su reporte.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Seguimiento')
@@ -131,6 +182,22 @@ class ShiftAssignmentForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /** Si la persona elegida tiene contrato flexible. */
+    public static function esFlexible($userId): bool
+    {
+        return filled($userId) && (bool) \App\Models\User::whereKey($userId)->value('contrato_flexible');
+    }
+
+    /** El último día para compensar: el domingo de la semana siguiente. */
+    public static function limiteDeCompensacion($inicio): ?\Illuminate\Support\Carbon
+    {
+        if (blank($inicio)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Carbon::parse($inicio, config('fabos.lab.timezone'))->startOfWeek()->addWeek()->endOfWeek()->startOfDay();
     }
 
     /** «#280 · Lab. VR · sáb 26/09 08:00–12:00 · Ana»: lo justo para reconocerla. */

@@ -603,6 +603,10 @@ Route::middleware('auth')->group(function () {
     // El informe de cierre que se le entrega a la Universidad (§17).
     Route::get('/informes/cierre', [ReportController::class, 'cierre'])->name('informes.cierre');
 
+    // El ADF-404-f4 de horas extras, tal como se generó (§5).
+    Route::get('/nomina/reportes/{reporte}/descargar', [\App\Http\Controllers\ReporteDeExtrasController::class, 'descargar'])
+        ->name('nomina.reporte.descargar');
+
     // La requisición que se le entrega al área de compras de la Universidad (§13).
     Route::get('/compras/{purchaseRequest}/requisicion', [PurchaseRequestController::class, 'show'])
         ->name('compras.requisicion');

@@ -249,9 +249,11 @@ class Secciones
          * Si hay que estrecharlo, se estrecha en la pantalla, mirandolo.
          *
          * La bandeja se queda fuera porque tampoco la tenia: era de
-         * administrador y superadmin.
+         * administrador y superadmin. Los reportes de nómina tampoco: son las
+         * horas y el documento de cada colaborador, y cada quien ve el suyo
+         * desde «Mis horas extras».
          */
-        $consultor = array_values(array_diff($administrador, ['bandeja']));
+        $consultor = array_values(array_diff($administrador, ['bandeja', 'reporte-de-extras']));
 
         /*
          * El practicante atiende el laboratorio: el turno de hoy, las reservas,

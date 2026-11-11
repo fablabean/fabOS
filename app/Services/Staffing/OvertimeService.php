@@ -2,6 +2,7 @@
 
 namespace App\Services\Staffing;
 
+use App\Models\CorteDeNomina;
 use App\Models\ShiftAssignment;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -18,8 +19,10 @@ use Illuminate\Support\Collection;
  * que se compensa con tiempo no consume del tope.
  *
  * Tres topes, y los tres se miran: 2 h por día, 12 h por semana (lunes a
- * domingo) y 48 h por periodo. El periodo no es el mes calendario: la nómina
- * corta el 15, así que va del 16 de un mes al 15 del siguiente. Contar por
+ * domingo) y 48 h por periodo. El periodo no es el mes calendario: va del día
+ * siguiente a un corte de nómina hasta el corte siguiente. El corte de cada mes
+ * se escribe en «Fechas de corte» (normalmente entre el 14 y el 17); un mes sin
+ * fecha corta el día de la configuración, el 15. Contar por
  * mes calendario dejaba que alguien hiciera 48 h del 16 al 31 y otras 48 del
  * 1 al 15, y las dos mitades caían en el mismo pago.
  */
@@ -52,23 +55,23 @@ class OvertimeService
     }
 
     /**
-     * El periodo de corte al que pertenece una fecha: del 16 de un mes a las
-     * 23:59 del 15 del siguiente, en la hora del laboratorio.
+     * El periodo de corte al que pertenece una fecha: del día siguiente al
+     * corte anterior hasta las 23:59 del corte, en la hora del laboratorio.
      *
      * @return array{0:Carbon,1:Carbon}
      */
     public static function periodoDe(?Carbon $fecha = null): array
     {
         $f = ($fecha ? $fecha->copy() : now())->setTimezone(config('fabos.lab.timezone'));
-        $corte = (int) config('fabos.overtime.dia_de_corte', 15);
+        $corteDelMes = CorteDeNomina::fechaDe($f);
 
-        $desde = $f->day > $corte
-            ? $f->copy()->startOfMonth()->day($corte + 1)
-            : $f->copy()->startOfMonth()->subMonthNoOverflow()->day($corte + 1);
+        // Hasta el día del corte, inclusive, es el corte de este mes; desde el
+        // día siguiente, el del mes que viene.
+        [$anterior, $hasta] = $f->copy()->startOfDay()->lte($corteDelMes)
+            ? [CorteDeNomina::fechaDe($f->copy()->startOfMonth()->subMonthNoOverflow()), $corteDelMes]
+            : [$corteDelMes, CorteDeNomina::fechaDe($f->copy()->startOfMonth()->addMonthNoOverflow())];
 
-        $hasta = $desde->copy()->addMonthNoOverflow()->day($corte)->endOfDay();
-
-        return [$desde->startOfDay(), $hasta];
+        return [$anterior->copy()->addDay()->startOfDay(), $hasta->copy()->endOfDay()];
     }
 
     public function disponibleDia(User $user, ?Carbon $fecha = null): int

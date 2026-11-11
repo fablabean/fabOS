@@ -13,7 +13,8 @@ class EditShiftAssignment extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            // Lo que ya fue en un reporte de nómina no se borra.
+            DeleteAction::make()->hidden(fn () => $this->record->reporte_id !== null),
         ];
     }
 }
