@@ -103,7 +103,10 @@ class ReporteDeNominaTest extends TestCase
     {
         $michael = $this->persona();
         $this->jornada($michael, '2026-11-07 08:00', '2026-11-07 11:00', ['actividades' => 'Acompañamiento del recorrido & taller']);
-        $this->travelTo(Carbon::parse('2026-11-12 10:00', $this->tz));
+        $this->jornada($michael, '2026-11-16 18:00', '2026-11-16 20:00', ['actividades' => 'Clase de profesor']);
+        $this->travelTo(Carbon::parse('2026-11-17 10:00', $this->tz));
+        CorteDeNomina::updateOrCreate(['mes' => '2026-11-01'], ['fecha' => '2026-11-17']);
+        CorteDeNomina::olvidar();
 
         $reporte = app(ReporteDeNomina::class)->generar($michael, ['documento' => '1020304050', 'tipo_contrato' => 'fijo', 'area' => 'FabLab Ean', 'jefe' => 'Erick Hansen']);
 
@@ -127,8 +130,24 @@ class ReporteDeNominaTest extends TestCase
         $this->assertMatchesRegularExpression('/<c r="G14"[^>]*><v>0\.458333333333333<\/v>/', $hoja);
         $this->assertMatchesRegularExpression('/<c r="D14"[^>]*><v>0<\/v>/', $hoja);
         $this->assertStringContainsString('Acompañamiento del recorrido &amp; taller', $hoja);
-        // Las fórmulas siguen ahí.
+        // Las fórmulas siguen ahí, y con su resultado ya escrito: Excel abre lo
+        // descargado en vista protegida y ahí no recalcula.
         $this->assertStringContainsString('<f>SUM(J14:J58)</f>', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="C14" s="7" t="str"><f[^>]*(?:\/>|>[^<]+<\/f>)<v>Sábado<\/v><\/c>/u', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="H14"[^>]*t="str"><f[^>]*(?:\/>|>[^<]+<\/f>)<v>VÁLIDA<\/v>/u', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="I14"[^>]*t="str"><f[^>]*(?:\/>|>[^<]+<\/f>)<v>Ordinario<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="J14"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0\.125<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="K14"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0<\/v>/', $hoja);
+        // El lunes festivo de 18:00 a 20:00: una diurna festiva y una nocturna festiva.
+        $this->assertMatchesRegularExpression('/<c r="C15"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>Lunes<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="I15"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>Festivo<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="L15"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0\.04166666666666\d<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="M15"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0\.04166666666666\d<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="J59"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0\.125<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="N59"[^>]*><f[^>]*(?:\/>|>[^<]+<\/f>)<v>0\.20833333333333\d<\/v>/', $hoja);
+        $this->assertMatchesRegularExpression('/<c r="O59"[^>]*t="str"><f>.+?<\/f><v>✔ OK<\/v>/u', $hoja);
+        // Las filas vacías quedan sin resultado escrito: Excel las calcula al abrir.
+        $this->assertMatchesRegularExpression('/<c r="C16" s="7"><f[^>]*(?:\/>|>[^<]+<\/f>)<\/c>/', $hoja);
         // La hoja de festivos tiene los de 2026: el 16 de noviembre (46342) y el domingo 8 (46334).
         $this->assertStringContainsString('<v>46342</v>', $festivos);
         $this->assertStringContainsString('<v>46334</v>', $festivos);

@@ -123,21 +123,30 @@ class FormatoAdf404
         }
 
         $años = [];
+        $totales = ['J' => 0.0, 'K' => 0.0, 'L' => 0.0, 'M' => 0.0];
         foreach (array_values($filas) as $i => $f) {
             $r = self::PRIMERA_FILA + $i;
-            $dia = Carbon::parse($f['fecha']);
+            $dia = Carbon::parse($f['fecha'], config('fabos.lab.timezone'));
             $años[$dia->year] = true;
 
             $hoja = self::celda($hoja, "B{$r}", '<v>' . self::serial($dia) . '</v>', 103);
             foreach (['D' => 'laboral_inicio', 'E' => 'laboral_fin', 'F' => 'extra_inicio', 'G' => 'extra_fin'] as $col => $campo) {
                 $hoja = self::celda($hoja, "{$col}{$r}", '<v>' . self::fraccion($f[$campo]) . '</v>');
             }
+            $hoja = self::calculado($hoja, $r, $dia, $f, $totales);
             $hoja = self::texto($hoja, "N{$r}", (string) ($f['actividades'] ?? ''), 98);
             $hoja = self::celda($hoja, "O{$r}", null, 99);
             $hoja = self::celda($hoja, "P{$r}", null, 100);
             // Alta como en el formato diligenciado: las actividades son un párrafo.
             $hoja = preg_replace('/<row r="' . $r . '"((?: (?!ht=|customHeight=)[a-zA-Z0-9:]+="[^"]*")*)/', '<row r="' . $r . '"$1 ht="67.5" customHeight="1"', $hoja, 1);
         }
+
+        foreach ($totales as $col => $valor) {
+            $hoja = self::resultado($hoja, "{$col}59", $valor);
+        }
+        $total = array_sum($totales);
+        $hoja = self::resultado($hoja, 'N59', $total);
+        $hoja = self::resultado($hoja, 'O59', $total > 48 ? '🚫 EXCESO DE HORAS PERMITIDAS' : '✔ OK');
 
         $zip->addFromString('xl/worksheets/sheet1.xml', $hoja);
         $zip->addFromString('xl/worksheets/sheet2.xml', self::festivos(
@@ -147,6 +156,72 @@ class FormatoAdf404
         $zip->close();
 
         return $ruta;
+    }
+
+    /**
+     * Deja escrito en la fila lo que dan sus fórmulas —el día de la semana, si
+     * es válida, el tipo de día y las horas de cada categoría—, con la misma
+     * cuenta que hacen ellas. Excel abre lo descargado en vista protegida, y
+     * ahí no recalcula: sin esto esas columnas se veían vacías.
+     *
+     * @param  array<string,float>  $totales  se le suman las horas de la fila
+     */
+    private static function calculado(string $hoja, int $r, CarbonInterface $dia, array $f, array &$totales): string
+    {
+        [$d, $e, $fi, $g] = array_map(
+            fn (string $campo) => (float) self::fraccion((string) $f[$campo]),
+            ['laboral_inicio', 'laboral_fin', 'extra_inicio', 'extra_fin'],
+        );
+
+        $noValida = ($d < $e && $fi < $e && $g > $d)
+            || ($d > $e && ($fi >= $d || $fi < $e || $g <= $e));
+        $festivo = self::esFestivo($dia);
+
+        // Las de J a M, tal cual: diurna hasta la hora «Nocturna» (19:00), nocturna después.
+        $noche = self::ANOCHECE / 1440;
+        $diurna = $fi == 0.0 ? 0.0 : ($g > $fi ? max(0, min($g, $noche) - $fi) : max(0, $noche - $fi));
+        $nocturna = $fi == 0.0 ? 0.0 : ($g > $fi ? max(0, $g - max($fi, $noche)) : max(0, (24 - max($fi, $noche)) + $g));
+
+        $horas = [
+            'J' => $festivo ? 0.0 : $diurna,
+            'K' => $festivo ? 0.0 : $nocturna,
+            'L' => $festivo ? $diurna : 0.0,
+            'M' => $festivo ? $nocturna : 0.0,
+        ];
+
+        $hoja = self::resultado($hoja, "C{$r}", mb_convert_case($dia->copy()->locale('es')->isoFormat('dddd'), MB_CASE_TITLE, 'UTF-8'));
+        $hoja = self::resultado($hoja, "H{$r}", $noValida ? 'NO VÁLIDA' : 'VÁLIDA');
+        $hoja = self::resultado($hoja, "I{$r}", $festivo ? 'Festivo' : 'Ordinario');
+        foreach ($horas as $col => $valor) {
+            $hoja = self::resultado($hoja, "{$col}{$r}", $valor);
+            $totales[$col] += $valor;
+        }
+
+        return $hoja;
+    }
+
+    /**
+     * Guarda junto a la fórmula de la casilla el valor que da, como lo deja
+     * Excel al calcular. La fórmula sigue ahí y Excel la vuelve a correr.
+     */
+    private static function resultado(string $hoja, string $ref, string|float $valor): string
+    {
+        // La fórmula puede ser propia o compartida con la fila de arriba (<f t="shared" si="0"/>).
+        $patron = '/(<c r="' . $ref . '"[^>]*)>(<f(?:[^>]*\/>|[^>]*>.*?<\/f>))(?:<v>.*?<\/v>)?(<\/c>)/s';
+
+        if (! preg_match($patron, $hoja)) {
+            throw new \RuntimeException("La plantilla del ADF-404-f4 no tiene la fórmula de {$ref}.");
+        }
+
+        if (is_string($valor)) {
+            $v = '<v>' . htmlspecialchars($valor, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</v>';
+            $tipo = ' t="str"';
+        } else {
+            $v = '<v>' . (rtrim(rtrim(number_format($valor, 15, '.', ''), '0'), '.') ?: '0') . '</v>';
+            $tipo = '';
+        }
+
+        return preg_replace_callback($patron, fn ($m) => preg_replace('/ t="[^"]*"/', '', $m[1]) . $tipo . '>' . $m[2] . $v . $m[3], $hoja, 1);
     }
 
     /** El número de día de Excel: días desde el 30 de diciembre de 1899. */
