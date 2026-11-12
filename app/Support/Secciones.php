@@ -235,7 +235,8 @@ class Secciones
         $todas = array_keys(self::todas());
 
         // Lo que solo el superadmin tocaba, y sigue siendo suyo.
-        $soloSuperadmin = ['accesos', 'cobros', 'codigos-de-prueba', 'instalacion',
+        // Las cámaras, porque son vigilancia: se abren a otro rol a propósito.
+        $soloSuperadmin = ['accesos', 'camaras', 'cobros', 'codigos-de-prueba', 'instalacion',
             'roles-y-accesos'];
 
         $administrador = array_values(array_diff($todas, $soloSuperadmin));

@@ -269,6 +269,23 @@ return [
         'timeout' => (int) env('FABLAB_VOZ_TIMEOUT', 300),
     ],
 
+    /*
+     * Las cámaras del laboratorio (Operación → Cámaras).
+     *
+     * Cada una es una dirección RTSP con su usuario y clave: CAMARA_1_URL,
+     * CAMARA_2_URL… y su nombre en CAMARA_N_NOMBRE. Solo se ven desde la red
+     * del laboratorio, como el servidor de voz: el servidor lee la cámara y le
+     * pasa al navegador la foto, así que el puerto 554 nunca sale a internet.
+     */
+    'camaras' => array_values(array_filter(array_map(
+        fn (int $n) => env("CAMARA_{$n}_URL") ? [
+            'numero' => $n,
+            'nombre' => env("CAMARA_{$n}_NOMBRE", "Cámara {$n}"),
+            'url' => env("CAMARA_{$n}_URL"),
+        ] : null,
+        range(1, 8),
+    ))),
+
     'asesorias' => [
         'minutos' => (int) env('ASESORIA_MINUTOS', 45),
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),

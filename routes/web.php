@@ -412,6 +412,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/archivo', [ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
+    // El cuadro más reciente de una cámara, para la pantalla Cámaras.
+    Route::get('/panel/camaras/{numero}/foto', [\App\Http\Controllers\CamaraController::class, 'foto'])
+        ->whereNumber('numero')->name('panel.camara.foto');
+
     // Los beneficios para Educación Continua, en pantalla o en PDF para enviar.
     Route::get('/panel/beneficios-educacion-continua', \App\Http\Controllers\BeneficiosEducacionContinuaController::class)
         ->name('beneficios.educacion-continua');
