@@ -288,9 +288,10 @@ return [
      *
      * Cada minuto se toma un cuadro de cada cámara y el PGX dice cuántas
      * personas hay y sus huellas faciales. Las huellas solo sirven para no
-     * contar dos veces a la misma persona en el día, y se borran cada noche
-     * (dato sensible, Ley 1581): no se asocian a nombres y la foto no se
-     * guarda. Lo que queda son los totales.
+     * contar dos veces a la misma persona en el día, y se borran cuando
+     * termina el día siguiente (dato sensible, Ley 1581): no se asocian a
+     * nombres, y del cuadro solo queda el recorte de cada persona, que se va
+     * con su huella. Lo que queda son los totales.
      *
      * `ancho_minimo` y `nitidez_minima`: un rostro más pequeño o más borroso
      * da una huella poco fiable, y esa persona va como «sin identificar».

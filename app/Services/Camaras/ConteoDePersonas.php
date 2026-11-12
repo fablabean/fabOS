@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Storage;
  *
  * De cada persona contada se guarda un recorte, para que quien revisa el
  * conteo la reconozca mirándola. El sistema no sabe quién es: el recorte no
- * lleva nombre y se borra con la huella al cerrar el día. Si la persona se
+ * lleva nombre y se borra con la huella cuando termina el día siguiente (lo
+ * de ayer se puede revisar hoy, y nada más). Si la persona se
  * acerca y su rostro sale más grande, el recorte se cambia por el mejor.
  */
 class ConteoDePersonas
@@ -116,10 +117,16 @@ class ConteoDePersonas
         });
     }
 
-    /** De noche: se borran las huellas de los días que ya pasaron, y las lecturas viejas. */
+    /**
+     * De noche: se borran las huellas y los recortes de antes de ayer.
+     *
+     * Ayer se conserva completo durante hoy, para poder revisar lo que pasó
+     * el día anterior. El conteo no se mezcla: cada día compara solo con sus
+     * propias huellas.
+     */
     public function cerrarDiasPasados(CarbonInterface $ahora): int
     {
-        $hoy = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->toDateString();
+        $ayer = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->subDay()->toDateString();
 
         DB::table('lecturas_de_aforo')
             ->where('leido_at', '<', $ahora->copy()->subDays(config('fabos.conteo.dias_de_lecturas')))
@@ -127,12 +134,12 @@ class ConteoDePersonas
 
         // Las fotos se van con sus huellas: la carpeta entera de cada día.
         foreach (Storage::disk('local')->directories(self::CARPETA) as $dia) {
-            if (basename($dia) < $hoy) {
+            if (basename($dia) < $ayer) {
                 Storage::disk('local')->deleteDirectory($dia);
             }
         }
 
-        return DB::table('huellas_del_dia')->where('fecha', '<', $hoy)->delete();
+        return DB::table('huellas_del_dia')->where('fecha', '<', $ayer)->delete();
     }
 
     /** Dónde viven los recortes, una carpeta por día. */

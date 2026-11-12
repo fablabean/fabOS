@@ -37,16 +37,26 @@ class Camaras extends Page
         return 'Cámaras';
     }
 
+    /** El día que se revisa: hoy, o ayer, que se conserva completo hasta mañana. */
+    public string $dia = 'hoy';
+
+    public function verDia(string $dia): void
+    {
+        $this->dia = $dia === 'ayer' ? 'ayer' : 'hoy';
+    }
+
     /**
-     * El conteo de hoy: personas distintas, cuántas hubo a la vez como
-     * máximo, y lo que dice ahora cada cámara.
+     * El conteo del día que se revisa (personas distintas, máximo a la vez,
+     * los recortes) y lo que dice ahora cada cámara, que siempre es de hoy.
      */
     public function conteo(): array
     {
-        $hoy = now(config('fabos.lab.timezone'))->toDateString();
+        $fecha = now(config('fabos.lab.timezone'));
+        $hoy = ($this->dia === 'ayer' ? $fecha->subDay() : $fecha)->toDateString();
 
         return [
             'activo' => config('fabos.conteo.activo') && \App\Services\Vision\Pgx::configurado(),
+            'fecha' => \Illuminate\Support\Carbon::parse($hoy)->locale('es')->isoFormat('dddd D [de] MMMM'),
             'dia' => \Illuminate\Support\Facades\DB::table('aforo_diario')->where('fecha', $hoy)->first(),
             // Las personas de hoy, la más reciente primero. Sin nombre.
             'personas' => \Illuminate\Support\Facades\DB::table('huellas_del_dia')->where('fecha', $hoy)
@@ -56,6 +66,7 @@ class Camaras extends Page
                     'llego' => \Illuminate\Support\Carbon::parse($p->primera_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
                     'visto' => \Illuminate\Support\Carbon::parse($p->ultima_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
                     'veces' => (int) $p->veces,
+                    'camara' => collect(LasCamaras::todas())->firstWhere('numero', $p->camara)['nombre'] ?? null,
                 ])->all(),
             'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
                 'lectura' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo"),

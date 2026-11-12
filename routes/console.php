@@ -65,8 +65,9 @@ Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
  * de bienvenida de cada categoría. Los asientos que emitió siguen en el libro.
  */
 
-// Las cámaras cuentan personas cada minuto, y de noche se borran las huellas
-// del día: solo quedan los totales.
+// Las cámaras cuentan personas cada minuto. De noche se borran las huellas y
+// los recortes de antes de ayer: ayer se puede revisar todo hoy, y luego solo
+// quedan los totales.
 Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground();
 Schedule::command('fabos:contar-personas --cerrar-dia')->dailyAt('00:05');
 

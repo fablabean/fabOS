@@ -92,16 +92,17 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, $lectura['nuevas']);
     }
 
-    public function test_de_noche_se_borran_las_huellas_y_quedan_los_totales(): void
+    public function test_ayer_se_conserva_todo_el_dia_siguiente_y_luego_quedan_los_totales(): void
     {
         $conteo = app(ConteoDePersonas::class);
-        $ayer = Carbon::parse('2026-11-11 15:00', 'America/Bogota');
-        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), $ayer);
-        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(4))]), Carbon::parse('2026-11-12 00:02', 'America/Bogota'));
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), Carbon::parse('2026-11-11 15:00', 'America/Bogota'));
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(4))]), Carbon::parse('2026-11-12 09:00', 'America/Bogota'));
 
-        $borradas = $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota'));
+        // La noche del 11 al 12: el 11 es «ayer» y se queda.
+        $this->assertSame(0, $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota')));
 
-        $this->assertSame(1, $borradas);
+        // La noche del 12 al 13: el 11 ya es de antes de ayer.
+        $this->assertSame(1, $conteo->cerrarDiasPasados(Carbon::parse('2026-11-13 00:05', 'America/Bogota')));
         $this->assertSame(['2026-11-12'], DB::table('huellas_del_dia')->pluck('fecha')->map(fn ($f) => substr($f, 0, 10))->all());
         $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-11')->value('personas_distintas'));
     }
@@ -141,7 +142,7 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(110, (int) DB::table('huellas_del_dia')->value('ancho_rostro'));
     }
 
-    public function test_de_noche_se_borran_tambien_los_recortes(): void
+    public function test_los_recortes_se_van_con_sus_huellas(): void
     {
         Storage::fake('local');
         $conteo = app(ConteoDePersonas::class);
@@ -152,7 +153,9 @@ class ConteoDePersonasTest extends TestCase
         Storage::disk('local')->assertExists($foto);
 
         $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota'));
+        Storage::disk('local')->assertExists($foto);
 
+        $conteo->cerrarDiasPasados(Carbon::parse('2026-11-13 00:05', 'America/Bogota'));
         Storage::disk('local')->assertMissing($foto);
         $this->assertSame([], Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA));
     }
