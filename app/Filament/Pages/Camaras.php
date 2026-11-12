@@ -37,6 +37,24 @@ class Camaras extends Page
         return 'Cámaras';
     }
 
+    /**
+     * El conteo de hoy: personas distintas, cuántas hubo a la vez como
+     * máximo, y lo que dice ahora cada cámara.
+     */
+    public function conteo(): array
+    {
+        $hoy = now(config('fabos.lab.timezone'))->toDateString();
+
+        return [
+            'activo' => config('fabos.conteo.activo') && \App\Services\Vision\Pgx::configurado(),
+            'dia' => \Illuminate\Support\Facades\DB::table('aforo_diario')->where('fecha', $hoy)->first(),
+            'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
+                'lectura' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo"),
+                'error' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo_error"),
+            ]])->all(),
+        ];
+    }
+
     /** @return list<array{numero:int,nombre:string,foto:string}> */
     public function camaras(): array
     {

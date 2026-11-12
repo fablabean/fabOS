@@ -65,6 +65,11 @@ Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
  * de bienvenida de cada categoría. Los asientos que emitió siguen en el libro.
  */
 
+// Las cámaras cuentan personas cada minuto, y de noche se borran las huellas
+// del día: solo quedan los totales.
+Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground();
+Schedule::command('fabos:contar-personas --cerrar-dia')->dailyAt('00:05');
+
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede
 // buscar rastro de tareas ya ejecutadas, y entonces no distingue «nadie
 // arrancó el cron» de «el cron corre pero aún no vencía ninguna tarea» — que

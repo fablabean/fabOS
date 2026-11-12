@@ -66,9 +66,23 @@ class Camaras
         return $foto;
     }
 
+    /**
+     * Un cuadro en la calidad alta, para contar personas.
+     *
+     * La pantalla usa `stream2` (1280×720), que pesa poco; para reconocer un
+     * rostro hace falta que tenga al menos 60 px de ancho, y en `stream1`
+     * (2304×1296) sale casi el doble de grande. No se guarda en caché.
+     */
+    public static function fotoParaContar(int $numero): ?string
+    {
+        $camara = self::una($numero);
+
+        return $camara ? self::pedir(preg_replace('#/stream2$#', '/stream1', $camara['url'])) : null;
+    }
+
     private static function pedir(string $url): ?string
     {
-        $resultado = Process::timeout(8)->run([
+        $resultado = Process::timeout(12)->run([
             'ffmpeg', '-v', 'error', '-rtsp_transport', 'tcp', '-i', $url,
             '-frames:v', '1', '-q:v', '5', '-f', 'image2', '-c:v', 'mjpeg', 'pipe:1',
         ]);

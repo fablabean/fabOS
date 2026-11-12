@@ -270,6 +270,39 @@ return [
     ],
 
     /*
+     * El servidor de IA del laboratorio (el PGX), servicio `vision`.
+     *
+     * Una sola conexión para todo fabOS: el conteo de personas hoy, el
+     * inventario cuando suba. Acepta PGX_* o los IA_URL / IA_API_KEY de la
+     * guía del PGX. La clave se manda siempre, también en la red local, para
+     * que el PGX sepa que la petición es de fabOS.
+     */
+    'pgx' => [
+        'url' => rtrim((string) env('PGX_URL', env('IA_URL', '')), '/'),
+        'clave' => env('PGX_API_KEY', env('IA_API_KEY')),
+        'timeout' => (int) env('PGX_TIMEOUT', 20),
+    ],
+
+    /*
+     * Conteo de personas con las cámaras.
+     *
+     * Cada minuto se toma un cuadro de cada cámara y el PGX dice cuántas
+     * personas hay y sus huellas faciales. Las huellas solo sirven para no
+     * contar dos veces a la misma persona en el día, y se borran cada noche
+     * (dato sensible, Ley 1581): no se asocian a nombres y la foto no se
+     * guarda. Lo que queda son los totales.
+     *
+     * `ancho_minimo` y `nitidez_minima`: un rostro más pequeño o más borroso
+     * da una huella poco fiable, y esa persona va como «sin identificar».
+     */
+    'conteo' => [
+        'activo' => (bool) env('CONTEO_PERSONAS', true),
+        'ancho_minimo' => (int) env('CONTEO_ANCHO_MINIMO', 60),
+        'nitidez_minima' => (float) env('CONTEO_NITIDEZ_MINIMA', 30),
+        'dias_de_lecturas' => (int) env('CONTEO_DIAS_DE_LECTURAS', 90),
+    ],
+
+    /*
      * Las cámaras del laboratorio (Operación → Cámaras).
      *
      * Cada una es una dirección RTSP con su usuario y clave: CAMARA_1_URL,
