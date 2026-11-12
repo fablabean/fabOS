@@ -59,6 +59,7 @@ class CamarasTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/camaras')->assertForbidden();
         $this->actingAs($admin)->get(route('panel.camara.foto', 1))->assertForbidden();
+        $this->actingAs($admin)->get(route('panel.camara.persona', 1))->assertForbidden();
     }
 
     public function test_si_la_camara_no_responde_lo_dice(): void

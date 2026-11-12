@@ -22,4 +22,19 @@ class CamaraController extends Controller
             'Cache-Control' => 'no-store, private',
         ]);
     }
+
+    /** El recorte de una persona contada hoy. */
+    public function persona(int $id)
+    {
+        abort_unless(PantallaDeCamaras::canAccess(), 403);
+
+        $ruta = \Illuminate\Support\Facades\DB::table('huellas_del_dia')->where('id', $id)->value('foto');
+
+        abort_unless($ruta && \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta), 404);
+
+        return response(\Illuminate\Support\Facades\Storage::disk('local')->get($ruta), 200, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'private, max-age=60',
+        ]);
+    }
 }

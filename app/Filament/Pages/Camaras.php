@@ -48,6 +48,15 @@ class Camaras extends Page
         return [
             'activo' => config('fabos.conteo.activo') && \App\Services\Vision\Pgx::configurado(),
             'dia' => \Illuminate\Support\Facades\DB::table('aforo_diario')->where('fecha', $hoy)->first(),
+            // Las personas de hoy, la más reciente primero. Sin nombre.
+            'personas' => \Illuminate\Support\Facades\DB::table('huellas_del_dia')->where('fecha', $hoy)
+                ->orderByDesc('ultima_vez')->get(['id', 'foto', 'primera_vez', 'ultima_vez', 'veces', 'camara', 'ancho_rostro'])
+                ->map(fn ($p) => [
+                    'foto' => $p->foto ? route('panel.camara.persona', $p->id) . '?v=' . $p->ancho_rostro : null,
+                    'llego' => \Illuminate\Support\Carbon::parse($p->primera_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
+                    'visto' => \Illuminate\Support\Carbon::parse($p->ultima_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
+                    'veces' => (int) $p->veces,
+                ])->all(),
             'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
                 'lectura' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo"),
                 'error' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo_error"),

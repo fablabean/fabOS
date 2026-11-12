@@ -47,6 +47,30 @@
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Se cuenta cada minuto. Las huellas se borran cada noche.</p>
                     </x-filament::section>
                 </div>
+
+                <x-filament::section class="mt-4" heading="Personas de hoy"
+                    description="Un recorte por cada persona contada, para reconocerla mirándola. El sistema no sabe quién es. Se borran cada noche con el conteo.">
+                    @if (empty($conteo['personas']))
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Todavía no se ha contado a nadie hoy.</p>
+                    @else
+                        <div class="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-8">
+                            @foreach ($conteo['personas'] as $p)
+                                <figure class="space-y-1">
+                                    <div class="overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800" style="aspect-ratio: 3 / 4;">
+                                        @if ($p['foto'])
+                                            <a href="{{ $p['foto'] }}" target="_blank">
+                                                <img src="{{ $p['foto'] }}" alt="Persona contada" loading="lazy" class="h-full w-full object-cover">
+                                            </a>
+                                        @endif
+                                    </div>
+                                    <figcaption class="text-xs text-gray-500 dark:text-gray-400">
+                                        Llegó {{ $p['llego'] }}@if ($p['visto'] !== $p['llego'])<br>vista {{ $p['visto'] }}@endif
+                                    </figcaption>
+                                </figure>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-filament::section>
             @endif
         </div>
 

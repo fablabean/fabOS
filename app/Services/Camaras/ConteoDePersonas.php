@@ -4,6 +4,7 @@ namespace App\Services\Camaras;
 
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Cuenta personas distintas en el día, sin saber quién es cada una.
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  * distinguir entre sí. Sumarlas cada minuto inflaría el total, porque es la
  * misma persona en cuadro tras cuadro. Por eso no entran a «distintas»: del
  * día solo se guarda cuántas hubo a la vez como máximo.
+ *
+ * De cada persona contada se guarda un recorte, para que quien revisa el
+ * conteo la reconozca mirándola. El sistema no sabe quién es: el recorte no
+ * lleva nombre y se borra con la huella al cerrar el día. Si la persona se
+ * acerca y su rostro sale más grande, el recorte se cambia por el mejor.
  */
 class ConteoDePersonas
 {
@@ -25,22 +31,31 @@ class ConteoDePersonas
      *
      * @return array{personas:int,identificadas:int,sin_identificar:int,nuevas:int}
      */
-    public function registrar(int $camara, array $respuesta, CarbonInterface $ahora): array
+    public function registrar(int $camara, array $respuesta, CarbonInterface $ahora, ?string $foto = null): array
     {
         $fecha = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->toDateString();
         $umbral = (float) ($respuesta['umbral_misma_persona'] ?? 0.363);
 
-        $rostros = array_merge(
-            array_values(array_filter(array_map(fn ($d) => $d['rostro'] ?? null, $respuesta['detalle'] ?? []))),
-            $respuesta['rostros_sin_persona'] ?? [],
-        );
+        // Cada rostro con la caja de su persona, que es lo que se recorta: con
+        // la ropa se reconoce mejor que con la cara sola.
+        $rostros = [];
+
+        foreach ($respuesta['detalle'] ?? [] as $d) {
+            if (! empty($d['rostro'])) {
+                $rostros[] = $d['rostro'] + ['caja_persona' => $d['caja'] ?? null];
+            }
+        }
+
+        foreach ($respuesta['rostros_sin_persona'] ?? [] as $r) {
+            $rostros[] = $r + ['caja_persona' => null];
+        }
 
         // Los rostros sueltos también son personas (alguien cortado por el borde).
         $personas = (int) ($respuesta['personas'] ?? 0) + count($respuesta['rostros_sin_persona'] ?? []);
 
-        return DB::transaction(function () use ($camara, $rostros, $personas, $fecha, $umbral, $ahora) {
-            $vistas = DB::table('huellas_del_dia')->where('fecha', $fecha)->lockForUpdate()->get(['id', 'huella'])
-                ->map(fn ($v) => ['id' => $v->id, 'huella' => json_decode($v->huella, true)])
+        return DB::transaction(function () use ($camara, $rostros, $personas, $fecha, $umbral, $ahora, $foto) {
+            $vistas = DB::table('huellas_del_dia')->where('fecha', $fecha)->lockForUpdate()->get(['id', 'huella', 'ancho_rostro'])
+                ->map(fn ($v) => ['id' => $v->id, 'huella' => json_decode($v->huella, true), 'ancho' => (int) $v->ancho_rostro])
                 ->all();
 
             $identificadas = 0;
@@ -55,12 +70,20 @@ class ConteoDePersonas
                 $identificadas++;
                 [$id, $similitud] = $this->masParecida($rostro['huella'], $vistas, $yaEnEsteCuadro);
 
+                $ancho = (int) ($rostro['ancho_px'] ?? 0);
+
                 if ($id !== null && $similitud >= $umbral) {
                     $yaEnEsteCuadro[] = $id;
-                    DB::table('huellas_del_dia')->where('id', $id)->update([
-                        'ultima_vez' => $ahora,
-                        'veces' => DB::raw('veces + 1'),
-                    ]);
+                    $cambios = ['ultima_vez' => $ahora, 'veces' => DB::raw('veces + 1')];
+                    $vista = collect($vistas)->firstWhere('id', $id);
+
+                    // Una cara más grande que la guardada: mejor foto.
+                    if ($foto !== null && $ancho > ($vista['ancho'] ?? 0)) {
+                        $ruta = $this->recortar($foto, $rostro, $fecha, $id);
+                        $cambios += $ruta ? ['foto' => $ruta, 'ancho_rostro' => $ancho, 'camara' => $camara] : [];
+                    }
+
+                    DB::table('huellas_del_dia')->where('id', $id)->update($cambios);
 
                     continue;
                 }
@@ -70,8 +93,14 @@ class ConteoDePersonas
                     'huella' => json_encode(array_map('floatval', $rostro['huella'])),
                     'primera_vez' => $ahora,
                     'ultima_vez' => $ahora,
+                    'camara' => $camara,
                 ]);
-                $vistas[] = ['id' => $id, 'huella' => $rostro['huella']];
+
+                if ($foto !== null && ($ruta = $this->recortar($foto, $rostro, $fecha, $id))) {
+                    DB::table('huellas_del_dia')->where('id', $id)->update(['foto' => $ruta, 'ancho_rostro' => $ancho]);
+                }
+
+                $vistas[] = ['id' => $id, 'huella' => $rostro['huella'], 'ancho' => $ancho];
                 $yaEnEsteCuadro[] = $id;
                 $nuevas++;
             }
@@ -96,7 +125,74 @@ class ConteoDePersonas
             ->where('leido_at', '<', $ahora->copy()->subDays(config('fabos.conteo.dias_de_lecturas')))
             ->delete();
 
+        // Las fotos se van con sus huellas: la carpeta entera de cada día.
+        foreach (Storage::disk('local')->directories(self::CARPETA) as $dia) {
+            if (basename($dia) < $hoy) {
+                Storage::disk('local')->deleteDirectory($dia);
+            }
+        }
+
         return DB::table('huellas_del_dia')->where('fecha', '<', $hoy)->delete();
+    }
+
+    /** Dónde viven los recortes, una carpeta por día. */
+    public const CARPETA = 'camaras/personas';
+
+    /**
+     * La persona recortada del cuadro, con un poco de margen.
+     *
+     * La caja de la persona entera si la hay; si no, la cara agrandada.
+     * Se reduce a 480 px de alto: es para reconocerla, no para ampliarla.
+     */
+    private function recortar(string $foto, array $rostro, string $fecha, int $id): ?string
+    {
+        $imagen = @imagecreatefromstring($foto);
+
+        if (! $imagen) {
+            return null;
+        }
+
+        [$w, $h] = [imagesx($imagen), imagesy($imagen)];
+
+        if ($c = $rostro['caja_persona'] ?? null) {
+            $m = 0.08;
+            [$x, $y, $an, $al] = [$c['x'] - $c['ancho'] * $m, $c['y'] - $c['alto'] * $m, $c['ancho'] * (1 + 2 * $m), $c['alto'] * (1 + 2 * $m)];
+        } elseif ($c = $rostro['caja'] ?? null) {
+            [$x, $y, $an, $al] = [$c['x'] - $c['ancho'], $c['y'] - $c['alto'] * 0.6, $c['ancho'] * 3, $c['alto'] * 3];
+        } else {
+            imagedestroy($imagen);
+
+            return null;
+        }
+
+        $x = (int) max(0, $x);
+        $y = (int) max(0, $y);
+        $an = (int) min($an, $w - $x);
+        $al = (int) min($al, $h - $y);
+
+        if ($an < 8 || $al < 8) {
+            imagedestroy($imagen);
+
+            return null;
+        }
+
+        $recorte = imagecrop($imagen, ['x' => $x, 'y' => $y, 'width' => $an, 'height' => $al]);
+        imagedestroy($imagen);
+
+        if ($al > 480) {
+            $chico = imagescale($recorte, (int) round($an * 480 / $al), 480);
+            imagedestroy($recorte);
+            $recorte = $chico;
+        }
+
+        ob_start();
+        imagejpeg($recorte, null, 82);
+        imagedestroy($recorte);
+
+        $ruta = self::CARPETA . "/{$fecha}/{$id}.jpg";
+        Storage::disk('local')->put($ruta, ob_get_clean());
+
+        return $ruta;
     }
 
     private function esFiable(array $rostro): bool

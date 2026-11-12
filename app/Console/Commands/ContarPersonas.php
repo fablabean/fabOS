@@ -12,7 +12,8 @@ use Throwable;
 /**
  * Cada minuto: un cuadro de cada cámara al PGX, y el conteo del día al día.
  *
- * La foto no se guarda en ningún lado: va de la cámara al PGX en memoria. Si
+ * El cuadro completo no se guarda: va de la cámara al PGX en memoria, y solo
+ * queda el recorte de cada persona contada, hasta el cierre del día. Si
  * una cámara o el PGX no responden, se anota el error para la pantalla y se
  * sigue con la siguiente; el minuto que viene se vuelve a intentar.
  */
@@ -45,7 +46,7 @@ class ContarPersonas extends Command
                     throw new \RuntimeException('La cámara no responde.');
                 }
 
-                $lectura = $conteo->registrar($n, $pgx->personas($foto), now());
+                $lectura = $conteo->registrar($n, $pgx->personas($foto), now(), $foto);
                 Cache::put("camara.{$n}.conteo", $lectura + ['at' => now()->toIso8601String()], now()->addMinutes(10));
                 Cache::forget("camara.{$n}.conteo_error");
 

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /** Contar personas distintas en el día sin contar dos veces a la misma, y olvidar las huellas de noche. */
@@ -103,6 +104,57 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, $borradas);
         $this->assertSame(['2026-11-12'], DB::table('huellas_del_dia')->pluck('fecha')->map(fn ($f) => substr($f, 0, 10))->all());
         $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-11')->value('personas_distintas'));
+    }
+
+    /** Un cuadro de 1280×720 de verdad, para recortar. */
+    private function cuadro(): string
+    {
+        $img = imagecreatetruecolor(1280, 720);
+        ob_start();
+        imagejpeg($img);
+        imagedestroy($img);
+
+        return ob_get_clean();
+    }
+
+    private function conCaja(array $rostro, int $x = 100, int $y = 50, int $ancho = 200, int $alto = 500): array
+    {
+        return ['caja' => compact('x', 'y', 'ancho', 'alto'), 'rostro' => $rostro];
+    }
+
+    public function test_de_cada_persona_queda_su_recorte_y_se_cambia_por_uno_mejor(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $r = fn (array $detalle) => ['personas' => count($detalle), 'detalle' => $detalle, 'umbral_misma_persona' => 0.363];
+
+        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0), ancho: 70))]), now(), $this->cuadro());
+        $p = DB::table('huellas_del_dia')->first();
+        Storage::disk('local')->assertExists($p->foto);
+        [$an, $al] = getimagesizefromstring(Storage::disk('local')->get($p->foto));
+        $this->assertSame(480, $al, 'Se reduce a 480 px de alto');
+
+        // Se acerca: rostro más grande, nueva foto. Se aleja: se queda la buena.
+        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0, 0.2), ancho: 110), x: 600)]), now(), $this->cuadro());
+        $this->assertSame(110, (int) DB::table('huellas_del_dia')->value('ancho_rostro'));
+        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0, 0.1), ancho: 65))]), now(), $this->cuadro());
+        $this->assertSame(110, (int) DB::table('huellas_del_dia')->value('ancho_rostro'));
+    }
+
+    public function test_de_noche_se_borran_tambien_los_recortes(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $resp = ['personas' => 1, 'detalle' => [$this->conCaja($this->rostro($this->huella(3)))], 'umbral_misma_persona' => 0.363];
+
+        $conteo->registrar(1, $resp, Carbon::parse('2026-11-11 15:00', 'America/Bogota'), $this->cuadro());
+        $foto = DB::table('huellas_del_dia')->value('foto');
+        Storage::disk('local')->assertExists($foto);
+
+        $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota'));
+
+        Storage::disk('local')->assertMissing($foto);
+        $this->assertSame([], Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA));
     }
 
     public function test_al_pgx_se_le_manda_la_foto_con_la_clave(): void
