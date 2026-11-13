@@ -49,9 +49,9 @@
         .cam-pestanas button[aria-pressed="true"] { background: var(--cam-suave); color: inherit; box-shadow: inset 0 0 0 1px var(--cam-borde); }
         .cam-personas { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
         .cam-persona { border: 0; padding: 0; background: none; text-align: left; cursor: zoom-in; }
-        .cam-persona-foto { position: relative; aspect-ratio: 3 / 4; border-radius: .7rem; overflow: hidden; background: var(--cam-suave);
+        .cam-persona-foto { position: relative; aspect-ratio: 9 / 16; border-radius: .7rem; overflow: hidden; background: var(--cam-suave);
                             border: 1px solid var(--cam-borde); }
-        .cam-persona-foto img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s; }
+        .cam-persona-foto img { width: 100%; height: 100%; object-fit: cover; object-position: center top; transition: transform .2s; transform-origin: center top; }
         .cam-persona:hover img { transform: scale(1.04); }
         .cam-persona-hora { position: absolute; left: .35rem; bottom: .35rem; color: #fff; font-size: .72rem; font-weight: 600;
                             background: rgba(0,0,0,.55); padding: .12rem .45rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
