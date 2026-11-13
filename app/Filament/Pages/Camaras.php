@@ -93,8 +93,10 @@ class Camaras extends Page
                 'volvio' => Carbon::parse($v->conocida_desde)->lt($inicio),
                 'desde' => Carbon::parse($v->conocida_desde)->timezone($tz)->locale('es')->isoFormat('D [de] MMM'),
                 'dias' => (int) ($dias[$v->persona_id] ?? 1),
-                'otras' => ($huellas[$v->persona_id] ?? collect())->take(8)
-                    ->map(fn ($h) => route('panel.camara.huella', $h->id))->values()->all(),
+                // Sus huellas con foto: se pueden mirar y quitar la que no es de ella.
+                'otras' => ($huellas[$v->persona_id] ?? collect())->take(12)
+                    ->map(fn ($h) => ['src' => route('panel.camara.huella', $h->id), 'huella' => (int) $h->id])->values()->all(),
+                'huellas' => ($huellas[$v->persona_id] ?? collect())->count(),
             ])->all(),
             'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
                 'lectura' => Cache::get("camara.{$c['numero']}.conteo"),
@@ -125,6 +127,23 @@ class Camaras extends Page
             ->title("Ahora son una sola persona (n.º {$queda})")
             ->body('Sus huellas quedaron juntas: la próxima vez se la reconoce con cualquiera de ellas.')
             ->success()->send();
+    }
+
+    /** «Quitar esta foto»: la huella no era de esa persona y deja de usarse para reconocerla. */
+    public function quitarHuella(int $huella): bool
+    {
+        abort_unless(static::canAccess(), 403);
+
+        if (! app(ConteoDePersonas::class)->quitarHuella($huella)) {
+            Notification::make()->title('No se puede quitar: es la única foto con la que se la reconoce.')->warning()->send();
+
+            return false;
+        }
+
+        Notification::make()->title('Foto quitada')
+            ->body('Ya no se usa para reconocer a esta persona.')->success()->send();
+
+        return true;
     }
 
     /** @return list<array{numero:int,nombre:string,foto:string}> */

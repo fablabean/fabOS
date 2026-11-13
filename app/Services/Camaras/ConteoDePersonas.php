@@ -201,6 +201,32 @@ class ConteoDePersonas
     }
 
     /**
+     * Quita una huella que no es de esa persona (una foto mal asignada), con
+     * su recorte. La última huella no se quita: sin ninguna, la persona ya no
+     * se podría reconocer.
+     *
+     * @return bool false si no existe o es la única que le queda
+     */
+    public function quitarHuella(int $id): bool
+    {
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($id) {
+            $huella = DB::table('huellas_de_persona')->lockForUpdate()->find($id);
+
+            if (! $huella || DB::table('huellas_de_persona')->where('persona_id', $huella->persona_id)->count() < 2) {
+                return false;
+            }
+
+            DB::table('huellas_de_persona')->where('id', $id)->delete();
+
+            if ($huella->foto) {
+                Storage::disk('local')->delete($huella->foto);
+            }
+
+            return true;
+        }));
+    }
+
+    /**
      * Toma un cuadro de la cámara, se lo pasa al PGX y lo registra.
      *
      * Deja en caché lo que ve ahora la cámara, para la pantalla. Si la cámara

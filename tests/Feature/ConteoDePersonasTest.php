@@ -147,6 +147,26 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, DB::table('personas_anonimas')->count());
     }
 
+    public function test_se_quita_una_huella_que_no_era_de_la_persona_pero_no_la_ultima(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->conCuadro($this->huella(0)), now(), $this->cuadro());
+        $conteo->registrar(1, $this->conCuadro($this->huella(40)), now(), $this->cuadro());
+        [$a, $b] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+        $conteo->unir([$a, $b]);
+        [$buena, $mala] = DB::table('huellas_de_persona')->orderBy('id')->get()->all();
+
+        $this->assertTrue($conteo->quitarHuella($mala->id));
+        Storage::disk('local')->assertMissing($mala->foto);
+        $this->assertFalse($conteo->quitarHuella($buena->id), 'La última no se quita');
+        $this->assertSame([$buena->id], DB::table('huellas_de_persona')->pluck('id')->all());
+
+        // Quien tenía esa cara vuelve a ser otra persona.
+        $this->assertSame(1, $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(40))]), now()->addDay())['nuevas']);
+        $this->assertSame(2, DB::table('personas_anonimas')->count());
+    }
+
     public function test_quien_no_vuelve_en_30_dias_se_olvida_con_sus_fotos_y_quedan_los_totales(): void
     {
         Storage::fake('local');

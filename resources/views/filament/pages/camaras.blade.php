@@ -82,6 +82,9 @@
         .cam-grande-otras { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; margin-top: .6rem; }
         .cam-grande-otras img { width: 3.2rem; height: 4.2rem; object-fit: cover; border-radius: .4rem; cursor: pointer; opacity: .75; border: 2px solid transparent; }
         .cam-grande-otras img:hover, .cam-grande-otras img.actual { opacity: 1; border-color: #fff; }
+        .cam-grande-quitar { text-align: center; margin-top: .7rem; color: rgba(255,255,255,.75); font-size: .8rem; cursor: default; }
+        .cam-grande-quitar .cam-btn { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.4); }
+        .cam-grande-quitar .cam-btn:hover { background: rgba(220,38,38,.75); border-color: transparent; }
     </style>
 
     @php($camaras = $this->camaras())
@@ -95,7 +98,16 @@
         @php($conteo = $this->conteo())
         <div class="cam" x-data="{ grande: null, uniendo: false, sel: [],
                     elegir(id) { this.sel = this.sel.includes(id) ? this.sel.filter(x => x !== id) : [...this.sel, id] },
-                    unir() { $wire.unir(this.sel).then(() => { this.sel = []; this.uniendo = false }) } }"
+                    unir() { $wire.unir(this.sel).then(() => { this.sel = []; this.uniendo = false }) },
+                    quitar() {
+                        const id = this.grande.huella;
+                        $wire.quitarHuella(id).then(ok => {
+                            if (!ok || !this.grande) return;
+                            this.grande.otras = this.grande.otras.filter(o => o.huella !== id);
+                            this.grande.huellas--;
+                            this.grande.src = this.grande.otras[0].src; this.grande.huella = this.grande.otras[0].huella;
+                        })
+                    } }"
              x-on:keydown.escape.window="grande = null; uniendo = false; sel = []">
 
             {{-- Cifras: se repintan cada 30 s; la cámara cuenta cada minuto. --}}
@@ -240,7 +252,7 @@
                         <div class="cam-personas">
                             @foreach ($conteo['personas'] as $p)
                                 @php($texto = 'N.º ' . $p['persona'] . ' · llegó ' . $p['llego'] . ($p['visto'] !== $p['llego'] ? ' · vista por última vez ' . $p['visto'] : '') . ($p['camara'] && count($camaras) > 1 ? ' · ' . $p['camara'] : '') . ($p['volvio'] ? ' · la conocemos desde el ' . $p['desde'] . ', ' . $p['dias'] . ' días' : ''))
-                                @php($grande = $p['foto'] ? ['src' => $p['foto'], 'texto' => $texto, 'otras' => array_values(array_unique(array_merge([$p['foto']], $p['otras'])))] : null)
+                                @php($grande = $p['foto'] ? ['src' => $p['foto'], 'huella' => null, 'texto' => $texto, 'huellas' => $p['huellas'], 'otras' => array_merge([['src' => $p['foto'], 'huella' => null]], $p['otras'])] : null)
                                 <button type="button" class="cam-persona" wire:key="persona-{{ $p['persona'] }}"
                                         x-bind:class="{ 'elegible': uniendo, 'elegida': sel.includes({{ $p['persona'] }}) }"
                                         x-on:click="uniendo ? elegir({{ $p['persona'] }}) : (grande = {{ \Illuminate\Support\Js::from($grande) }})">
@@ -283,8 +295,16 @@
                         <img x-bind:src="grande.src" alt="Persona contada">
                         <p x-text="grande.texto"></p>
                         <div class="cam-grande-otras" x-show="grande.otras && grande.otras.length > 1">
-                            <template x-for="o in grande.otras" :key="o">
-                                <img x-bind:src="o" x-bind:class="o === grande.src && 'actual'" x-on:click.stop="grande.src = o" alt="Otra foto de la misma persona">
+                            <template x-for="o in grande.otras" :key="o.src">
+                                <img x-bind:src="o.src" x-bind:class="o.src === grande.src && 'actual'" x-on:click.stop="grande.src = o.src; grande.huella = o.huella" alt="Otra foto de la misma persona">
+                            </template>
+                        </div>
+                        <div class="cam-grande-quitar" x-show="grande.huella" x-on:click.stop>
+                            <template x-if="grande.huellas > 1">
+                                <button type="button" class="cam-btn" x-on:click="quitar()">Quitar esta foto: no es esta persona</button>
+                            </template>
+                            <template x-if="grande.huellas <= 1">
+                                <span>Es la única foto con la que se la reconoce: no se puede quitar.</span>
                             </template>
                         </div>
                     </div>
