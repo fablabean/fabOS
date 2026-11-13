@@ -21,7 +21,7 @@ use Throwable;
  */
 class ContarPersonas extends Command
 {
-    protected $signature = 'fabos:contar-personas {--cerrar-dia : borra las huellas de los días pasados}';
+    protected $signature = 'fabos:contar-personas {--cerrar-dia : olvida a quien no ha venido en los últimos días}';
 
     protected $description = 'Cuenta las personas que ven las cámaras, con el PGX';
 
@@ -29,7 +29,7 @@ class ContarPersonas extends Command
     {
         if ($this->option('cerrar-dia')) {
             $borradas = $conteo->cerrarDiasPasados(now());
-            $this->info("Huellas borradas: {$borradas}");
+            $this->info("Personas olvidadas: {$borradas}");
 
             return self::SUCCESS;
         }

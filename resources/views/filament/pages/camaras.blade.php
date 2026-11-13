@@ -56,6 +56,22 @@
         .cam-persona-hora { position: absolute; left: .35rem; bottom: .35rem; color: #fff; font-size: .72rem; font-weight: 600;
                             background: rgba(0,0,0,.55); padding: .12rem .45rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
         .cam-persona-pie { font-size: .74rem; color: var(--cam-tenue); margin-top: .3rem; line-height: 1.3; }
+        .cam-persona-num { position: absolute; left: .35rem; top: .35rem; color: #fff; font-size: .68rem; font-weight: 700;
+                           background: rgba(0,0,0,.5); padding: .08rem .4rem; border-radius: 999px; font-variant-numeric: tabular-nums; }
+        .cam-persona-volvio { position: absolute; right: .35rem; top: .35rem; color: #fff; font-size: .68rem; font-weight: 700;
+                              background: rgba(37,99,235,.85); padding: .08rem .45rem; border-radius: 999px; }
+        .cam-persona.elegible { cursor: pointer; }
+        .cam-persona.elegida .cam-persona-foto { outline: 3px solid #2563eb; outline-offset: 2px; }
+        .cam-persona-marca { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(37,99,235,.28); }
+        .cam-persona-marca span { width: 2rem; height: 2rem; border-radius: 999px; background: #2563eb; color: #fff; display: grid; place-items: center; font-weight: 700; }
+        .cam-acciones { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+        .cam-btn { font-size: .82rem; font-weight: 600; padding: .4rem .8rem; border-radius: .55rem; border: 1px solid var(--cam-borde); cursor: pointer; }
+        .cam-btn:hover { background: var(--cam-suave); }
+        .cam-btn-fuerte { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .cam-btn-fuerte:hover { background: #1d4ed8; }
+        .cam-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .cam-uniendo { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .9rem;
+                       padding: .6rem .8rem; border-radius: .7rem; background: rgba(37,99,235,.08); border: 1px solid rgba(37,99,235,.3); font-size: .85rem; }
         .cam-vacio { border: 1px dashed var(--cam-borde); border-radius: .9rem; padding: 2rem 1rem; text-align: center; color: var(--cam-tenue); font-size: .9rem; }
         .cam-nota { font-size: .78rem; color: var(--cam-tenue); margin-top: .9rem; }
 
@@ -63,6 +79,9 @@
         .cam-grande { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.85); display: grid; place-items: center; padding: 1.5rem; cursor: zoom-out; }
         .cam-grande img { max-width: min(92vw, 720px); max-height: 82vh; border-radius: .8rem; }
         .cam-grande p { color: rgba(255,255,255,.85); text-align: center; font-size: .85rem; margin-top: .6rem; }
+        .cam-grande-otras { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; margin-top: .6rem; }
+        .cam-grande-otras img { width: 3.2rem; height: 4.2rem; object-fit: cover; border-radius: .4rem; cursor: pointer; opacity: .75; border: 2px solid transparent; }
+        .cam-grande-otras img:hover, .cam-grande-otras img.actual { opacity: 1; border-color: #fff; }
     </style>
 
     @php($camaras = $this->camaras())
@@ -74,7 +93,10 @@
         </div>
     @else
         @php($conteo = $this->conteo())
-        <div class="cam" x-data="{ grande: null }" x-on:keydown.escape.window="grande = null">
+        <div class="cam" x-data="{ grande: null, uniendo: false, sel: [],
+                    elegir(id) { this.sel = this.sel.includes(id) ? this.sel.filter(x => x !== id) : [...this.sel, id] },
+                    unir() { $wire.unir(this.sel).then(() => { this.sel = []; this.uniendo = false }) } }"
+             x-on:keydown.escape.window="grande = null; uniendo = false; sel = []">
 
             {{-- Cifras: se repintan cada 30 s; la cámara cuenta cada minuto. --}}
             @if ($conteo['activo'])
@@ -117,7 +139,8 @@
                         <div class="cam-cifra">
                             <div class="cam-cifra-et">Personas distintas · {{ $this->dia }}</div>
                             <div class="cam-cifra-num">{{ $dia->personas_distintas ?? 0 }}</div>
-                            <div class="cam-cifra-sub">reconocidas por el rostro</div>
+                            @php($volvieron = collect($conteo['personas'])->where('volvio', true)->count())
+                            <div class="cam-cifra-sub">reconocidas por el rostro{{ $volvieron ? ' · ' . $volvieron . ' ya habían venido' : '' }}</div>
                         </div>
                         <div class="cam-cifra">
                             <div class="cam-cifra-et">Máximo a la vez · {{ $this->dia }}</div>
@@ -125,6 +148,11 @@
                             <div class="cam-cifra-sub">
                                 {{ ($dia?->maximo_at) ? 'a las ' . \Illuminate\Support\Carbon::parse($dia->maximo_at)->timezone(config('fabos.lab.timezone'))->format('g:i a') : 'sin personas todavía' }}
                             </div>
+                        </div>
+                        <div class="cam-cifra">
+                            <div class="cam-cifra-et">Recordadas · {{ $conteo['dias_de_personas'] }} días</div>
+                            <div class="cam-cifra-num">{{ $conteo['recordadas'] }}</div>
+                            <div class="cam-cifra-sub">personas distintas en el último mes, sin nombre</div>
                         </div>
                     </div>
                 </div>
@@ -185,10 +213,23 @@
                             <h2>Personas {{ $this->dia === 'ayer' ? 'de ayer' : 'de hoy' }}</h2>
                             <p>{{ ucfirst($conteo['fecha']) }} · {{ count($conteo['personas']) }} {{ count($conteo['personas']) === 1 ? 'persona' : 'personas' }}</p>
                         </div>
-                        <div class="cam-pestanas" role="group">
-                            <button type="button" wire:click="verDia('hoy')" aria-pressed="{{ $this->dia === 'hoy' ? 'true' : 'false' }}">Hoy</button>
-                            <button type="button" wire:click="verDia('ayer')" aria-pressed="{{ $this->dia === 'ayer' ? 'true' : 'false' }}">Ayer</button>
+                        <div class="cam-acciones">
+                            @if (count($conteo['personas']) > 1)
+                                <button type="button" class="cam-btn" x-show="!uniendo" x-on:click="uniendo = true; sel = []">Unir fotos</button>
+                            @endif
+                            <div class="cam-pestanas" role="group">
+                                <button type="button" wire:click="verDia('hoy')" aria-pressed="{{ $this->dia === 'hoy' ? 'true' : 'false' }}">Hoy</button>
+                                <button type="button" wire:click="verDia('ayer')" aria-pressed="{{ $this->dia === 'ayer' ? 'true' : 'false' }}">Ayer</button>
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="cam-uniendo" x-show="uniendo" x-cloak>
+                        <span x-text="sel.length < 2 ? 'Toca las fotos que son la misma persona (al menos dos).' : sel.length + ' fotos elegidas: quedarán como una sola persona.'"></span>
+                        <span class="cam-acciones">
+                            <button type="button" class="cam-btn cam-btn-fuerte" x-bind:disabled="sel.length < 2" x-on:click="unir()">Son la misma persona</button>
+                            <button type="button" class="cam-btn" x-on:click="uniendo = false; sel = []">Cancelar</button>
+                        </span>
                     </div>
 
                     @if (empty($conteo['personas']))
@@ -198,17 +239,27 @@
                     @else
                         <div class="cam-personas">
                             @foreach ($conteo['personas'] as $p)
-                                @php($texto = 'Llegó ' . $p['llego'] . ($p['visto'] !== $p['llego'] ? ' · vista por última vez ' . $p['visto'] : '') . ($p['camara'] && count($camaras) > 1 ? ' · ' . $p['camara'] : ''))
-                                <button type="button" class="cam-persona"
-                                        @if ($p['foto']) x-on:click="grande = { src: @js($p['foto']), texto: @js($texto) }" @endif>
+                                @php($texto = 'N.º ' . $p['persona'] . ' · llegó ' . $p['llego'] . ($p['visto'] !== $p['llego'] ? ' · vista por última vez ' . $p['visto'] : '') . ($p['camara'] && count($camaras) > 1 ? ' · ' . $p['camara'] : '') . ($p['volvio'] ? ' · la conocemos desde el ' . $p['desde'] . ', ' . $p['dias'] . ' días' : ''))
+                                @php($grande = $p['foto'] ? ['src' => $p['foto'], 'texto' => $texto, 'otras' => array_values(array_unique(array_merge([$p['foto']], $p['otras'])))] : null)
+                                <button type="button" class="cam-persona" wire:key="persona-{{ $p['persona'] }}"
+                                        x-bind:class="{ 'elegible': uniendo, 'elegida': sel.includes({{ $p['persona'] }}) }"
+                                        x-on:click="uniendo ? elegir({{ $p['persona'] }}) : (grande = {{ \Illuminate\Support\Js::from($grande) }})">
                                     <div class="cam-persona-foto">
                                         @if ($p['foto'])
                                             <img src="{{ $p['foto'] }}" alt="Persona contada" loading="lazy">
                                         @endif
+                                        <span class="cam-persona-num">{{ $p['persona'] }}</span>
+                                        @if ($p['volvio'])
+                                            <span class="cam-persona-volvio" title="La conocemos desde el {{ $p['desde'] }}">volvió</span>
+                                        @endif
                                         <span class="cam-persona-hora">{{ $p['llego'] }}</span>
+                                        <span class="cam-persona-marca" x-show="sel.includes({{ $p['persona'] }})" x-cloak><span>✓</span></span>
                                     </div>
                                     <div class="cam-persona-pie">
                                         {{ $p['visto'] !== $p['llego'] ? 'hasta ' . $p['visto'] : 'vista una vez' }}
+                                        @if ($p['volvio'])
+                                            <br>{{ $p['dias'] }} días desde el {{ $p['desde'] }}
+                                        @endif
                                         @if ($p['camara'] && count($camaras) > 1)
                                             <br>{{ $p['camara'] }}
                                         @endif
@@ -219,8 +270,9 @@
                     @endif
 
                     <p class="cam-nota">
-                        Un recorte por persona, para reconocerla mirándola: el sistema no sabe quién es.
-                        Lo de cada día se conserva hasta que termina el día siguiente; después quedan solo los totales.
+                        Cada persona es solo un número: el sistema no sabe quién es. Si dos fotos son la misma persona,
+                        únelas: sus huellas quedan juntas y la próxima vez se la reconoce mejor. Quien no vuelve en
+                        {{ $conteo['dias_de_personas'] }} días se borra con sus huellas y sus fotos; de cada día quedan los totales.
                     </p>
                 </x-filament::section>
             @endif
@@ -230,6 +282,11 @@
                     <div>
                         <img x-bind:src="grande.src" alt="Persona contada">
                         <p x-text="grande.texto"></p>
+                        <div class="cam-grande-otras" x-show="grande.otras && grande.otras.length > 1">
+                            <template x-for="o in grande.otras" :key="o">
+                                <img x-bind:src="o" x-bind:class="o === grande.src && 'actual'" x-on:click.stop="grande.src = o" alt="Otra foto de la misma persona">
+                            </template>
+                        </div>
                     </div>
                 </div>
             </template>

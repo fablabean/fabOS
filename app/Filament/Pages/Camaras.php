@@ -3,10 +3,16 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\ControlaSuAcceso;
+use App\Services\Camaras\ConteoDePersonas;
+use App\Services\Vision\Pgx;
 use App\Support\Camaras as LasCamaras;
 use BackedEnum;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Lo que ven las cámaras del laboratorio, casi en vivo.
@@ -37,7 +43,7 @@ class Camaras extends Page
         return 'Cámaras';
     }
 
-    /** El día que se revisa: hoy, o ayer, que se conserva completo hasta mañana. */
+    /** El día que se revisa: hoy o ayer. */
     public string $dia = 'hoy';
 
     public function verDia(string $dia): void
@@ -47,32 +53,78 @@ class Camaras extends Page
 
     /**
      * El conteo del día que se revisa (personas distintas, máximo a la vez,
-     * los recortes) y lo que dice ahora cada cámara, que siempre es de hoy.
+     * la foto de cada persona) y lo que dice ahora cada cámara, que siempre
+     * es de hoy.
      */
     public function conteo(): array
     {
-        $fecha = now(config('fabos.lab.timezone'));
+        $tz = config('fabos.lab.timezone');
+        $fecha = now($tz);
         $hoy = ($this->dia === 'ayer' ? $fecha->subDay() : $fecha)->toDateString();
+        $inicio = Carbon::parse($hoy, $tz)->startOfDay();
+        $nombres = collect(LasCamaras::todas())->pluck('nombre', 'numero');
+
+        $visitas = DB::table('visitas_del_dia')
+            ->join('personas_anonimas as p', 'p.id', '=', 'visitas_del_dia.persona_id')
+            ->where('visitas_del_dia.fecha', $hoy)->orderByDesc('visitas_del_dia.ultima_vez')
+            ->get(['visitas_del_dia.*', 'p.primera_vez as conocida_desde']);
+
+        $ids = $visitas->pluck('persona_id')->all();
+        $dias = DB::table('visitas_del_dia')->whereIn('persona_id', $ids)
+            ->selectRaw('persona_id, count(*) as n')->groupBy('persona_id')->pluck('n', 'persona_id');
+        $huellas = DB::table('huellas_de_persona')->whereIn('persona_id', $ids)->whereNotNull('foto')
+            ->orderByDesc('ancho_rostro')->get(['id', 'persona_id'])->groupBy('persona_id');
+
+        $hora = fn ($t) => Carbon::parse($t)->timezone($tz)->format('g:i a');
 
         return [
-            'activo' => config('fabos.conteo.activo') && \App\Services\Vision\Pgx::configurado(),
-            'fecha' => \Illuminate\Support\Carbon::parse($hoy)->locale('es')->isoFormat('dddd D [de] MMMM'),
-            'dia' => \Illuminate\Support\Facades\DB::table('aforo_diario')->where('fecha', $hoy)->first(),
-            // Las personas de hoy, la más reciente primero. Sin nombre.
-            'personas' => \Illuminate\Support\Facades\DB::table('huellas_del_dia')->where('fecha', $hoy)
-                ->orderByDesc('ultima_vez')->get(['id', 'foto', 'primera_vez', 'ultima_vez', 'veces', 'camara', 'ancho_rostro'])
-                ->map(fn ($p) => [
-                    'foto' => $p->foto ? route('panel.camara.persona', $p->id) . '?v=' . $p->ancho_rostro : null,
-                    'llego' => \Illuminate\Support\Carbon::parse($p->primera_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
-                    'visto' => \Illuminate\Support\Carbon::parse($p->ultima_vez)->timezone(config('fabos.lab.timezone'))->format('g:i a'),
-                    'veces' => (int) $p->veces,
-                    'camara' => collect(LasCamaras::todas())->firstWhere('numero', $p->camara)['nombre'] ?? null,
-                ])->all(),
+            'activo' => config('fabos.conteo.activo') && Pgx::configurado(),
+            'fecha' => Carbon::parse($hoy)->locale('es')->isoFormat('dddd D [de] MMMM'),
+            'dia' => DB::table('aforo_diario')->where('fecha', $hoy)->first(),
+            'recordadas' => DB::table('personas_anonimas')->count(),
+            'dias_de_personas' => (int) config('fabos.conteo.dias_de_personas'),
+            // Las personas del día, la más reciente primero. Solo un número.
+            'personas' => $visitas->map(fn ($v) => [
+                'persona' => (int) $v->persona_id,
+                'foto' => $v->foto ? route('panel.camara.visita', $v->id).'?v='.$v->ancho_rostro : null,
+                'llego' => $hora($v->primera_vez),
+                'visto' => $hora($v->ultima_vez),
+                'camara' => $nombres[$v->camara] ?? null,
+                'volvio' => Carbon::parse($v->conocida_desde)->lt($inicio),
+                'desde' => Carbon::parse($v->conocida_desde)->timezone($tz)->locale('es')->isoFormat('D [de] MMM'),
+                'dias' => (int) ($dias[$v->persona_id] ?? 1),
+                'otras' => ($huellas[$v->persona_id] ?? collect())->take(8)
+                    ->map(fn ($h) => route('panel.camara.huella', $h->id))->values()->all(),
+            ])->all(),
             'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
-                'lectura' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo"),
-                'error' => \Illuminate\Support\Facades\Cache::get("camara.{$c['numero']}.conteo_error"),
+                'lectura' => Cache::get("camara.{$c['numero']}.conteo"),
+                'error' => Cache::get("camara.{$c['numero']}.conteo_error"),
             ]])->all(),
         ];
+    }
+
+    /**
+     * «Son la misma persona»: las fotos elegidas pasan a ser de una sola
+     * persona anónima, con todas sus huellas.
+     *
+     * @param  list<int>  $personas
+     */
+    public function unir(array $personas): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $queda = app(ConteoDePersonas::class)->unir($personas);
+
+        if ($queda === null) {
+            Notification::make()->title('Elige al menos dos fotos para unir.')->warning()->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title("Ahora son una sola persona (n.º {$queda})")
+            ->body('Sus huellas quedaron juntas: la próxima vez se la reconoce con cualquiera de ellas.')
+            ->success()->send();
     }
 
     /** @return list<array{numero:int,nombre:string,foto:string}> */

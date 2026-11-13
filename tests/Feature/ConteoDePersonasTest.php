@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** Contar personas distintas en el día sin contar dos veces a la misma, y olvidar las huellas de noche. */
+/** Personas anónimas: contarlas sin repetir, reconocerlas otro día, unirlas a mano y olvidarlas. */
 class ConteoDePersonasTest extends TestCase
 {
     use RefreshDatabase;
@@ -44,10 +44,15 @@ class ConteoDePersonasTest extends TestCase
             'rostros_sin_persona' => $sueltos, 'umbral_misma_persona' => 0.363];
     }
 
+    private function en(string $cuando): Carbon
+    {
+        return Carbon::parse($cuando, 'America/Bogota');
+    }
+
     public function test_la_misma_persona_en_otro_cuadro_no_se_cuenta_dos_veces(): void
     {
         $conteo = app(ConteoDePersonas::class);
-        $ahora = Carbon::parse('2026-11-12 10:00', 'America/Bogota');
+        $ahora = $this->en('2026-11-12 10:00');
 
         $primera = $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0)), $this->rostro($this->huella(5))]), $ahora);
         $this->assertSame(2, $primera['nuevas']);
@@ -59,7 +64,7 @@ class ConteoDePersonasTest extends TestCase
         $dia = DB::table('aforo_diario')->where('fecha', '2026-11-12')->first();
         $this->assertSame(3, (int) $dia->personas_distintas);
         $this->assertSame(2, (int) $dia->maximo_a_la_vez);
-        $this->assertSame(2, (int) DB::table('huellas_del_dia')->where('veces', 1)->count());
+        $this->assertSame(3, DB::table('personas_anonimas')->count());
     }
 
     public function test_un_rostro_pequeno_o_borroso_va_como_sin_identificar(): void
@@ -71,7 +76,7 @@ class ConteoDePersonasTest extends TestCase
         ], sinRostro: 1), now());
 
         $this->assertSame(['personas' => 4, 'identificadas' => 1, 'sin_identificar' => 3, 'nuevas' => 1], $lectura);
-        $this->assertSame(1, DB::table('huellas_del_dia')->count());
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
     }
 
     public function test_dos_rostros_parecidos_en_el_mismo_cuadro_son_dos_personas(): void
@@ -92,19 +97,76 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, $lectura['nuevas']);
     }
 
-    public function test_ayer_se_conserva_todo_el_dia_siguiente_y_luego_quedan_los_totales(): void
+    public function test_quien_vuelve_otro_dia_es_la_misma_persona_y_cuenta_en_su_dia(): void
     {
         $conteo = app(ConteoDePersonas::class);
-        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), Carbon::parse('2026-11-11 15:00', 'America/Bogota'));
-        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(4))]), Carbon::parse('2026-11-12 09:00', 'America/Bogota'));
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), $this->en('2026-11-12 09:00'));
 
-        // La noche del 11 al 12: el 11 es «ayer» y se queda.
-        $this->assertSame(0, $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota')));
+        $lectura = $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0, 0.2))]), $this->en('2026-11-13 09:00'));
 
-        // La noche del 12 al 13: el 11 ya es de antes de ayer.
-        $this->assertSame(1, $conteo->cerrarDiasPasados(Carbon::parse('2026-11-13 00:05', 'America/Bogota')));
-        $this->assertSame(['2026-11-12'], DB::table('huellas_del_dia')->pluck('fecha')->map(fn ($f) => substr($f, 0, 10))->all());
-        $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-11')->value('personas_distintas'));
+        $this->assertSame(1, $lectura['nuevas'], 'Es nueva del día 13');
+        $this->assertSame(1, DB::table('personas_anonimas')->count(), 'pero es la misma persona');
+        $this->assertSame(2, DB::table('visitas_del_dia')->count());
+        $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
+    }
+
+    public function test_otro_angulo_de_la_misma_persona_se_guarda_como_otra_huella(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), now());
+
+        // Casi igual: no aporta. Algo distinta pero aún ella (0,6): se guarda.
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0, 0.1))]), now());
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0, 1.3))]), now());
+
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+        $this->assertSame(2, DB::table('huellas_de_persona')->count());
+    }
+
+    public function test_al_unir_dos_fotos_la_persona_queda_con_las_huellas_de_ambas(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(0))]), $this->en('2026-11-13 09:00'));
+        $conteo->registrar(2, $this->respuesta([$this->rostro($this->huella(40), ancho: 120)]), $this->en('2026-11-13 11:00'));
+        $this->assertSame(2, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
+
+        [$a, $b] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+        $queda = $conteo->unir([$b, $a]);
+
+        $this->assertSame($a, $queda, 'Queda la que se vio primero');
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+        $this->assertSame(2, DB::table('huellas_de_persona')->where('persona_id', $a)->count());
+        $visita = DB::table('visitas_del_dia')->sole();
+        $this->assertSame(2, (int) $visita->veces, 'Las dos visitas del día quedan en una');
+        $this->assertSame('11:00', Carbon::parse($visita->ultima_vez)->timezone('America/Bogota')->format('H:i'));
+        $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
+
+        // Y la próxima vez se la reconoce por cualquiera de sus dos huellas.
+        $lectura = $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(40, 0.2))]), $this->en('2026-11-13 15:00'));
+        $this->assertSame(0, $lectura['nuevas']);
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+    }
+
+    public function test_quien_no_vuelve_en_30_dias_se_olvida_con_sus_fotos_y_quedan_los_totales(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->conCuadro($this->huella(0)), $this->en('2026-10-01 10:00'), $this->cuadro());
+        $conteo->registrar(1, $this->conCuadro($this->huella(9)), $this->en('2026-11-10 10:00'), $this->cuadro());
+        [$vieja, $reciente] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+        $fotosViejas = DB::table('huellas_de_persona')->where('persona_id', $vieja)->pluck('foto')
+            ->merge(DB::table('visitas_del_dia')->where('persona_id', $vieja)->pluck('foto'))->all();
+        $this->assertCount(2, $fotosViejas);
+
+        $olvidadas = $conteo->cerrarDiasPasados($this->en('2026-11-13 00:05'));
+
+        $this->assertSame(1, $olvidadas);
+        $this->assertSame([$reciente], DB::table('personas_anonimas')->pluck('id')->all());
+        foreach ($fotosViejas as $f) {
+            Storage::disk('local')->assertMissing($f);
+        }
+        $this->assertSame([], Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA.'/'.$vieja));
+        $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-10-01')->value('personas_distintas'));
     }
 
     /** Un cuadro de 1280×720 de verdad, para recortar. */
@@ -123,41 +185,27 @@ class ConteoDePersonasTest extends TestCase
         return ['caja' => compact('x', 'y', 'ancho', 'alto'), 'rostro' => $rostro];
     }
 
-    public function test_de_cada_persona_queda_su_recorte_y_se_cambia_por_uno_mejor(): void
+    private function conCuadro(array $huella, int $ancho = 80): array
+    {
+        return ['personas' => 1, 'detalle' => [$this->conCaja($this->rostro($huella, ancho: $ancho))], 'umbral_misma_persona' => 0.363];
+    }
+
+    public function test_la_foto_del_dia_se_cambia_por_una_mejor(): void
     {
         Storage::fake('local');
         $conteo = app(ConteoDePersonas::class);
-        $r = fn (array $detalle) => ['personas' => count($detalle), 'detalle' => $detalle, 'umbral_misma_persona' => 0.363];
 
-        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0), ancho: 70))]), now(), $this->cuadro());
-        $p = DB::table('huellas_del_dia')->first();
-        Storage::disk('local')->assertExists($p->foto);
-        [$an, $al] = getimagesizefromstring(Storage::disk('local')->get($p->foto));
+        $conteo->registrar(1, $this->conCuadro($this->huella(0), 70), now(), $this->cuadro());
+        $v = DB::table('visitas_del_dia')->sole();
+        Storage::disk('local')->assertExists($v->foto);
+        [, $al] = getimagesizefromstring(Storage::disk('local')->get($v->foto));
         $this->assertSame(480, $al, 'Se reduce a 480 px de alto');
 
         // Se acerca: rostro más grande, nueva foto. Se aleja: se queda la buena.
-        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0, 0.2), ancho: 110), x: 600)]), now(), $this->cuadro());
-        $this->assertSame(110, (int) DB::table('huellas_del_dia')->value('ancho_rostro'));
-        $conteo->registrar(1, $r([$this->conCaja($this->rostro($this->huella(0, 0.1), ancho: 65))]), now(), $this->cuadro());
-        $this->assertSame(110, (int) DB::table('huellas_del_dia')->value('ancho_rostro'));
-    }
-
-    public function test_los_recortes_se_van_con_sus_huellas(): void
-    {
-        Storage::fake('local');
-        $conteo = app(ConteoDePersonas::class);
-        $resp = ['personas' => 1, 'detalle' => [$this->conCaja($this->rostro($this->huella(3)))], 'umbral_misma_persona' => 0.363];
-
-        $conteo->registrar(1, $resp, Carbon::parse('2026-11-11 15:00', 'America/Bogota'), $this->cuadro());
-        $foto = DB::table('huellas_del_dia')->value('foto');
-        Storage::disk('local')->assertExists($foto);
-
-        $conteo->cerrarDiasPasados(Carbon::parse('2026-11-12 00:05', 'America/Bogota'));
-        Storage::disk('local')->assertExists($foto);
-
-        $conteo->cerrarDiasPasados(Carbon::parse('2026-11-13 00:05', 'America/Bogota'));
-        Storage::disk('local')->assertMissing($foto);
-        $this->assertSame([], Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA));
+        $conteo->registrar(1, $this->conCuadro($this->huella(0, 0.2), 110), now(), $this->cuadro());
+        $this->assertSame(110, (int) DB::table('visitas_del_dia')->value('ancho_rostro'));
+        $conteo->registrar(1, $this->conCuadro($this->huella(0, 0.1), 65), now(), $this->cuadro());
+        $this->assertSame(110, (int) DB::table('visitas_del_dia')->value('ancho_rostro'));
     }
 
     public function test_al_pgx_se_le_manda_la_foto_con_la_clave(): void

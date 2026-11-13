@@ -72,6 +72,8 @@ Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
 // que ve personas; el conteo por minuto queda para CONTEO_DISPARO=minuto.
 Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground()
     ->when(fn () => config('fabos.conteo.disparo') === 'minuto');
+// De noche se olvida a quien no ha venido en 30 días (CONTEO_DIAS_DE_PERSONAS),
+// con sus huellas y sus fotos.
 Schedule::command('fabos:contar-personas --cerrar-dia')->dailyAt('00:05');
 
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede

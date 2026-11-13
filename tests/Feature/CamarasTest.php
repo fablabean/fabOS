@@ -59,7 +59,31 @@ class CamarasTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/camaras')->assertForbidden();
         $this->actingAs($admin)->get(route('panel.camara.foto', 1))->assertForbidden();
-        $this->actingAs($admin)->get(route('panel.camara.persona', 1))->assertForbidden();
+        $this->actingAs($admin)->get(route('panel.camara.visita', 1))->assertForbidden();
+        $this->actingAs($admin)->get(route('panel.camara.huella', 1))->assertForbidden();
+    }
+
+    public function test_las_personas_del_dia_se_ven_y_se_unen_desde_la_pantalla(): void
+    {
+        config(['fabos.pgx.url' => 'http://pgx.test', 'fabos.conteo.activo' => true]);
+        $yo = $this->con(User::ROL_SUPERADMIN);
+        $conteo = app(\App\Services\Camaras\ConteoDePersonas::class);
+        $h = fn (int $i) => array_map(fn ($k) => $k === $i ? 1.0 : 0.0, range(0, 127));
+        $r = fn (int $i) => ['personas' => 1, 'detalle' => [['rostro' => ['ancho_px' => 80, 'nitidez' => 90, 'huella' => $h($i)]]], 'umbral_misma_persona' => 0.363];
+
+        // Una vino ayer y volvió hoy; otra es nueva de hoy.
+        $conteo->registrar(1, $r(0), now()->subDay());
+        $conteo->registrar(1, $r(0), now());
+        $conteo->registrar(1, $r(9), now());
+        [$a, $b] = \Illuminate\Support\Facades\DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+
+        $this->actingAs($yo)->get('/admin/camaras')->assertOk()
+            ->assertSee('Unir fotos')->assertSee('volvió')->assertSee('1 ya habían venido');
+
+        \Livewire\Livewire::actingAs($yo)->test(\App\Filament\Pages\Camaras::class)
+            ->call('unir', [$a, $b])->assertNotified();
+
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('personas_anonimas')->count());
     }
 
     public function test_si_la_camara_no_responde_lo_dice(): void

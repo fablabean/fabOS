@@ -288,11 +288,11 @@ return [
      *
      * Cuando la cámara avisa que ve personas, se toma un cuadro cada segundo
      * mientras dura el aviso, y el PGX dice cuántas personas hay y sus huellas
-     * faciales. Sin personas no se manda nada. Las huellas solo sirven para no
-     * contar dos veces a la misma persona en el día, y se borran cuando
-     * termina el día siguiente (dato sensible, Ley 1581): no se asocian a
-     * nombres, y del cuadro solo queda el recorte de cada persona, que se va
-     * con su huella. Lo que queda son los totales.
+     * faciales. Sin personas no se manda nada. Las huellas sirven para no contar
+     * dos veces a la misma persona y para saber si ya vino otros días: cada
+     * persona es un número, nunca un nombre ni un documento. Quien no aparece
+     * en `dias_de_personas` (30) se borra con sus huellas y sus fotos (dato
+     * sensible, Ley 1581). Lo que queda son los totales de cada día.
      *
      * `ancho_minimo` y `nitidez_minima`: un rostro más pequeño o más borroso
      * da una huella poco fiable, y esa persona va como «sin identificar».
@@ -308,6 +308,7 @@ return [
         'ancho_minimo' => (int) env('CONTEO_ANCHO_MINIMO', 60),
         'nitidez_minima' => (float) env('CONTEO_NITIDEZ_MINIMA', 30),
         'dias_de_lecturas' => (int) env('CONTEO_DIAS_DE_LECTURAS', 90),
+        'dias_de_personas' => (int) env('CONTEO_DIAS_DE_PERSONAS', 30),
         'disparo' => env('CONTEO_DISPARO', 'personas'),
         'cada_segundos' => (float) env('CONTEO_CADA_SEGUNDOS', 1),
         'segundos_despues' => (float) env('CONTEO_SEGUNDOS_DESPUES', 3),

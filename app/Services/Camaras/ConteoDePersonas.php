@@ -2,31 +2,46 @@
 
 namespace App\Services\Camaras;
 
+use App\Services\Vision\Pgx;
+use App\Support\Camaras;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
+use Throwable;
 
 /**
- * Cuenta personas distintas en el día, sin saber quién es cada una.
+ * Cuenta personas distintas, sin saber quién es cada una.
  *
  * El PGX dice cuántas personas hay en un cuadro y da la huella de cada rostro.
- * Aquí se decide si ese rostro ya se vio hoy: la similitud es el producto
- * punto de las dos huellas, y desde `umbral_misma_persona` (0,363) es la misma
- * persona.
+ * Aquí se decide a qué persona anónima pertenece: se compara con todas las
+ * huellas guardadas de cada una (la similitud es el producto punto) y desde
+ * `umbral_misma_persona` (0,363) es la misma. Si no se parece a ninguna, es
+ * una persona nueva.
+ *
+ * Una persona anónima junta varias huellas —de frente, de lado, de cada
+ * cámara— y quien revisa puede unir dos fotos que son la misma persona: sus
+ * huellas pasan a ser de una sola, y la próxima vez se la reconoce mejor. Solo
+ * lleva un número, nunca un nombre ni un documento. Quien no aparece en
+ * `dias_de_personas` se borra con sus huellas y sus fotos (dato sensible,
+ * Ley 1581).
  *
  * Las personas sin rostro fiable (de espaldas, lejos, borrosas) no se pueden
- * distinguir entre sí. Sumarlas cada minuto inflaría el total, porque es la
- * misma persona en cuadro tras cuadro. Por eso no entran a «distintas»: del
- * día solo se guarda cuántas hubo a la vez como máximo.
- *
- * De cada persona contada se guarda un recorte, para que quien revisa el
- * conteo la reconozca mirándola. El sistema no sabe quién es: el recorte no
- * lleva nombre y se borra con la huella cuando termina el día siguiente (lo
- * de ayer se puede revisar hoy, y nada más). Si la persona se
- * acerca y su rostro sale más grande, el recorte se cambia por el mejor.
+ * distinguir entre sí: no entran a «distintas», y del día solo se guarda
+ * cuántas hubo a la vez como máximo.
  */
 class ConteoDePersonas
 {
+    /** Dónde viven los recortes: una carpeta por persona. */
+    public const CARPETA = 'camaras/personas';
+
+    /** Cuántas huellas junta sola una persona (al unir pueden quedar más). */
+    public const HUELLAS_POR_PERSONA = 12;
+
+    /** Una huella así de parecida a una que ya tiene no aporta nada nuevo. */
+    public const REDUNDANTE = 0.8;
+
     /**
      * Registra un cuadro ya analizado por el PGX.
      *
@@ -35,6 +50,8 @@ class ConteoDePersonas
     public function registrar(int $camara, array $respuesta, CarbonInterface $ahora, ?string $foto = null): array
     {
         $fecha = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->toDateString();
+        // La base guarda la hora tal cual, sin zona: siempre en la de la aplicación.
+        $ahora = $ahora->copy()->setTimezone(config('app.timezone'));
         $umbral = (float) ($respuesta['umbral_misma_persona'] ?? 0.363);
 
         // Cada rostro con la caja de su persona, que es lo que se recorta: con
@@ -54,14 +71,16 @@ class ConteoDePersonas
         // Los rostros sueltos también son personas (alguien cortado por el borde).
         $personas = (int) ($respuesta['personas'] ?? 0) + count($respuesta['rostros_sin_persona'] ?? []);
 
-        return DB::transaction(function () use ($camara, $rostros, $personas, $fecha, $umbral, $ahora, $foto) {
-            $vistas = DB::table('huellas_del_dia')->where('fecha', $fecha)->lockForUpdate()->get(['id', 'huella', 'ancho_rostro'])
-                ->map(fn ($v) => ['id' => $v->id, 'huella' => json_decode($v->huella, true), 'ancho' => (int) $v->ancho_rostro])
+        // Cada cámara cuenta en su propio proceso: de a una, para que dos no
+        // creen la misma persona nueva en el mismo segundo.
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($camara, $rostros, $personas, $fecha, $umbral, $ahora, $foto) {
+            $conocidas = DB::table('huellas_de_persona')->get(['persona_id', 'huella'])
+                ->map(fn ($h) => ['persona' => (int) $h->persona_id, 'huella' => json_decode($h->huella, true)])
                 ->all();
 
             $identificadas = 0;
             $nuevas = 0;
-            $yaEnEsteCuadro = [];
+            $enEsteCuadro = [];
 
             foreach ($rostros as $rostro) {
                 if (! $this->esFiable($rostro)) {
@@ -69,41 +88,31 @@ class ConteoDePersonas
                 }
 
                 $identificadas++;
-                [$id, $similitud] = $this->masParecida($rostro['huella'], $vistas, $yaEnEsteCuadro);
+                [$persona, $similitud] = $this->masParecida($rostro['huella'], $conocidas, $enEsteCuadro);
 
-                $ancho = (int) ($rostro['ancho_px'] ?? 0);
+                if ($persona === null || $similitud < $umbral) {
+                    $persona = DB::table('personas_anonimas')->insertGetId([
+                        'primera_vez' => $ahora, 'ultima_vez' => $ahora, 'created_at' => $ahora, 'updated_at' => $ahora,
+                    ]);
+                    $this->guardarHuella($persona, $rostro, $camara, $ahora, $foto);
+                    $conocidas[] = ['persona' => $persona, 'huella' => $rostro['huella']];
+                } else {
+                    DB::table('personas_anonimas')->where('id', $persona)->update(['ultima_vez' => $ahora, 'updated_at' => $ahora]);
+                    $tiene = count(array_filter($conocidas, fn ($c) => $c['persona'] === $persona));
 
-                if ($id !== null && $similitud >= $umbral) {
-                    $yaEnEsteCuadro[] = $id;
-                    $cambios = ['ultima_vez' => $ahora, 'veces' => DB::raw('veces + 1')];
-                    $vista = collect($vistas)->firstWhere('id', $id);
-
-                    // Una cara más grande que la guardada: mejor foto.
-                    if ($foto !== null && $ancho > ($vista['ancho'] ?? 0)) {
-                        $ruta = $this->recortar($foto, $rostro, $fecha, $id);
-                        $cambios += $ruta ? ['foto' => $ruta, 'ancho_rostro' => $ancho, 'camara' => $camara] : [];
+                    // Otro ángulo de la misma persona: se guarda, y la próxima
+                    // vez se la reconoce también así.
+                    if ($similitud < self::REDUNDANTE && $tiene < self::HUELLAS_POR_PERSONA) {
+                        $this->guardarHuella($persona, $rostro, $camara, $ahora, $foto);
+                        $conocidas[] = ['persona' => $persona, 'huella' => $rostro['huella']];
                     }
-
-                    DB::table('huellas_del_dia')->where('id', $id)->update($cambios);
-
-                    continue;
                 }
 
-                $id = DB::table('huellas_del_dia')->insertGetId([
-                    'fecha' => $fecha,
-                    'huella' => json_encode(array_map('floatval', $rostro['huella'])),
-                    'primera_vez' => $ahora,
-                    'ultima_vez' => $ahora,
-                    'camara' => $camara,
-                ]);
+                $enEsteCuadro[] = $persona;
 
-                if ($foto !== null && ($ruta = $this->recortar($foto, $rostro, $fecha, $id))) {
-                    DB::table('huellas_del_dia')->where('id', $id)->update(['foto' => $ruta, 'ancho_rostro' => $ancho]);
+                if ($this->anotarVisita($persona, $fecha, $rostro, $camara, $ahora, $foto)) {
+                    $nuevas++;
                 }
-
-                $vistas[] = ['id' => $id, 'huella' => $rostro['huella'], 'ancho' => $ancho];
-                $yaEnEsteCuadro[] = $id;
-                $nuevas++;
             }
 
             $sinIdentificar = max($personas - $identificadas, 0);
@@ -114,7 +123,81 @@ class ConteoDePersonas
             $this->resumir($fecha, $personas, $sinIdentificar, $ahora);
 
             return $lectura;
-        });
+        }));
+    }
+
+    /**
+     * Une varias personas anónimas en una: la que se vio primero se queda con
+     * las huellas y las visitas de las demás. Si dos venían el mismo día, esa
+     * visita se junta en una (desde la más temprana hasta la más tarde, con la
+     * mejor foto). Devuelve con qué persona quedaron.
+     *
+     * @param  list<int>  $ids
+     */
+    public function unir(array $ids): ?int
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if (count($ids) < 2) {
+            return null;
+        }
+
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($ids) {
+            $todas = DB::table('personas_anonimas')->whereIn('id', $ids)->orderBy('primera_vez')->orderBy('id')->get();
+
+            if ($todas->count() < 2) {
+                return $todas->first()?->id;
+            }
+
+            $queda = $todas->first();
+            $fechas = [];
+
+            foreach ($todas->slice(1) as $otra) {
+                DB::table('huellas_de_persona')->where('persona_id', $otra->id)->update(['persona_id' => $queda->id]);
+
+                foreach (DB::table('visitas_del_dia')->where('persona_id', $otra->id)->get() as $v) {
+                    $fechas[] = substr((string) $v->fecha, 0, 10);
+                    $suya = DB::table('visitas_del_dia')->where('persona_id', $queda->id)->where('fecha', $v->fecha)->first();
+
+                    if (! $suya) {
+                        DB::table('visitas_del_dia')->where('id', $v->id)->update(['persona_id' => $queda->id]);
+
+                        continue;
+                    }
+
+                    $mejor = $v->ancho_rostro > $suya->ancho_rostro;
+
+                    DB::table('visitas_del_dia')->where('id', $v->id)->delete();
+                    DB::table('visitas_del_dia')->where('id', $suya->id)->update([
+                        'primera_vez' => min($suya->primera_vez, $v->primera_vez),
+                        'ultima_vez' => max($suya->ultima_vez, $v->ultima_vez),
+                        'veces' => $suya->veces + $v->veces,
+                    ] + ($mejor ? ['foto' => $v->foto, 'ancho_rostro' => $v->ancho_rostro, 'camara' => $v->camara] : []));
+
+                    // La foto que no quedó se va.
+                    $sobra = $mejor ? $suya->foto : $v->foto;
+
+                    if ($sobra) {
+                        Storage::disk('local')->delete($sobra);
+                    }
+                }
+
+                DB::table('personas_anonimas')->where('id', $otra->id)->delete();
+            }
+
+            DB::table('personas_anonimas')->where('id', $queda->id)->update([
+                'ultima_vez' => $todas->max('ultima_vez'), 'updated_at' => now(),
+            ]);
+
+            // Unir baja el total de personas distintas de esos días.
+            foreach (array_unique($fechas) as $fecha) {
+                DB::table('aforo_diario')->where('fecha', $fecha)->update([
+                    'personas_distintas' => DB::table('visitas_del_dia')->where('fecha', $fecha)->count(),
+                ]);
+            }
+
+            return (int) $queda->id;
+        }));
     }
 
     /**
@@ -128,15 +211,15 @@ class ConteoDePersonas
     public function fotografiar(int $camara): array
     {
         try {
-            $foto = \App\Support\Camaras::fotoParaContar($camara);
+            $foto = Camaras::fotoParaContar($camara);
 
             if ($foto === null) {
-                throw new \RuntimeException('La cámara no responde.');
+                throw new RuntimeException('La cámara no responde.');
             }
 
-            $lectura = $this->registrar($camara, app(\App\Services\Vision\Pgx::class)->personas($foto), now(), $foto);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Cache::put("camara.{$camara}.conteo_error", $e->getMessage(), now()->addMinutes(10));
+            $lectura = $this->registrar($camara, app(Pgx::class)->personas($foto), now(), $foto);
+        } catch (Throwable $e) {
+            Cache::put("camara.{$camara}.conteo_error", $e->getMessage(), now()->addMinutes(10));
 
             throw $e;
         }
@@ -149,37 +232,96 @@ class ConteoDePersonas
     /** Lo que ve ahora la cámara, para «Ahora en cámara». */
     public function anotarLoQueVe(int $camara, array $lectura): void
     {
-        \Illuminate\Support\Facades\Cache::put("camara.{$camara}.conteo", $lectura + ['at' => now()->toIso8601String()], now()->addMinutes(10));
-        \Illuminate\Support\Facades\Cache::forget("camara.{$camara}.conteo_error");
+        Cache::put("camara.{$camara}.conteo", $lectura + ['at' => now()->toIso8601String()], now()->addMinutes(10));
+        Cache::forget("camara.{$camara}.conteo_error");
     }
 
     /**
-     * De noche: se borran las huellas y los recortes de antes de ayer.
-     *
-     * Ayer se conserva completo durante hoy, para poder revisar lo que pasó
-     * el día anterior. El conteo no se mezcla: cada día compara solo con sus
-     * propias huellas.
+     * De noche: se olvida a quien no ha venido en `dias_de_personas`, con sus
+     * huellas y sus fotos, y se borran las visitas de hace más de esos días.
+     * Los totales de cada día se quedan.
      */
     public function cerrarDiasPasados(CarbonInterface $ahora): int
     {
-        $ayer = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->subDay()->toDateString();
+        $dias = (int) config('fabos.conteo.dias_de_personas');
+        $limite = $ahora->copy()->setTimezone(config('app.timezone'))->subDays($dias);
+        $fechaLimite = $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->subDays($dias)->toDateString();
 
         DB::table('lecturas_de_aforo')
             ->where('leido_at', '<', $ahora->copy()->subDays(config('fabos.conteo.dias_de_lecturas')))
             ->delete();
 
-        // Las fotos se van con sus huellas: la carpeta entera de cada día.
-        foreach (Storage::disk('local')->directories(self::CARPETA) as $dia) {
-            if (basename($dia) < $ayer) {
-                Storage::disk('local')->deleteDirectory($dia);
+        $viejas = DB::table('personas_anonimas')->where('ultima_vez', '<', $limite)->pluck('id')->all();
+
+        $fotos = DB::table('huellas_de_persona')->whereIn('persona_id', $viejas)->whereNotNull('foto')->pluck('foto')
+            ->merge(DB::table('visitas_del_dia')->whereNotNull('foto')
+                ->where(fn ($q) => $q->whereIn('persona_id', $viejas)->orWhere('fecha', '<', $fechaLimite))
+                ->pluck('foto'))
+            ->unique()->values()->all();
+
+        Storage::disk('local')->delete($fotos);
+        DB::table('visitas_del_dia')->where('fecha', '<', $fechaLimite)->delete();
+        DB::table('personas_anonimas')->whereIn('id', $viejas)->delete();
+
+        // Las carpetas que quedaron vacías.
+        foreach (Storage::disk('local')->directories(self::CARPETA) as $carpeta) {
+            if (Storage::disk('local')->allFiles($carpeta) === []) {
+                Storage::disk('local')->deleteDirectory($carpeta);
             }
         }
 
-        return DB::table('huellas_del_dia')->where('fecha', '<', $ayer)->delete();
+        return count($viejas);
     }
 
-    /** Dónde viven los recortes, una carpeta por día. */
-    public const CARPETA = 'camaras/personas';
+    private function guardarHuella(int $persona, array $rostro, int $camara, CarbonInterface $ahora, ?string $foto): void
+    {
+        $id = DB::table('huellas_de_persona')->insertGetId([
+            'persona_id' => $persona,
+            'huella' => json_encode(array_map('floatval', $rostro['huella'])),
+            'ancho_rostro' => (int) ($rostro['ancho_px'] ?? 0),
+            'camara' => $camara,
+            'vista_at' => $ahora,
+        ]);
+
+        $ruta = self::CARPETA."/{$persona}/h{$id}.jpg";
+
+        if ($foto !== null && $this->recortar($foto, $rostro, $ruta)) {
+            DB::table('huellas_de_persona')->where('id', $id)->update(['foto' => $ruta]);
+        }
+    }
+
+    /**
+     * La visita del día de esa persona: se crea la primera vez que se la ve
+     * en el día (y entonces cuenta como nueva del día), y si su cara sale más
+     * grande que en la foto del día, la foto se cambia por la mejor.
+     */
+    private function anotarVisita(int $persona, string $fecha, array $rostro, int $camara, CarbonInterface $ahora, ?string $foto): bool
+    {
+        $visita = DB::table('visitas_del_dia')->where('persona_id', $persona)->where('fecha', $fecha)->first();
+        $ancho = (int) ($rostro['ancho_px'] ?? 0);
+        $ruta = self::CARPETA."/{$persona}/{$fecha}.jpg";
+
+        if (! $visita) {
+            $conFoto = $foto !== null && $this->recortar($foto, $rostro, $ruta);
+
+            DB::table('visitas_del_dia')->insert([
+                'persona_id' => $persona, 'fecha' => $fecha, 'primera_vez' => $ahora, 'ultima_vez' => $ahora,
+                'foto' => $conFoto ? $ruta : null, 'ancho_rostro' => $conFoto ? $ancho : 0, 'camara' => $camara,
+            ]);
+
+            return true;
+        }
+
+        $cambios = ['ultima_vez' => $ahora, 'veces' => DB::raw('veces + 1')];
+
+        if ($foto !== null && $ancho > $visita->ancho_rostro && $this->recortar($foto, $rostro, $ruta)) {
+            $cambios += ['foto' => $ruta, 'ancho_rostro' => $ancho, 'camara' => $camara];
+        }
+
+        DB::table('visitas_del_dia')->where('id', $visita->id)->update($cambios);
+
+        return false;
+    }
 
     /**
      * La persona recortada del cuadro, con un poco de margen.
@@ -187,12 +329,12 @@ class ConteoDePersonas
      * La caja de la persona entera si la hay; si no, la cara agrandada.
      * Se reduce a 480 px de alto: es para reconocerla, no para ampliarla.
      */
-    private function recortar(string $foto, array $rostro, string $fecha, int $id): ?string
+    private function recortar(string $foto, array $rostro, string $ruta): bool
     {
         $imagen = @imagecreatefromstring($foto);
 
         if (! $imagen) {
-            return null;
+            return false;
         }
 
         [$w, $h] = [imagesx($imagen), imagesy($imagen)];
@@ -205,7 +347,7 @@ class ConteoDePersonas
         } else {
             imagedestroy($imagen);
 
-            return null;
+            return false;
         }
 
         $x = (int) max(0, $x);
@@ -216,7 +358,7 @@ class ConteoDePersonas
         if ($an < 8 || $al < 8) {
             imagedestroy($imagen);
 
-            return null;
+            return false;
         }
 
         $recorte = imagecrop($imagen, ['x' => $x, 'y' => $y, 'width' => $an, 'height' => $al]);
@@ -232,10 +374,7 @@ class ConteoDePersonas
         imagejpeg($recorte, null, 82);
         imagedestroy($recorte);
 
-        $ruta = self::CARPETA . "/{$fecha}/{$id}.jpg";
-        Storage::disk('local')->put($ruta, ob_get_clean());
-
-        return $ruta;
+        return Storage::disk('local')->put($ruta, ob_get_clean());
     }
 
     private function esFiable(array $rostro): bool
@@ -246,25 +385,27 @@ class ConteoDePersonas
     }
 
     /**
-     * La huella guardada más parecida, sin repetir una que ya se asignó en
-     * este mismo cuadro: dos rostros en la misma foto son dos personas.
+     * La persona más parecida: la dueña de la huella más parecida, sin
+     * repetir una que ya se asignó en este mismo cuadro (dos rostros en la
+     * misma foto son dos personas).
      *
+     * @param  list<array{persona:int,huella:array}>  $conocidas
      * @return array{0:?int,1:float}
      */
-    private function masParecida(array $huella, array $vistas, array $excluidas): array
+    private function masParecida(array $huella, array $conocidas, array $excluidas): array
     {
         $mejor = null;
         $similitud = -1.0;
 
-        foreach ($vistas as $v) {
-            if (in_array($v['id'], $excluidas, true)) {
+        foreach ($conocidas as $c) {
+            if (in_array($c['persona'], $excluidas, true)) {
                 continue;
             }
 
-            $s = self::similitud($huella, $v['huella']);
+            $s = self::similitud($huella, $c['huella']);
 
             if ($s > $similitud) {
-                [$mejor, $similitud] = [$v['id'], $s];
+                [$mejor, $similitud] = [$c['persona'], $s];
             }
         }
 
@@ -285,7 +426,7 @@ class ConteoDePersonas
 
     private function resumir(string $fecha, int $personas, int $sinIdentificar, CarbonInterface $ahora): void
     {
-        $distintas = DB::table('huellas_del_dia')->where('fecha', $fecha)->count();
+        $distintas = DB::table('visitas_del_dia')->where('fecha', $fecha)->count();
         $dia = DB::table('aforo_diario')->where('fecha', $fecha)->first();
 
         if (! $dia) {
@@ -300,7 +441,7 @@ class ConteoDePersonas
         }
 
         $cambios = [
-            'personas_distintas' => max($distintas, $dia->personas_distintas),
+            'personas_distintas' => $distintas,
             'maximo_sin_identificar' => max($sinIdentificar, $dia->maximo_sin_identificar),
             'lecturas' => $dia->lecturas + 1,
             'updated_at' => $ahora,

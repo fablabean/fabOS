@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Filament\Pages\Camaras as PantallaDeCamaras;
 use App\Support\Camaras;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /** El cuadro más reciente de una cámara, para quien puede abrir la pantalla Cámaras. */
 class CamaraController extends Controller
@@ -23,16 +25,24 @@ class CamaraController extends Controller
         ]);
     }
 
-    /** El recorte de una persona contada hoy. */
-    public function persona(int $id)
+    /** La mejor foto de una persona en un día. */
+    public function visita(int $id)
+    {
+        return $this->recorte(DB::table('visitas_del_dia')->where('id', $id)->value('foto'));
+    }
+
+    /** La foto de donde salió una de las huellas de una persona. */
+    public function huella(int $id)
+    {
+        return $this->recorte(DB::table('huellas_de_persona')->where('id', $id)->value('foto'));
+    }
+
+    private function recorte(?string $ruta)
     {
         abort_unless(PantallaDeCamaras::canAccess(), 403);
+        abort_unless($ruta && Storage::disk('local')->exists($ruta), 404);
 
-        $ruta = \Illuminate\Support\Facades\DB::table('huellas_del_dia')->where('id', $id)->value('foto');
-
-        abort_unless($ruta && \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta), 404);
-
-        return response(\Illuminate\Support\Facades\Storage::disk('local')->get($ruta), 200, [
+        return response(Storage::disk('local')->get($ruta), 200, [
             'Content-Type' => 'image/jpeg',
             'Cache-Control' => 'private, max-age=60',
         ]);
