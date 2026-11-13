@@ -84,7 +84,17 @@
         .cam-grande-otras img:hover, .cam-grande-otras img.actual { opacity: 1; border-color: #fff; }
         .cam-grande-quitar { text-align: center; margin-top: .7rem; color: rgba(255,255,255,.75); font-size: .8rem; cursor: default; }
         .cam-grande-quitar .cam-btn { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.4); }
-        .cam-grande-quitar .cam-btn:hover { background: rgba(220,38,38,.75); border-color: transparent; }
+        .cam-grande-quitar .cam-btn:hover { background: rgba(255,255,255,.2); }
+        .cam-grande-quitar .cam-btn-fuerte { background: #2563eb; border-color: #2563eb; }
+        .cam-grande-quitar .cam-btn-fuerte:hover { background: #1d4ed8; }
+        .cam-grande-quitar .cam-btn-quitar:hover { background: rgba(220,38,38,.8); border-color: transparent; }
+        .cam-grande-mini { position: relative; display: inline-block; }
+        .cam-grande-mini.marcada img { opacity: .45; border-color: #ef4444; }
+        .cam-grande-check { position: absolute; right: -.3rem; top: -.3rem; width: 1.35rem; height: 1.35rem; border-radius: 999px;
+                            font-size: .72rem; font-weight: 700; color: transparent; background: rgba(0,0,0,.55); border: 2px solid #fff;
+                            display: grid; place-items: center; cursor: pointer; padding: 0; }
+        .cam-grande-check:hover { color: rgba(255,255,255,.7); }
+        .cam-grande-mini.marcada .cam-grande-check { background: #ef4444; border-color: #ef4444; color: #fff; }
     </style>
 
     @php($camaras = $this->camaras())
@@ -99,13 +109,19 @@
         <div class="cam" x-data="{ grande: null, uniendo: false, sel: [],
                     elegir(id) { this.sel = this.sel.includes(id) ? this.sel.filter(x => x !== id) : [...this.sel, id] },
                     unir() { $wire.unir(this.sel).then(() => { this.sel = []; this.uniendo = false }) },
-                    quitar() {
-                        const id = this.grande.huella;
-                        $wire.quitarHuella(id).then(ok => {
+                    marcar(id) {
+                        const m = this.grande.marcadas;
+                        this.grande.marcadas = m.includes(id) ? m.filter(x => x !== id) : [...m, id];
+                    },
+                    {{-- quitarHuellas o separarHuellas: las marcadas se van de esta persona. --}}
+                    sacar(accion) {
+                        const ids = [...this.grande.marcadas];
+                        $wire[accion](ids).then(ok => {
                             if (!ok || !this.grande) return;
-                            this.grande.otras = this.grande.otras.filter(o => o.huella !== id);
-                            this.grande.huellas--;
-                            this.grande.src = this.grande.otras[0].src; this.grande.huella = this.grande.otras[0].huella;
+                            this.grande.otras = this.grande.otras.filter(o => !ids.includes(o.huella));
+                            this.grande.huellas -= ids.length;
+                            this.grande.marcadas = [];
+                            this.grande.src = this.grande.otras[0].src;
                         })
                     } }"
              x-on:keydown.escape.window="grande = null; uniendo = false; sel = []">
@@ -252,7 +268,7 @@
                         <div class="cam-personas">
                             @foreach ($conteo['personas'] as $p)
                                 @php($texto = 'N.º ' . $p['persona'] . ' · llegó ' . $p['llego'] . ($p['visto'] !== $p['llego'] ? ' · vista por última vez ' . $p['visto'] : '') . ($p['camara'] && count($camaras) > 1 ? ' · ' . $p['camara'] : '') . ($p['volvio'] ? ' · la conocemos desde el ' . $p['desde'] . ', ' . $p['dias'] . ' días' : ''))
-                                @php($grande = $p['foto'] ? ['src' => $p['foto'], 'huella' => null, 'texto' => $texto, 'huellas' => $p['huellas'], 'otras' => array_merge([['src' => $p['foto'], 'huella' => null]], $p['otras'])] : null)
+                                @php($grande = $p['foto'] ? ['src' => $p['foto'], 'marcadas' => [], 'texto' => $texto, 'huellas' => $p['huellas'], 'otras' => array_merge([['src' => $p['foto'], 'huella' => null]], $p['otras'])] : null)
                                 <button type="button" class="cam-persona" wire:key="persona-{{ $p['persona'] }}"
                                         x-bind:class="{ 'elegible': uniendo, 'elegida': sel.includes({{ $p['persona'] }}) }"
                                         x-on:click="uniendo ? elegir({{ $p['persona'] }}) : (grande = {{ \Illuminate\Support\Js::from($grande) }})">
@@ -296,15 +312,30 @@
                         <p x-text="grande.texto"></p>
                         <div class="cam-grande-otras" x-show="grande.otras && grande.otras.length > 1">
                             <template x-for="o in grande.otras" :key="o.src">
-                                <img x-bind:src="o.src" x-bind:class="o.src === grande.src && 'actual'" x-on:click.stop="grande.src = o.src; grande.huella = o.huella" alt="Otra foto de la misma persona">
+                                <span class="cam-grande-mini" x-bind:class="o.huella && grande.marcadas.includes(o.huella) && 'marcada'">
+                                    <img x-bind:src="o.src" x-bind:class="o.src === grande.src && 'actual'" x-on:click.stop="grande.src = o.src" alt="Otra foto de la misma persona">
+                                    <template x-if="o.huella && grande.huellas > 1">
+                                        <button type="button" class="cam-grande-check" x-on:click.stop="marcar(o.huella)"
+                                                x-bind:aria-pressed="grande.marcadas.includes(o.huella)" title="Marcar: no es esta persona">✓</button>
+                                    </template>
+                                </span>
                             </template>
                         </div>
-                        <div class="cam-grande-quitar" x-show="grande.huella" x-on:click.stop>
-                            <template x-if="grande.huellas > 1">
-                                <button type="button" class="cam-btn" x-on:click="quitar()">Quitar esta foto: no es esta persona</button>
+                        <div class="cam-grande-quitar" x-show="grande.huellas > 1" x-on:click.stop>
+                            <template x-if="grande.marcadas.length === 0">
+                                <span>Marca con ✓ las fotos que no son de esta persona.</span>
                             </template>
-                            <template x-if="grande.huellas <= 1">
-                                <span>Es la única foto con la que se la reconoce: no se puede quitar.</span>
+                            <template x-if="grande.marcadas.length > 0 && grande.marcadas.length >= grande.huellas">
+                                <span>Deja sin marcar al menos una: es con la que se la sigue reconociendo.</span>
+                            </template>
+                            <template x-if="grande.marcadas.length > 0 && grande.marcadas.length < grande.huellas">
+                                <span class="cam-acciones" style="justify-content: center">
+                                    <button type="button" class="cam-btn cam-btn-fuerte" x-on:click="sacar('separarHuellas')"
+                                            x-text="grande.marcadas.length === 1 ? 'Es otra persona' : 'Son otra persona (las ' + grande.marcadas.length + ' juntas)'"></button>
+                                    <button type="button" class="cam-btn cam-btn-quitar" x-on:click="sacar('quitarHuellas')"
+                                            x-text="'Quitar ' + (grande.marcadas.length === 1 ? 'la foto' : 'las ' + grande.marcadas.length + ' fotos')"></button>
+                                    <button type="button" class="cam-btn" x-on:click="grande.marcadas = []">Desmarcar</button>
+                                </span>
                             </template>
                         </div>
                     </div>

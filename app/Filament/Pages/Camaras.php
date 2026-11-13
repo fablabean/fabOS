@@ -129,21 +129,56 @@ class Camaras extends Page
             ->success()->send();
     }
 
-    /** «Quitar esta foto»: la huella no era de esa persona y deja de usarse para reconocerla. */
-    public function quitarHuella(int $huella): bool
+    /**
+     * «Quitar»: esas huellas no eran de esa persona y dejan de usarse.
+     *
+     * @param  list<int>  $huellas
+     */
+    public function quitarHuellas(array $huellas): bool
     {
         abort_unless(static::canAccess(), 403);
 
-        if (! app(ConteoDePersonas::class)->quitarHuella($huella)) {
-            Notification::make()->title('No se puede quitar: es la única foto con la que se la reconoce.')->warning()->send();
+        $n = app(ConteoDePersonas::class)->quitarHuellas($huellas);
+
+        if ($n === 0) {
+            $this->noSePuede();
 
             return false;
         }
 
-        Notification::make()->title('Foto quitada')
-            ->body('Ya no se usa para reconocer a esta persona.')->success()->send();
+        Notification::make()->title($n === 1 ? 'Foto quitada' : "{$n} fotos quitadas")
+            ->body('Ya no se usan para reconocer a esta persona.')->success()->send();
 
         return true;
+    }
+
+    /**
+     * «Son otra persona»: esas huellas pasan juntas a una persona nueva.
+     *
+     * @param  list<int>  $huellas
+     */
+    public function separarHuellas(array $huellas): bool
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $nueva = app(ConteoDePersonas::class)->separarHuellas($huellas);
+
+        if ($nueva === null) {
+            $this->noSePuede();
+
+            return false;
+        }
+
+        Notification::make()->title("Ahora son otra persona (n.º {$nueva})")
+            ->body('Esas fotos quedaron juntas en una persona aparte.')->success()->send();
+
+        return true;
+    }
+
+    private function noSePuede(): void
+    {
+        Notification::make()->title('No se puede: a la persona le tiene que quedar al menos una foto con la que reconocerla.')
+            ->warning()->send();
     }
 
     /** @return list<array{numero:int,nombre:string,foto:string}> */
