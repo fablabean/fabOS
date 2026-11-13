@@ -178,7 +178,7 @@ class ConteoDePersonas
                     $sobra = $mejor ? $suya->foto : $v->foto;
 
                     if ($sobra) {
-                        Storage::disk('local')->delete($sobra);
+                        $this->borrarFotos([$sobra]);
                     }
                 }
 
@@ -219,7 +219,7 @@ class ConteoDePersonas
             DB::table('huellas_de_persona')->where('id', $id)->delete();
 
             if ($huella->foto) {
-                Storage::disk('local')->delete($huella->foto);
+                $this->borrarFotos([$huella->foto]);
             }
 
             return true;
@@ -285,9 +285,9 @@ class ConteoDePersonas
                 ->pluck('foto'))
             ->unique()->values()->all();
 
-        Storage::disk('local')->delete($fotos);
         DB::table('visitas_del_dia')->where('fecha', '<', $fechaLimite)->delete();
         DB::table('personas_anonimas')->whereIn('id', $viejas)->delete();
+        $this->borrarFotos($fotos);
 
         // Las carpetas que quedaron vacías.
         foreach (Storage::disk('local')->directories(self::CARPETA) as $carpeta) {
@@ -297,6 +297,27 @@ class ConteoDePersonas
         }
 
         return count($viejas);
+    }
+
+    /**
+     * Borra los recortes que ya nadie usa. Una misma foto puede ser de una
+     * huella y de una visita (las que venían del conteo anterior), así que
+     * antes de borrar se mira que ninguna de las dos la siga usando.
+     *
+     * @param  list<string>  $rutas
+     */
+    private function borrarFotos(array $rutas): void
+    {
+        $rutas = array_values(array_unique(array_filter($rutas)));
+
+        if ($rutas === []) {
+            return;
+        }
+
+        $enUso = DB::table('huellas_de_persona')->whereIn('foto', $rutas)->pluck('foto')
+            ->merge(DB::table('visitas_del_dia')->whereIn('foto', $rutas)->pluck('foto'))->all();
+
+        Storage::disk('local')->delete(array_values(array_diff($rutas, $enUso)));
     }
 
     private function guardarHuella(int $persona, array $rostro, int $camara, CarbonInterface $ahora, ?string $foto): void

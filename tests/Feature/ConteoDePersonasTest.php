@@ -167,6 +167,25 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(2, DB::table('personas_anonimas')->count());
     }
 
+    public function test_al_unir_no_se_borra_una_foto_que_sigue_usando_una_huella(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->conCuadro($this->huella(0), 120), now(), $this->cuadro());
+        $conteo->registrar(1, $this->conCuadro($this->huella(40), 80), now(), $this->cuadro());
+        [$a, $b] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+
+        // Como las que venían del conteo anterior: huella y visita con el mismo archivo.
+        $compartida = DB::table('visitas_del_dia')->where('persona_id', $b)->value('foto');
+        $vieja = DB::table('huellas_de_persona')->where('persona_id', $b)->value('foto');
+        DB::table('huellas_de_persona')->where('persona_id', $b)->update(['foto' => $compartida]);
+        Storage::disk('local')->delete($vieja);
+
+        $conteo->unir([$a, $b]);
+
+        Storage::disk('local')->assertExists($compartida);
+    }
+
     public function test_quien_no_vuelve_en_30_dias_se_olvida_con_sus_fotos_y_quedan_los_totales(): void
     {
         Storage::fake('local');
