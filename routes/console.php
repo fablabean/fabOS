@@ -68,7 +68,10 @@ Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
 // Las cámaras cuentan personas cada minuto. De noche se borran las huellas y
 // los recortes de antes de ayer: ayer se puede revisar todo hoy, y luego solo
 // quedan los totales.
-Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground();
+// Lo normal es que las cuente fabos:escuchar-camaras cuando la cámara avisa
+// que ve personas; el conteo por minuto queda para CONTEO_DISPARO=minuto.
+Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground()
+    ->when(fn () => config('fabos.conteo.disparo') === 'minuto');
 Schedule::command('fabos:contar-personas --cerrar-dia')->dailyAt('00:05');
 
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede

@@ -286,8 +286,9 @@ return [
     /*
      * Conteo de personas con las cámaras.
      *
-     * Cada minuto se toma un cuadro de cada cámara y el PGX dice cuántas
-     * personas hay y sus huellas faciales. Las huellas solo sirven para no
+     * Cuando la cámara avisa que ve personas, se toma un cuadro cada segundo
+     * mientras dura el aviso, y el PGX dice cuántas personas hay y sus huellas
+     * faciales. Sin personas no se manda nada. Las huellas solo sirven para no
      * contar dos veces a la misma persona en el día, y se borran cuando
      * termina el día siguiente (dato sensible, Ley 1581): no se asocian a
      * nombres, y del cuadro solo queda el recorte de cada persona, que se va
@@ -295,12 +296,21 @@ return [
      *
      * `ancho_minimo` y `nitidez_minima`: un rostro más pequeño o más borroso
      * da una huella poco fiable, y esa persona va como «sin identificar».
+     *
+     * `disparo`: qué aviso de la cámara hace tomar fotos —`personas` (la
+     * detección de personas de la cámara), `movimiento`, o `minuto` para no
+     * escuchar avisos y tomar una foto por minuto—. `cada_segundos` es el
+     * ritmo mientras dura el aviso, y `segundos_despues` cuánto se sigue tras
+     * el último «hay personas», por si la cámara tarda en repetirlo.
      */
     'conteo' => [
         'activo' => (bool) env('CONTEO_PERSONAS', true),
         'ancho_minimo' => (int) env('CONTEO_ANCHO_MINIMO', 60),
         'nitidez_minima' => (float) env('CONTEO_NITIDEZ_MINIMA', 30),
         'dias_de_lecturas' => (int) env('CONTEO_DIAS_DE_LECTURAS', 90),
+        'disparo' => env('CONTEO_DISPARO', 'personas'),
+        'cada_segundos' => (float) env('CONTEO_CADA_SEGUNDOS', 1),
+        'segundos_despues' => (float) env('CONTEO_SEGUNDOS_DESPUES', 3),
     ],
 
     /*
@@ -316,6 +326,7 @@ return [
             'numero' => $n,
             'nombre' => env("CAMARA_{$n}_NOMBRE", "Cámara {$n}"),
             'url' => env("CAMARA_{$n}_URL"),
+            'onvif' => (int) env("CAMARA_{$n}_ONVIF", 2020),
         ] : null,
         range(1, 8),
     ))),

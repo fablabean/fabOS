@@ -118,6 +118,42 @@ class ConteoDePersonas
     }
 
     /**
+     * Toma un cuadro de la cámara, se lo pasa al PGX y lo registra.
+     *
+     * Deja en caché lo que ve ahora la cámara, para la pantalla. Si la cámara
+     * o el PGX fallan, se anota el error y se lanza la excepción.
+     *
+     * @return array{personas:int,identificadas:int,sin_identificar:int,nuevas:int}
+     */
+    public function fotografiar(int $camara): array
+    {
+        try {
+            $foto = \App\Support\Camaras::fotoParaContar($camara);
+
+            if ($foto === null) {
+                throw new \RuntimeException('La cámara no responde.');
+            }
+
+            $lectura = $this->registrar($camara, app(\App\Services\Vision\Pgx::class)->personas($foto), now(), $foto);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Cache::put("camara.{$camara}.conteo_error", $e->getMessage(), now()->addMinutes(10));
+
+            throw $e;
+        }
+
+        $this->anotarLoQueVe($camara, $lectura);
+
+        return $lectura;
+    }
+
+    /** Lo que ve ahora la cámara, para «Ahora en cámara». */
+    public function anotarLoQueVe(int $camara, array $lectura): void
+    {
+        \Illuminate\Support\Facades\Cache::put("camara.{$camara}.conteo", $lectura + ['at' => now()->toIso8601String()], now()->addMinutes(10));
+        \Illuminate\Support\Facades\Cache::forget("camara.{$camara}.conteo_error");
+    }
+
+    /**
      * De noche: se borran las huellas y los recortes de antes de ayer.
      *
      * Ayer se conserva completo durante hoy, para poder revisar lo que pasó

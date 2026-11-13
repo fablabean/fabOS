@@ -6,11 +6,13 @@ use App\Services\Camaras\ConteoDePersonas;
 use App\Services\Vision\Pgx;
 use App\Support\Camaras;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * Cada minuto: un cuadro de cada cámara al PGX, y el conteo del día al día.
+ * Un cuadro de cada cámara al PGX, y el conteo del día al día.
+ *
+ * Corre cada minuto solo si `CONTEO_DISPARO=minuto`. Lo normal es que lo
+ * dispare la propia cámara al ver personas (fabos:escuchar-camaras).
  *
  * El cuadro completo no se guarda: va de la cámara al PGX en memoria, y solo
  * queda el recorte de cada persona contada, hasta el cierre del día. Si
@@ -23,7 +25,7 @@ class ContarPersonas extends Command
 
     protected $description = 'Cuenta las personas que ven las cámaras, con el PGX';
 
-    public function handle(ConteoDePersonas $conteo, Pgx $pgx): int
+    public function handle(ConteoDePersonas $conteo): int
     {
         if ($this->option('cerrar-dia')) {
             $borradas = $conteo->cerrarDiasPasados(now());
@@ -37,22 +39,10 @@ class ContarPersonas extends Command
         }
 
         foreach (Camaras::todas() as $camara) {
-            $n = $camara['numero'];
-
             try {
-                $foto = Camaras::fotoParaContar($n);
-
-                if ($foto === null) {
-                    throw new \RuntimeException('La cámara no responde.');
-                }
-
-                $lectura = $conteo->registrar($n, $pgx->personas($foto), now(), $foto);
-                Cache::put("camara.{$n}.conteo", $lectura + ['at' => now()->toIso8601String()], now()->addMinutes(10));
-                Cache::forget("camara.{$n}.conteo_error");
-
+                $lectura = $conteo->fotografiar($camara['numero']);
                 $this->line("{$camara['nombre']}: {$lectura['personas']} personas, {$lectura['nuevas']} nuevas hoy");
             } catch (Throwable $e) {
-                Cache::put("camara.{$n}.conteo_error", $e->getMessage(), now()->addMinutes(10));
                 $this->warn("{$camara['nombre']}: {$e->getMessage()}");
             }
         }
