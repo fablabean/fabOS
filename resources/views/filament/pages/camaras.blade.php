@@ -129,13 +129,28 @@
                         const t = this.tarjetas(), i = this.posicion() + paso;
                         if (i >= 0 && i < t.length) this.abrir(t[i]);
                     },
+                    {{-- Tras un cambio la página se rehace: se vuelve a abrir la misma persona con sus
+                         fotos al día, o la que quedó en su lugar si ya no está. Solo se cierra a mano. --}}
+                    seguir(visita, i) {
+                        this.$nextTick(() => {
+                            const t = this.tarjetas();
+                            const misma = t.find(e => JSON.parse(e.dataset.grande).visita === visita);
+                            if (misma) return this.abrir(misma);
+                            t.length ? this.abrir(t[Math.min(i, t.length - 1)]) : this.grande = null;
+                        })
+                    },
+                    descartar() {
+                        if (!confirm('¿Quitar la n.º ' + this.grande.persona + '? Se borra con todas sus fotos y lo que se le parezca deja de contarse.')) return;
+                        const i = this.posicion();
+                        $wire.noEsPersona(this.grande.persona).then(ok => { if (ok) this.seguir(null, i) })
+                    },
                     huellasMarcadas() { return this.grande.marcadas.filter(x => x !== 'dia') },
                     {{-- Si tiene huellas, le tiene que quedar al menos una. --}}
                     sePuede() { return this.grande.huellas === 0 || this.huellasMarcadas().length < this.grande.huellas },
                     {{-- quitarFotos o separarFotos: las marcadas se van de esta persona. --}}
                     sacar(accion) {
                         $wire[accion](this.grande.visita, this.huellasMarcadas(), this.grande.marcadas.includes('dia'))
-                            .then(ok => { if (ok) this.grande = null })
+                            .then(ok => { if (ok) this.seguir(this.grande.visita, this.posicion()) })
                     } }"
              x-on:keydown.escape.window="grande = null; uniendo = false; sel = []"
              x-on:keydown.arrow-left.window="grande && ir(-1)" x-on:keydown.arrow-right.window="grande && ir(1)">
@@ -356,7 +371,7 @@
                             </template>
                             <div class="cam-grande-descartar">
                                 <button type="button" class="cam-btn cam-btn-quitar"
-                                        x-on:click="if (confirm('¿Quitar la n.º ' + grande.persona + '? Se borra con todas sus fotos y lo que se le parezca deja de contarse.')) $wire.noEsPersona(grande.persona).then(ok => { if (ok) grande = null })">
+                                        x-on:click="descartar()">
                                     No es una persona: quitarla
                                 </button>
                             </div>
