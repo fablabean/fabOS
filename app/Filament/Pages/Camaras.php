@@ -72,8 +72,8 @@ class Camaras extends Page
         $ids = $visitas->pluck('persona_id')->all();
         $dias = DB::table('visitas_del_dia')->whereIn('persona_id', $ids)
             ->selectRaw('persona_id, count(*) as n')->groupBy('persona_id')->pluck('n', 'persona_id');
-        $huellas = DB::table('huellas_de_persona')->whereIn('persona_id', $ids)->whereNotNull('foto')
-            ->orderByDesc('ancho_rostro')->get(['id', 'persona_id'])->groupBy('persona_id');
+        $huellas = DB::table('huellas_de_persona')->whereIn('persona_id', $ids)
+            ->orderByDesc('ancho_rostro')->get(['id', 'persona_id', 'foto'])->groupBy('persona_id');
 
         $hora = fn ($t) => Carbon::parse($t)->timezone($tz)->format('g:i a');
 
@@ -86,6 +86,7 @@ class Camaras extends Page
             // Las personas del día, la más reciente primero. Solo un número.
             'personas' => $visitas->map(fn ($v) => [
                 'persona' => (int) $v->persona_id,
+                'visita' => (int) $v->id,
                 'foto' => $v->foto ? route('panel.camara.visita', $v->id).'?v='.$v->ancho_rostro : null,
                 'llego' => $hora($v->primera_vez),
                 'visto' => $hora($v->ultima_vez),
@@ -94,8 +95,11 @@ class Camaras extends Page
                 'desde' => Carbon::parse($v->conocida_desde)->timezone($tz)->locale('es')->isoFormat('D [de] MMM'),
                 'dias' => (int) ($dias[$v->persona_id] ?? 1),
                 // Sus huellas con foto: se pueden mirar y quitar la que no es de ella.
-                'otras' => ($huellas[$v->persona_id] ?? collect())->take(12)
+                // La que tiene el mismo recorte que la foto del día no se repite.
+                'otras' => ($huellas[$v->persona_id] ?? collect())->filter(fn ($h) => $h->foto && $h->foto !== $v->foto)->take(12)
                     ->map(fn ($h) => ['src' => route('panel.camara.huella', $h->id), 'huella' => (int) $h->id])->values()->all(),
+                'foto_huella' => $v->foto ? ($huellas[$v->persona_id] ?? collect())->firstWhere('foto', $v->foto)?->id : null,
+                // Todas sus huellas, con foto o sin ella: siempre le tiene que quedar una.
                 'huellas' => ($huellas[$v->persona_id] ?? collect())->count(),
             ])->all(),
             'camaras' => collect(LasCamaras::todas())->mapWithKeys(fn (array $c) => [$c['numero'] => [
@@ -130,15 +134,15 @@ class Camaras extends Page
     }
 
     /**
-     * «Quitar»: esas huellas no eran de esa persona y dejan de usarse.
+     * «Quitar»: esas fotos no eran de esa persona y dejan de usarse.
      *
      * @param  list<int>  $huellas
      */
-    public function quitarHuellas(array $huellas): bool
+    public function quitarFotos(int $visita, array $huellas, bool $fotoDelDia = false): bool
     {
         abort_unless(static::canAccess(), 403);
 
-        $n = app(ConteoDePersonas::class)->quitarHuellas($huellas);
+        $n = app(ConteoDePersonas::class)->quitarFotos($visita, $huellas, $fotoDelDia);
 
         if ($n === 0) {
             $this->noSePuede();
@@ -153,15 +157,15 @@ class Camaras extends Page
     }
 
     /**
-     * «Son otra persona»: esas huellas pasan juntas a una persona nueva.
+     * «Son otra persona»: esas fotos pasan juntas a una persona nueva.
      *
      * @param  list<int>  $huellas
      */
-    public function separarHuellas(array $huellas): bool
+    public function separarFotos(int $visita, array $huellas, bool $fotoDelDia = false): bool
     {
         abort_unless(static::canAccess(), 403);
 
-        $nueva = app(ConteoDePersonas::class)->separarHuellas($huellas);
+        $nueva = app(ConteoDePersonas::class)->separarFotos($visita, $huellas, $fotoDelDia);
 
         if ($nueva === null) {
             $this->noSePuede();
@@ -171,6 +175,21 @@ class Camaras extends Page
 
         Notification::make()->title("Ahora son otra persona (n.º {$nueva})")
             ->body('Esas fotos quedaron juntas en una persona aparte.')->success()->send();
+
+        return true;
+    }
+
+    /** «No es una persona»: se borra y lo que se le parezca deja de contarse. */
+    public function noEsPersona(int $persona): bool
+    {
+        abort_unless(static::canAccess(), 403);
+
+        if (! app(ConteoDePersonas::class)->descartarPersona($persona)) {
+            return false;
+        }
+
+        Notification::make()->title("Quitada: n.º {$persona} no era una persona")
+            ->body('Si la cámara vuelve a ver algo igual, no se cuenta.')->success()->send();
 
         return true;
     }

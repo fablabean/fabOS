@@ -156,11 +156,12 @@ class ConteoDePersonasTest extends TestCase
         [$a, $b] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
         $conteo->unir([$a, $b]);
         [$buena, $mala] = DB::table('huellas_de_persona')->orderBy('id')->get()->all();
+        $visita = (int) DB::table('visitas_del_dia')->value('id');
 
-        $this->assertSame(0, $conteo->quitarHuellas([$buena->id, $mala->id]), 'Tiene que quedarle una');
-        $this->assertSame(1, $conteo->quitarHuellas([$mala->id]));
+        $this->assertSame(0, $conteo->quitarFotos($visita, [$buena->id, $mala->id]), 'Tiene que quedarle una');
+        $this->assertSame(1, $conteo->quitarFotos($visita, [$mala->id]));
         Storage::disk('local')->assertMissing($mala->foto);
-        $this->assertSame(0, $conteo->quitarHuellas([$buena->id]), 'La última no se quita');
+        $this->assertSame(0, $conteo->quitarFotos($visita, [$buena->id]), 'La última no se quita');
         $this->assertSame([$buena->id], DB::table('huellas_de_persona')->pluck('id')->all());
 
         // Quien tenía esa cara vuelve a ser otra persona.
@@ -180,7 +181,7 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
         $otras = DB::table('huellas_de_persona')->orderBy('id')->pluck('id')->slice(2)->values()->all();
 
-        $nueva = $conteo->separarHuellas($otras);
+        $nueva = $conteo->separarFotos((int) DB::table('visitas_del_dia')->value('id'), $otras);
 
         $this->assertNotNull($nueva);
         $this->assertSame(2, DB::table('huellas_de_persona')->where('persona_id', $nueva)->count());
@@ -196,7 +197,54 @@ class ConteoDePersonasTest extends TestCase
         // Y desde ya se la reconoce como esa otra persona.
         $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(90, 0.2))]), $this->en('2026-11-13 15:00'));
         $this->assertSame(3, (int) DB::table('visitas_del_dia')->where('persona_id', $nueva)->value('veces'));
-        $this->assertNull($conteo->separarHuellas(DB::table('huellas_de_persona')->where('persona_id', $nueva)->pluck('id')->all()), 'No se la deja sin huellas');
+        $this->assertNull($conteo->separarFotos($visita->id, DB::table('huellas_de_persona')->where('persona_id', $nueva)->pluck('id')->all()), 'No se la deja sin huellas');
+    }
+
+    public function test_la_foto_del_dia_que_no_es_de_ninguna_huella_tambien_se_separa(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->conCuadro($this->huella(0), 70), $this->en('2026-11-13 09:00'), $this->cuadro());
+        $visita = DB::table('visitas_del_dia')->sole();
+        // La foto del día salió de otra persona (otro archivo, sin huella).
+        $ajena = ConteoDePersonas::CARPETA.'/ajena.jpg';
+        Storage::disk('local')->put($ajena, 'x');
+        DB::table('visitas_del_dia')->where('id', $visita->id)->update(['foto' => $ajena, 'ancho_rostro' => 120]);
+
+        $nueva = $conteo->separarFotos($visita->id, [], fotoDelDia: true);
+
+        $this->assertSame($ajena, DB::table('visitas_del_dia')->where('persona_id', $nueva)->value('foto'));
+        $this->assertSame(0, DB::table('huellas_de_persona')->where('persona_id', $nueva)->count());
+        $this->assertNotSame($ajena, DB::table('visitas_del_dia')->where('id', $visita->id)->value('foto'), 'La de antes vuelve a su huella');
+        Storage::disk('local')->assertExists($ajena);
+        $this->assertSame(2, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
+
+        // Quitarla en vez de separarla: se borra y queda la de su huella.
+        $this->assertSame(1, $conteo->quitarFotos(
+            (int) DB::table('visitas_del_dia')->where('persona_id', $nueva)->value('id'), [], fotoDelDia: true));
+        Storage::disk('local')->assertMissing($ajena);
+    }
+
+    public function test_lo_que_no_es_una_persona_se_quita_y_no_se_vuelve_a_contar(): void
+    {
+        Storage::fake('local');
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->conCuadro($this->huella(7)), $this->en('2026-11-13 09:00'), $this->cuadro());
+        $conteo->registrar(1, $this->conCuadro($this->huella(20)), $this->en('2026-11-13 09:05'), $this->cuadro());
+        [$manos] = DB::table('personas_anonimas')->orderBy('id')->pluck('id')->all();
+        $fotos = Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA.'/'.$manos);
+        $this->assertNotEmpty($fotos);
+
+        $this->assertTrue($conteo->descartarPersona($manos));
+
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+        $this->assertSame([], Storage::disk('local')->allFiles(ConteoDePersonas::CARPETA.'/'.$manos));
+        $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-11-13')->value('personas_distintas'));
+
+        // Las mismas manos otra vez: no se cuentan.
+        $lectura = $conteo->registrar(1, $this->respuesta([$this->rostro($this->huella(7, 0.2))]), $this->en('2026-11-13 10:00'));
+        $this->assertSame(0, $lectura['nuevas']);
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
     }
 
     public function test_al_unir_no_se_borra_una_foto_que_sigue_usando_una_huella(): void

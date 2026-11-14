@@ -43,6 +43,13 @@ class ConteoDePersonas
     public const REDUNDANTE = 0.8;
 
     /**
+     * Para ignorar algo por parecerse a una huella descartada se pide más
+     * parecido que para reconocer a una persona: mejor contar una mano de más
+     * que dejar de contar a alguien.
+     */
+    public const DESCARTADA = 0.45;
+
+    /**
      * Registra un cuadro ya analizado por el PGX.
      *
      * @return array{personas:int,identificadas:int,sin_identificar:int,nuevas:int}
@@ -60,12 +67,12 @@ class ConteoDePersonas
 
         foreach ($respuesta['detalle'] ?? [] as $d) {
             if (! empty($d['rostro'])) {
-                $rostros[] = $d['rostro'] + ['caja_persona' => $d['caja'] ?? null];
+                $rostros[] = $d['rostro'] + ['caja_persona' => $d['caja'] ?? null, 'suelto' => false];
             }
         }
 
         foreach ($respuesta['rostros_sin_persona'] ?? [] as $r) {
-            $rostros[] = $r + ['caja_persona' => null];
+            $rostros[] = $r + ['caja_persona' => null, 'suelto' => true];
         }
 
         // Los rostros sueltos también son personas (alguien cortado por el borde).
@@ -78,12 +85,29 @@ class ConteoDePersonas
                 ->map(fn ($h) => ['persona' => (int) $h->persona_id, 'huella' => json_decode($h->huella, true)])
                 ->all();
 
+            $descartadas = DB::table('huellas_descartadas')->get(['id', 'huella'])
+                ->map(fn ($h) => ['persona' => (int) $h->id, 'huella' => json_decode($h->huella, true)])
+                ->all();
+
             $identificadas = 0;
             $nuevas = 0;
             $enEsteCuadro = [];
 
             foreach ($rostros as $rostro) {
                 if (! $this->esFiable($rostro)) {
+                    continue;
+                }
+
+                // Algo que ya se marcó como «no es una persona»: no se cuenta.
+                [$descartada, $parecido] = $this->masParecida($rostro['huella'], $descartadas, []);
+
+                if ($descartada !== null && $parecido >= max($umbral, self::DESCARTADA)) {
+                    DB::table('huellas_descartadas')->where('id', $descartada)->update(['ultima_vez' => $ahora]);
+
+                    if ($rostro['suelto']) {
+                        $personas--;
+                    }
+
                     continue;
                 }
 
@@ -201,66 +225,119 @@ class ConteoDePersonas
     }
 
     /**
-     * Quita huellas que no son de esa persona (fotos mal asignadas), con sus
-     * recortes. Tienen que ser todas de la misma persona y dejarle al menos
-     * una: sin ninguna ya no se la podría reconocer.
-     *
-     * @param  list<int>  $ids
-     * @return int cuántas se quitaron (0 si no se pudo)
+     * «No es una persona»: se borra con sus visitas, huellas y fotos, y baja
+     * el total de esos días. Sus huellas quedan como descartadas (solo el
+     * número, sin foto), para que lo mismo no se vuelva a contar.
      */
-    public function quitarHuellas(array $ids): int
+    public function descartarPersona(int $persona): bool
     {
-        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($ids) {
-            $huellas = $this->huellasDeUnaPersona($ids);
-
-            if ($huellas === null) {
-                return 0;
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($persona) {
+            if (! DB::table('personas_anonimas')->where('id', $persona)->lockForUpdate()->exists()) {
+                return false;
             }
 
-            DB::table('huellas_de_persona')->whereIn('id', $huellas->pluck('id'))->delete();
-            $this->borrarFotos($huellas->pluck('foto')->all());
+            $huellas = DB::table('huellas_de_persona')->where('persona_id', $persona)->get(['huella', 'foto']);
+            $visitas = DB::table('visitas_del_dia')->where('persona_id', $persona)->get(['fecha', 'foto']);
 
-            return $huellas->count();
+            DB::table('huellas_descartadas')->insert($huellas->map(fn ($h) => [
+                'huella' => $h->huella, 'ultima_vez' => now(), 'created_at' => now(), 'updated_at' => now(),
+            ])->all());
+
+            // Las huellas y visitas se van con la persona.
+            DB::table('personas_anonimas')->where('id', $persona)->delete();
+            $this->borrarFotos($huellas->pluck('foto')->merge($visitas->pluck('foto'))->all());
+
+            foreach ($visitas->pluck('fecha')->map(fn ($f) => substr((string) $f, 0, 10))->unique() as $fecha) {
+                DB::table('aforo_diario')->where('fecha', $fecha)->update([
+                    'personas_distintas' => DB::table('visitas_del_dia')->where('fecha', $fecha)->count(),
+                ]);
+            }
+
+            return true;
         }));
     }
 
     /**
-     * «Son otra persona»: las huellas elegidas pasan a una persona nueva, con
-     * su visita en cada día en que se la vio. La persona de antes conserva
-     * las demás (y al menos una).
+     * Quita fotos que no son de esa persona: huellas mal asignadas (con sus
+     * recortes) y, si se pide, la foto del día de esa visita, que pasa a ser
+     * la mejor de las huellas que le quedan. Si la persona tiene huellas, le
+     * tiene que quedar al menos una: sin ninguna ya no se la reconocería.
      *
-     * @param  list<int>  $ids
+     * @param  list<int>  $huellas
+     * @return int cuántas fotos se quitaron (0 si no se pudo)
+     */
+    public function quitarFotos(int $visita, array $huellas, bool $fotoDelDia = false): int
+    {
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($visita, $huellas, $fotoDelDia) {
+            [$visita, $huellas] = $this->fotosDeUnaVisita($visita, $huellas, $fotoDelDia) ?? [null, null];
+
+            if ($visita === null) {
+                return 0;
+            }
+
+            DB::table('huellas_de_persona')->whereIn('id', $huellas->pluck('id'))->delete();
+
+            // Si la foto del día era el recorte de una huella que se fue, también se cambia.
+            $fotoDelDia = $fotoDelDia || $huellas->pluck('foto')->contains($visita->foto);
+
+            if ($fotoDelDia) {
+                $this->rehacerFotoDelDia($visita);
+            }
+
+            $this->borrarFotos($huellas->pluck('foto')->all());
+
+            return $huellas->count() + ($fotoDelDia ? 1 : 0);
+        }));
+    }
+
+    /**
+     * «Son otra persona»: las huellas elegidas (y la foto del día, si se
+     * marcó) pasan juntas a una persona nueva, con su visita en cada día en
+     * que se la vio, y el total de esos días sube. A la de antes le quedan
+     * las demás huellas (al menos una, si tenía).
+     *
+     * @param  list<int>  $huellas
      * @return int|null la persona nueva, o null si no se pudo
      */
-    public function separarHuellas(array $ids): ?int
+    public function separarFotos(int $visita, array $huellas, bool $fotoDelDia = false): ?int
     {
-        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($ids) {
-            $huellas = $this->huellasDeUnaPersona($ids);
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($visita, $huellas, $fotoDelDia) {
+            [$visita, $huellas] = $this->fotosDeUnaVisita($visita, $huellas, $fotoDelDia) ?? [null, null];
 
-            if ($huellas === null) {
+            if ($visita === null) {
                 return null;
             }
 
+            $tz = config('fabos.lab.timezone');
+            $fechaDeLaVisita = substr((string) $visita->fecha, 0, 10);
+            $fotoDelDia = $fotoDelDia || $huellas->pluck('foto')->contains($visita->foto);
+
             $nueva = DB::table('personas_anonimas')->insertGetId([
-                'primera_vez' => $huellas->min('vista_at'), 'ultima_vez' => $huellas->max('vista_at'),
+                'primera_vez' => $huellas->min('vista_at') ?? $visita->ultima_vez,
+                'ultima_vez' => $huellas->max('vista_at') ?? $visita->ultima_vez,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             DB::table('huellas_de_persona')->whereIn('id', $huellas->pluck('id'))->update(['persona_id' => $nueva]);
 
-            $tz = config('fabos.lab.timezone');
             $porDia = $huellas->groupBy(fn ($h) => \Illuminate\Support\Carbon::parse($h->vista_at, config('app.timezone'))->setTimezone($tz)->toDateString());
+
+            if ($fotoDelDia && ! $porDia->has($fechaDeLaVisita)) {
+                $porDia[$fechaDeLaVisita] = collect();
+            }
 
             foreach ($porDia as $fecha => $delDia) {
                 $mejor = $delDia->whereNotNull('foto')->sortByDesc('ancho_rostro')->first();
+                // La foto del día marcada se va con ella; si no, la de su mejor huella (el mismo archivo).
+                $suFoto = $fotoDelDia && $fecha === $fechaDeLaVisita
+                    ? ['foto' => $visita->foto, 'ancho_rostro' => (int) $visita->ancho_rostro, 'camara' => $visita->camara]
+                    : ['foto' => $mejor?->foto, 'ancho_rostro' => $mejor ? (int) $mejor->ancho_rostro : 0, 'camara' => ($mejor ?? $delDia->first())->camara];
 
                 DB::table('visitas_del_dia')->insert([
                     'persona_id' => $nueva, 'fecha' => $fecha,
-                    'primera_vez' => $delDia->min('vista_at'), 'ultima_vez' => $delDia->max('vista_at'),
-                    'veces' => $delDia->count(),
-                    // La foto del día es la de su mejor huella (el mismo archivo).
-                    'foto' => $mejor?->foto, 'ancho_rostro' => $mejor ? (int) $mejor->ancho_rostro : 0,
-                    'camara' => ($mejor ?? $delDia->first())->camara,
-                ]);
+                    'primera_vez' => $delDia->min('vista_at') ?? $visita->ultima_vez,
+                    'ultima_vez' => $delDia->max('vista_at') ?? $visita->ultima_vez,
+                    'veces' => max(1, $delDia->count()),
+                ] + $suFoto);
 
                 DB::table('aforo_diario')->where('fecha', $fecha)->update([
                     'personas_distintas' => DB::table('visitas_del_dia')->where('fecha', $fecha)->count(),
@@ -268,18 +345,10 @@ class ConteoDePersonas
 
                 // La foto del día de la de antes podía ser de la que se fue:
                 // pasa a ser la mejor de las huellas que le quedan de ese día.
-                $antes = $huellas->first()->persona_id;
-                $suya = DB::table('huellas_de_persona')->where('persona_id', $antes)->whereNotNull('foto')
-                    ->whereBetween('vista_at', [
-                        \Illuminate\Support\Carbon::parse($fecha, $tz)->startOfDay()->setTimezone(config('app.timezone')),
-                        \Illuminate\Support\Carbon::parse($fecha, $tz)->endOfDay()->setTimezone(config('app.timezone')),
-                    ])->orderByDesc('ancho_rostro')->first();
-                $visita = DB::table('visitas_del_dia')->where('persona_id', $antes)->where('fecha', $fecha)->first();
+                $suya = DB::table('visitas_del_dia')->where('persona_id', $visita->persona_id)->where('fecha', $fecha)->first();
 
-                if ($suya && $visita && $visita->foto !== $suya->foto) {
-                    DB::table('visitas_del_dia')->where('id', $visita->id)
-                        ->update(['foto' => $suya->foto, 'ancho_rostro' => (int) $suya->ancho_rostro, 'camara' => $suya->camara]);
-                    $this->borrarFotos([$visita->foto]);
+                if ($suya) {
+                    $this->rehacerFotoDelDia($suya, soloSiHayOtra: ! ($fotoDelDia && $fecha === $fechaDeLaVisita));
                 }
             }
 
@@ -288,24 +357,55 @@ class ConteoDePersonas
     }
 
     /**
-     * Las huellas pedidas, si todas son de una misma persona y le queda al
-     * menos otra. Si no, null.
+     * La visita y las huellas pedidas, si las huellas son de la persona de
+     * esa visita, hay algo que mover y, si la persona tiene huellas, le queda
+     * al menos una. Si no, null.
      *
      * @param  list<int>  $ids
+     * @return array{0:object,1:\Illuminate\Support\Collection}|null
      */
-    private function huellasDeUnaPersona(array $ids): ?\Illuminate\Support\Collection
+    private function fotosDeUnaVisita(int $visita, array $ids, bool $fotoDelDia): ?array
     {
+        $visita = DB::table('visitas_del_dia')->lockForUpdate()->find($visita);
         $ids = array_values(array_unique(array_map('intval', $ids)));
-        $huellas = DB::table('huellas_de_persona')->whereIn('id', $ids)->lockForUpdate()->get();
 
-        if ($ids === [] || $huellas->count() !== count($ids) || $huellas->pluck('persona_id')->unique()->count() !== 1) {
+        if (! $visita || ($ids === [] && ! ($fotoDelDia && $visita->foto))) {
             return null;
         }
 
-        $quedan = DB::table('huellas_de_persona')->where('persona_id', $huellas->first()->persona_id)
-            ->whereNotIn('id', $ids)->count();
+        $huellas = DB::table('huellas_de_persona')->whereIn('id', $ids)->where('persona_id', $visita->persona_id)->lockForUpdate()->get();
+        $tiene = DB::table('huellas_de_persona')->where('persona_id', $visita->persona_id)->count();
 
-        return $quedan > 0 ? $huellas : null;
+        if ($huellas->count() !== count($ids) || ($tiene > 0 && $tiene - count($ids) < 1)) {
+            return null;
+        }
+
+        return [$visita, $huellas];
+    }
+
+    /**
+     * La foto del día de una visita pasa a ser la mejor de las huellas de
+     * esa persona en ese día (o ninguna). Con $soloSiHayOtra, no se toca si
+     * no hay con qué reemplazarla.
+     */
+    private function rehacerFotoDelDia(object $visita, bool $soloSiHayOtra = false): void
+    {
+        $tz = config('fabos.lab.timezone');
+        $fecha = substr((string) $visita->fecha, 0, 10);
+        $mejor = DB::table('huellas_de_persona')->where('persona_id', $visita->persona_id)->whereNotNull('foto')
+            ->whereBetween('vista_at', [
+                \Illuminate\Support\Carbon::parse($fecha, $tz)->startOfDay()->setTimezone(config('app.timezone')),
+                \Illuminate\Support\Carbon::parse($fecha, $tz)->endOfDay()->setTimezone(config('app.timezone')),
+            ])->orderByDesc('ancho_rostro')->first();
+
+        if ((! $mejor && $soloSiHayOtra) || ($mejor && $mejor->foto === $visita->foto)) {
+            return;
+        }
+
+        DB::table('visitas_del_dia')->where('id', $visita->id)->update($mejor
+            ? ['foto' => $mejor->foto, 'ancho_rostro' => (int) $mejor->ancho_rostro, 'camara' => $mejor->camara]
+            : ['foto' => null, 'ancho_rostro' => 0]);
+        $this->borrarFotos([$visita->foto]);
     }
 
     /**
@@ -360,6 +460,7 @@ class ConteoDePersonas
             ->delete();
 
         $viejas = DB::table('personas_anonimas')->where('ultima_vez', '<', $limite)->pluck('id')->all();
+        DB::table('huellas_descartadas')->where('ultima_vez', '<', $limite)->delete();
 
         $fotos = DB::table('huellas_de_persona')->whereIn('persona_id', $viejas)->whereNotNull('foto')->pluck('foto')
             ->merge(DB::table('visitas_del_dia')->whereNotNull('foto')
