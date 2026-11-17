@@ -507,16 +507,16 @@
 
   <section class="indice" id="ruta">
     <div class="kicker">Tu ruta</div>
-    <h2><span data-nivel="basico">Siete pasos, uno por pantalla</span><span data-nivel="inter">Seis pasos, uno por pantalla</span></h2>
+    <h2><span data-nivel="basico">Seis pasos, uno por pantalla</span><span data-nivel="inter">Seis pasos, uno por pantalla</span></h2>
     <p class="para">Marca cada uno cuando lo termines: tu avance queda arriba y se guarda en este navegador.</p>
     <div class="resumen">
       <a href="#terminal" data-nivel="basico"><div class="n">00</div><div class="t">La terminal</div><div class="s">Qué es y cómo se usa</div></a>
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
       <a href="#asistentes"><div class="n">02</div><div class="t">Tu IA en el editor</div><div class="s">Claude, Gemini o GPT</div></a>
       <a href="#base"><div class="n">03</div><div class="t">Lo de base</div><div class="s">Tu IA instala Git, Node.js y Python</div></a>
-      <a href="#agente"><div class="n">04</div><div class="t">Un agente en la terminal</div><div class="s">Sesión 02</div></a>
-      <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
-      <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
+      <a href="#agente" data-nivel="inter"><div class="n">04</div><div class="t">Un agente en la terminal</div><div class="s">Sesión 02</div></a>
+      <a href="#llaves"><div class="n"><span data-nivel="basico">04</span><span data-nivel="inter">05</span></div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
+      <a href="#prueba"><div class="n"><span data-nivel="basico">05</span><span data-nivel="inter">06</span></div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
     </div>
     <a class="siguiente" href="#terminal" data-nivel="basico">Empezar: la terminal ↓</a>
     <a class="siguiente" href="#editor" data-nivel="inter">Empezar: el editor ↓</a>
@@ -919,7 +919,7 @@ hola
         </ol>
         <p class="nota"><b>Codex se usa con tu cuenta de ChatGPT</b> y viene con los planes pagos (Plus o superior); también funciona con saldo de API de OpenAI.</p>
       </div>
-      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</p>
+      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). <span data-nivel="inter">Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</span><span data-nivel="basico">Si aun así no está, mira la ayuda al final de la página.</span></p>
       <label class="check"><input type="checkbox" data-hecho><span><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini (la extensión o el de Antigravity)</span><span data-ia="gpt">Codex</span> instalado en el editor, con la sesión iniciada<small>Prueba: abre una carpeta, abre el panel de la IA y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
     </div>
       <a class="siguiente" href="#base">Siguiente: que tu IA instale lo de base ↓</a>
@@ -1053,11 +1053,12 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       </div>
       <label class="check"><input type="checkbox" data-hecho><span><span data-nivel="basico">Mi IA instaló Git, Node.js y Python y me mostró sus versiones</span><span data-nivel="inter">Las cuatro responden con su versión</span></span></label>
     </div>
-      <a class="siguiente" href="#agente">Siguiente: un agente en la terminal ↓</a>
+      <a class="siguiente" href="#agente" data-nivel="inter">Siguiente: un agente en la terminal ↓</a>
+      <a class="siguiente" href="#llaves" data-nivel="basico">Siguiente: una llave de API ↓</a>
   </section>
 
   <!-- 04 -->
-  <section class="paso" id="agente" data-paso>
+  <section class="paso" id="agente" data-paso data-nivel="inter">
     <div class="cab"><div class="num">04</div><div><h2>Un agente en la terminal <span class="sesion">sesión 02</span></h2><p class="para">Los agentes leen tu proyecto, ejecutan comandos y hacen tareas enteras por ti. Este funciona con cualquier editor.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> un agente es una IA que, además de conversar, puede leer los archivos de tu proyecto y ejecutar órdenes en tu computador, siempre pidiéndote permiso antes. Este vive en la terminal.</p>
@@ -1092,7 +1093,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
 
   <!-- 05 -->
   <section class="paso" id="llaves" data-paso>
-    <div class="cab"><div class="num">05</div><div><h2>Una llave de API <span class="sesion">sesión 03</span></h2><p class="para">Para que tu propio código hable con el modelo.</p></div></div>
+    <div class="cab"><div class="num"><span data-nivel="basico">04</span><span data-nivel="inter">05</span></div><div><h2>Una llave de API <span class="sesion">sesión 03</span></h2><p class="para">Para que tu propio código hable con el modelo.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Es distinta de tu cuenta del chat: aunque pagues Claude Pro o ChatGPT Plus, la llave se paga aparte. La de Gemini es gratis para empezar.</p>
       <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
@@ -1127,7 +1128,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
 
   <!-- 06 -->
   <section class="paso" id="prueba" data-paso>
-    <div class="cab"><div class="num">06</div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de pocas líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
+    <div class="cab"><div class="num"><span data-nivel="basico">05</span><span data-nivel="inter">06</span></div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de pocas líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. Copia y pega cada bloque, uno a la vez, y espera a que termine antes del siguiente.</p>
       <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
