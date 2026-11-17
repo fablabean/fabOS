@@ -196,7 +196,7 @@ class ConteoDePersonas
                         'primera_vez' => min($suya->primera_vez, $v->primera_vez),
                         'ultima_vez' => max($suya->ultima_vez, $v->ultima_vez),
                         'veces' => $suya->veces + $v->veces,
-                    ] + ($mejor ? ['foto' => $v->foto, 'ancho_rostro' => $v->ancho_rostro, 'camara' => $v->camara] : []));
+                    ] + ($mejor ? ['foto' => $v->foto, 'marco' => $v->marco, 'ancho_rostro' => $v->ancho_rostro, 'camara' => $v->camara] : []));
 
                     // La foto que no quedó se va.
                     $sobra = $mejor ? $suya->foto : $v->foto;
@@ -329,8 +329,8 @@ class ConteoDePersonas
                 $mejor = $delDia->whereNotNull('foto')->sortByDesc('ancho_rostro')->first();
                 // La foto del día marcada se va con ella; si no, la de su mejor huella (el mismo archivo).
                 $suFoto = $fotoDelDia && $fecha === $fechaDeLaVisita
-                    ? ['foto' => $visita->foto, 'ancho_rostro' => (int) $visita->ancho_rostro, 'camara' => $visita->camara]
-                    : ['foto' => $mejor?->foto, 'ancho_rostro' => $mejor ? (int) $mejor->ancho_rostro : 0, 'camara' => ($mejor ?? $delDia->first())->camara];
+                    ? ['foto' => $visita->foto, 'marco' => $visita->marco, 'ancho_rostro' => (int) $visita->ancho_rostro, 'camara' => $visita->camara]
+                    : ['foto' => $mejor?->foto, 'marco' => $mejor?->marco, 'ancho_rostro' => $mejor ? (int) $mejor->ancho_rostro : 0, 'camara' => ($mejor ?? $delDia->first())->camara];
 
                 DB::table('visitas_del_dia')->insert([
                     'persona_id' => $nueva, 'fecha' => $fecha,
@@ -403,8 +403,8 @@ class ConteoDePersonas
         }
 
         DB::table('visitas_del_dia')->where('id', $visita->id)->update($mejor
-            ? ['foto' => $mejor->foto, 'ancho_rostro' => (int) $mejor->ancho_rostro, 'camara' => $mejor->camara]
-            : ['foto' => null, 'ancho_rostro' => 0]);
+            ? ['foto' => $mejor->foto, 'marco' => $mejor->marco, 'ancho_rostro' => (int) $mejor->ancho_rostro, 'camara' => $mejor->camara]
+            : ['foto' => null, 'marco' => null, 'ancho_rostro' => 0]);
         $this->borrarFotos([$visita->foto]);
     }
 
@@ -515,8 +515,8 @@ class ConteoDePersonas
 
         $ruta = self::CARPETA."/{$persona}/h{$id}.jpg";
 
-        if ($foto !== null && $this->recortar($foto, $rostro, $ruta)) {
-            DB::table('huellas_de_persona')->where('id', $id)->update(['foto' => $ruta]);
+        if ($foto !== null && ($marco = $this->recortar($foto, $rostro, $ruta)) !== null) {
+            DB::table('huellas_de_persona')->where('id', $id)->update(['foto' => $ruta, 'marco' => $marco ? json_encode($marco) : null]);
         }
     }
 
@@ -532,11 +532,13 @@ class ConteoDePersonas
         $ruta = self::CARPETA."/{$persona}/{$fecha}.jpg";
 
         if (! $visita) {
-            $conFoto = $foto !== null && $this->recortar($foto, $rostro, $ruta);
+            $marco = $foto !== null ? $this->recortar($foto, $rostro, $ruta) : null;
+            $conFoto = $marco !== null;
 
             DB::table('visitas_del_dia')->insert([
                 'persona_id' => $persona, 'fecha' => $fecha, 'primera_vez' => $ahora, 'ultima_vez' => $ahora,
-                'foto' => $conFoto ? $ruta : null, 'ancho_rostro' => $conFoto ? $ancho : 0, 'camara' => $camara,
+                'foto' => $conFoto ? $ruta : null, 'marco' => $marco ? json_encode($marco) : null,
+                'ancho_rostro' => $conFoto ? $ancho : 0, 'camara' => $camara,
             ]);
 
             return true;
@@ -544,8 +546,8 @@ class ConteoDePersonas
 
         $cambios = ['ultima_vez' => $ahora, 'veces' => DB::raw('veces + 1')];
 
-        if ($foto !== null && $ancho > $visita->ancho_rostro && $this->recortar($foto, $rostro, $ruta)) {
-            $cambios += ['foto' => $ruta, 'ancho_rostro' => $ancho, 'camara' => $camara];
+        if ($foto !== null && $ancho > $visita->ancho_rostro && ($marco = $this->recortar($foto, $rostro, $ruta)) !== null) {
+            $cambios += ['foto' => $ruta, 'marco' => $marco ? json_encode($marco) : null, 'ancho_rostro' => $ancho, 'camara' => $camara];
         }
 
         DB::table('visitas_del_dia')->where('id', $visita->id)->update($cambios);
@@ -559,12 +561,19 @@ class ConteoDePersonas
      * La caja de la persona entera si la hay; si no, la cara agrandada.
      * Se reduce a 480 px de alto: es para reconocerla, no para ampliarla.
      */
-    private function recortar(string $foto, array $rostro, string $ruta): bool
+    /**
+     * Recorta la persona del cuadro y la guarda en $ruta. Devuelve dónde
+     * quedó su rostro dentro del recorte, en fracciones (x, y, ancho, alto de
+     * 0 a 1; vacío si no se sabe), o null si no se pudo recortar.
+     *
+     * @return array{x?:float,y?:float,ancho?:float,alto?:float}|null
+     */
+    private function recortar(string $foto, array $rostro, string $ruta): ?array
     {
         $imagen = @imagecreatefromstring($foto);
 
         if (! $imagen) {
-            return false;
+            return null;
         }
 
         [$w, $h] = [imagesx($imagen), imagesy($imagen)];
@@ -577,7 +586,7 @@ class ConteoDePersonas
         } else {
             imagedestroy($imagen);
 
-            return false;
+            return null;
         }
 
         $x = (int) max(0, $x);
@@ -588,7 +597,16 @@ class ConteoDePersonas
         if ($an < 8 || $al < 8) {
             imagedestroy($imagen);
 
-            return false;
+            return null;
+        }
+
+        $marco = [];
+
+        if ($r = $rostro['caja'] ?? null) {
+            $marco = array_map(fn ($v) => round(min(max($v, 0), 1), 4), [
+                'x' => ($r['x'] - $x) / $an, 'y' => ($r['y'] - $y) / $al,
+                'ancho' => $r['ancho'] / $an, 'alto' => $r['alto'] / $al,
+            ]);
         }
 
         $recorte = imagecrop($imagen, ['x' => $x, 'y' => $y, 'width' => $an, 'height' => $al]);
@@ -604,7 +622,7 @@ class ConteoDePersonas
         imagejpeg($recorte, null, 82);
         imagedestroy($recorte);
 
-        return Storage::disk('local')->put($ruta, ob_get_clean());
+        return Storage::disk('local')->put($ruta, ob_get_clean()) ? $marco : null;
     }
 
     private function esFiable(array $rostro): bool

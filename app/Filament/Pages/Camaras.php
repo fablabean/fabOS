@@ -73,7 +73,7 @@ class Camaras extends Page
         $dias = DB::table('visitas_del_dia')->whereIn('persona_id', $ids)
             ->selectRaw('persona_id, count(*) as n')->groupBy('persona_id')->pluck('n', 'persona_id');
         $huellas = DB::table('huellas_de_persona')->whereIn('persona_id', $ids)
-            ->orderByDesc('ancho_rostro')->get(['id', 'persona_id', 'foto'])->groupBy('persona_id');
+            ->orderByDesc('ancho_rostro')->get(['id', 'persona_id', 'foto', 'marco'])->groupBy('persona_id');
 
         $hora = fn ($t) => Carbon::parse($t)->timezone($tz)->format('g:i a');
 
@@ -97,7 +97,8 @@ class Camaras extends Page
                 // Sus huellas con foto: se pueden mirar y quitar la que no es de ella.
                 // La que tiene el mismo recorte que la foto del día no se repite.
                 'otras' => ($huellas[$v->persona_id] ?? collect())->filter(fn ($h) => $h->foto && $h->foto !== $v->foto)->take(12)
-                    ->map(fn ($h) => ['src' => route('panel.camara.huella', $h->id), 'huella' => (int) $h->id])->values()->all(),
+                    ->map(fn ($h) => ['src' => route('panel.camara.huella', $h->id), 'huella' => (int) $h->id, 'marco' => json_decode($h->marco ?? 'null', true)])->values()->all(),
+                'marco' => json_decode($v->marco ?? 'null', true),
                 'foto_huella' => $v->foto ? ($huellas[$v->persona_id] ?? collect())->firstWhere('foto', $v->foto)?->id : null,
                 // Todas sus huellas, con foto o sin ella: siempre le tiene que quedar una.
                 'huellas' => ($huellas[$v->persona_id] ?? collect())->count(),

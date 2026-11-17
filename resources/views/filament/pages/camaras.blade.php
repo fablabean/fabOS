@@ -90,6 +90,9 @@
         .cam-grande-quitar .cam-btn-quitar:hover { background: rgba(220,38,38,.8); border-color: transparent; }
         .cam-grande-mini { position: relative; display: inline-block; }
         .cam-grande-descartar { margin-top: .9rem; }
+        .cam-grande-foto { position: relative; width: fit-content; margin: 0 auto; }
+        .cam-grande-foto img { display: block; }
+        .cam-grande-marco { position: absolute; border: 3px solid #facc15; border-radius: .4rem; box-shadow: 0 0 0 2px rgba(0,0,0,.5); pointer-events: none; }
         .cam-grande-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 3rem; height: 3rem; border-radius: 999px; border: 0;
                           background: rgba(255,255,255,.15); color: #fff; font-size: 2rem; line-height: 1; cursor: pointer; display: grid; place-items: center; z-index: 61; }
         .cam-grande-nav:hover { background: rgba(255,255,255,.3); }
@@ -298,7 +301,7 @@
                             @foreach ($conteo['personas'] as $p)
                                 @php($texto = 'N.º ' . $p['persona'] . ' · llegó ' . $p['llego'] . ($p['visto'] !== $p['llego'] ? ' · vista por última vez ' . $p['visto'] : '') . ($p['camara'] && count($camaras) > 1 ? ' · ' . $p['camara'] : '') . ($p['volvio'] ? ' · la conocemos desde el ' . $p['desde'] . ', ' . $p['dias'] . ' días' : ''))
                                 @php($grande = $p['foto'] ? ['src' => $p['foto'], 'visita' => $p['visita'], 'persona' => $p['persona'], 'marcadas' => [], 'texto' => $texto, 'huellas' => $p['huellas'],
-                                    'otras' => array_merge([['src' => $p['foto'], 'clave' => $p['foto_huella'] ?? 'dia']], array_map(fn ($o) => ['src' => $o['src'], 'clave' => $o['huella']], $p['otras']))] : null)
+                                    'marco' => $p['marco'], 'otras' => array_merge([['src' => $p['foto'], 'clave' => $p['foto_huella'] ?? 'dia', 'marco' => $p['marco']]], array_map(fn ($o) => ['src' => $o['src'], 'clave' => $o['huella'], 'marco' => $o['marco']], $p['otras']))] : null)
                                 <button type="button" class="cam-persona" wire:key="persona-{{ $p['persona'] }}"
                                         x-bind:class="{ 'elegible': uniendo, 'elegida': sel.includes({{ $p['persona'] }}) }"
                                         @if ($grande) data-grande="{{ json_encode($grande) }}" @endif
@@ -341,13 +344,19 @@
                     <button type="button" class="cam-grande-nav izq" x-on:click.stop="ir(-1)" x-show="posicion() > 0" aria-label="Persona anterior">‹</button>
                     <button type="button" class="cam-grande-nav der" x-on:click.stop="ir(1)" x-show="posicion() < tarjetas().length - 1" aria-label="Persona siguiente">›</button>
                     <div>
-                        <img x-bind:src="grande.src" alt="Persona contada">
+                        {{-- El recuadro marca el rostro del que salió esta huella, por si en la foto hay varias personas. --}}
+                        <div class="cam-grande-foto">
+                            <img x-bind:src="grande.src" alt="Persona contada">
+                            <template x-if="grande.marco && grande.marco.ancho">
+                                <span class="cam-grande-marco" x-bind:style="`left:${grande.marco.x * 100}%;top:${grande.marco.y * 100}%;width:${grande.marco.ancho * 100}%;height:${grande.marco.alto * 100}%`"></span>
+                            </template>
+                        </div>
                         <p x-text="grande.texto"></p>
                         <div class="cam-grande-pos" x-text="(posicion() + 1) + ' de ' + tarjetas().length + ' · flechas ← → del teclado'"></div>
                         <div class="cam-grande-otras">
                             <template x-for="o in grande.otras" :key="o.src">
                                 <span class="cam-grande-mini" x-bind:class="grande.marcadas.includes(o.clave) && 'marcada'">
-                                    <img x-bind:src="o.src" x-bind:class="o.src === grande.src && 'actual'" x-on:click.stop="grande.src = o.src" alt="Otra foto de la misma persona">
+                                    <img x-bind:src="o.src" x-bind:class="o.src === grande.src && 'actual'" x-on:click.stop="grande.src = o.src; grande.marco = o.marco" alt="Otra foto de la misma persona">
                                     <button type="button" class="cam-grande-check" x-on:click.stop="marcar(o.clave)"
                                             x-bind:aria-pressed="grande.marcadas.includes(o.clave)" title="Marcar: no es esta persona">✓</button>
                                 </span>

@@ -327,6 +327,19 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(110, (int) DB::table('visitas_del_dia')->value('ancho_rostro'));
     }
 
+    public function test_se_guarda_donde_esta_el_rostro_dentro_del_recorte(): void
+    {
+        Storage::fake('local');
+        // Persona en (100,50) de 200×500; su rostro en (150,100) de 80×80.
+        $rostro = $this->rostro($this->huella(0)) + ['caja' => ['x' => 150, 'y' => 100, 'ancho' => 80, 'alto' => 80]];
+        app(ConteoDePersonas::class)->registrar(1, ['personas' => 1, 'detalle' => [$this->conCaja($rostro)], 'umbral_misma_persona' => 0.363], now(), $this->cuadro());
+
+        // El recorte va de (84,10) y mide 232×580 (la caja con 8 % de margen).
+        $marco = json_decode(DB::table('huellas_de_persona')->value('marco'), true);
+        $this->assertEqualsWithDelta(['x' => 66 / 232, 'y' => 90 / 580, 'ancho' => 80 / 232, 'alto' => 80 / 580], $marco, 0.005);
+        $this->assertSame($marco, json_decode(DB::table('visitas_del_dia')->value('marco'), true));
+    }
+
     public function test_al_pgx_se_le_manda_la_foto_con_la_clave(): void
     {
         config(['fabos.pgx.url' => 'http://pgx.test', 'fabos.pgx.clave' => 'pgx_fabos_prueba']);
