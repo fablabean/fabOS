@@ -238,6 +238,21 @@
   .vsc .estado{background:#0078d4;color:#fff;font-size:9.5px;padding:.12rem .6rem}
   @media (max-width:520px){.vsc .cuerpo-v{grid-template-columns:1.8rem 1fr 5.5rem} .vsc .lado{display:none} .vsc .menu span:nth-child(n+4){display:none}}
 
+  /* Un menú desplegado del editor. */
+  .despliega{width:100%;max-width:24rem;font:11.5px Inter,sans-serif;text-align:left}
+  .despliega .barra-m{display:flex;gap:.6rem;padding:.3rem .6rem;background:#181818;border:1px solid #333;border-radius:8px 8px 0 0;color:#bbb}
+  .despliega .barra-m .abierto{background:#3a3d41;color:#fff;border-radius:3px;padding:0 .3rem;outline:2px solid var(--warn)}
+  .despliega .lista{margin-left:6.2rem;width:14rem;background:#252526;border:1px solid #454545;border-radius:0 0 6px 6px;box-shadow:0 12px 26px rgba(0,0,0,.5);padding:.3rem;color:#ccc}
+  .despliega .lista div{display:flex;justify-content:space-between;gap:1rem;padding:.3rem .5rem;border-radius:3px}
+  .despliega .lista small{color:#888;font-size:10px}
+  .despliega .lista .si{background:#04395e;color:#fff;outline:2px solid var(--warn)}
+  .despliega .lista .si small{color:#cde}
+  .panel-t{width:100%;max-width:24rem;margin-top:.8rem;border-radius:8px;overflow:hidden;border:1px solid #333;background:#181818;
+    font:11px "JetBrains Mono",monospace;color:#ddd;text-align:left;box-shadow:0 12px 26px rgba(0,0,0,.45)}
+  .panel-t .pt-tit{display:flex;gap:1rem;padding:.35rem .7rem;border-bottom:1px solid #2b2b2b;font:600 9.5px Inter,sans-serif;letter-spacing:.08em;color:#888}
+  .panel-t .pt-tit b{color:#e8e8e8;border-bottom:1px solid #e8e8e8;font-weight:600}
+  .panel-t .pt-c{padding:.55rem .7rem .8rem}
+
   /* La paleta de comandos. */
   .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
   .paleta .campo{border:1px solid #0078d4;border-radius:3px;padding:.35rem .5rem;background:#3c3c3c;color:#fff}
@@ -622,40 +637,30 @@ hola
           </div>
         </div>
 
-        <div class="vista" data-so="mac">
+        <div class="vista">
           <figure class="fig">
-            <div class="paleta">
-              <div class="campo">&gt; shell command<span class="cursor"></span></div>
-              <div class="op si">Shell Command: Install 'code' command in PATH</div>
-              <div class="op"><small>Shell Command: Uninstall 'code' command from PATH</small></div>
+            <div class="flujo">
+              <div class="despliega">
+                <div class="barra-m"><span>File</span><span>Edit</span><span>View</span><span>Run</span><span class="abierto">Terminal</span><span>Help</span></div>
+                <div class="lista">
+                  <div class="si">New Terminal <small><span data-so="win linux">Ctrl+Shift+`</span><span data-so="mac">⌃⇧`</span></small></div>
+                  <div>Split Terminal</div>
+                  <div>Run Task…</div>
+                </div>
+              </div>
+              <span class="flecha">↓</span>
+              <div class="panel-t">
+                <div class="pt-tit"><span>PROBLEMS</span><span>OUTPUT</span><b>TERMINAL</b></div>
+                <div class="pt-c"><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux">tu-nombre@equipo:~$</span> <span class="cursor"></span></div>
+              </div>
             </div>
           </figure>
           <div class="txt">
             <span class="escena">4</span>
-            <h3>Deja que la terminal lo abra</h3>
-            <p>Dentro de VS Code presiona <span class="mono">⌘ + ⇧ + P</span>: se abre una barra arriba. Escribe <em>shell command</em> y elige <em>«Install 'code' command in PATH»</em>, como en la imagen.</p>
-          </div>
-        </div>
-
-        <div class="vista">
-          <figure class="fig anim" data-escribe="code --version">
-            <div class="mini-cmd">code --version<button type="button" class="btn" data-copia="code --version">Copiar</button><span class="mano" aria-hidden="true">👆</span></div>
-            <div class="term">
-              <div class="tit"><span data-so="mac" class="luces"><i></i><i></i><i></i></span><span class="tit-txt"><span data-so="win"><span class="ps-ico">&gt;_</span> Windows PowerShell</span><span data-so="mac">tu-nombre — zsh</span><span data-so="linux">tu-nombre@equipo: ~</span></span><span data-so="win" class="ctrl-win">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span><span data-so="linux" class="ctrl-lin">✕</span></div>
-              <div class="pant"><span class="pr"><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux"><span class="pr-u">tu-nombre@equipo</span>:<span class="pr-d">~</span>$</span></span> <span class="tecleo"></span><span class="cursor c-ini"></span><span class="respuesta" hidden>
-1.106.0
-f1a5f4e2b9c7d0a3e6f8b1c4d7a0e3f6b9c2d5e8
-<span data-so="win linux">x64</span><span data-so="mac">arm64</span>
-<span class="pr"><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux"><span class="pr-u">tu-nombre@equipo</span>:<span class="pr-d">~</span>$</span></span> <span class="cursor c-fin"></span></span></div>
-            </div>
-            <span class="tecla enter">Enter ↵</span>
-          </figure>
-          <div class="txt">
-            <span class="escena"><span data-so="mac">5</span><span data-so="win linux">4</span></span>
-            <h3>Compruébalo</h3>
-            <p>Abre una <strong>terminal nueva</strong> (como en el paso 00), copia la orden de la imagen, pégala y presiona <span class="mono">Enter</span>.</p>
-            <p>Debe responder con un número de versión, como en la imagen. El tuyo puede ser otro: lo que importa es que salga un número.</p>
-            <p class="para">Si dice «no se reconoce», cierra la terminal, abre una nueva y vuelve a intentarlo.</p>
+            <h3>Abre su terminal</h3>
+            <p>En el menú de arriba elige <strong>Terminal → New Terminal</strong>, como en la imagen. También sirve el botón 5 de la escena anterior.</p>
+            <p>Abajo se abre la misma terminal del paso 00, pero dentro del editor. <strong>Desde ahora, ahí es donde vas a pegar las órdenes</strong> de esta guía.</p>
+            <p class="para">Pruébala con <span class="mono">echo hola</span>, como en el paso 00.</p>
           </div>
         </div>
       </div>
@@ -679,12 +684,12 @@ f1a5f4e2b9c7d0a3e6f8b1c4d7a0e3f6b9c2d5e8
         <div class="opcion"><h3>Antigravity <span class="etq opc">de Google</span></h3><p>Gratis, con Gemini incorporado. En <a href="https://antigravity.google/" target="_blank" rel="noopener">antigravity.google</a>.</p></div>
         <div class="opcion"><h3>Cursor <span class="etq opc">alternativa</span></h3><p>Trae su propia IA; el plan gratuito es limitado. En <a href="https://cursor.com/" target="_blank" rel="noopener">cursor.com</a>.</p></div>
       </div>
-      <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 03). Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</p>
+      <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 03). <span data-nivel="inter">Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</span></p>
       <div data-nivel="inter">
       <p>Para comprobarlo, abre una terminal nueva y escribe:</p>
       <div class="cmd"><pre>code --version</pre></div>
       </div>
-      <label class="check"><input type="checkbox" data-hecho><span>Mi editor abre y, si es VS Code, <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></label>
+      <label class="check"><input type="checkbox" data-hecho><span><span data-nivel="basico">VS Code abre y abrí su terminal de abajo</span><span data-nivel="inter">Mi editor abre y, si es VS Code, <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></span></label>
     </div>
       <a class="siguiente" href="#base">Siguiente: Git, Node.js y Python ↓</a>
   </section>
