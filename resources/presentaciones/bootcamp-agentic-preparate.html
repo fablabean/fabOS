@@ -98,7 +98,7 @@
 
   /* pasos: cada uno ocupa la pantalla */
   section.paso, section.indice{min-height:calc(100vh - var(--barra,3.3rem));min-height:calc(100svh - var(--barra,3.3rem));
-    display:flex;flex-direction:column;justify-content:center;scroll-margin-top:var(--barra,3.3rem)}
+    display:flex;flex-direction:column;justify-content:center}
   section.indice{padding:3rem 0;border-bottom:1px solid var(--rule)}
   section.indice h2{margin-bottom:.2rem}
   .siguiente{align-self:flex-start;margin:2.2rem 0 0 4rem;display:inline-flex;align-items:center;gap:.5rem;color:var(--accent);
@@ -615,11 +615,16 @@ print(mensaje.content[0].text)</pre></div>
   function medir() {
     var alto = barra.offsetHeight;
     document.documentElement.style.setProperty('--barra', alto + 'px');
-    document.body.classList.toggle('so-fijo', abajo.getBoundingClientRect().bottom <= alto);
+    // Apenas el de la portada empieza a quedar debajo de la barra, pasa arriba.
+    document.body.classList.toggle('so-fijo', abajo.getBoundingClientRect().top < alto + 8);
   }
   medir();
   window.addEventListener('scroll', medir, { passive: true });
   window.addEventListener('resize', medir);
+  // La barra cambia de alto cuando carga la tipografía (o al angostar la ventana):
+  // se vuelve a medir para que cada bloque quede justo debajo de ella.
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
+  if (window.ResizeObserver) { new ResizeObserver(medir).observe(barra); }
 
   // Copiar cada bloque, sin los comentarios.
   document.querySelectorAll('.cmd pre').forEach(function (pre) {
