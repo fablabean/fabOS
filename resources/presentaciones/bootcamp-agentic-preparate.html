@@ -29,13 +29,16 @@
   .so{display:inline-flex;border:1px solid var(--rule);border-radius:99px;overflow:hidden}
   .so button{background:none;border:0;color:var(--soft);padding:.35rem .9rem;font:600 .85rem Inter,sans-serif;cursor:pointer}
   .so button[aria-pressed=true]{background:var(--accent);color:#06231A}
+  .barra .so{visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s,visibility .2s}
+  body.so-fijo .barra .so{visibility:visible;opacity:1;transform:none}
   .avance{flex:1 1 12rem;max-width:18rem}
   .avance .txt{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between}
   .avance .pista{height:6px;background:var(--rule);border-radius:9px;overflow:hidden;margin-top:.2rem}
   .avance .lleno{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--warn));transition:width .3s}
 
   /* portada */
-  header.portada{padding:4.5rem 0 3rem;border-bottom:1px solid var(--rule);
+  header.portada{padding:4.5rem 0 2.2rem;border-bottom:1px solid var(--rule);
+    min-height:calc(100vh - var(--barra,3.3rem));min-height:calc(100svh - var(--barra,3.3rem));display:flex;
     background:radial-gradient(60rem 30rem at 85% -10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent),
                radial-gradient(40rem 25rem at -10% 110%,color-mix(in srgb,var(--accent2) 14%,transparent),transparent)}
   .kicker{font:600 .78rem "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2)}
@@ -45,9 +48,12 @@
   .datos{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem}
   .dato{border:1px solid var(--rule);background:var(--card);border-radius:10px;padding:.55rem .9rem;font-size:.9rem}
   .dato b{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  header.portada > .wrap{display:flex;flex-direction:column;width:100%}
+  .elige{margin-top:auto;padding-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem}
+  .elige .para{margin:0}
 
   /* resumen */
-  .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:2.2rem 0 0}
+  .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:2.5rem 0 .5rem}
   .resumen a{display:block;text-decoration:none;color:inherit;border:1px solid var(--rule);border-radius:10px;padding:.8rem 1rem;background:var(--bg2)}
   .resumen a:hover{border-color:var(--accent)}
   .resumen .n{font:600 .75rem "JetBrains Mono",monospace;color:var(--accent)}
@@ -106,7 +112,8 @@
     header.portada{padding:3rem 0 2rem}
   }
   @media print{
-    .barra,.copiar{display:none} body{background:#fff;color:#000}
+    .barra,.copiar,.elige{display:none} body{background:#fff;color:#000}
+    header.portada{min-height:0}
     [data-so]{display:block !important}
   }
 </style>
@@ -139,7 +146,18 @@
       <div class="dato"><b>Sesiones</b>24, 25 y 26 de nov · 6:00–8:00 p. m.</div>
       <div class="dato"><b>Costo extra</b>Ninguno obligatorio</div>
     </div>
-    <p class="para" style="margin-top:1.2rem">Arriba eliges tu sistema operativo: los comandos cambian solos.</p>
+    <div class="elige">
+      <p class="para">Elige tu sistema operativo: los comandos cambian solos.</p>
+      <div class="so" role="group" aria-label="Tu sistema operativo">
+        <button type="button" data-elige="win" aria-pressed="true">Windows</button>
+        <button type="button" data-elige="mac" aria-pressed="false">macOS</button>
+        <button type="button" data-elige="linux" aria-pressed="false">Linux</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
 
     <div class="resumen">
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
@@ -149,10 +167,6 @@
       <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
       <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
     </div>
-  </div>
-</header>
-
-<main class="wrap">
 
   <!-- 01 -->
   <section class="paso" id="editor" data-paso>
@@ -391,6 +405,18 @@ print(mensaje.content[0].text)</pre></div>
   document.querySelectorAll('[data-elige]').forEach(function (b) {
     b.addEventListener('click', function () { elegir(b.dataset.elige); });
   });
+
+  // El selector va al fondo de la portada; al bajar, queda pegado en la barra.
+  var barra = document.querySelector('.barra');
+  var abajo = document.querySelector('.elige .so');
+  function medir() {
+    var alto = barra.offsetHeight;
+    document.documentElement.style.setProperty('--barra', alto + 'px');
+    document.body.classList.toggle('so-fijo', abajo.getBoundingClientRect().bottom <= alto);
+  }
+  medir();
+  window.addEventListener('scroll', medir, { passive: true });
+  window.addEventListener('resize', medir);
 
   // Copiar cada bloque, sin los comentarios.
   document.querySelectorAll('.cmd pre').forEach(function (pre) {
