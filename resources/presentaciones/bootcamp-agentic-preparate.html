@@ -24,8 +24,10 @@
   [data-ia]{display:none}
   body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
   body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
-  .ia-elige{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem .8rem;margin:1rem 0 1.1rem}
-  .ia-elige > span{font-size:.85rem;font-weight:600;color:var(--muted)}
+  .ia-elige{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem .9rem;margin:1rem 0 1.2rem;width:max-content;max-width:100%;
+    padding:.55rem .9rem;border:1px dashed color-mix(in srgb,var(--warn) 60%,transparent);border-radius:12px;background:color-mix(in srgb,var(--warn) 6%,transparent)}
+  .ia-elige > span{font-size:.95rem;font-weight:700;color:var(--ink)}
+  .ia-elige .so button{padding:.42rem 1.1rem;font-size:.92rem}
   body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
   a{color:var(--accent)}
   code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
@@ -822,7 +824,7 @@ hola
     <div class="cab"><div class="num">02</div><div><h2>Tu IA en el editor <span class="sesion">sesión 01</span></h2><p class="para">En el bootcamp trabajamos con Claude, pero puedes seguirlo con Gemini o con GPT. Elige una; puedes cambiarla cuando quieras.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> es una extensión, un complemento de tu editor, para trabajar con una IA ahí mismo, al lado de tu código: le pides algo, ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
-      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+      <div class="ia-elige"><span>Elige tu IA:</span><div class="so llamando" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
       <div data-nivel="basico" class="escenas">
         <p class="nota ok" data-ia="gemini"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo y pasa a la escena de «Pruébala».</p>
@@ -1093,7 +1095,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
     <div class="cab"><div class="num">04</div><div><h2>Un agente en la terminal <span class="sesion">sesión 02</span></h2><p class="para">Los agentes leen tu proyecto, ejecutan comandos y hacen tareas enteras por ti. Este funciona con cualquier editor.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> un agente es una IA que, además de conversar, puede leer los archivos de tu proyecto y ejecutar órdenes en tu computador, siempre pidiéndote permiso antes. Este vive en la terminal.</p>
-      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+      <div class="ia-elige"><span>Elige tu IA:</span><div class="so llamando" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
       <ol class="pasitos">
         <li>Abre una terminal nueva y pega esto.<span data-nivel="basico"> Tarda uno o dos minutos y muestra bastante texto: es normal.</span></li>
@@ -1127,7 +1129,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
     <div class="cab"><div class="num"><span data-nivel="basico">04</span><span data-nivel="inter">05</span></div><div><h2>Una llave de API <span class="sesion">sesión 03</span></h2><p class="para">Para que tu propio código hable con el modelo.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Es distinta de tu cuenta del chat: aunque pagues Claude Pro o ChatGPT Plus, la llave se paga aparte. La de Gemini es gratis para empezar.</p>
-      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+      <div class="ia-elige"><span>Elige tu IA:</span><div class="so llamando" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
 
       <div data-nivel="basico" class="escenas">
@@ -1211,7 +1213,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
     <div class="cab"><div class="num"><span data-nivel="basico">05</span><span data-nivel="inter">06</span></div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de pocas líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. La IA del editor hace casi todo; tú abres la carpeta y pones tu llave.</p>
-      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+      <div class="ia-elige"><span>Elige tu IA:</span><div class="so llamando" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
 
       <div data-nivel="basico" class="escenas">
@@ -1459,8 +1461,10 @@ print(respuesta.output_text)</pre></div>
     });
     separar();
   }
+  if (iaGuardada) { document.querySelectorAll('.ia-elige .so').forEach(function (g) { g.classList.remove('llamando'); }); }
   document.querySelectorAll('[data-ia-elige]').forEach(function (b) {
     b.addEventListener('click', function () {
+      document.querySelectorAll('.ia-elige .so').forEach(function (g) { g.classList.remove('llamando'); });
       elegirIA(b.dataset.iaElige);
       try { localStorage.setItem('agentic-ia', b.dataset.iaElige); } catch (_) {}
     });
