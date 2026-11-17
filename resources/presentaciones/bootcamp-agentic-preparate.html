@@ -14,10 +14,18 @@
     --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --code:#0A100E;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth;scroll-snap-type:y proximity;scroll-padding-top:var(--barra,3.3rem)}
+  html{scroll-behavior:smooth;scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   /* Cada bloque se ajusta a la pantalla: la portada, la ruta y cada paso. */
   header.portada,section.indice,section.paso{scroll-snap-align:start}
   footer{scroll-snap-align:end}
+  /* Un paso más alto que la pantalla también se ajusta a su final, para llegar a la casilla. */
+  section.largo > .ayuda-link{scroll-snap-align:end}
+  /* La IA con la que se trabaja: Claude, Gemini o GPT. */
+  [data-ia]{display:none}
+  body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
+  body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
+  .ia-elige{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem .8rem;margin:1rem 0 1.1rem}
+  .ia-elige > span{font-size:.85rem;font-weight:600;color:var(--muted)}
   body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
   a{color:var(--accent)}
   code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
@@ -137,6 +145,7 @@
   [data-so]{display:none}
   body.so-win [data-so~=win], body.so-mac [data-so~=mac], body.so-linux [data-so~=linux]{display:block}
   body.so-win span[data-so~=win], body.so-mac span[data-so~=mac], body.so-linux span[data-so~=linux]{display:inline}
+  body.so-win li[data-so~=win], body.so-mac li[data-so~=mac], body.so-linux li[data-so~=linux]{display:list-item}
 
   /* verificación */
   /* La casilla de cada paso: grande, y hay que marcarla para seguir. */
@@ -185,7 +194,7 @@
   @media print{
     .barra,.copiar,.elige{display:none} body{background:#fff;color:#000} html{scroll-snap-type:none}
     header.portada{min-height:0}
-    [data-so]{display:block !important}
+    [data-so],[data-ia]{display:block !important}
     section.paso,section.indice{min-height:0} .siguiente,.nivel,.nivel-tit{display:none}
     section.paso.bloqueado,#problemas,footer{display:flex !important} .ayuda-link{display:none}
   }
@@ -221,7 +230,7 @@
       <div class="dato"><b>Cuánto toma</b><span data-nivel="basico">60 a 90 minutos</span><span data-nivel="inter">45 a 60 minutos</span></div>
       <div class="dato"><b>Cuándo</b>Antes del 24 de noviembre</div>
       <div class="dato"><b>Sesiones</b>24, 25 y 26 de nov · 6:00–8:00 p. m.</div>
-      <div class="dato"><b>Costo extra</b>Claude Pro o saldo de API</div>
+      <div class="dato"><b>Costo extra</b>Ninguno con Gemini · Claude y GPT, con plan</div>
     </div>
     <p class="nivel-tit">¿Cómo quieres ver la guía?</p>
     <div class="nivel llamando" role="group" aria-label="Cómo ver la guía">
@@ -249,7 +258,7 @@
       <a href="#terminal" data-nivel="basico"><div class="n">00</div><div class="t">La terminal</div><div class="s">Qué es y cómo se usa</div></a>
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
       <a href="#base"><div class="n">02</div><div class="t">Lo de base</div><div class="s">Git, Node.js y Python</div></a>
-      <a href="#asistentes"><div class="n">03</div><div class="t">Claude Code en el editor</div><div class="s">Sesión 01</div></a>
+      <a href="#asistentes"><div class="n">03</div><div class="t">Tu IA en el editor</div><div class="s">Claude, Gemini o GPT</div></a>
       <a href="#agente"><div class="n">04</div><div class="t">Un agente en la terminal</div><div class="s">Sesión 02</div></a>
       <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
       <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
@@ -313,16 +322,23 @@
         <div class="cmd"><div class="lbl">Terminal</div><pre>sudo snap install code --classic</pre></div>
       </div>
       </div>
+      <p><strong>¿Otro editor?</strong> También sirven estos dos, hechos sobre VS Code: se ven casi igual y lo demás de esta guía funciona igual en ellos.</p>
+      <div class="opciones">
+        <div class="opcion"><h3>VS Code <span class="etq rec">recomendado</span></h3><p>De Microsoft, gratis. Es el que usamos en las sesiones.</p></div>
+        <div class="opcion"><h3>Antigravity <span class="etq opc">de Google</span></h3><p>Gratis, con Gemini incorporado. En <a href="https://antigravity.google/" target="_blank" rel="noopener">antigravity.google</a>.</p></div>
+        <div class="opcion"><h3>Cursor <span class="etq opc">alternativa</span></h3><p>Trae su propia IA; el plan gratuito es limitado. En <a href="https://cursor.com/" target="_blank" rel="noopener">cursor.com</a>.</p></div>
+      </div>
+      <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 03). Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</p>
       <p><span data-nivel="basico">Para comprobarlo, abre una terminal nueva (como en el paso 00) y pega esto. Debe responder con un número, como <span class="mono">1.106.0</span>:</span><span data-nivel="inter">Para comprobarlo, abre una terminal nueva y escribe:</span></p>
       <div class="cmd"><pre>code --version</pre></div>
-      <label class="check"><input type="checkbox" data-hecho><span>VS Code abre y <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></label>
+      <label class="check"><input type="checkbox" data-hecho><span>Mi editor abre y, si es VS Code, <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></label>
     </div>
       <a class="siguiente" href="#base">Siguiente: Git, Node.js y Python ↓</a>
   </section>
 
   <!-- 02 -->
   <section class="paso" id="base" data-paso>
-    <div class="cab"><div class="num">02</div><div><h2>Lo de base: Git, Node.js y Python</h2><p class="para">Los agentes de terminal corren sobre Node.js; el código de la sesión 03 lo escribimos en Python.</p></div></div>
+    <div class="cab"><div class="num">02</div><div><h2>Lo de base: Git, Node.js y Python</h2><p class="para">Los agentes de terminal corren sobre Node.js; el código de la sesión 03 lo escribimos en Python. Es igual con cualquier editor y cualquier IA.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son tres programas que trabajan por debajo y no se abren como una app. <strong>Git</strong> guarda el historial de tu trabajo. <strong>Node.js</strong> y <strong>Python</strong> son los «motores» que hacen correr los programas del bootcamp. Solo hay que instalarlos y comprobar que la terminal los encuentra.</p>
       <div data-nivel="basico">
@@ -394,59 +410,72 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
 
   <!-- 03 -->
   <section class="paso" id="asistentes" data-paso>
-    <div class="cab"><div class="num">03</div><div><h2>Claude Code en el editor <span class="sesion">sesión 01</span></h2><p class="para">Es el asistente con el que vamos a trabajar en el bootcamp, dentro de VS Code.</p></div></div>
+    <div class="cab"><div class="num">03</div><div><h2>Tu IA en el editor <span class="sesion">sesión 01</span></h2><p class="para">En el bootcamp trabajamos con Claude, pero puedes seguirlo con Gemini o con GPT. Elige una; puedes cambiarla cuando quieras.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> Claude Code es una IA de Anthropic que vive dentro de VS Code. Le pides algo en un panel al lado de tu código; ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
-      <ol class="pasitos" data-nivel="basico">
-        <li>En VS Code, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
-        <li>En el buscador de arriba escribe <strong>Claude Code</strong>. Elige <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>, y haz clic en <em>Install</em>.</li>
-        <li>Aparece el ícono de Claude (una chispa naranja). Haz clic en él para abrir su panel.</li>
-        <li>Te pide iniciar sesión: elige entrar con tu cuenta de Claude. Se abre el navegador, autorizas y vuelves a VS Code.</li>
-      </ol>
-      <p class="para" data-nivel="basico">Si no aparece en el buscador o no instala, actualiza VS Code (<em>Ayuda → Buscar actualizaciones</em>) y vuelve a intentarlo.</p>
-      <p data-nivel="inter">En <em>Extensiones</em> (<span class="mono" data-so="win linux">Ctrl+Shift+X</span><span class="mono" data-so="mac">⌘⇧X</span>) instala <strong>Claude Code for VS Code</strong>, publicada por <em>Anthropic</em>. Ábrela desde su ícono e inicia sesión con tu cuenta de Claude o con la Consola de Anthropic. Pide una versión reciente de VS Code: si no aparece, actualízalo.</p>
-      <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
-      <label class="check"><input type="checkbox" data-hecho><span>Claude Code instalado en VS Code, con la sesión iniciada<small>Prueba: abre una carpeta en VS Code, abre el panel de Claude y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> es una extensión, un complemento de tu editor, para trabajar con una IA ahí mismo, al lado de tu código: le pides algo, ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
+      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+
+      <div data-ia="claude">
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Claude Code</strong> e instala <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>.</li>
+          <li>Ábrela desde su ícono (una chispa naranja) e inicia sesión con tu cuenta de Claude: se abre el navegador, autorizas y vuelves al editor.</li>
+        </ol>
+        <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+      </div>
+      <div data-ia="gemini">
+        <p class="nota ok"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo.</p>
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Gemini Code Assist</strong> e instala la que publica <em>Google</em>.</li>
+          <li>Ábrela desde su ícono en la barra de la izquierda e inicia sesión con tu cuenta de Google (Gmail).</li>
+        </ol>
+        <p class="nota ok"><b>Es gratis</b> para uso personal con tu cuenta de Google.</p>
+      </div>
+      <div data-ia="gpt">
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Codex</strong> e instala la que publica <em>OpenAI</em>.</li>
+          <li>Ábrela desde su ícono e inicia sesión con tu cuenta de ChatGPT: se abre el navegador, autorizas y vuelves al editor.</li>
+        </ol>
+        <p class="nota"><b>Codex se usa con tu cuenta de ChatGPT</b> y viene con los planes pagos (Plus o superior); también funciona con saldo de API de OpenAI.</p>
+      </div>
+      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</p>
+      <label class="check"><input type="checkbox" data-hecho><span><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini (la extensión o el de Antigravity)</span><span data-ia="gpt">Codex</span> instalado en el editor, con la sesión iniciada<small>Prueba: abre una carpeta, abre el panel de la IA y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
     </div>
       <a class="siguiente" href="#agente">Siguiente: un agente en la terminal ↓</a>
   </section>
 
   <!-- 04 -->
   <section class="paso" id="agente" data-paso>
-    <div class="cab"><div class="num">04</div><div><h2>Un agente en la terminal <span class="sesion">sesión 02</span></h2><p class="para">Los agentes leen tu proyecto, ejecutan comandos y hacen tareas enteras por ti.</p></div></div>
+    <div class="cab"><div class="num">04</div><div><h2>Un agente en la terminal <span class="sesion">sesión 02</span></h2><p class="para">Los agentes leen tu proyecto, ejecutan comandos y hacen tareas enteras por ti. Este funciona con cualquier editor.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> un agente es una IA que, además de conversar, puede leer los archivos de tu proyecto y ejecutar órdenes en tu computador, siempre pidiéndote permiso antes. Vive en la terminal. Para el bootcamp basta con <strong>Gemini CLI</strong>, que es gratis con tu cuenta de Google.</p>
-      <div data-nivel="basico">
-        <ol class="pasitos">
-          <li>Abre una terminal nueva y pega esto. Tarda uno o dos minutos y muestra bastante texto: es normal.</li>
-        </ol>
-        <div class="cmd"><pre>npm install -g @google/gemini-cli</pre></div>
-        <ol class="pasitos" start="2">
-          <li>Cuando termine, escribe <span class="mono">gemini</span> y presiona <span class="mono">Enter</span>.</li>
-          <li>La primera vez te pregunta cómo entrar: con las flechas del teclado elige la opción de entrar con Google y presiona <span class="mono">Enter</span>. Se abre el navegador: entra con tu cuenta de Gmail y vuelve a la terminal.</li>
-          <li>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em> y presiona <span class="mono">Enter</span>. Para salir, escribe <span class="mono">/quit</span>.</li>
-        </ol>
-      </div>
-      <div data-nivel="inter">
-      <p>Instala <strong>al menos uno</strong>. Si no sabes cuál, el primero: es gratuito con tu cuenta de Google.</p>
-      <div class="opciones">
-        <div class="opcion"><h3>Gemini CLI <span class="etq rec">recomendado</span></h3><p>Gratis con cuenta de Google. Se abre con <span class="mono">gemini</span>.</p></div>
-        <div class="opcion"><h3>Claude Code <span class="etq pago">con plan o saldo</span></h3><p>Necesita suscripción de Claude o saldo de API de Anthropic. Se abre con <span class="mono">claude</span>.</p></div>
-        <div class="opcion"><h3>Codex CLI <span class="etq pago">con plan o saldo</span></h3><p>De OpenAI. Con cuenta de ChatGPT o saldo de API. Se abre con <span class="mono">codex</span>.</p></div>
-      </div>
-      <div class="cmd"><div class="lbl">Terminal · el recomendado</div><pre>npm install -g @google/gemini-cli</pre></div>
-      <div class="cmd"><div class="lbl">Opcionales</div><pre>npm install -g @anthropic-ai/claude-code   <span class="c"># Claude Code</span>
-npm install -g @openai/codex               <span class="c"># Codex CLI</span></pre></div>
-      </div>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> un agente es una IA que, además de conversar, puede leer los archivos de tu proyecto y ejecutar órdenes en tu computador, siempre pidiéndote permiso antes. Este vive en la terminal.</p>
+      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+
+      <ol class="pasitos">
+        <li>Abre una terminal nueva y pega esto.<span data-nivel="basico"> Tarda uno o dos minutos y muestra bastante texto: es normal.</span></li>
+      </ol>
+      <div class="cmd" data-ia="claude"><pre>npm install -g @anthropic-ai/claude-code</pre></div>
+      <div class="cmd" data-ia="gemini"><pre>npm install -g @google/gemini-cli</pre></div>
+      <div class="cmd" data-ia="gpt"><pre>npm install -g @openai/codex</pre></div>
       <div data-so="win"><p class="nota"><b>Si PowerShell dice que «la ejecución de scripts está deshabilitada»,</b> ejecuta esto una vez y vuelve a intentarlo:</p>
         <div class="cmd"><pre>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</pre></div></div>
       <div data-so="mac linux"><p class="nota"><b>Si npm pide permisos («EACCES»),</b> no uses <span class="mono">sudo</span>: es mejor instalar Node.js con el instalador oficial o con <a href="https://github.com/nvm-sh/nvm" target="_blank" rel="noopener">nvm</a>, que dejan los paquetes globales en tu usuario.</p></div>
-      <div data-nivel="inter">
-      <p>Ábrelo por primera vez para iniciar sesión (abre el navegador y te pide entrar con tu cuenta):</p>
-      <div class="cmd"><pre>gemini</pre></div>
-      <p>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em>. Para salir: <span class="mono">/quit</span> o <span class="mono">Ctrl+C</span> dos veces.</p>
-      </div>
-      <label class="check"><input type="checkbox" data-hecho><span>Tengo un agente instalado, con la sesión iniciada, y me respondió</span></label>
+      <ol class="pasitos" start="2">
+        <li>Ábrelo escribiendo su nombre y presionando <span class="mono">Enter</span>:</li>
+      </ol>
+      <div class="cmd" data-ia="claude"><pre>claude</pre></div>
+      <div class="cmd" data-ia="gemini"><pre>gemini</pre></div>
+      <div class="cmd" data-ia="gpt"><pre>codex</pre></div>
+      <ol class="pasitos" start="3">
+        <li>La primera vez te pide iniciar sesión<span data-nivel="basico"> (elige con las flechas del teclado y presiona <span class="mono">Enter</span>)</span>: <span data-ia="claude">entra con tu cuenta de Claude, la misma del paso 03.</span><span data-ia="gemini">elige entrar con Google y usa tu cuenta de Gmail.</span><span data-ia="gpt">elige entrar con ChatGPT y usa tu cuenta.</span> Se abre el navegador; autorizas y vuelves a la terminal.</li>
+        <li>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em>. Para salir, <span class="mono">Ctrl + C</span> dos veces.</li>
+      </ol>
+      <p class="nota" data-ia="claude"><b>Igual que en el editor,</b> Claude Code pide Claude Pro (o Max) o saldo de API.</p>
+      <p class="nota ok" data-ia="gemini"><b>Gratis</b> con tu cuenta de Google.</p>
+      <p class="nota" data-ia="gpt"><b>Igual que en el editor,</b> Codex pide un plan pago de ChatGPT o saldo de API.</p>
+      <label class="check"><input type="checkbox" data-hecho><span>Tengo <span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini CLI</span><span data-ia="gpt">Codex CLI</span> en la terminal, con la sesión iniciada, y me respondió</span></label>
     </div>
       <a class="siguiente" href="#llaves">Siguiente: una llave de API ↓</a>
   </section>
@@ -455,30 +484,44 @@ npm install -g @openai/codex               <span class="c"># Codex CLI</span></p
   <section class="paso" id="llaves" data-paso>
     <div class="cab"><div class="num">05</div><div><h2>Una llave de API <span class="sesion">sesión 03</span></h2><p class="para">Para que tu propio código hable con el modelo.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Con la de Gemini basta: es gratis para empezar y es la que usamos en la prueba final.</p>
-      <ol class="pasitos" data-nivel="basico">
-        <li>Entra a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google. Si te pide aceptar términos, acéptalos.</li>
-        <li>Haz clic en <em>Create API key</em>. Aparece una clave larga que empieza por <span class="mono">AIza…</span>.</li>
-        <li>Cópiala con el botón de copiar y guárdala en un lugar seguro: una nota privada o tu gestor de contraseñas. En el paso siguiente la usamos.</li>
-      </ol>
-      <p data-nivel="inter">Una llave de API es una contraseña que le da a tu programa acceso al modelo. Con <strong>una</strong> basta; la de Gemini tiene nivel gratuito y es la que usaremos en la prueba.</p>
-      <div class="opciones" data-nivel="inter">
-        <div class="opcion"><h3>Gemini <span class="etq rec">gratis para empezar</span></h3><p>En <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → <em>Create API key</em>. Solo con tu cuenta de Google.</p></div>
-        <div class="opcion"><h3>Anthropic (Claude) <span class="etq pago">con saldo</span></h3><p>En <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> → <em>API Keys</em>. Necesita una recarga pequeña (desde 5 USD).</p></div>
-        <div class="opcion"><h3>OpenAI (GPT) <span class="etq pago">con saldo</span></h3><p>En <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>. También con una recarga pequeña.</p></div>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Es distinta de tu cuenta del chat: aunque pagues Claude Pro o ChatGPT Plus, la llave se paga aparte. La de Gemini es gratis para empezar.</p>
+      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+
+      <div data-ia="gemini">
+        <ol class="pasitos">
+          <li>Entra a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google. Si te pide aceptar términos, acéptalos.</li>
+          <li>Haz clic en <em>Create API key</em>. Aparece una clave larga que empieza por <span class="mono">AIza…</span>.</li>
+          <li>Cópiala y guárdala en un lugar seguro: una nota privada o tu gestor de contraseñas.</li>
+        </ol>
       </div>
+      <div data-ia="claude">
+        <ol class="pasitos">
+          <li>Entra a <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> y crea tu cuenta.</li>
+          <li>En <em>Billing</em>, carga saldo: con la recarga mínima (5 USD) sobra para el bootcamp.</li>
+          <li>En <em>API Keys</em>, haz clic en <em>Create Key</em>. Empieza por <span class="mono">sk-ant-…</span>: cópiala y guárdala en un lugar seguro.</li>
+        </ol>
+      </div>
+      <div data-ia="gpt">
+        <ol class="pasitos">
+          <li>Entra a <a href="https://platform.openai.com/" target="_blank" rel="noopener">platform.openai.com</a> y crea tu cuenta.</li>
+          <li>En <em>Billing</em>, carga saldo: con la recarga mínima (5 USD) sobra para el bootcamp.</li>
+          <li>En <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API keys</a>, haz clic en <em>Create new secret key</em>. Empieza por <span class="mono">sk-…</span>: cópiala y guárdala en un lugar seguro.</li>
+        </ol>
+      </div>
+      <p class="nota ok" data-ia="claude gpt"><b>¿No quieres pagar saldo?</b> Elige <em>Gemini</em> arriba: su llave es gratis y la prueba final funciona igual. Puedes seguir usando Claude o GPT en el editor.</p>
       <p class="nota"><b>Cuida tu llave como una contraseña.</b> No la pegues en el chat de la clase, no la subas a GitHub y no la mandes por WhatsApp. Si se te escapa, bórrala en la misma página y crea otra: tarda un minuto. En las de pago, pon un límite de gasto mensual.</p>
-      <p data-nivel="inter">Guárdala por ahora en un lugar seguro (tu gestor de contraseñas, por ejemplo). En el siguiente paso la ponemos donde va.</p>
-      <label class="check"><input type="checkbox" data-hecho><span>Tengo al menos la llave de Gemini, guardada en un lugar seguro</span></label>
+      <label class="check"><input type="checkbox" data-hecho><span>Tengo mi llave de <span data-ia="claude">Anthropic</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">OpenAI</span>, guardada en un lugar seguro</span></label>
     </div>
       <a class="siguiente" href="#prueba">Siguiente: la prueba final ↓</a>
   </section>
 
   <!-- 06 -->
   <section class="paso" id="prueba" data-paso>
-    <div class="cab"><div class="num">06</div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de cinco líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
+    <div class="cab"><div class="num">06</div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de pocas líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. Copia y pega cada bloque, uno a la vez, y espera a que termine antes del siguiente.</p>
+      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+
       <ol class="pasitos">
         <li>Crea la carpeta del bootcamp y ábrela en VS Code:</li>
       </ol>
@@ -488,21 +531,24 @@ code .</pre></div>
       <div class="cmd" data-so="mac linux"><div class="lbl">Terminal</div><pre>mkdir -p ~/bootcamp-agentic
 cd ~/bootcamp-agentic
 code .</pre></div>
+      <p class="para">Con Antigravity o Cursor, en vez de la última línea abre la carpeta desde su menú <em>Archivo → Abrir carpeta</em>.</p>
       <ol class="pasitos" start="2">
-        <li>En VS Code abre la terminal integrada (<em>Terminal → Nueva terminal</em>) y crea un entorno de Python con sus librerías:</li>
+        <li>En el editor abre la terminal integrada (<em>Terminal → Nueva terminal</em>) y crea un entorno de Python con sus librerías:</li>
       </ol>
-      <div class="cmd" data-so="win"><div class="lbl">Terminal de VS Code</div><pre>py -m venv .venv
+      <div class="cmd" data-so="win"><div class="lbl">Terminal del editor</div><pre>py -m venv .venv
 .venv\Scripts\activate
 pip install google-genai python-dotenv openai anthropic</pre></div>
-      <div class="cmd" data-so="mac linux"><div class="lbl">Terminal de VS Code</div><pre>python3 -m venv .venv
+      <div class="cmd" data-so="mac linux"><div class="lbl">Terminal del editor</div><pre>python3 -m venv .venv
 source .venv/bin/activate
 pip install google-genai python-dotenv openai anthropic</pre></div>
       <p class="para">Al activarlo, la línea de la terminal empieza con <span class="mono">(.venv)</span>. Así sabes que estás dentro.<span data-nivel="basico"> El «entorno» es una caja aparte para las librerías de este proyecto, para no desordenar el resto del computador. La instalación tarda un minuto.</span></p>
-      <p class="nota ok" data-nivel="basico"><b>Para crear un archivo en VS Code:</b> en el panel de la izquierda pasa el mouse sobre el nombre de la carpeta (<em>BOOTCAMP-AGENTIC</em>) y haz clic en el ícono de la hoja con un <em>+</em>. Escribe el nombre exacto, presiona <span class="mono">Enter</span>, pega el contenido y guarda con <span class="mono" data-so="win linux">Ctrl + S</span><span class="mono" data-so="mac">⌘ + S</span>.</p>
+      <p class="nota ok" data-nivel="basico"><b>Para crear un archivo en el editor:</b> en el panel de la izquierda pasa el mouse sobre el nombre de la carpeta (<em>BOOTCAMP-AGENTIC</em>) y haz clic en el ícono de la hoja con un <em>+</em>. Escribe el nombre exacto, presiona <span class="mono">Enter</span>, pega el contenido y guarda con <span class="mono" data-so="win linux">Ctrl + S</span><span class="mono" data-so="mac">⌘ + S</span>.</p>
       <ol class="pasitos" start="3">
         <li>Crea un archivo llamado <span class="mono">.env</span> (con el punto al principio) y pega tu llave así, sin comillas ni espacios:</li>
       </ol>
-      <div class="cmd"><div class="lbl">.env</div><pre>GEMINI_API_KEY=pega-aqui-tu-llave</pre></div>
+      <div class="cmd" data-ia="gemini"><div class="lbl">.env</div><pre>GEMINI_API_KEY=pega-aqui-tu-llave</pre></div>
+      <div class="cmd" data-ia="claude"><div class="lbl">.env</div><pre>ANTHROPIC_API_KEY=pega-aqui-tu-llave</pre></div>
+      <div class="cmd" data-ia="gpt"><div class="lbl">.env</div><pre>OPENAI_API_KEY=pega-aqui-tu-llave</pre></div>
       <ol class="pasitos" start="4">
         <li>Y uno llamado <span class="mono">.gitignore</span>, para que la llave nunca termine en GitHub:</li>
       </ol>
@@ -511,7 +557,7 @@ pip install google-genai python-dotenv openai anthropic</pre></div>
       <ol class="pasitos" start="5">
         <li>Crea <span class="mono">prueba.py</span> con esto:</li>
       </ol>
-      <div class="cmd"><div class="lbl">prueba.py</div><pre>from dotenv import load_dotenv
+      <div class="cmd" data-ia="gemini"><div class="lbl">prueba.py · Gemini</div><pre>from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()                      <span class="c"># lee la llave del archivo .env</span>
@@ -522,6 +568,29 @@ respuesta = cliente.models.generate_content(
     contents="Saluda al Bootcamp AGENTIC en una frase corta y entusiasta.",
 )
 print(respuesta.text)</pre></div>
+      <div class="cmd" data-ia="claude"><div class="lbl">prueba.py · Claude</div><pre>from dotenv import load_dotenv
+import anthropic
+
+load_dotenv()                      <span class="c"># lee la llave del archivo .env</span>
+cliente = anthropic.Anthropic()
+
+mensaje = cliente.messages.create(
+    model="claude-haiku-5-5",
+    max_tokens=100,
+    messages=[{"role": "user", "content": "Saluda al Bootcamp AGENTIC en una frase corta y entusiasta."}],
+)
+print(mensaje.content[0].text)</pre></div>
+      <div class="cmd" data-ia="gpt"><div class="lbl">prueba.py · GPT</div><pre>from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()                      <span class="c"># lee la llave del archivo .env</span>
+cliente = OpenAI()
+
+respuesta = cliente.responses.create(
+    model="gpt-5-mini",
+    input="Saluda al Bootcamp AGENTIC en una frase corta y entusiasta.",
+)
+print(respuesta.output_text)</pre></div>
       <ol class="pasitos" start="6">
         <li>Ejecútalo:</li>
       </ol>
@@ -529,30 +598,11 @@ print(respuesta.text)</pre></div>
       <div class="cmd" data-so="mac linux"><pre>python3 prueba.py</pre></div>
       <p class="nota ok"><b>Si ves una frase de saludo, lo lograste.</b> Tu editor, tu terminal, Python y tu llave de API funcionan juntos.</p>
 
-      <details>
-        <summary>¿Tienes llave de Anthropic? Prueba también con Claude</summary>
-        <div>
-          <p>Agrega <span class="mono">ANTHROPIC_API_KEY=…</span> en el <span class="mono">.env</span> y crea <span class="mono">prueba_claude.py</span>:</p>
-          <div class="cmd"><pre>from dotenv import load_dotenv
-import anthropic
-
-load_dotenv()
-cliente = anthropic.Anthropic()
-
-mensaje = cliente.messages.create(
-    model="claude-haiku-5-5",
-    max_tokens=100,
-    messages=[{"role": "user", "content": "Saluda al Bootcamp AGENTIC en una frase."}],
-)
-print(mensaje.content[0].text)</pre></div>
-        </div>
-      </details>
-
       <label class="check"><input type="checkbox" data-hecho><span><span class="mono">prueba.py</span> me respondió con un saludo</span></label>
 
       <div class="final" id="listo" hidden>
         <h3>Todo listo. Nos vemos el 24 de noviembre a las 6:00 p. m.</h3>
-        <p style="margin:0;color:var(--soft)">Llega cinco minutos antes, con el computador conectado a la corriente y la carpeta <span class="mono">bootcamp-agentic</span> abierta en VS Code.</p>
+        <p style="margin:0;color:var(--soft)">Llega cinco minutos antes, con el computador conectado a la corriente y la carpeta <span class="mono">bootcamp-agentic</span> abierta en tu editor.</p>
       </div>
     </div>
   </section>
@@ -564,7 +614,7 @@ print(mensaje.content[0].text)</pre></div>
       <details><summary>«no se reconoce como un comando» / «command not found»</summary><div><p>La terminal se abrió antes de instalar. Ciérrala del todo —también la de VS Code— y abre una nueva. Si sigue igual, reinicia el computador. En Windows, con Python, reinstálalo marcando <em>«Add python.exe to PATH»</em>.</p></div></details>
       <details><summary>En Windows, <span class="mono">python</span> abre la Microsoft Store</summary><div><p>Usa <span class="mono">py</span> en lugar de <span class="mono">python</span>, como en esta guía. O desactiva el atajo en <em>Configuración → Aplicaciones → Alias de ejecución de aplicaciones</em>.</p></div></details>
       <details><summary><span class="mono">.venv\Scripts\activate</span> da error de permisos</summary><div><p>Es la política de PowerShell. Ejecuta <span class="mono">Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</span> y vuelve a activarlo.</p></div></details>
-      <details><summary>La prueba dice «API key not valid» o «401»</summary><div><p>Revisa el <span class="mono">.env</span>: el nombre exacto (<span class="mono">GEMINI_API_KEY</span>), sin espacios alrededor del igual, sin comillas, y que el archivo se llame <span class="mono">.env</span> y no <span class="mono">.env.txt</span>. En Windows, activa <em>«Extensiones de nombre de archivo»</em> en el Explorador para verlo.</p></div></details>
+      <details><summary>La prueba dice «API key not valid» o «401»</summary><div><p>Revisa el <span class="mono">.env</span>: el nombre exacto (<span class="mono">GEMINI_API_KEY</span>, <span class="mono">ANTHROPIC_API_KEY</span> u <span class="mono">OPENAI_API_KEY</span>), sin espacios alrededor del igual, sin comillas, y que el archivo se llame <span class="mono">.env</span> y no <span class="mono">.env.txt</span>. En Windows, activa <em>«Extensiones de nombre de archivo»</em> en el Explorador para verlo.</p></div></details>
       <details><summary>«429», «quota» o «rate limit»</summary><div><p>Se agotó el cupo del momento. Espera un minuto y vuelve a intentar. Con el nivel gratuito de Gemini pasa si se hacen muchas pruebas seguidas.</p></div></details>
       <details><summary>El computador es de la empresa y no me deja instalar</summary><div><p>Pide a tu área de sistemas permisos de instalación para VS Code, Git, Node.js y Python, o usa un computador personal. Las redes corporativas a veces bloquean <span class="mono">npm</span> o las APIs: prueba desde otra red antes del bootcamp.</p></div></details>
       <details><summary>Nada de lo anterior</summary><div><p>Anota el mensaje de error exacto —una captura sirve— y tráelo a la primera sesión, o escríbele al equipo del bootcamp antes. Con el mensaje, casi siempre es un minuto.</p></div></details>
@@ -594,6 +644,25 @@ print(mensaje.content[0].text)</pre></div>
     });
     try { localStorage.setItem('agentic-so', s); } catch (_) {}
   }
+  // La IA: Claude, Gemini o GPT. Se elige en los pasos 03 a 06 y se recuerda.
+  var iaGuardada = null;
+  try { iaGuardada = localStorage.getItem('agentic-ia'); } catch (_) {}
+  elegirIA(iaGuardada || 'claude');
+  function elegirIA(x) {
+    x = ['claude', 'gemini', 'gpt'].indexOf(x) >= 0 ? x : 'claude';
+    document.body.classList.remove('ia-claude', 'ia-gemini', 'ia-gpt');
+    document.body.classList.add('ia-' + x);
+    document.querySelectorAll('[data-ia-elige]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.iaElige === x ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-ia-elige]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      elegirIA(b.dataset.iaElige);
+      try { localStorage.setItem('agentic-ia', b.dataset.iaElige); } catch (_) {}
+    });
+  });
+
   // Nivel: básico (explicado desde cero) o intermedio (directo). Hasta elegirlo, las tarjetas se marcan.
   var casillas = null;
   var nivel = 'basico';
@@ -639,6 +708,10 @@ print(mensaje.content[0].text)</pre></div>
     document.documentElement.style.setProperty('--barra', alto + 'px');
     // Apenas el de la portada empieza a quedar debajo de la barra, pasa arriba.
     document.body.classList.toggle('so-fijo', abajo.getBoundingClientRect().top < alto + 8);
+    // Los pasos más altos que la pantalla también se ajustan a su final.
+    document.querySelectorAll('section.paso').forEach(function (p) {
+      p.classList.toggle('largo', p.offsetHeight > window.innerHeight - alto + 60);
+    });
   }
   medir();
   window.addEventListener('scroll', medir, { passive: true });
@@ -646,7 +719,7 @@ print(mensaje.content[0].text)</pre></div>
   // La barra cambia de alto cuando carga la tipografía (o al angostar la ventana):
   // se vuelve a medir para que cada bloque quede justo debajo de ella.
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
-  if (window.ResizeObserver) { new ResizeObserver(medir).observe(barra); }
+  if (window.ResizeObserver) { var ro = new ResizeObserver(medir); ro.observe(barra); ro.observe(document.querySelector('main')); }
 
   // Copiar cada bloque, sin los comentarios.
   document.querySelectorAll('.cmd pre').forEach(function (pre) {
@@ -735,7 +808,7 @@ print(mensaje.content[0].text)</pre></div>
     // Ya se ve el final del paso que falta (o no hay más página): bajar es intentar pasar.
     var p = document.querySelector('section.paso.actual');
     return !!p && !document.body.classList.contains('con-ayuda')
-      && (p.getBoundingClientRect().bottom <= window.innerHeight + 4
+      && ((p.querySelector('.ayuda-link') || p).getBoundingClientRect().bottom <= window.innerHeight + 4
         || window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4);
   }
   document.querySelectorAll('.siguiente').forEach(function (a) {
