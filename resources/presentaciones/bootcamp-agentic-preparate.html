@@ -52,6 +52,15 @@
   header.portada .kicker{margin-top:auto}
   .elige{margin-top:auto;padding-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem}
   .elige .para{margin:0}
+  /* Mientras no se elija, un aro recorre las opciones una por una. */
+  .so.llamando button{position:relative}
+  .so.llamando button::after{content:"";position:absolute;inset:3px;border-radius:99px;pointer-events:none;
+    box-shadow:0 0 0 2px var(--warn),0 0 14px color-mix(in srgb,var(--warn) 55%,transparent);
+    opacity:0;animation:llamar 3.6s ease-in-out infinite}
+  .so.llamando button:nth-child(2)::after{animation-delay:1.2s}
+  .so.llamando button:nth-child(3)::after{animation-delay:2.4s}
+  @keyframes llamar{0%{opacity:0;transform:scale(.85)} 10%{opacity:1;transform:scale(1)} 26%{opacity:1} 33%,100%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){.so.llamando button::after{animation:none}}
 
   /* resumen */
   .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:2.5rem 0 .5rem}
@@ -149,7 +158,7 @@
     </div>
     <div class="elige">
       <p class="para">Elige tu sistema operativo: los comandos cambian solos.</p>
-      <div class="so" role="group" aria-label="Tu sistema operativo">
+      <div class="so llamando" role="group" aria-label="Tu sistema operativo">
         <button type="button" data-elige="win" aria-pressed="true">Windows</button>
         <button type="button" data-elige="mac" aria-pressed="false">macOS</button>
         <button type="button" data-elige="linux" aria-pressed="false">Linux</button>
@@ -403,8 +412,15 @@ print(mensaje.content[0].text)</pre></div>
     });
     try { localStorage.setItem('agentic-so', s); } catch (_) {}
   }
+  // Hasta que la persona elige (aunque sea el que ya estaba), las opciones se marcan.
+  var llamando = document.querySelector('.so.llamando');
+  try { if (localStorage.getItem('agentic-so-elegido')) { llamando.classList.remove('llamando'); } } catch (_) {}
   document.querySelectorAll('[data-elige]').forEach(function (b) {
-    b.addEventListener('click', function () { elegir(b.dataset.elige); });
+    b.addEventListener('click', function () {
+      elegir(b.dataset.elige);
+      llamando.classList.remove('llamando');
+      try { localStorage.setItem('agentic-so-elegido', '1'); } catch (_) {}
+    });
   });
 
   // El selector va al fondo de la portada; al bajar, queda pegado en la barra.
