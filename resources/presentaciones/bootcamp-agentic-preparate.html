@@ -274,6 +274,43 @@
   .pedido .mano{position:absolute;right:-.4rem;bottom:-.8rem;font-size:1.3rem}
   .pedido .quien{display:block;font:600 10px Inter,sans-serif;letter-spacing:.08em;color:#9cc4e6;margin-bottom:.3rem}
 
+  /* Las escenas se numeran solas: las que no aplican (otro sistema u otra IA) no cuentan. */
+  .escenas{counter-reset:esc} .escenas .escena::before{counter-increment:esc;content:counter(esc)}
+  .vista[data-ia]{display:grid !important}
+  .previo > .vista{border-bottom:1px solid var(--rule);padding-bottom:1.6rem}
+  @media (max-width:760px){.vista[data-ia]{grid-template-columns:1fr}}
+
+  /* El panel de Extensiones del editor. */
+  .extv{width:100%;max-width:24rem;border-radius:9px;overflow:hidden;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);
+    font:11.5px Inter,sans-serif;color:#ccc;text-align:left}
+  .extv .et{padding:.45rem .7rem;font:600 10px Inter,sans-serif;letter-spacing:.08em;color:#bbb}
+  .extv .eb{margin:0 .6rem .5rem;padding:.35rem .5rem;border:1px solid #0078d4;border-radius:3px;background:#2a2a2a;color:#fff}
+  .extv .er{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .7rem;border-top:1px solid #262626}
+  .extv .er.si{background:#04395e;outline:2px solid var(--warn);outline-offset:-2px}
+  .extv .er.no{opacity:.45}
+  .extv .er b{display:block;color:#fff} .extv .er small{display:block;color:#9aa;font-size:10px}
+  .extv .er > div{flex:1;min-width:0}
+  .extv .inst{position:relative;align-self:center;padding:.2rem .6rem;border-radius:3px;background:#0078d4;color:#fff;font-size:10.5px}
+  .extv .inst .mano{position:absolute;right:-.6rem;bottom:-1rem;font-size:1.2rem}
+  .eico{display:grid;place-items:center;flex:0 0 auto;width:2.2rem;height:2.2rem;border-radius:8px;font-style:normal;font-size:1.15rem;color:#fff}
+  .eico.claude{background:#d97757} .eico.gemini{background:linear-gradient(135deg,#4f8df5,#a55ef0)} .eico.gpt{background:#111;border:1px solid #444}
+  .eico.chico{width:1.6rem;height:1.6rem;font-size:.9rem;border-radius:6px}
+
+  /* Iniciar sesión. */
+  .entrar{width:100%;max-width:21rem;border-radius:9px;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);
+    padding:1rem;display:grid;justify-items:center;gap:.55rem;font:12px Inter,sans-serif;color:#ccc;text-align:center}
+  .entrar .eico{width:2.8rem;height:2.8rem;font-size:1.4rem}
+  .entrar b{color:#fff;font-size:13px}
+  .entrar .boton-e{position:relative;padding:.4rem 1.2rem;border-radius:5px;background:#0078d4;color:#fff;font-weight:600;outline:2px solid var(--warn);outline-offset:3px}
+  .entrar .boton-e .mano{position:absolute;right:-.7rem;bottom:-1rem;font-size:1.2rem}
+  .navg.chica{max-width:21rem} .navg.chica .pag{padding:1rem;text-align:center}
+  .navg.chica .boton{font-size:12px}
+
+  /* Git para Windows. */
+  .ventana .vg{display:flex;gap:.8rem;padding:.9rem;background:#fff;align-items:flex-start}
+  .ventana .vg .logo-git{display:grid;place-items:center;flex:0 0 auto;width:2.6rem;height:2.6rem;border-radius:6px;background:#f05133;color:#fff;font:700 15px "JetBrains Mono",monospace;transform:rotate(45deg)}
+  .ventana .vg .logo-git span{transform:rotate(-45deg)}
+
   /* La paleta de comandos. */
   .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
   .paleta .campo{border:1px solid #0078d4;border-radius:3px;padding:.35rem .5rem;background:#3c3c3c;color:#fff}
@@ -722,27 +759,99 @@ hola
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> es una extensión, un complemento de tu editor, para trabajar con una IA ahí mismo, al lado de tu código: le pides algo, ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
       <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
+      <div data-nivel="basico" class="escenas">
+        <p class="nota ok" data-ia="gemini"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo y pasa a la escena de «Pruébala».</p>
+        <div class="previo" data-so="win" data-ia="claude"><div class="vista">
+          <figure class="fig">
+            <div class="ventana">
+              <div class="vt"><span>Git 2.47.1 Setup</span><i>—&nbsp;✕</i></div>
+              <div class="vg"><div class="logo-git"><span>git</span></div><div><b style="font-size:13px">Information</b><br><small style="color:#555">Please read the following important information before continuing.</small></div></div>
+              <div class="vb"><span class="si">Next &gt;<span class="mano" aria-hidden="true">👆</span></span><span>Cancel</span></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Antes: instala Git</h3>
+            <p>En Windows, Claude Code necesita Git. Entra a <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a>, descarga <em>«64-bit Git for Windows Setup»</em>, ábrelo y dale <strong>Next</strong> a todo: las opciones que trae están bien.</p>
+            <p class="para">Al terminar, cierra VS Code y vuelve a abrirlo. Lo demás (Node.js, Python) lo instala la IA en el paso 03.</p>
+          </div>
+        </div></div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="extv">
+              <div class="et">EXTENSIONS: MARKETPLACE</div>
+              <div class="eb">⌕ <span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span><span class="cursor"></span></div>
+              <div class="er si"><span data-ia="claude"><i class="eico claude">✳</i></span><span data-ia="gemini"><i class="eico gemini">✦</i></span><span data-ia="gpt"><i class="eico gpt">◎</i></span><div><b><span data-ia="claude">Claude Code for VS Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span></b><small><span data-ia="claude">Anthropic ✓</span><span data-ia="gemini">Google ✓</span><span data-ia="gpt">OpenAI ✓</span></small><small><span data-ia="claude">Claude, dentro de tu editor</span><span data-ia="gemini">Asistente de IA de Google</span><span data-ia="gpt">El agente de OpenAI</span></small></div><span class="inst">Install<span class="mano" aria-hidden="true">👆</span></span></div>
+              <div class="er no"><i class="eico" style="background:#333">?</i><div><b>Otra extensión parecida</b><small>Otro autor</small></div></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Busca la extensión</h3>
+            <p>En VS Code, haz clic en el ícono de cuatro cuadritos de la izquierda (<em>Extensiones</em>, el 1 del paso 01).</p>
+            <p>Escribe <strong><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span></strong> en el buscador y, en la que publica <strong><span data-ia="claude">Anthropic</span><span data-ia="gemini">Google</span><span data-ia="gpt">OpenAI</span></strong>, haz clic en <strong>Install</strong>.</p>
+            <p class="para">Fíjate en el autor: hay extensiones de otros con nombres parecidos.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="flujo">
+              <div class="entrar"><span data-ia="claude"><i class="eico claude">✳</i></span><span data-ia="gemini"><i class="eico gemini">✦</i></span><span data-ia="gpt"><i class="eico gpt">◎</i></span><b><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span></b><span><span data-ia="claude">Inicia sesión con tu cuenta de Claude</span><span data-ia="gemini">Inicia sesión con tu cuenta de Google</span><span data-ia="gpt">Inicia sesión con tu cuenta de ChatGPT</span></span><span class="boton-e">Sign in<span class="mano" aria-hidden="true">👆</span></span></div>
+              <span class="flecha">↓</span>
+              <div class="navg chica">
+                <div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url"><span data-ia="claude">claude.ai</span><span data-ia="gemini">accounts.google.com</span><span data-ia="gpt">chatgpt.com</span></span></div>
+                <div class="pag"><p style="margin:0 0 .7rem;color:#333;font-size:13px">¿Permitir que VS Code use tu cuenta?</p><span class="boton">Autorizar<span class="mano" aria-hidden="true">👆</span></span></div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Ábrela e inicia sesión</h3>
+            <p>Aparece su ícono <span data-ia="claude">(una chispa naranja, arriba a la derecha o en la barra de la izquierda)</span><span data-ia="gemini">(una estrella, en la barra de la izquierda)</span><span data-ia="gpt">(en la barra de la izquierda o en el panel de la derecha)</span>. Haz clic en él y luego en <strong>Sign in</strong>.</p>
+            <p>Se abre el navegador: entra con tu cuenta <span data-ia="claude">de Claude</span><span data-ia="gemini">de Google (Gmail)</span><span data-ia="gpt">de ChatGPT</span>, haz clic en <strong>Autorizar</strong> y vuelve a VS Code.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="chatv">
+              <div class="ct"><span data-ia="claude">CLAUDE CODE</span><span data-ia="gemini">GEMINI</span><span data-ia="gpt">CODEX</span></div>
+              <div class="cc">
+                <div class="yo">¿Qué hay en esta carpeta?</div>
+                <div class="ia">Por ahora la carpeta está vacía. ¿Quieres que creemos algo juntos?</div>
+              </div>
+              <div class="entrada">Pregúntale algo…</div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Pruébala</h3>
+            <p>En la caja de abajo del chat escribe <em>«¿Qué hay en esta carpeta?»</em> y presiona <span class="mono">Enter</span>. Si te responde, quedó lista.</p>
+            <p class="para">La respuesta va a ser distinta a la de la imagen: depende de lo que tengas abierto.</p>
+          </div>
+        </div>
+      </div>
+
       <div data-ia="claude">
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+        <ol class="pasitos" data-nivel="inter">
           <li>Busca <strong>Claude Code</strong> e instala <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>.</li>
           <li>Ábrela desde su ícono (una chispa naranja) e inicia sesión con tu cuenta de Claude: se abre el navegador, autorizas y vuelves al editor.</li>
         </ol>
-        <p class="nota" data-so="win"><b>En Windows, Claude Code necesita Git: instálalo antes de la extensión.</b> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, dale <em>Next</em> a todo, y cierra y vuelve a abrir VS Code. (En el paso 03 la IA instala lo demás.)</p>
+        <p class="nota" data-so="win" data-nivel="inter"><b>En Windows, Claude Code necesita Git: instálalo antes de la extensión.</b> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, dale <em>Next</em> a todo, y cierra y vuelve a abrir VS Code. (En el paso 03 la IA instala lo demás.)</p>
         <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
       </div>
       <div data-ia="gemini">
-        <p class="nota ok"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo.</p>
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+        <p class="nota ok" data-nivel="inter"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo.</p>
+        <ol class="pasitos" data-nivel="inter">
           <li>Busca <strong>Gemini Code Assist</strong> e instala la que publica <em>Google</em>.</li>
           <li>Ábrela desde su ícono en la barra de la izquierda e inicia sesión con tu cuenta de Google (Gmail).</li>
         </ol>
         <p class="nota ok"><b>Es gratis</b> para uso personal con tu cuenta de Google.</p>
       </div>
       <div data-ia="gpt">
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+        <ol class="pasitos" data-nivel="inter">
           <li>Busca <strong>Codex</strong> e instala la que publica <em>OpenAI</em>.</li>
           <li>Ábrela desde su ícono e inicia sesión con tu cuenta de ChatGPT: se abre el navegador, autorizas y vuelves al editor.</li>
         </ol>
