@@ -296,6 +296,31 @@
   .eico.claude{background:#d97757} .eico.gemini{background:linear-gradient(135deg,#4f8df5,#a55ef0)} .eico.gpt{background:#111;border:1px solid #444}
   .eico.chico{width:1.6rem;height:1.6rem;font-size:.9rem;border-radius:6px}
 
+  /* Extensiones, como se ven de verdad: barra de íconos, buscador y lista. */
+  .extw{display:grid;grid-template-columns:2.4rem 1fr;width:100%;max-width:25rem;border-radius:9px;overflow:hidden;background:#181818;
+    border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);font:11.5px Inter,sans-serif;color:#ccc;text-align:left}
+  .extw .act{display:grid;align-content:start;justify-items:center;gap:.65rem;padding:.6rem 0;border-right:1px solid #2b2b2b;background:#181818}
+  .extw .act svg{width:1.25rem;height:1.25rem;color:#858585}
+  .extw .act .on{position:relative;color:#fff;outline:2px solid var(--warn);outline-offset:4px;border-radius:2px}
+  .extw .act .mk{margin:0;width:1.15rem;height:1.15rem;font-size:10px}
+  .extw .lista-e{min-width:0}
+  .extw .et{padding:.5rem .7rem .4rem;font:600 10px Inter,sans-serif;letter-spacing:.06em;color:#bbb;display:flex;align-items:center}
+  .extw .eb{display:flex;align-items:center;margin:0 .6rem .5rem;padding:.35rem .5rem;border:1px solid #0078d4;border-radius:3px;background:#2a2a2a;color:#fff;
+    outline:2px solid var(--warn);outline-offset:2px}
+  .extw .eb .mk{margin-left:auto;width:1.15rem;height:1.15rem;font-size:10px}
+  .extw .er{display:flex;gap:.55rem;align-items:center;padding:.5rem .6rem;border-top:1px solid #262626}
+  .extw .er > div{flex:1;min-width:0}
+  .extw .er b{display:block;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .extw .er small{display:block;color:#9aa;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .extw .er .autor{display:flex;align-items:center;gap:.25rem;color:#ccc}
+  .extw .verif{width:.8rem;height:.8rem;flex:0 0 auto}
+  .extw .er.si{background:#04395e;outline:2px solid var(--warn);outline-offset:-2px}
+  .extw .er.no{opacity:.45}
+  .extw .inst{position:relative;flex:0 0 auto;padding:.18rem .55rem;border-radius:3px;background:#0078d4;color:#fff;font-size:10.5px}
+  .extw .er.si .inst{outline:2px solid var(--warn);outline-offset:2px}
+  .extw .inst .mano{position:absolute;right:-.6rem;bottom:-1rem;font-size:1.2rem}
+  .extw .er .mk{margin:0 0 0 .2rem;width:1.15rem;height:1.15rem;font-size:10px}
+
   /* Iniciar sesión. */
   .entrar{width:100%;max-width:21rem;border-radius:9px;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);
     padding:1rem;display:grid;justify-items:center;gap:.55rem;font:12px Inter,sans-serif;color:#ccc;text-align:center}
@@ -779,19 +804,26 @@ hola
 
         <div class="vista">
           <figure class="fig">
-            <div class="extv">
-              <div class="et">EXTENSIONS: MARKETPLACE</div>
-              <div class="eb">⌕ <span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span><span class="cursor"></span></div>
-              <div class="er si"><span data-ia="claude"><i class="eico claude">✳</i></span><span data-ia="gemini"><i class="eico gemini">✦</i></span><span data-ia="gpt"><i class="eico gpt">◎</i></span><div><b><span data-ia="claude">Claude Code for VS Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span></b><small><span data-ia="claude">Anthropic ✓</span><span data-ia="gemini">Google ✓</span><span data-ia="gpt">OpenAI ✓</span></small><small><span data-ia="claude">Claude, dentro de tu editor</span><span data-ia="gemini">Asistente de IA de Google</span><span data-ia="gpt">El agente de OpenAI</span></small></div><span class="inst">Install<span class="mano" aria-hidden="true">👆</span></span></div>
-              <div class="er no"><i class="eico" style="background:#333">?</i><div><b>Otra extensión parecida</b><small>Otro autor</small></div></div>
+            <div class="extw">
+              <div class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6"/><path d="m20 20-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="8" r="2"/><path d="M7 7v10M17 10c0 4-10 3-10 7"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 5v14l11-7z"/></svg><svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10h6v6H4zM4 16h6v4H4zM10 16h6v4h-6zM14 4h6v6h-6z"/></svg><i class="mk">1</i></div>
+              <div class="lista-e">
+                <div class="et">EXTENSIONS: MARKETPLACE</div>
+                <div class="eb">⌕&nbsp;<span data-ia="claude">claude code</span><span data-ia="gemini">gemini code assist</span><span data-ia="gpt">codex</span><span class="cursor"></span><i class="mk">2</i></div>
+                <div class="er si"><span data-ia="claude"><i class="eico chico claude">✳</i></span><span data-ia="gemini"><i class="eico chico gemini">✦</i></span><span data-ia="gpt"><i class="eico chico gpt">◎</i></span><div><b><span data-ia="claude">Claude Code for VS Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex – OpenAI’s coding agent</span></b><small class="autor"><svg class="verif" viewBox="0 0 16 16"><path fill="#3794ff" d="M8 0l2 1.6 2.5-.2.7 2.4 2.2 1.3-.9 2.3.9 2.3-2.2 1.3-.7 2.4-2.5-.2L8 16l-2-1.6-2.5.2-.7-2.4L.6 10.9l.9-2.3-.9-2.3 2.2-1.3.7-2.4 2.5.2z"/><path d="m5 8.2 2 2 4-4" fill="none" stroke="#fff" stroke-width="1.6"/></svg><span data-ia="claude">Anthropic</span><span data-ia="gemini">Google</span><span data-ia="gpt">OpenAI</span></small></div><span class="inst">Install<span class="mano" aria-hidden="true">👆</span></span><i class="mk">3</i></div>
+                <div class="er no"><i class="eico chico" style="background:#333">?</i><div><b><span data-ia="claude">Chat for Claude</span><span data-ia="gemini">Gemini Helper</span><span data-ia="gpt">ChatGPT Assistant</span></b><small>Otro autor</small></div><span class="inst">Install</span></div>
+                <div class="er no"><i class="eico chico" style="background:#333">?</i><div><b><span data-ia="claude">Claude Code unofficial</span><span data-ia="gemini">Gemini AI Chat</span><span data-ia="gpt">Codex Tools</span></b><small>Otro autor</small></div><span class="inst">Install</span></div>
+              </div>
             </div>
           </figure>
           <div class="txt">
             <span class="escena"></span>
             <h3>Busca la extensión</h3>
-            <p>En VS Code, haz clic en el ícono de cuatro cuadritos de la izquierda (<em>Extensiones</em>, el 1 del paso 01).</p>
-            <p>Escribe <strong><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini Code Assist</span><span data-ia="gpt">Codex</span></strong> en el buscador y, en la que publica <strong><span data-ia="claude">Anthropic</span><span data-ia="gemini">Google</span><span data-ia="gpt">OpenAI</span></strong>, haz clic en <strong>Install</strong>.</p>
-            <p class="para">Fíjate en el autor: hay extensiones de otros con nombres parecidos.</p>
+            <ul class="leyenda">
+              <li><i class="mk">1</i><span>En la barra de la izquierda, haz clic en el ícono de cuatro cuadritos: <strong>Extensiones</strong>.</span></li>
+              <li><i class="mk">2</i><span>En el buscador de arriba escribe <strong><span data-ia="claude">claude code</span><span data-ia="gemini">gemini code assist</span><span data-ia="gpt">codex</span></strong>.</span></li>
+              <li><i class="mk">3</i><span>En la que publica <strong><span data-ia="claude">Anthropic</span><span data-ia="gemini">Google</span><span data-ia="gpt">OpenAI</span></strong> (con el sello azul), haz clic en <strong>Install</strong>.</span></li>
+            </ul>
+            <p class="para">Fíjate en el autor: debajo salen otras de nombre parecido hechas por otras personas. Esas no.</p>
           </div>
         </div>
 
