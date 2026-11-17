@@ -321,6 +321,15 @@
   .extw .inst .mano{position:absolute;right:-.6rem;bottom:-1rem;font-size:1.2rem}
   .extw .er .mk{margin:0 0 0 .2rem;width:1.15rem;height:1.15rem;font-size:10px}
 
+  /* La barra de comandos con las opciones de Claude Code. */
+  .paleta.larga{max-width:27rem;padding:.4rem .4rem .5rem}
+  .paleta.larga .op{display:flex;justify-content:space-between;gap:.8rem;padding:.25rem .5rem;margin-top:.12rem;font-size:11px}
+  .paleta.larga .op b{color:#4daafc;font-weight:600}
+  .paleta.larga .op.si b{color:#fff}
+  .paleta.larga .op kbd{font:10px Inter,sans-serif;color:#aaa;border:1px solid #555;border-radius:3px;padding:0 .3rem;background:#333}
+  .paleta.larga .op.si{position:relative}
+  .paleta.larga .op.si .mano{position:absolute;right:.4rem;bottom:-.9rem;font-size:1.2rem}
+
   /* Iniciar sesión. */
   .entrar{width:100%;max-width:21rem;border-radius:9px;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);
     padding:1rem;display:grid;justify-items:center;gap:.55rem;font:12px Inter,sans-serif;color:#ccc;text-align:center}
@@ -827,6 +836,27 @@ hola
           </div>
         </div>
 
+        <div class="vista" data-ia="claude">
+          <figure class="fig">
+            <div class="paleta larga">
+              <div class="campo">&gt;claude<span class="cursor"></span></div>
+              <div class="op"><span><b>Claude</b> Code: Focus input</span></div>
+              <div class="op"><span><b>Claude</b> Code: Open in New Tab</span></div>
+              <div class="op"><span><b>Claude</b> Code: Open in Primary Editor</span></div>
+              <div class="op si"><span><b>Claude</b> Code: Open in Side Bar</span><span class="mano" aria-hidden="true">👆</span></div>
+              <div class="op"><span><b>Claude</b> Code: Open in Terminal</span></div>
+              <div class="op"><span><b>Claude</b> Code: Open Walkthrough</span></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Ábrela como chat</h3>
+            <p>Presiona <span class="mono" data-so="win linux">Ctrl + Shift + P</span><span class="mono" data-so="mac">⌘ + ⇧ + P</span>: arriba se abre una barra para buscar opciones.</p>
+            <p>Escribe <strong>claude</strong> y elige <strong>«Claude Code: Open in Side Bar»</strong>, como en la imagen.</p>
+            <p class="para">Así Claude Code queda como un chat al lado de tu código, igual que el asistente que trae VS Code (Copilot).</p>
+          </div>
+        </div>
+
         <div class="vista">
           <figure class="fig">
             <div class="flujo">
@@ -840,8 +870,8 @@ hola
           </figure>
           <div class="txt">
             <span class="escena"></span>
-            <h3>Ábrela e inicia sesión</h3>
-            <p>Aparece su ícono <span data-ia="claude">(una chispa naranja, arriba a la derecha o en la barra de la izquierda)</span><span data-ia="gemini">(una estrella, en la barra de la izquierda)</span><span data-ia="gpt">(en la barra de la izquierda o en el panel de la derecha)</span>. Haz clic en él y luego en <strong>Sign in</strong>.</p>
+            <h3><span data-ia="claude">Inicia sesión</span><span data-ia="gemini">Ábrela e inicia sesión</span><span data-ia="gpt">Ábrela e inicia sesión</span></h3>
+            <p><span data-ia="claude">En el chat de Claude Code que se abrió, haz clic en <strong>Sign in</strong>.</span><span data-ia="gemini">Aparece su ícono (una estrella, en la barra de la izquierda). Haz clic en él y luego en <strong>Sign in</strong>.</span><span data-ia="gpt">Aparece su ícono (en la barra de la izquierda o en el panel de la derecha). Haz clic en él y luego en <strong>Sign in</strong>.</span></p>
             <p>Se abre el navegador: entra con tu cuenta <span data-ia="claude">de Claude</span><span data-ia="gemini">de Google (Gmail)</span><span data-ia="gpt">de ChatGPT</span>, haz clic en <strong>Autorizar</strong> y vuelve a VS Code.</p>
           </div>
         </div>
@@ -869,7 +899,7 @@ hola
       <div data-ia="claude">
         <ol class="pasitos" data-nivel="inter">
           <li>Busca <strong>Claude Code</strong> e instala <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>.</li>
-          <li>Ábrela desde su ícono (una chispa naranja) e inicia sesión con tu cuenta de Claude: se abre el navegador, autorizas y vuelves al editor.</li>
+          <li>Ábrela con <span class="mono" data-so="win linux">Ctrl+Shift+P</span><span class="mono" data-so="mac">⌘⇧P</span> → <em>«Claude Code: Open in Side Bar»</em> (queda como chat al lado) e inicia sesión con tu cuenta de Claude.</li>
         </ol>
         <p class="nota" data-so="win" data-nivel="inter"><b>En Windows, Claude Code necesita Git: instálalo antes de la extensión.</b> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, dale <em>Next</em> a todo, y cierra y vuelve a abrir VS Code. (En el paso 03 la IA instala lo demás.)</p>
         <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
