@@ -253,6 +253,27 @@
   .panel-t .pt-tit b{color:#e8e8e8;border-bottom:1px solid #e8e8e8;font-weight:600}
   .panel-t .pt-c{padding:.55rem .7rem .8rem}
 
+  /* El chat de la IA, de mentira. */
+  .chatv{width:100%;max-width:25rem;border-radius:10px;overflow:hidden;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);
+    font:12px/1.5 Inter,sans-serif;text-align:left;color:#ccc}
+  .chatv .ct{padding:.4rem .7rem;border-bottom:1px solid #2b2b2b;font:600 10px Inter,sans-serif;letter-spacing:.08em;color:#bbb}
+  .chatv .cc{padding:.75rem;display:grid;gap:.6rem}
+  .chatv .yo{justify-self:end;max-width:88%;background:#0e3a5c;color:#e8f2ff;border-radius:10px 10px 2px 10px;padding:.55rem .7rem}
+  .chatv .ia{max-width:94%;background:#262626;border-radius:10px 10px 10px 2px;padding:.55rem .7rem}
+  .chatv .ia ul{list-style:none;margin:.35rem 0;padding:0} .chatv .ia li{margin:.15rem 0} .chatv .ia li b{color:var(--accent)}
+  .chatv .permiso{border:1px solid #4a4a4a;border-radius:8px;background:#202020;padding:.6rem .65rem}
+  .chatv .permiso code{display:block;margin:.4rem 0 .55rem;padding:.4rem .55rem;background:#0b0b0b;border-radius:5px;color:#d8f5ea;font:11px "JetBrains Mono",monospace;white-space:pre-wrap}
+  .chatv .bp{display:flex;gap:.45rem} .chatv .bp span{position:relative;padding:.25rem .8rem;border-radius:5px;border:1px solid #555;color:#ddd}
+  .chatv .bp .si{background:var(--accent);color:#06231A;border-color:var(--accent);font-weight:700;outline:2px solid var(--warn);outline-offset:2px}
+  .chatv .bp .mano{position:absolute;right:-.7rem;bottom:-1rem;font-size:1.2rem;border:0;padding:0}
+  .chatv .entrada{margin:0 .75rem .75rem;border:1px solid #3a3a3a;border-radius:6px;padding:.4rem .55rem;color:#777}
+  .pedido{position:relative;width:100%;max-width:25rem;border-radius:12px;padding:.85rem 1rem 2.6rem;background:#0e3a5c;color:#e8f2ff;
+    font:13px/1.55 Inter,sans-serif;text-align:left;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+  .pedido .btn{position:absolute;right:.6rem;bottom:.55rem;cursor:pointer;padding:.25rem .7rem;border-radius:6px;border:1px solid var(--accent);
+    background:color-mix(in srgb,var(--accent) 22%,#0e3a5c);color:#fff;font:600 11px Inter,sans-serif}
+  .pedido .mano{position:absolute;right:-.4rem;bottom:-.8rem;font-size:1.3rem}
+  .pedido .quien{display:block;font:600 10px Inter,sans-serif;letter-spacing:.08em;color:#9cc4e6;margin-bottom:.3rem}
+
   /* La paleta de comandos. */
   .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
   .paleta .campo{border:1px solid #0078d4;border-radius:3px;padding:.35rem .5rem;background:#3c3c3c;color:#fff}
@@ -420,8 +441,8 @@
     <div class="resumen">
       <a href="#terminal" data-nivel="basico"><div class="n">00</div><div class="t">La terminal</div><div class="s">Qué es y cómo se usa</div></a>
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
-      <a href="#base"><div class="n">02</div><div class="t">Lo de base</div><div class="s">Git, Node.js y Python</div></a>
-      <a href="#asistentes"><div class="n">03</div><div class="t">Tu IA en el editor</div><div class="s">Claude, Gemini o GPT</div></a>
+      <a href="#asistentes"><div class="n">02</div><div class="t">Tu IA en el editor</div><div class="s">Claude, Gemini o GPT</div></a>
+      <a href="#base"><div class="n">03</div><div class="t">Lo de base</div><div class="s">Tu IA instala Git, Node.js y Python</div></a>
       <a href="#agente"><div class="n">04</div><div class="t">Un agente en la terminal</div><div class="s">Sesión 02</div></a>
       <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
       <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
@@ -625,7 +646,7 @@ hola
             <span class="escena">3</span>
             <h3>Ábrelo y conócelo</h3>
             <ul class="leyenda">
-              <li><i class="mk">1</i><span>La <strong>barra de íconos</strong>. El de cuatro cuadritos son las <em>Extensiones</em>: ahí instalaremos la IA en el paso 03.</span></li>
+              <li><i class="mk">1</i><span>La <strong>barra de íconos</strong>. El de cuatro cuadritos son las <em>Extensiones</em>: ahí instalaremos la IA en el paso 02.</span></li>
               <li><i class="mk">2</i><span>El <strong>explorador</strong>: los archivos de la carpeta que abras.</span></li>
               <li><i class="mk">3</i><span>El <strong>menú</strong>: ahí está todo. Por ejemplo, <em>Terminal → New Terminal</em> abre una terminal.</span></li>
               <li><i class="mk">4</i><span>Muestra u oculta el <strong>explorador</strong> (el panel de la izquierda).</span></li>
@@ -684,22 +705,120 @@ hola
         <div class="opcion"><h3>Antigravity <span class="etq opc">de Google</span></h3><p>Gratis, con Gemini incorporado. En <a href="https://antigravity.google/" target="_blank" rel="noopener">antigravity.google</a>.</p></div>
         <div class="opcion"><h3>Cursor <span class="etq opc">alternativa</span></h3><p>Trae su propia IA; el plan gratuito es limitado. En <a href="https://cursor.com/" target="_blank" rel="noopener">cursor.com</a>.</p></div>
       </div>
-      <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 03). <span data-nivel="inter">Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</span></p>
+      <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 02). <span data-nivel="inter">Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</span></p>
       <div data-nivel="inter">
       <p>Para comprobarlo, abre una terminal nueva y escribe:</p>
       <div class="cmd"><pre>code --version</pre></div>
       </div>
       <label class="check"><input type="checkbox" data-hecho><span><span data-nivel="basico">VS Code abre y abrí su terminal de abajo</span><span data-nivel="inter">Mi editor abre y, si es VS Code, <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></span></label>
     </div>
-      <a class="siguiente" href="#base">Siguiente: Git, Node.js y Python ↓</a>
+      <a class="siguiente" href="#asistentes">Siguiente: tu IA en el editor ↓</a>
   </section>
 
-  <!-- 02 -->
-  <section class="paso" id="base" data-paso>
-    <div class="cab"><div class="num">02</div><div><h2>Lo de base: Git, Node.js y Python</h2><p class="para">Los agentes de terminal corren sobre Node.js; el código de la sesión 03 lo escribimos en Python. Es igual con cualquier editor y cualquier IA.</p></div></div>
+  <!-- 02: la IA en el editor -->
+  <section class="paso" id="asistentes" data-paso>
+    <div class="cab"><div class="num">02</div><div><h2>Tu IA en el editor <span class="sesion">sesión 01</span></h2><p class="para">En el bootcamp trabajamos con Claude, pero puedes seguirlo con Gemini o con GPT. Elige una; puedes cambiarla cuando quieras.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son tres programas que trabajan por debajo y no se abren como una app. <strong>Git</strong> guarda el historial de tu trabajo. <strong>Node.js</strong> y <strong>Python</strong> son los «motores» que hacen correr los programas del bootcamp. Solo hay que instalarlos y comprobar que la terminal los encuentra.</p>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> es una extensión, un complemento de tu editor, para trabajar con una IA ahí mismo, al lado de tu código: le pides algo, ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
+      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
+
+      <div data-ia="claude">
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Claude Code</strong> e instala <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>.</li>
+          <li>Ábrela desde su ícono (una chispa naranja) e inicia sesión con tu cuenta de Claude: se abre el navegador, autorizas y vuelves al editor.</li>
+        </ol>
+        <p class="nota" data-so="win"><b>En Windows, Claude Code necesita Git: instálalo antes de la extensión.</b> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, dale <em>Next</em> a todo, y cierra y vuelve a abrir VS Code. (En el paso 03 la IA instala lo demás.)</p>
+        <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+      </div>
+      <div data-ia="gemini">
+        <p class="nota ok"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo.</p>
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Gemini Code Assist</strong> e instala la que publica <em>Google</em>.</li>
+          <li>Ábrela desde su ícono en la barra de la izquierda e inicia sesión con tu cuenta de Google (Gmail).</li>
+        </ol>
+        <p class="nota ok"><b>Es gratis</b> para uso personal con tu cuenta de Google.</p>
+      </div>
+      <div data-ia="gpt">
+        <ol class="pasitos">
+          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+          <li>Busca <strong>Codex</strong> e instala la que publica <em>OpenAI</em>.</li>
+          <li>Ábrela desde su ícono e inicia sesión con tu cuenta de ChatGPT: se abre el navegador, autorizas y vuelves al editor.</li>
+        </ol>
+        <p class="nota"><b>Codex se usa con tu cuenta de ChatGPT</b> y viene con los planes pagos (Plus o superior); también funciona con saldo de API de OpenAI.</p>
+      </div>
+      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</p>
+      <label class="check"><input type="checkbox" data-hecho><span><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini (la extensión o el de Antigravity)</span><span data-ia="gpt">Codex</span> instalado en el editor, con la sesión iniciada<small>Prueba: abre una carpeta, abre el panel de la IA y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
+    </div>
+      <a class="siguiente" href="#base">Siguiente: que tu IA instale lo de base ↓</a>
+  </section>
+
+  <!-- 03: lo de base -->
+  <section class="paso" id="base" data-paso>
+    <div class="cab"><div class="num">03</div><div><h2>Lo de base: que tu IA lo instale</h2><p class="para">Git, Node.js y Python. Los vamos a necesitar en las sesiones, y es la primera tarea de verdad para tu IA.</p></div></div>
+    <div class="cuerpo">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son tres programas que trabajan por debajo y no se abren como una app. <strong>Git</strong> guarda el historial de tu trabajo; <strong>Node.js</strong> y <strong>Python</strong> son los «motores» que hacen correr los programas del bootcamp. En vez de instalarlos a mano, se lo vas a pedir a tu IA.</p>
       <div data-nivel="basico">
+        <div class="vista">
+          <figure class="fig">
+            <div class="pedido"><span class="quien">TÚ</span>Instala en mi computador Git, Node.js (la versión LTS) y Python 3. Antes de cada paso, explícame en palabras sencillas qué vas a hacer. Al final, comprueba que funcionen mostrándome sus versiones y pregúntame mi nombre y mi correo para configurar Git.<button type="button" class="btn" data-copia="Instala en mi computador Git, Node.js (la versión LTS) y Python 3. Antes de cada paso, explícame en palabras sencillas qué vas a hacer. Al final, comprueba que funcionen mostrándome sus versiones y pregúntame mi nombre y mi correo para configurar Git.">Copiar</button><span class="mano" aria-hidden="true">👆</span></div>
+          </figure>
+          <div class="txt">
+            <span class="escena">1</span>
+            <h3>Pídeselo</h3>
+            <p>Abre el chat de tu IA en VS Code (su ícono, o el botón 6 de arriba a la derecha). Copia el pedido de la imagen, pégalo en la caja de abajo del chat y presiona <span class="mono">Enter</span>.</p>
+            <p class="para">Le pides que te explique cada paso: así también aprendes qué está haciendo.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="chatv">
+              <div class="ct"><span data-ia="claude">CLAUDE CODE</span><span data-ia="gemini">GEMINI</span><span data-ia="gpt">CODEX</span></div>
+              <div class="cc">
+                <div class="ia">Primero instalo Git, que guarda el historial de tu trabajo. Para eso necesito ejecutar un comando:</div>
+                <div class="permiso"><span data-ia="claude">Claude</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">Codex</span> quiere ejecutar:
+                  <code><span data-so="win">winget install -e --id Git.Git</span><span data-so="mac">brew install git node python</span><span data-so="linux">sudo apt install -y git</span></code>
+                  <div class="bp"><span class="si">Permitir<span class="mano" aria-hidden="true">👆</span></span><span>Rechazar</span></div>
+                </div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">2</span>
+            <h3>Dale permiso</h3>
+            <p>Antes de cada orden, la IA te dice qué va a hacer y te pide permiso. Léelo y haz clic en <strong>Permitir</strong> (o <em>Yes</em>, según la IA).</p>
+            <p data-so="win">Si Windows pregunta <em>«¿Quieres permitir que esta aplicación haga cambios?»</em>, di <strong>Sí</strong>.</p>
+            <p data-so="mac linux">Si en la terminal te pide tu contraseña, escríbela aunque no se vea y presiona <span class="mono">Enter</span>.</p>
+            <p class="para">Puede tardar varios minutos. Si te pregunta algo que no entiendes, pregúntale qué significa: está para eso.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="chatv">
+              <div class="ct"><span data-ia="claude">CLAUDE CODE</span><span data-ia="gemini">GEMINI</span><span data-ia="gpt">CODEX</span></div>
+              <div class="cc">
+                <div class="ia">Listo, quedaron instalados:
+                  <ul><li><b>✓</b> Git 2.47.1</li><li><b>✓</b> Node.js v22.12.0</li><li><b>✓</b> Python 3.13.1</li></ul>
+                  Ahora dime tu nombre y tu correo para configurar Git.</div>
+                <div class="yo">Ana Pérez, ana@correo.com</div>
+              </div>
+              <div class="entrada">Pregúntale algo…</div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">3</span>
+            <h3>Revisa el resultado</h3>
+            <p>Al final debe mostrarte las tres con su versión, como en la imagen (tus números pueden ser otros). Luego te pide tu nombre y tu correo para Git: respóndele.</p>
+            <p class="para">Si algo falló, escríbele: <em>«¿Qué falló y cómo lo arreglo?»</em>. Y si aun así no se puede, abajo está cómo hacerlo a mano.</p>
+          </div>
+        </div>
+
+        <details>
+          <summary>¿Tu IA no pudo instalar algo? Hazlo a mano</summary>
+          <div>
         <div data-so="win">
           <ol class="pasitos">
             <li><strong>Git:</strong> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, ábrelo y dale <em>Next</em> a todo: las opciones que trae están bien.</li>
@@ -724,9 +843,11 @@ hola
 sudo apt install -y git python3 python3-venv python3-pip</pre></div>
           <p><strong>Node.js:</strong> en <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> ve a <em>Download</em>, elige <em>Linux</em> y la versión <strong>LTS</strong>, y copia y pega en la terminal, una por una, las órdenes que aparecen ahí.</p>
         </div>
+          </div>
+        </details>
       </div>
       <div data-nivel="inter">
-      <p>Instala las tres. Si alguna ya la tienes, revisa que la versión sea igual o más nueva que la indicada.</p>
+      <p>Pídeselo a tu agente («instala Git, Node.js LTS y Python 3 y comprueba sus versiones») o hazlo tú. Si alguna ya la tienes, revisa que la versión sea igual o más nueva que la indicada.</p>
 
       <div data-so="win">
         <div class="cmd"><div class="lbl">PowerShell · las tres de una vez</div><pre>winget install -e --id Git.Git
@@ -745,14 +866,11 @@ sudo apt install -y git python3 python3-venv python3-pip</pre></div>
         <p>Node.js: el de <span class="mono">apt</span> suele venir viejo. Instala la versión LTS desde <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> (sección <em>«Package manager»</em>).</p>
       </div>
 
-      </div>
-
       <p>Dile a Git quién eres (una sola vez, con tu nombre y tu correo):</p>
-      <p class="para" data-nivel="basico" style="margin-bottom:.4rem">Antes de presionar <span class="mono">Enter</span>, cambia <em>Tu Nombre</em> y <em>tu@correo.com</em> por los tuyos, dejando las comillas. Si es más fácil, pégalo primero en el Bloc de notas, cámbialo allí y cópialo de nuevo.</p>
       <div class="cmd"><pre>git config --global user.name "Tu Nombre"
 git config --global user.email "tu@correo.com"</pre></div>
 
-      <p>Cierra la terminal, abre una nueva y comprueba:<span data-nivel="basico"> cada línea debe responder con un número de versión, por ejemplo <span class="mono">git version 2.47.1</span>. Si alguna dice «no se reconoce», mira la ayuda al final de la página.</span></p>
+      <p>Cierra la terminal, abre una nueva y comprueba:</p>
       <div class="cmd" data-so="win"><pre>git --version      <span class="c"># 2.40 o más</span>
 node -v            <span class="c"># v20 o más</span>
 npm -v
@@ -761,45 +879,8 @@ py --version       <span class="c"># 3.11 o más</span></pre></div>
 node -v            <span class="c"># v20 o más</span>
 npm -v
 python3 --version  <span class="c"># 3.11 o más</span></pre></div>
-      <label class="check"><input type="checkbox" data-hecho><span>Las cuatro responden con su versión</span></label>
-    </div>
-      <a class="siguiente" href="#asistentes">Siguiente: asistentes en el editor ↓</a>
-  </section>
-
-  <!-- 03 -->
-  <section class="paso" id="asistentes" data-paso>
-    <div class="cab"><div class="num">03</div><div><h2>Tu IA en el editor <span class="sesion">sesión 01</span></h2><p class="para">En el bootcamp trabajamos con Claude, pero puedes seguirlo con Gemini o con GPT. Elige una; puedes cambiarla cuando quieras.</p></div></div>
-    <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> es una extensión, un complemento de tu editor, para trabajar con una IA ahí mismo, al lado de tu código: le pides algo, ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
-      <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
-
-      <div data-ia="claude">
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
-          <li>Busca <strong>Claude Code</strong> e instala <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>.</li>
-          <li>Ábrela desde su ícono (una chispa naranja) e inicia sesión con tu cuenta de Claude: se abre el navegador, autorizas y vuelves al editor.</li>
-        </ol>
-        <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
       </div>
-      <div data-ia="gemini">
-        <p class="nota ok"><b>Si usas Antigravity,</b> Gemini ya viene incorporado: no instales nada, solo inicia sesión con tu cuenta de Google al abrirlo.</p>
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
-          <li>Busca <strong>Gemini Code Assist</strong> e instala la que publica <em>Google</em>.</li>
-          <li>Ábrela desde su ícono en la barra de la izquierda e inicia sesión con tu cuenta de Google (Gmail).</li>
-        </ol>
-        <p class="nota ok"><b>Es gratis</b> para uso personal con tu cuenta de Google.</p>
-      </div>
-      <div data-ia="gpt">
-        <ol class="pasitos">
-          <li data-nivel="basico">En el editor, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
-          <li>Busca <strong>Codex</strong> e instala la que publica <em>OpenAI</em>.</li>
-          <li>Ábrela desde su ícono e inicia sesión con tu cuenta de ChatGPT: se abre el navegador, autorizas y vuelves al editor.</li>
-        </ol>
-        <p class="nota"><b>Codex se usa con tu cuenta de ChatGPT</b> y viene con los planes pagos (Plus o superior); también funciona con saldo de API de OpenAI.</p>
-      </div>
-      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</p>
-      <label class="check"><input type="checkbox" data-hecho><span><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini (la extensión o el de Antigravity)</span><span data-ia="gpt">Codex</span> instalado en el editor, con la sesión iniciada<small>Prueba: abre una carpeta, abre el panel de la IA y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
+      <label class="check"><input type="checkbox" data-hecho><span><span data-nivel="basico">Mi IA instaló Git, Node.js y Python y me mostró sus versiones</span><span data-nivel="inter">Las cuatro responden con su versión</span></span></label>
     </div>
       <a class="siguiente" href="#agente">Siguiente: un agente en la terminal ↓</a>
   </section>
@@ -827,7 +908,7 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       <div class="cmd" data-ia="gemini"><pre>gemini</pre></div>
       <div class="cmd" data-ia="gpt"><pre>codex</pre></div>
       <ol class="pasitos" start="3">
-        <li>La primera vez te pide iniciar sesión<span data-nivel="basico"> (elige con las flechas del teclado y presiona <span class="mono">Enter</span>)</span>: <span data-ia="claude">entra con tu cuenta de Claude, la misma del paso 03.</span><span data-ia="gemini">elige entrar con Google y usa tu cuenta de Gmail.</span><span data-ia="gpt">elige entrar con ChatGPT y usa tu cuenta.</span> Se abre el navegador; autorizas y vuelves a la terminal.</li>
+        <li>La primera vez te pide iniciar sesión<span data-nivel="basico"> (elige con las flechas del teclado y presiona <span class="mono">Enter</span>)</span>: <span data-ia="claude">entra con tu cuenta de Claude, la misma del paso 02.</span><span data-ia="gemini">elige entrar con Google y usa tu cuenta de Gmail.</span><span data-ia="gpt">elige entrar con ChatGPT y usa tu cuenta.</span> Se abre el navegador; autorizas y vuelves a la terminal.</li>
         <li>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em>. Para salir, <span class="mono">Ctrl + C</span> dos veces.</li>
       </ol>
       <p class="nota" data-ia="claude"><b>Igual que en el editor,</b> Claude Code pide Claude Pro (o Max) o saldo de API.</p>
