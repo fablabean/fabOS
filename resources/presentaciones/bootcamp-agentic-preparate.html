@@ -14,7 +14,7 @@
     --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --code:#0A100E;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth;scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
+  html{scroll-behavior:smooth;scroll-snap-type:y proximity;scroll-padding-top:var(--barra,3.3rem)}
   /* Cada bloque se ajusta a la pantalla: la portada, la ruta y cada paso. */
   header.portada,section.indice,section.paso{scroll-snap-align:start}
   footer{scroll-snap-align:end}
@@ -161,11 +161,12 @@
   @media (prefers-reduced-motion:reduce){.check.sacude{animation:none;outline:3px solid var(--warn)}}
   .siguiente.falta{opacity:.6;border-style:dashed;color:var(--muted)}
   .siguiente.falta::after{content:"· marca la casilla primero";font-weight:500;font-size:.85rem}
-  /* Los pasos que vienen después del que falta, cerrados. */
-  section.paso.bloqueado{min-height:0;padding:1.3rem 0;opacity:.55;scroll-snap-align:none}
-  section.paso.bloqueado .cuerpo, section.paso.bloqueado .siguiente{display:none}
-  section.paso.bloqueado .cab > div:last-child::after{content:"🔒 Se abre cuando marques el paso anterior";display:block;
-    margin-top:.35rem;font-size:.85rem;color:var(--warn)}
+  /* Los pasos que vienen después del que falta no existen todavía: la página
+     termina en el paso actual. La ayuda aparece cuando se pide. */
+  section.paso.bloqueado{display:none}
+  body.falta-paso:not(.con-ayuda) #problemas, body.falta-paso:not(.con-ayuda) footer{display:none}
+  .ayuda-link{align-self:flex-start;margin:.9rem 0 0 4rem;color:var(--muted);font-size:.9rem;text-decoration:none;border-bottom:1px dashed var(--rule)}
+  .ayuda-link:hover{color:var(--ink);border-color:var(--muted)}
   .resumen a.cerrado{opacity:.5}
   .resumen a.cerrado .n::after{content:" 🔒"}
   details{border:1px solid var(--rule);border-radius:10px;margin:.6rem 0;background:var(--bg2)}
@@ -177,7 +178,7 @@
 
   @media (max-width:640px){
     .cuerpo{margin-left:0}
-    .siguiente{margin-left:0}
+    .siguiente,.ayuda-link{margin-left:0}
     .cab{margin-bottom:.6rem}
     header.portada{padding:3rem 0 2rem}
   }
@@ -186,7 +187,7 @@
     header.portada{min-height:0}
     [data-so]{display:block !important}
     section.paso,section.indice{min-height:0} .siguiente,.nivel,.nivel-tit{display:none}
-    section.paso.bloqueado{opacity:1} section.paso.bloqueado .cuerpo{display:block}
+    section.paso.bloqueado,#problemas,footer{display:flex !important} .ayuda-link{display:none}
   }
 </style>
 </head>
@@ -554,7 +555,6 @@ print(mensaje.content[0].text)</pre></div>
         <p style="margin:0;color:var(--soft)">Llega cinco minutos antes, con el computador conectado a la corriente y la carpeta <span class="mono">bootcamp-agentic</span> abierta en VS Code.</p>
       </div>
     </div>
-      <a class="siguiente" href="#problemas">¿Algo no funcionó? Ayuda ↓</a>
   </section>
 
   <!-- problemas -->
@@ -708,27 +708,69 @@ print(mensaje.content[0].text)</pre></div>
       var todas = suyas.length > 0 && Array.prototype.every.call(suyas, function (c) { return c.checked; });
       p.classList.toggle('hecho', todas);
       p.classList.toggle('bloqueado', cerrado);
+      p.classList.toggle('actual', !cerrado && !todas);
       p.querySelectorAll('.siguiente').forEach(function (a) { a.classList.toggle('falta', !todas); });
       var tarjeta = document.querySelector('.resumen a[href="#' + p.id + '"]');
       if (tarjeta) { tarjeta.classList.toggle('cerrado', cerrado); }
       if (!todas) { cerrado = true; }
     });
+    document.body.classList.toggle('falta-paso', cerrado);
     document.getElementById('listo').hidden = n !== visibles.length;
   }
   pintar();
 
-  // «Siguiente» sin marcar: lleva a la casilla y la sacude.
+  // Sin marcar no se pasa: «Siguiente», bajar más allá del paso o una tarjeta
+  // cerrada llevan a la casilla que falta y la sacuden.
+  var sacudida = 0;
+  function empujar() {
+    var c = document.querySelector('section.paso.actual .check:not(.ok)');
+    if (!c || Date.now() - sacudida < 700) { return; }
+    sacudida = Date.now();
+    c.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    c.classList.remove('sacude');
+    void c.offsetWidth;
+    c.classList.add('sacude');
+  }
+  function tope() {
+    // Ya se ve el final del paso que falta (o no hay más página): bajar es intentar pasar.
+    var p = document.querySelector('section.paso.actual');
+    return !!p && !document.body.classList.contains('con-ayuda')
+      && (p.getBoundingClientRect().bottom <= window.innerHeight + 4
+        || window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4);
+  }
   document.querySelectorAll('.siguiente').forEach(function (a) {
     a.addEventListener('click', function (e) {
       if (!a.classList.contains('falta')) { return; }
       e.preventDefault();
-      var c = a.closest('section').querySelector('.check:not(.ok)');
-      if (!c) { return; }
-      c.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      c.classList.remove('sacude');
-      void c.offsetWidth;
-      c.classList.add('sacude');
+      empujar();
     });
+  });
+  document.querySelectorAll('.resumen a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (!a.classList.contains('cerrado')) { return; }
+      e.preventDefault();
+      empujar();
+    });
+  });
+  window.addEventListener('wheel', function (e) { if (e.deltaY > 0 && tope()) { empujar(); } }, { passive: true });
+  var dedo = null;
+  window.addEventListener('touchstart', function (e) { dedo = e.touches[0].clientY; }, { passive: true });
+  window.addEventListener('touchmove', function (e) {
+    if (dedo !== null && dedo - e.touches[0].clientY > 30 && tope()) { dedo = null; empujar(); }
+  }, { passive: true });
+  window.addEventListener('keydown', function (e) {
+    if (/INPUT|TEXTAREA|BUTTON|SELECT/.test(e.target.tagName)) { return; }
+    if (['ArrowDown', 'PageDown', 'End', ' '].indexOf(e.key) >= 0 && tope()) { empujar(); }
+  });
+
+  // «¿Algo no funciona?»: en cada paso, y ese sí lleva al final.
+  document.querySelectorAll('section.paso[data-paso]').forEach(function (p) {
+    var a = document.createElement('a');
+    a.className = 'ayuda-link';
+    a.href = '#problemas';
+    a.textContent = '¿Algo no funciona? Ver la ayuda ↓';
+    a.addEventListener('click', function () { document.body.classList.add('con-ayuda'); });
+    p.appendChild(a);
   });
 })();
 </script>
