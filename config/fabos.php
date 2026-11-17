@@ -237,6 +237,60 @@ return [
     ],
 
     /*
+     * Activo IA: el asistente que lee fotos y propone cambios al inventario.
+     *
+     * Usa la misma clave que el resto de la IA (ANTHROPIC_API_KEY) pero su
+     * propio modelo, tope y tiempo: lee fotografías y consulta el inventario
+     * varias veces por mensaje, así que gasta más que un borrador de texto y
+     * conviene poder frenarlo por separado.
+     *
+     * El modelo NUNCA escribe en la base: propone, y una persona confirma.
+     */
+    'asistente_inventario' => [
+        'activa' => (bool) env('IA_INVENTARIO_ACTIVA', true),
+        'modelo' => env('IA_INVENTARIO_MODELO', 'claude-opus-5-5'),
+        // low | medium | high: cuánto piensa antes de contestar.
+        'esfuerzo' => env('IA_INVENTARIO_ESFUERZO', 'medium'),
+        'max_tokens' => (int) env('IA_INVENTARIO_MAX_TOKENS', 16000),
+        'max_por_dia' => (int) env('IA_INVENTARIO_MAX_POR_DIA', 100),
+        'timeout' => (int) env('IA_INVENTARIO_TIMEOUT', 120),
+    ],
+
+    /*
+     * El servidor de IA del FabLab: reconoce objetos por foto (§ Activo IA).
+     *
+     * Recibe la foto y devuelve su huella —1152 números— y una propuesta de
+     * qué es. No guarda nada: fotos, huellas e inventario viven aquí. Como
+     * corre dentro del laboratorio, las fotos no salen a internet.
+     *
+     * Desde la red del FabLab no pide clave. Desde fuera se usa
+     * https://ia.fablabean.com con FABLAB_IA_CLAVE. Si el contenedor no
+     * resuelve el nombre .local, poner la IP del servidor (cambia: preguntarla).
+     */
+    'servidor_fablab' => [
+        'activo' => (bool) env('FABLAB_IA_ACTIVO', true),
+        'url' => rtrim((string) env('FABLAB_IA_URL', 'http://spark-885a.local:11434'), '/'),
+        'clave' => env('FABLAB_IA_CLAVE'),
+        'modelo_texto' => env('FABLAB_IA_MODELO_TEXTO', 'bge-m3'),
+        // El que ve la foto entera y separa cada objeto, con su caja. Una foto
+        // con tres resinas son tres tarjetas, no una con las otras dos de texto.
+        // qwen3.5 y no qwen3-vl: el segundo piensa aunque se le pida que no, y con
+        // una foto llena de cosas se gastaba la respuesta pensando.
+        'modelo_vision' => env('FABLAB_IA_MODELO_VISION', 'qwen3.5:9b'),
+        'separar_objetos' => (bool) env('FABLAB_IA_SEPARAR_OBJETOS', true),
+        // Primero se revisa qué es de verdad un objeto; después, el inventario.
+        'filtro_de_objetos' => (bool) env('FABLAB_IA_FILTRO_DE_OBJETOS', true),
+        // Una repisa llena trae nueve o diez botes: con 8 se quedaba alguno fuera.
+        'max_objetos' => (int) env('FABLAB_IA_MAX_OBJETOS', 16),
+        'timeout_vision' => (int) env('FABLAB_IA_TIMEOUT_VISION', 240),
+        'timeout' => (int) env('FABLAB_IA_TIMEOUT', 120),
+        // Producto punto de dos huellas: desde aquí es el mismo objeto…
+        'umbral_mismo' => (float) env('FABLAB_IA_UMBRAL_MISMO', 0.85),
+        // …y desde aquí, posiblemente.
+        'umbral_posible' => (float) env('FABLAB_IA_UMBRAL_POSIBLE', 0.70),
+    ],
+
+    /*
      * Ilustraciones del catalogo, generadas (§14).
      *
      * Proveedor distinto al de texto porque Claude no genera imagenes. Se saca

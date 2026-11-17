@@ -736,6 +736,15 @@ Route::middleware('auth')->prefix('recorridos')->name('recorridos.')->group(func
     Route::get('/partidas/{partida}/equipos', [\App\Http\Controllers\RecorridoImpresionController::class, 'equipos'])->name('equipos');
 });
 
+// Las miniaturas de Activo IA: con sesión y con el enlace firmado que arma la
+// página, y solo de su carpeta. Antes iban en base64 dentro de la página.
+Route::get('/activo-ia/foto/{ruta}', function (string $ruta) {
+    abort_unless(str_starts_with($ruta, 'activo-ia/') && ! str_contains($ruta, '..')
+        && Storage::disk('local')->exists($ruta), 404);
+
+    return Storage::disk('local')->response($ruta, null, ['Cache-Control' => 'private, max-age=86400']);
+})->where('ruta', '.*')->middleware(['auth', 'signed:relative'])->name('activo-ia.foto');
+
 // La ficha de una pregunta va al final: si fuera antes, /preguntas/nueva
 // se interpretaria como el slug de una pregunta llamada «nueva».
 Route::get('/preguntas/{question:slug}', [PreguntaController::class, 'show'])->name('preguntas.show');

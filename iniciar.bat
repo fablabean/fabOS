@@ -71,6 +71,19 @@ REM En Windows el montaje entrega las carpetas como root y el servidor corre
 REM como "sail": sin esto la aplicacion no puede escribir sus registros.
 docker compose exec -T laravel.test chown -R sail:sail storage bootstrap/cache >nul 2>&1
 
+REM Si las librerias viven en un volumen de Docker (compose.override.yaml) y
+REM estan vacias o cambio composer.lock, se instalan dentro del contenedor.
+docker compose exec -T -u sail laravel.test composer install --no-interaction --quiet
+docker compose exec -T laravel.test test -f vendor/autoload.php
+if errorlevel 1 (
+    echo.
+    echo   ERROR: no se pudieron instalar las librerias. Prueba:
+    echo     docker compose exec -u sail laravel.test composer install
+    echo.
+    pause
+    exit /b 1
+)
+
 echo   [5/5] Aplicando migraciones pendientes...
 docker compose exec -T -u sail laravel.test php artisan migrate --force --no-interaction
 

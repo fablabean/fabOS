@@ -74,6 +74,13 @@ class ListAssets extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // Registrar desde una foto: la IA propone y aquí se confirma.
+            \Filament\Actions\Action::make('activoIa')
+                ->label('Activo IA')
+                ->icon('heroicon-o-sparkles')
+                ->color('gray')
+                ->url(fn () => \App\Filament\Pages\ActivoIa::getUrl())
+                ->visible(fn () => \App\Filament\Pages\ActivoIa::canAccess()),
             CreateAction::make(),
         ];
     }
