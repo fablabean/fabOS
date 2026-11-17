@@ -174,6 +174,63 @@
   .fig.anim .c-fin{display:none} .fig.anim.fin .c-fin{display:inline-block} .fig.anim.fin .c-ini{display:none}
   .fig.anim{gap:.9rem}
 
+  /* Un navegador de mentira. */
+  .navg{width:100%;max-width:27rem;border-radius:10px;overflow:hidden;background:#fff;color:#1f1f1f;box-shadow:0 14px 34px rgba(0,0,0,.45);font:13px Inter,sans-serif;text-align:left}
+  .navg .bn{display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;background:#e8e8ee}
+  .navg .bn .pt{display:flex;gap:.3rem} .navg .bn .pt i{width:.6rem;height:.6rem;border-radius:50%;background:#c4c4cc}
+  .navg .url{flex:1;background:#fff;border-radius:99px;padding:.22rem .8rem;font-size:12px;color:#444}
+  .navg .pag{padding:1.4rem 1.3rem 1.6rem;background:linear-gradient(#fff,#f2f6fb)}
+  .navg .logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:14px;color:#333}
+  .navg .logo b{display:grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:5px;background:#0078d4;color:#fff;font:700 11px "JetBrains Mono",monospace}
+  .navg h4{margin:.9rem 0 .2rem;font-size:20px;letter-spacing:-.02em;color:#111}
+  .navg p{margin:0 0 1rem;color:#555;font-size:12px}
+  .navg .boton{position:relative;display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:4px;background:#0078d4;color:#fff;font-weight:600;
+    outline:3px solid var(--warn);outline-offset:3px}
+  .navg .boton .mano, .ventana .mano{position:absolute;right:-.7rem;bottom:-1rem;font-size:1.3rem}
+
+  /* Ventanas claras (instaladores). */
+  .ventana{width:100%;max-width:27rem;border-radius:8px;overflow:hidden;background:#f0f0f0;color:#111;box-shadow:0 14px 34px rgba(0,0,0,.45);font:12px "Segoe UI",Inter,sans-serif;text-align:left}
+  .ventana .vt{display:flex;align-items:center;gap:.5rem;padding:.4rem .7rem;background:#fff;border-bottom:1px solid #ddd;font-size:11.5px}
+  .ventana .vt span{flex:1} .ventana .vt i{font-style:normal;color:#666;letter-spacing:.1em}
+  .ventana .vc{background:#fff;padding:.7rem .9rem;border-bottom:1px solid #ddd} .ventana .vc b{display:block;font-size:12.5px} .ventana .vc small{color:#555}
+  .ventana ul{list-style:none;margin:0;padding:.7rem .9rem;display:grid;gap:.35rem}
+  .ventana li{display:flex;gap:.5rem;align-items:flex-start;padding:.15rem .3rem;border-radius:4px}
+  .ventana li::before{content:"✓";display:grid;place-items:center;flex:0 0 auto;width:.95rem;height:.95rem;border-radius:2px;background:#0067c0;color:#fff;font-size:10px;font-weight:700}
+  .ventana li.ojo{outline:2px solid var(--warn);background:#fff8e1}
+  .ventana .vb{display:flex;justify-content:flex-end;gap:.4rem;padding:.55rem .8rem;border-top:1px solid #ddd}
+  .ventana .vb > span{position:relative;padding:.25rem .9rem;border:1px solid #adadad;border-radius:3px;background:#fdfdfd}
+  .ventana .vb > span.si{border-color:#0067c0;outline:2px solid var(--warn);outline-offset:2px}
+
+  /* Arrastrar a Aplicaciones (macOS). */
+  .arrastre{display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap}
+  .arrastre .icono{display:grid;justify-items:center;gap:.35rem;font:12px Inter,sans-serif;color:var(--soft);width:6.5rem;text-align:center}
+  .arrastre .app{display:grid;place-items:center;width:4rem;height:4rem;border-radius:16px;background:linear-gradient(135deg,#3aa0f5,#0065b8);color:#fff;font:700 18px "JetBrains Mono",monospace;box-shadow:0 8px 18px rgba(0,0,0,.4)}
+  .arrastre .carpeta{width:4.4rem;height:3.4rem;border-radius:6px;background:linear-gradient(#6cb7f2,#3d8fd6);position:relative;box-shadow:0 8px 18px rgba(0,0,0,.4);outline:3px solid var(--warn);outline-offset:4px}
+  .arrastre .carpeta::before{content:"";position:absolute;left:0;top:-.45rem;width:1.8rem;height:.6rem;border-radius:4px 4px 0 0;background:#6cb7f2}
+  .arrastre .flecha{color:var(--accent);font-size:1.6rem;letter-spacing:-.2em}
+
+  /* El editor (VS Code) de mentira. */
+  .vsc{width:100%;max-width:28rem;border-radius:9px;overflow:hidden;background:#1f1f1f;color:#ccc;box-shadow:0 14px 34px rgba(0,0,0,.45);font:11.5px Inter,sans-serif;text-align:left;border:1px solid #333}
+  .vsc .menu{display:flex;gap:.7rem;align-items:center;padding:.35rem .6rem;background:#181818;border-bottom:1px solid #2b2b2b;color:#bbb;font-size:11px;flex-wrap:wrap}
+  .vsc .menu .resalta{color:#fff;background:#333;border-radius:3px;padding:0 .25rem}
+  .vsc .cuerpo-v{display:grid;grid-template-columns:2.2rem 7.5rem 1fr;min-height:11rem}
+  .vsc .act{background:#181818;display:grid;align-content:start;gap:.55rem;padding:.55rem 0;justify-items:center;border-right:1px solid #2b2b2b;position:relative}
+  .vsc .act svg{width:1.15rem;height:1.15rem;color:#858585} .vsc .act svg:first-child{color:#fff}
+  .vsc .lado{background:#181818;padding:.5rem .6rem;border-right:1px solid #2b2b2b;font-size:10.5px;color:#999}
+  .vsc .lado b{display:block;color:#bbb;font-size:10px;letter-spacing:.08em;margin-bottom:.5rem}
+  .vsc .lado .btn-v{margin-top:.6rem;padding:.3rem .4rem;border-radius:3px;background:#0078d4;color:#fff;text-align:center;font-size:10px}
+  .vsc .zona{padding:.5rem .8rem;position:relative}
+  .vsc .pest{display:inline-block;padding:.2rem .6rem;border-top:2px solid #0078d4;background:#1f1f1f;color:#fff;font-size:10.5px;margin:-.5rem 0 .6rem -.8rem}
+  .vsc .zona h5{margin:.2rem 0;font-size:15px;color:#e8e8e8;font-weight:500} .vsc .zona p{margin:0;color:#8a8a8a;font-size:10.5px}
+  .vsc .estado{background:#0078d4;color:#fff;font-size:10px;padding:.15rem .6rem}
+  .vsc .mk{margin:0 .2rem;width:1.1rem;height:1.1rem;font-size:10px}
+
+  /* La paleta de comandos. */
+  .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
+  .paleta .campo{border:1px solid #0078d4;border-radius:3px;padding:.35rem .5rem;background:#3c3c3c;color:#fff}
+  .paleta .op{padding:.4rem .5rem;margin-top:.3rem;border-radius:3px} .paleta .op.si{background:#04395e;color:#fff;outline:2px solid var(--warn)}
+  .paleta .op small{color:#999}
+
   /* pasos: cada uno ocupa la pantalla */
   section.paso, section.indice{min-height:calc(100vh - var(--barra,3.3rem));min-height:calc(100svh - var(--barra,3.3rem));
     display:flex;flex-direction:column;justify-content:center}
@@ -260,6 +317,14 @@
     .siguiente,.ayuda-link{margin-left:0}
     .cab{margin-bottom:.6rem}
     header.portada{padding:3rem 0 2rem}
+  }
+  /* Lo que depende del sistema conserva su forma cuando se ve. */
+  .vista[data-so]{display:grid !important} .arrastre[data-so]{display:flex !important} .teclas[data-so]{display:flex !important}
+  @media (max-width:760px){.vista[data-so]{grid-template-columns:1fr}}
+  /* Lo de otro sistema o de otra IA nunca se ve, tenga el estilo que tenga. */
+  @media screen{
+    body.so-win [data-so]:not([data-so~=win]), body.so-mac [data-so]:not([data-so~=mac]), body.so-linux [data-so]:not([data-so~=linux]),
+    body.ia-claude [data-ia]:not([data-ia~=claude]), body.ia-gemini [data-ia]:not([data-ia~=gemini]), body.ia-gpt [data-ia]:not([data-ia~=gpt]){display:none !important}
   }
   @media print{
     .barra,.copiar,.elige{display:none} body{background:#fff;color:#000} html{scroll-snap-type:none}
@@ -445,14 +510,131 @@ hola
     <div class="cuerpo">
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> VS Code es el programa donde se escribe código, como un Word para programadores. Es gratis, y adentro trae su propia terminal y los asistentes de IA que vamos a usar.</p>
       <div data-nivel="basico">
-        <ol class="pasitos">
-          <li>Entra a <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> y haz clic en el botón azul grande de descarga: ya sabe cuál es tu sistema.</li>
-          <li data-so="win">Abre el archivo que bajó (queda en <em>Descargas</em>). Acepta el acuerdo y, cuando aparezcan casillas, márcalas todas: sobre todo <em>«Agregar a PATH»</em>. Luego <em>Siguiente</em> hasta <em>Instalar</em>.</li>
-          <li data-so="mac">Abre el archivo que bajó (queda en <em>Descargas</em>) y arrastra <em>Visual Studio Code</em> a la carpeta <em>Aplicaciones</em>. Ábrelo desde ahí; si pregunta si confías en la app, di que sí.</li>
-          <li data-so="mac">Dentro de VS Code presiona <span class="mono">⌘ ⇧ P</span>, escribe <em>shell command</em> y elige <em>«Install 'code' command in PATH»</em>. Esto deja que la terminal lo abra.</li>
-          <li data-so="linux">Elige el <span class="mono">.deb</span> si tienes Ubuntu o Debian (el <span class="mono">.rpm</span> si es Fedora), ábrelo con doble clic y pulsa <em>Instalar</em>.</li>
-          <li>Ábrelo una vez para ver que funciona. Si ya lo tenías, actualízalo: <em>Ayuda → Buscar actualizaciones</em>.</li>
-        </ol>
+        <div class="vista">
+          <figure class="fig">
+            <div class="navg">
+              <div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">code.visualstudio.com</span></div>
+              <div class="pag">
+                <div class="logo"><b>&lt;/&gt;</b> Visual Studio Code</div>
+                <h4>Code editing. Redefined.</h4>
+                <p>Free. Built on open source. Runs everywhere.</p>
+                <span class="boton">⤓ Download for <span data-so="win">Windows</span><span data-so="mac">macOS</span><span data-so="linux">Linux</span><span class="mano" aria-hidden="true">👆</span></span>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">1</span>
+            <h3>Descárgalo</h3>
+            <p>Entra a <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> y haz clic en el botón azul grande. La página ya sabe cuál es tu sistema.</p>
+            <p data-so="linux">Si te deja elegir, toma el <span class="mono">.deb</span> (Ubuntu, Debian) o el <span class="mono">.rpm</span> (Fedora).</p>
+            <p class="para">El archivo queda en tu carpeta <em>Descargas</em>.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div data-so="win" class="ventana">
+              <div class="vt"><span>Setup - Microsoft Visual Studio Code (User)</span><i>—&nbsp;✕</i></div>
+              <div class="vc"><b>Select Additional Tasks</b><small>Which additional tasks should be performed?</small></div>
+              <ul>
+                <li>Create a desktop icon</li>
+                <li>Add "Open with Code" action to Windows Explorer file context menu</li>
+                <li>Add "Open with Code" action to Windows Explorer directory context menu</li>
+                <li>Register Code as an editor for supported file types</li>
+                <li class="ojo">Add to PATH (requires shell restart)</li>
+              </ul>
+              <div class="vb"><span>&lt; Back</span><span class="si">Next &gt;<span class="mano" aria-hidden="true">👆</span></span><span>Cancel</span></div>
+            </div>
+            <div data-so="mac" class="arrastre">
+              <div class="icono"><div class="app">&lt;/&gt;</div>Visual Studio Code</div>
+              <span class="flecha">→→</span>
+              <div class="icono"><div class="carpeta"></div>Aplicaciones</div>
+            </div>
+            <div data-so="linux" class="ventana">
+              <div class="vt"><span>Instalar aplicación</span><i>✕</i></div>
+              <div class="vc"><b>code_amd64.deb</b><small>Visual Studio Code · Microsoft</small></div>
+              <div class="vb"><span class="si">Instalar<span class="mano" aria-hidden="true">👆</span></span></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">2</span>
+            <h3>Instálalo</h3>
+            <div data-so="win">
+              <p>Abre el archivo que bajó. Acepta el acuerdo y dale <em>Next</em>.</p>
+              <p>En la pantalla de la imagen, <strong>marca todas las casillas</strong>; la más importante es <em>«Add to PATH»</em>, que deja que la terminal encuentre el editor. Luego <em>Next</em>, <em>Install</em> y <em>Finish</em>.</p>
+            </div>
+            <div data-so="mac">
+              <p>Abre el archivo que bajó (se descomprime solo). Arrastra <em>Visual Studio Code</em> a la carpeta <em>Aplicaciones</em>, como en la imagen.</p>
+              <p>Ábrelo desde <em>Aplicaciones</em>. Si pregunta si confías en la app, di que sí.</p>
+            </div>
+            <div data-so="linux">
+              <p>Abre el archivo que bajó con doble clic: se abre el instalador de aplicaciones. Haz clic en <em>Instalar</em> y escribe tu contraseña si te la pide.</p>
+            </div>
+            <p class="para">¿Ya lo tenías? Ábrelo y actualízalo: <em>Help → Check for Updates</em>.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="vsc">
+              <div class="menu"><span>File</span><span>Edit</span><span>Selection</span><span>View</span><span>Go</span><span>Run</span><span class="resalta">Terminal</span><i class="mk">3</i><span>Help</span></div>
+              <div class="cuerpo-v">
+                <div class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6"/><path d="m20 20-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="8" r="2"/><path d="M7 7v10M17 10c0 4-10 3-10 7"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 5v14l11-7z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10h6v6H4zM4 16h6v4H4zM10 16h6v4h-6zM14 4h6v6h-6z"/></svg><i class="mk">1</i></div>
+                <div class="lado"><b>EXPLORER <i class="mk">2</i></b>No has abierto ninguna carpeta.<div class="btn-v">Open Folder</div></div>
+                <div class="zona"><span class="pest">Welcome</span><h5>Visual Studio Code</h5><p>Editing evolved</p><p style="margin-top:.8rem">Start<br>New File…<br>Open Folder…</p><i class="mk">4</i></div>
+              </div>
+              <div class="estado">⊗ 0 &nbsp; ⚠ 0</div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">3</span>
+            <h3>Ábrelo y conócelo</h3>
+            <ul class="leyenda">
+              <li><i class="mk">1</i><span>La <strong>barra de íconos</strong>. El de cuatro cuadritos son las <em>Extensiones</em>: ahí instalaremos la IA en el paso 03.</span></li>
+              <li><i class="mk">2</i><span>El <strong>explorador</strong>: los archivos de la carpeta que abras.</span></li>
+              <li><i class="mk">3</i><span>El menú <strong>Terminal → New Terminal</strong> abre una terminal dentro del editor.</span></li>
+              <li><i class="mk">4</i><span>El <strong>área de trabajo</strong>, donde se ven y escriben los archivos.</span></li>
+            </ul>
+            <p class="para">Viene en inglés; si lo quieres en español, el mismo editor te lo ofrece la primera vez.</p>
+          </div>
+        </div>
+
+        <div class="vista" data-so="mac">
+          <figure class="fig">
+            <div class="paleta">
+              <div class="campo">&gt; shell command<span class="cursor"></span></div>
+              <div class="op si">Shell Command: Install 'code' command in PATH</div>
+              <div class="op"><small>Shell Command: Uninstall 'code' command from PATH</small></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena">4</span>
+            <h3>Deja que la terminal lo abra</h3>
+            <p>Dentro de VS Code presiona <span class="mono">⌘ + ⇧ + P</span>: se abre una barra arriba. Escribe <em>shell command</em> y elige <em>«Install 'code' command in PATH»</em>, como en la imagen.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig anim" data-escribe="code --version">
+            <div class="mini-cmd">code --version<button type="button" class="btn" data-copia="code --version">Copiar</button><span class="mano" aria-hidden="true">👆</span></div>
+            <div class="term">
+              <div class="tit"><span data-so="mac" class="luces"><i></i><i></i><i></i></span><span class="tit-txt"><span data-so="win"><span class="ps-ico">&gt;_</span> Windows PowerShell</span><span data-so="mac">tu-nombre — zsh</span><span data-so="linux">tu-nombre@equipo: ~</span></span><span data-so="win" class="ctrl-win">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span><span data-so="linux" class="ctrl-lin">✕</span></div>
+              <div class="pant"><span class="pr"><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux"><span class="pr-u">tu-nombre@equipo</span>:<span class="pr-d">~</span>$</span></span> <span class="tecleo"></span><span class="cursor c-ini"></span><span class="respuesta" hidden>
+1.106.0
+f1a5f4e2b9c7d0a3e6f8b1c4d7a0e3f6b9c2d5e8
+<span data-so="win linux">x64</span><span data-so="mac">arm64</span>
+<span class="pr"><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux"><span class="pr-u">tu-nombre@equipo</span>:<span class="pr-d">~</span>$</span></span> <span class="cursor c-fin"></span></span></div>
+            </div>
+            <span class="tecla enter">Enter ↵</span>
+          </figure>
+          <div class="txt">
+            <span class="escena"><span data-so="mac">5</span><span data-so="win linux">4</span></span>
+            <h3>Compruébalo</h3>
+            <p>Abre una <strong>terminal nueva</strong> (como en el paso 00), copia la orden de la imagen, pégala y presiona <span class="mono">Enter</span>.</p>
+            <p>Debe responder con un número de versión, como en la imagen. El tuyo puede ser otro: lo que importa es que salga un número.</p>
+            <p class="para">Si dice «no se reconoce», cierra la terminal, abre una nueva y vuelve a intentarlo.</p>
+          </div>
+        </div>
       </div>
       <div data-nivel="inter">
       <p>Descárgalo de <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> e instálalo con las opciones que trae. Si ya lo tienes, actualízalo: <em>Ayuda → Buscar actualizaciones</em>.</p>
@@ -468,15 +650,17 @@ hola
         <div class="cmd"><div class="lbl">Terminal</div><pre>sudo snap install code --classic</pre></div>
       </div>
       </div>
-      <p><strong>¿Otro editor?</strong> También sirven estos dos, hechos sobre VS Code: se ven casi igual y lo demás de esta guía funciona igual en ellos.</p>
+      <p style="margin-top:1.6rem"><strong>¿Otro editor?</strong> También sirven estos dos, hechos sobre VS Code: se ven casi igual y lo demás de esta guía funciona igual en ellos.</p>
       <div class="opciones">
         <div class="opcion"><h3>VS Code <span class="etq rec">recomendado</span></h3><p>De Microsoft, gratis. Es el que usamos en las sesiones.</p></div>
         <div class="opcion"><h3>Antigravity <span class="etq opc">de Google</span></h3><p>Gratis, con Gemini incorporado. En <a href="https://antigravity.google/" target="_blank" rel="noopener">antigravity.google</a>.</p></div>
         <div class="opcion"><h3>Cursor <span class="etq opc">alternativa</span></h3><p>Trae su propia IA; el plan gratuito es limitado. En <a href="https://cursor.com/" target="_blank" rel="noopener">cursor.com</a>.</p></div>
       </div>
       <p class="para">OpenAI no tiene editor propio: GPT se usa con su extensión <strong>Codex</strong> dentro de cualquiera de estos (paso 03). Con Antigravity o Cursor, para la casilla de abajo basta con que el editor abra.</p>
-      <p><span data-nivel="basico">Para comprobarlo, abre una terminal nueva (como en el paso 00) y pega esto. Debe responder con un número, como <span class="mono">1.106.0</span>:</span><span data-nivel="inter">Para comprobarlo, abre una terminal nueva y escribe:</span></p>
+      <div data-nivel="inter">
+      <p>Para comprobarlo, abre una terminal nueva y escribe:</p>
       <div class="cmd"><pre>code --version</pre></div>
+      </div>
       <label class="check"><input type="checkbox" data-hecho><span>Mi editor abre y, si es VS Code, <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></label>
     </div>
       <a class="siguiente" href="#base">Siguiente: Git, Node.js y Python ↓</a>
