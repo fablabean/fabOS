@@ -139,10 +139,35 @@
   body.so-win span[data-so~=win], body.so-mac span[data-so~=mac], body.so-linux span[data-so~=linux]{display:inline}
 
   /* verificación */
-  .check{display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem;border:1px solid var(--rule);border-radius:9px;margin:.45rem 0;background:var(--bg2);cursor:pointer}
-  .check input{margin-top:.3rem;accent-color:var(--accent);width:1.05rem;height:1.05rem;flex:0 0 auto}
-  .check.ok{border-color:color-mix(in srgb,var(--accent) 55%,var(--rule))}
-  .check small{display:block;color:var(--muted)}
+  /* La casilla de cada paso: grande, y hay que marcarla para seguir. */
+  .check{display:flex;gap:1rem;align-items:center;padding:1rem 1.2rem;margin:1.2rem 0 .45rem;cursor:pointer;font-size:1.05rem;
+    border:2px dashed color-mix(in srgb,var(--warn) 70%,transparent);border-radius:12px;
+    background:color-mix(in srgb,var(--warn) 7%,var(--bg2));transition:border-color .2s,background .2s}
+  .check:hover{border-color:var(--warn)}
+  .check > span::before{content:"Márcalo cuando lo tengas";display:block;font:600 .7rem "JetBrains Mono",monospace;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:.2rem}
+  .check input{appearance:none;-webkit-appearance:none;margin:0;flex:0 0 auto;width:1.9rem;height:1.9rem;border-radius:8px;
+    border:2.5px solid var(--warn);background:var(--code);display:grid;place-items:center;cursor:pointer;transition:background .15s,border-color .15s}
+  .check input::after{content:"";width:.5rem;height:.95rem;border:solid #06231A;border-width:0 3.5px 3.5px 0;
+    transform:rotate(45deg) translate(-1px,-2px);opacity:0}
+  .check input:checked{background:var(--accent);border-color:var(--accent)}
+  .check input:checked::after{opacity:1}
+  .check input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .check.ok{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+  .check.ok > span::before{content:"Hecho ✓";color:var(--accent)}
+  .check small{display:block;color:var(--muted);font-size:.85rem}
+  .check.sacude{animation:sacude .45s}
+  @keyframes sacude{20%,60%{transform:translateX(-7px)} 40%,80%{transform:translateX(7px)}}
+  @media (prefers-reduced-motion:reduce){.check.sacude{animation:none;outline:3px solid var(--warn)}}
+  .siguiente.falta{opacity:.6;border-style:dashed;color:var(--muted)}
+  .siguiente.falta::after{content:"· marca la casilla primero";font-weight:500;font-size:.85rem}
+  /* Los pasos que vienen después del que falta, cerrados. */
+  section.paso.bloqueado{min-height:0;padding:1.3rem 0;opacity:.55;scroll-snap-align:none}
+  section.paso.bloqueado .cuerpo, section.paso.bloqueado .siguiente{display:none}
+  section.paso.bloqueado .cab > div:last-child::after{content:"🔒 Se abre cuando marques el paso anterior";display:block;
+    margin-top:.35rem;font-size:.85rem;color:var(--warn)}
+  .resumen a.cerrado{opacity:.5}
+  .resumen a.cerrado .n::after{content:" 🔒"}
   details{border:1px solid var(--rule);border-radius:10px;margin:.6rem 0;background:var(--bg2)}
   summary{cursor:pointer;padding:.75rem 1rem;font-weight:600}
   details > div{padding:0 1rem .9rem;color:var(--soft);font-size:.93rem}
@@ -161,6 +186,7 @@
     header.portada{min-height:0}
     [data-so]{display:block !important}
     section.paso,section.indice{min-height:0} .siguiente,.nivel,.nivel-tit{display:none}
+    section.paso.bloqueado{opacity:1} section.paso.bloqueado .cuerpo{display:block}
   }
 </style>
 </head>
@@ -194,7 +220,7 @@
       <div class="dato"><b>Cuánto toma</b><span data-nivel="basico">60 a 90 minutos</span><span data-nivel="inter">45 a 60 minutos</span></div>
       <div class="dato"><b>Cuándo</b>Antes del 24 de noviembre</div>
       <div class="dato"><b>Sesiones</b>24, 25 y 26 de nov · 6:00–8:00 p. m.</div>
-      <div class="dato"><b>Costo extra</b>Ninguno obligatorio</div>
+      <div class="dato"><b>Costo extra</b>Claude Pro o saldo de API</div>
     </div>
     <p class="nivel-tit">¿Cómo quieres ver la guía?</p>
     <div class="nivel llamando" role="group" aria-label="Cómo ver la guía">
@@ -222,7 +248,7 @@
       <a href="#terminal" data-nivel="basico"><div class="n">00</div><div class="t">La terminal</div><div class="s">Qué es y cómo se usa</div></a>
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
       <a href="#base"><div class="n">02</div><div class="t">Lo de base</div><div class="s">Git, Node.js y Python</div></a>
-      <a href="#asistentes"><div class="n">03</div><div class="t">Asistentes en el editor</div><div class="s">Sesión 01</div></a>
+      <a href="#asistentes"><div class="n">03</div><div class="t">Claude Code en el editor</div><div class="s">Sesión 01</div></a>
       <a href="#agente"><div class="n">04</div><div class="t">Un agente en la terminal</div><div class="s">Sesión 02</div></a>
       <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
       <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
@@ -367,23 +393,19 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
 
   <!-- 03 -->
   <section class="paso" id="asistentes" data-paso>
-    <div class="cab"><div class="num">03</div><div><h2>Asistentes dentro del editor <span class="sesion">sesión 01</span></h2><p class="para">Trabajaremos con Claude, GPT y Gemini desde VS Code.</p></div></div>
+    <div class="cab"><div class="num">03</div><div><h2>Claude Code en el editor <span class="sesion">sesión 01</span></h2><p class="para">Es el asistente con el que vamos a trabajar en el bootcamp, dentro de VS Code.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son extensiones, complementos que se le agregan a VS Code, para chatear con una IA ahí mismo mientras ves tu código: le preguntas, te explica y te propone cambios.</p>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> Claude Code es una IA de Anthropic que vive dentro de VS Code. Le pides algo en un panel al lado de tu código; ella lee tus archivos, te propone cambios y tú los apruebas antes de que se apliquen.</p>
       <ol class="pasitos" data-nivel="basico">
         <li>En VS Code, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
-        <li>En el buscador de arriba escribe <strong>GitHub Copilot</strong>, elige el que es de <em>GitHub</em> y haz clic en <em>Install</em>.</li>
-        <li>Haz lo mismo con <strong>Gemini Code Assist</strong> (el de <em>Google</em>).</li>
-        <li>Cada una te pide iniciar sesión: se abre el navegador, entras con tu cuenta y vuelves a VS Code. Para Copilot necesitas una cuenta de <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub</a> (es gratis); para Gemini, tu cuenta de Gmail.</li>
+        <li>En el buscador de arriba escribe <strong>Claude Code</strong>. Elige <strong>«Claude Code for VS Code»</strong>, la que publica <em>Anthropic</em>, y haz clic en <em>Install</em>.</li>
+        <li>Aparece el ícono de Claude (una chispa naranja). Haz clic en él para abrir su panel.</li>
+        <li>Te pide iniciar sesión: elige entrar con tu cuenta de Claude. Se abre el navegador, autorizas y vuelves a VS Code.</li>
       </ol>
-      <p data-nivel="inter">En VS Code abre <em>Extensiones</em> (<span class="mono" data-so="win linux">Ctrl+Shift+X</span><span class="mono" data-so="mac">⌘⇧X</span>) e instala:</p>
-      <div class="opciones">
-        <div class="opcion"><h3>GitHub Copilot <span class="etq rec">instálala</span></h3><p>Tiene plan gratuito. Pide iniciar sesión con una cuenta de <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub</a>: créala si no tienes. Desde su chat se elige el modelo (GPT, Claude, Gemini).</p></div>
-        <div class="opcion"><h3>Gemini Code Assist <span class="etq rec">instálala</span></h3><p>De Google, gratis para uso personal con tu cuenta de Gmail.</p></div>
-        <div class="opcion"><h3>Claude Code <span class="etq opc">opcional</span></h3><p>De Anthropic. Funciona con una suscripción de Claude o con saldo de API: no es obligatoria para el bootcamp.</p></div>
-      </div>
-      <p class="nota ok"><b>No hace falta pagar</b> ChatGPT Plus ni Claude Pro: con los planes gratuitos alcanza para seguir las sesiones.</p>
-      <label class="check"><input type="checkbox" data-hecho><span>Copilot y Gemini Code Assist instalados, con la sesión iniciada<small>Prueba: abre su chat y pregúntale «¿qué hace este archivo?» con cualquier archivo abierto.</small></span></label>
+      <p class="para" data-nivel="basico">Si no aparece en el buscador o no instala, actualiza VS Code (<em>Ayuda → Buscar actualizaciones</em>) y vuelve a intentarlo.</p>
+      <p data-nivel="inter">En <em>Extensiones</em> (<span class="mono" data-so="win linux">Ctrl+Shift+X</span><span class="mono" data-so="mac">⌘⇧X</span>) instala <strong>Claude Code for VS Code</strong>, publicada por <em>Anthropic</em>. Ábrela desde su ícono e inicia sesión con tu cuenta de Claude o con la Consola de Anthropic. Pide una versión reciente de VS Code: si no aparece, actualízalo.</p>
+      <p class="nota"><b>Claude Code necesita una cuenta paga:</b> el plan gratuito de Claude no lo incluye. Sirve una suscripción <strong>Claude Pro</strong> (o Max) en <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">claude.ai</a>, o saldo de API en <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+      <label class="check"><input type="checkbox" data-hecho><span>Claude Code instalado en VS Code, con la sesión iniciada<small>Prueba: abre una carpeta en VS Code, abre el panel de Claude y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
     </div>
       <a class="siguiente" href="#agente">Siguiente: un agente en la terminal ↓</a>
   </section>
@@ -677,14 +699,37 @@ print(mensaje.content[0].text)</pre></div>
     document.getElementById('cuenta').textContent = n + ' de ' + visibles.length;
     document.getElementById('lleno').style.width = (100 * n / visibles.length) + '%';
     casillas.forEach(function (c) { c.closest('.check').classList.toggle('ok', c.checked); });
+    // Hasta marcar un paso no se pasa al siguiente: los de después quedan cerrados.
+    var cerrado = false;
     document.querySelectorAll('[data-paso]').forEach(function (p) {
+      var z = p.closest('[data-nivel]');
+      if (z && z.dataset.nivel !== nivel) { return; }
       var suyas = p.querySelectorAll('[data-hecho]');
       var todas = suyas.length > 0 && Array.prototype.every.call(suyas, function (c) { return c.checked; });
       p.classList.toggle('hecho', todas);
+      p.classList.toggle('bloqueado', cerrado);
+      p.querySelectorAll('.siguiente').forEach(function (a) { a.classList.toggle('falta', !todas); });
+      var tarjeta = document.querySelector('.resumen a[href="#' + p.id + '"]');
+      if (tarjeta) { tarjeta.classList.toggle('cerrado', cerrado); }
+      if (!todas) { cerrado = true; }
     });
     document.getElementById('listo').hidden = n !== visibles.length;
   }
   pintar();
+
+  // «Siguiente» sin marcar: lleva a la casilla y la sacude.
+  document.querySelectorAll('.siguiente').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (!a.classList.contains('falta')) { return; }
+      e.preventDefault();
+      var c = a.closest('section').querySelector('.check:not(.ok)');
+      if (!c) { return; }
+      c.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      c.classList.remove('sacude');
+      void c.offsetWidth;
+      c.classList.add('sacude');
+    });
+  });
 })();
 </script>
 </body>
