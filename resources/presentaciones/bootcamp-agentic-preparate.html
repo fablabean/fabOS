@@ -790,7 +790,7 @@ hola
         </div>
       </div>
       <div data-nivel="inter">
-      <p>Descárgalo de <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> e instálalo con las opciones que trae. Si ya lo tienes, actualízalo: <em>Ayuda → Buscar actualizaciones</em>.</p>
+      <p>Descárgalo de <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> e instálalo con las opciones que trae. Si ya lo tienes, actualízalo: <em>Help → Check for Updates</em>.</p>
       <div data-so="win">
         <p class="nota"><b>En Windows,</b> durante la instalación marca <em>«Agregar a PATH»</em> y <em>«Abrir con Code»</em> en el menú contextual. O instálalo desde la terminal:</p>
         <div class="cmd"><div class="lbl">PowerShell</div><pre>winget install -e --id Microsoft.VisualStudioCode</pre></div>
@@ -952,7 +952,7 @@ hola
         </ol>
         <p class="nota"><b>Codex se usa con tu cuenta de ChatGPT</b> y viene con los planes pagos (Plus o superior); también funciona con saldo de API de OpenAI.</p>
       </div>
-      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Ayuda → Buscar actualizaciones</em>). <span data-nivel="inter">Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</span><span data-nivel="basico">Si aun así no está, mira la ayuda al final de la página.</span></p>
+      <p class="para">Si la extensión no aparece en el buscador o no instala, actualiza el editor (<em>Help → Check for Updates</em>). <span data-nivel="inter">Si aun así no está, el agente del paso 04 hace lo mismo desde la terminal, con cualquier editor.</span><span data-nivel="basico">Si aun así no está, mira la ayuda al final de la página.</span></p>
       <label class="check"><input type="checkbox" data-hecho><span><span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini (la extensión o el de Antigravity)</span><span data-ia="gpt">Codex</span> instalado en el editor, con la sesión iniciada<small>Prueba: abre una carpeta, abre el panel de la IA y pregúntale «¿qué hay en esta carpeta?».</small></span></label>
     </div>
       <a class="siguiente" href="#base">Siguiente: que tu IA instale lo de base ↓</a>
@@ -1321,9 +1321,9 @@ code .</pre></div>
       <div class="cmd" data-so="mac linux"><div class="lbl">Terminal</div><pre>mkdir -p ~/bootcamp-agentic
 cd ~/bootcamp-agentic
 code .</pre></div>
-      <p class="para">Con Antigravity o Cursor, en vez de la última línea abre la carpeta desde su menú <em>Archivo → Abrir carpeta</em>.</p>
+      <p class="para">Con Antigravity o Cursor, en vez de la última línea abre la carpeta desde su menú <em>File → Open Folder</em>.</p>
       <ol class="pasitos" start="2">
-        <li>En el editor abre la terminal integrada (<em>Terminal → Nueva terminal</em>) y crea un entorno de Python con sus librerías:</li>
+        <li>En el editor abre la terminal integrada (<em>Terminal → New Terminal</em>) y crea un entorno de Python con sus librerías:</li>
       </ol>
       <div class="cmd" data-so="win"><div class="lbl">Terminal del editor</div><pre>py -m venv .venv
 .venv\Scripts\activate
@@ -1526,7 +1526,7 @@ print(respuesta.output_text)</pre></div>
   // La barra cambia de alto cuando carga la tipografía (o al angostar la ventana):
   // se vuelve a medir para que cada bloque quede justo debajo de ella.
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
-  if (window.ResizeObserver) { var ro = new ResizeObserver(medir); ro.observe(barra); ro.observe(document.querySelector('main')); }
+  if (window.ResizeObserver) { var ro = new ResizeObserver(function () { window.requestAnimationFrame(medir); }); ro.observe(barra); ro.observe(document.querySelector('main')); }
 
   // Copiar cada bloque, sin los comentarios.
   document.querySelectorAll('.cmd pre').forEach(function (pre) {
