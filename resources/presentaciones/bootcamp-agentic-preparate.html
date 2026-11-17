@@ -209,21 +209,34 @@
   .arrastre .carpeta::before{content:"";position:absolute;left:0;top:-.45rem;width:1.8rem;height:.6rem;border-radius:4px 4px 0 0;background:#6cb7f2}
   .arrastre .flecha{color:var(--accent);font-size:1.6rem;letter-spacing:-.2em}
 
-  /* El editor (VS Code) de mentira. */
-  .vsc{width:100%;max-width:28rem;border-radius:9px;overflow:hidden;background:#1f1f1f;color:#ccc;box-shadow:0 14px 34px rgba(0,0,0,.45);font:11.5px Inter,sans-serif;text-align:left;border:1px solid #333}
-  .vsc .menu{display:flex;gap:.7rem;align-items:center;padding:.35rem .6rem;background:#181818;border-bottom:1px solid #2b2b2b;color:#bbb;font-size:11px;flex-wrap:wrap}
-  .vsc .menu .resalta{color:#fff;background:#333;border-radius:3px;padding:0 .25rem}
-  .vsc .cuerpo-v{display:grid;grid-template-columns:2.2rem 7.5rem 1fr;min-height:11rem}
-  .vsc .act{background:#181818;display:grid;align-content:start;gap:.55rem;padding:.55rem 0;justify-items:center;border-right:1px solid #2b2b2b;position:relative}
-  .vsc .act svg{width:1.15rem;height:1.15rem;color:#858585} .vsc .act svg:first-child{color:#fff}
-  .vsc .lado{background:#181818;padding:.5rem .6rem;border-right:1px solid #2b2b2b;font-size:10.5px;color:#999}
-  .vsc .lado b{display:block;color:#bbb;font-size:10px;letter-spacing:.08em;margin-bottom:.5rem}
-  .vsc .lado .btn-v{margin-top:.6rem;padding:.3rem .4rem;border-radius:3px;background:#0078d4;color:#fff;text-align:center;font-size:10px}
-  .vsc .zona{padding:.5rem .8rem;position:relative}
-  .vsc .pest{display:inline-block;padding:.2rem .6rem;border-top:2px solid #0078d4;background:#1f1f1f;color:#fff;font-size:10.5px;margin:-.5rem 0 .6rem -.8rem}
-  .vsc .zona h5{margin:.2rem 0;font-size:15px;color:#e8e8e8;font-weight:500} .vsc .zona p{margin:0;color:#8a8a8a;font-size:10.5px}
-  .vsc .estado{background:#0078d4;color:#fff;font-size:10px;padding:.15rem .6rem}
-  .vsc .mk{margin:0 .2rem;width:1.1rem;height:1.1rem;font-size:10px}
+  /* El editor (VS Code) de mentira, con la terminal abajo y el chat a la derecha. */
+  .vsc{width:100%;max-width:31rem;border-radius:9px;overflow:hidden;background:#1f1f1f;color:#ccc;box-shadow:0 14px 34px rgba(0,0,0,.45);
+    font:11px Inter,sans-serif;text-align:left;border:1px solid #333}
+  .vsc .mk{margin:0 .15rem;width:1.1rem;height:1.1rem;font-size:10px}
+  .vsc .titulo{display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;background:#181818;border-bottom:1px solid #2b2b2b}
+  .vsc .menu{display:flex;gap:.4rem;align-items:center;color:#bbb;font-size:10px;min-width:0;flex-wrap:wrap}
+  .vsc .centro{flex:1;display:flex;justify-content:center}
+  .vsc .centro span{padding:.12rem 1.2rem;border-radius:5px;background:#2a2a2a;border:1px solid #3a3a3a;color:#999;font-size:10px}
+  .vsc .botones{display:flex;align-items:center;gap:.1rem;flex:0 0 auto;margin-left:auto}
+  .vsc .botones svg{width:1.05rem;height:1.05rem;color:#ccc;padding:.12rem;border-radius:3px}
+  .vsc .botones .on{background:#3a3d41;color:#fff}
+  .vsc .cuerpo-v{display:grid;grid-template-columns:2rem 6.4rem 1fr 6.8rem;min-height:13rem}
+  .vsc .act{background:#181818;display:grid;align-content:start;gap:.5rem;padding:.5rem 0;justify-items:center;border-right:1px solid #2b2b2b}
+  .vsc .act svg{width:1.1rem;height:1.1rem;color:#858585} .vsc .act svg:first-child{color:#fff}
+  .vsc .lado{background:#181818;padding:.45rem .5rem;border-right:1px solid #2b2b2b;font-size:10px;color:#999}
+  .vsc .lado b, .vsc .chat b, .vsc .panel b{display:block;color:#bbb;font-size:9.5px;letter-spacing:.08em;margin-bottom:.4rem;font-weight:600}
+  .vsc .lado .btn-v{margin-top:.5rem;padding:.25rem .3rem;border-radius:3px;background:#0078d4;color:#fff;text-align:center;font-size:9.5px}
+  .vsc .medio{display:grid;grid-template-rows:1fr auto;min-width:0}
+  .vsc .zona{padding:.45rem .6rem}
+  .vsc .pest{display:inline-block;padding:.15rem .5rem;border-top:2px solid #0078d4;background:#1f1f1f;color:#fff;font-size:10px;margin:-.45rem 0 .5rem -.6rem}
+  .vsc .zona h5{margin:.1rem 0;font-size:13px;color:#e8e8e8;font-weight:500} .vsc .zona p{margin:0;color:#8a8a8a;font-size:10px}
+  .vsc .panel{border-top:1px solid #2b2b2b;background:#181818;padding:.35rem .6rem .5rem;font:10px "JetBrains Mono",monospace;color:#ddd}
+  .vsc .panel b{font-family:Inter,sans-serif;border-bottom:1px solid #bbb;width:max-content;padding-bottom:.1rem}
+  .vsc .chat{background:#181818;border-left:1px solid #2b2b2b;padding:.45rem .5rem;display:flex;flex-direction:column;font-size:10px;color:#999}
+  .vsc .chat .burbuja{background:#2a2a2a;border-radius:6px;padding:.3rem .4rem;color:#ccc;margin-bottom:.4rem}
+  .vsc .chat .entrada{margin-top:auto;border:1px solid #3a3a3a;border-radius:5px;padding:.3rem .4rem;color:#777;background:#202020}
+  .vsc .estado{background:#0078d4;color:#fff;font-size:9.5px;padding:.12rem .6rem}
+  @media (max-width:520px){.vsc .cuerpo-v{grid-template-columns:1.8rem 1fr 5.5rem} .vsc .lado{display:none} .vsc .menu span:nth-child(n+4){display:none}}
 
   /* La paleta de comandos. */
   .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
@@ -577,11 +590,18 @@ hola
         <div class="vista">
           <figure class="fig">
             <div class="vsc">
-              <div class="menu"><span>File</span><span>Edit</span><span>Selection</span><span>View</span><span>Go</span><span>Run</span><span class="resalta">Terminal</span><i class="mk">3</i><span>Help</span></div>
+              <div class="titulo">
+                <div class="menu"><span>File</span><span>Edit</span><span>Selection</span><span>View</span><span>Run</span><span>Terminal</span><span>Help</span><i class="mk">3</i></div>
+                <div class="botones"><svg class="on" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.2" y="3.2" width="4" height="9.6" fill="currentColor"/></svg><i class="mk">4</i><svg class="on" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.2" y="8.6" width="11.6" height="4.2" fill="currentColor"/></svg><i class="mk">5</i><svg class="on" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="9.8" y="3.2" width="4" height="9.6" fill="currentColor"/></svg><i class="mk">6</i><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5h13M6.5 6.5v7" stroke="currentColor" stroke-width="1.2"/></svg></div>
+              </div>
               <div class="cuerpo-v">
                 <div class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6"/><path d="m20 20-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="8" r="2"/><path d="M7 7v10M17 10c0 4-10 3-10 7"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 5v14l11-7z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10h6v6H4zM4 16h6v4H4zM10 16h6v4h-6zM14 4h6v6h-6z"/></svg><i class="mk">1</i></div>
                 <div class="lado"><b>EXPLORER <i class="mk">2</i></b>No has abierto ninguna carpeta.<div class="btn-v">Open Folder</div></div>
-                <div class="zona"><span class="pest">Welcome</span><h5>Visual Studio Code</h5><p>Editing evolved</p><p style="margin-top:.8rem">Start<br>New File…<br>Open Folder…</p><i class="mk">4</i></div>
+                <div class="medio">
+                  <div class="zona"><span class="pest">Welcome</span><h5>Visual Studio Code</h5><p>Editing evolved</p><p style="margin-top:.6rem">Start<br>New File…<br>Open Folder…</p><i class="mk">7</i></div>
+                  <div class="panel"><b>TERMINAL</b><span data-so="win">PS C:\Users\tu-nombre&gt;</span><span data-so="mac">tu-nombre@MacBook ~ %</span><span data-so="linux">tu-nombre@equipo:~$</span> <span class="cursor"></span></div>
+                </div>
+                <div class="chat"><b>CHAT</b><div class="burbuja">¿En qué te ayudo?</div><div class="entrada">Pregúntale algo…</div></div>
               </div>
               <div class="estado">⊗ 0 &nbsp; ⚠ 0</div>
             </div>
@@ -592,10 +612,13 @@ hola
             <ul class="leyenda">
               <li><i class="mk">1</i><span>La <strong>barra de íconos</strong>. El de cuatro cuadritos son las <em>Extensiones</em>: ahí instalaremos la IA en el paso 03.</span></li>
               <li><i class="mk">2</i><span>El <strong>explorador</strong>: los archivos de la carpeta que abras.</span></li>
-              <li><i class="mk">3</i><span>El menú <strong>Terminal → New Terminal</strong> abre una terminal dentro del editor.</span></li>
-              <li><i class="mk">4</i><span>El <strong>área de trabajo</strong>, donde se ven y escriben los archivos.</span></li>
+              <li><i class="mk">3</i><span>El <strong>menú</strong>: ahí está todo. Por ejemplo, <em>Terminal → New Terminal</em> abre una terminal.</span></li>
+              <li><i class="mk">4</i><span>Muestra u oculta el <strong>explorador</strong> (el panel de la izquierda).</span></li>
+              <li><i class="mk">5</i><span>Muestra u oculta el <strong>panel de abajo</strong>, donde vive la <strong>terminal</strong>.</span></li>
+              <li><i class="mk">6</i><span>Muestra u oculta el <strong>panel de la derecha</strong>, donde vive el <strong>chat con la IA</strong>.</span></li>
+              <li><i class="mk">7</i><span>El <strong>área de trabajo</strong>, donde se ven y escriben los archivos.</span></li>
             </ul>
-            <p class="para">Viene en inglés; si lo quieres en español, el mismo editor te lo ofrece la primera vez.</p>
+            <p class="para">Si algo desaparece de la pantalla, casi siempre se recupera con los botones 4, 5 y 6 de arriba a la derecha. Viene en inglés; si lo quieres en español, el mismo editor te lo ofrece la primera vez.</p>
           </div>
         </div>
 
