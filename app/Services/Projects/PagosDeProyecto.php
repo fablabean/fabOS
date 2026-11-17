@@ -242,6 +242,101 @@ class PagosDeProyecto
         ];
     }
 
+    /**
+     * Descuenta FabCoins del saldo de una persona por el proyecto.
+     *
+     * Se evalúa el proyecto y se acuerda con la persona cuánto vale: una parte
+     * se paga con su saldo de FabCoins y el resto se cobra en pesos, con
+     * «Pedir un pago». Sale de su cuenta hacia el ingreso del laboratorio, como
+     * cualquier consumo, con el proyecto como referencia; y queda dicho en la
+     * conversación.
+     *
+     * @throws ProjectException si el importe no es positivo o no le alcanza el saldo
+     */
+    public function descontarFabcoins(Project $proyecto, User $persona, float $fabcoins, ?string $motivo, User $porQuien): \App\Models\LedgerTransaction
+    {
+        $unidades = (int) config('fabos.currency.minor_units');
+        $importe = (int) round($fabcoins * $unidades);
+        $moneda = config('fabos.currency.code');
+        $libro = app(\App\Services\Ledger\LedgerService::class);
+
+        if ($importe <= 0) {
+            throw new ProjectException('Lo que se descuenta tiene que ser mayor que cero.');
+        }
+
+        $motivo = trim((string) $motivo);
+        $cuantos = self::fabcoins($importe);
+
+        return DB::transaction(function () use ($proyecto, $persona, $importe, $motivo, $porQuien, $libro, $moneda, $cuantos) {
+            $cuenta = $libro->cuentaDe($persona);
+            // Bloqueada mientras se mira el saldo: dos descuentos a la vez no
+            // pueden pasar los dos con el mismo saldo.
+            \App\Models\LedgerAccount::whereKey($cuenta->id)->lockForUpdate()->first();
+            $saldo = $cuenta->saldoMenor();
+
+            if ($saldo < $importe) {
+                throw new ProjectException($persona->name . ' tiene ' . self::fabcoins($saldo) . ' ' . $moneda
+                    . ': no le alcanza para descontarle ' . $cuantos . '.');
+            }
+
+            $movimiento = $libro->transferir(
+                $cuenta,
+                $libro->cuentaDeSistema(\App\Models\LedgerAccount::INGRESO),
+                $importe,
+                'liquidacion',
+                'Proyecto ' . $proyecto->code . ($motivo !== '' ? ' · ' . $motivo : ''),
+                null,
+                $proyecto,
+                $porQuien,
+            );
+
+            $proyecto->comments()->create([
+                'user_id'     => $porQuien->id,
+                'author_name' => $porQuien->name,
+                'side'        => 'laboratorio',
+                'body'        => 'Se descontaron ' . $cuantos . ' ' . $moneda . ' del saldo de ' . $persona->name
+                    . ' por este proyecto.' . ($motivo !== '' ? ' ' . $motivo : ''),
+            ]);
+
+            return $movimiento;
+        });
+    }
+
+    /**
+     * Lo descontado en FabCoins por el proyecto, del más reciente al primero.
+     *
+     * @return \Illuminate\Support\Collection<int, array{persona:string, fabcoins:string, cuando:string, quien:?string, memo:?string}>
+     */
+    public static function descuentosDe(Project $proyecto): \Illuminate\Support\Collection
+    {
+        return \App\Models\LedgerTransaction::query()
+            ->with(['entries.account', 'createdBy'])
+            ->where('reference_type', Project::class)
+            ->where('reference_id', $proyecto->id)
+            ->where('kind', 'liquidacion')
+            ->latest('id')
+            ->get()
+            ->map(function ($t) {
+                $salida = $t->entries->firstWhere('direction', 'D');
+
+                return [
+                    'persona'  => $salida?->account?->name ?? '—',
+                    'fabcoins' => self::fabcoins((int) $salida?->amount_minor),
+                    'cuando'   => $t->occurred_at?->timezone(config('fabos.lab.timezone'))->format('d/m/Y'),
+                    'quien'    => $t->createdBy?->name,
+                    'memo'     => $t->memo,
+                ];
+            });
+    }
+
+    /** «8» o «2,50»: sin decimales cuando no los hay. */
+    public static function fabcoins(int $menor): string
+    {
+        $valor = $menor / (int) config('fabos.currency.minor_units');
+
+        return number_format($valor, fmod($valor, 1.0) == 0.0 ? 0 : 2, ',', '.');
+    }
+
     /** Al cliente, con cuenta o sin ella, con el enlace firmado a su proyecto. */
     private function avisar(string $clave, Project $proyecto, array $datos, bool $conQr = false): void
     {

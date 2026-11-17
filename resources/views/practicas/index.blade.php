@@ -2,6 +2,7 @@
 @section('title', 'Prácticas · ' . config('fabos.lab.name'))
 
 @section('content')
+    <style>.descripcion-convocatoria p{margin:0 0 .8rem}.descripcion-convocatoria ul,.descripcion-convocatoria ol{margin:0 0 .8rem;padding-left:1.3rem}.descripcion-convocatoria li{margin-bottom:.3rem}.foto-convocatoria{display:block;width:100%;max-height:22rem;object-fit:cover;border-radius:8px;margin:0 0 1rem}</style>
     <a class="volver" href="{{ route('publico.home') }}">← Volver al inicio</a>
 
     <h1 style="margin-top:.6rem">Hacer la práctica en el laboratorio</h1>
@@ -26,10 +27,13 @@
 
         @foreach ($convocatorias as $convocatoria)
             <div class="panel">
+                @if ($convocatoria->fotoUrl())
+                    <img class="foto-convocatoria" src="{{ $convocatoria->fotoUrl() }}" alt="" loading="lazy">
+                @endif
                 <h2 style="margin-top:0">{{ $convocatoria->name }}</h2>
 
                 @if ($convocatoria->description)
-                    <p>{{ $convocatoria->description }}</p>
+                    <div class="descripcion-convocatoria">{!! $convocatoria->descripcionHtml() !!}</div>
                 @endif
 
                 <p class="help">

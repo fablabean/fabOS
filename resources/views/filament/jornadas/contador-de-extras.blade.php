@@ -31,7 +31,7 @@
                 Horas extras · corte del {{ $desde->format('d/m') }} al {{ $hasta->format('d/m/Y') }}
             </x-slot>
             <x-slot name="description">
-                El periodo corta el 15. Topes: {{ $h($topeDia) }} h al día, {{ $h($topeSemana) }} h a la semana
+                El periodo va del día siguiente a un corte de nómina hasta el siguiente corte. Topes: {{ $h($topeDia) }} h al día, {{ $h($topeSemana) }} h a la semana
                 y {{ $h($topeMes) }} h en el periodo. Solo cuentan las jornadas marcadas como extra.
             </x-slot>
 
@@ -55,6 +55,8 @@
                             <th class="n">{{ $esActual ? 'Hoy' : 'Último día' }}</th>
                             <th class="n">Le quedan</th>
                             <th class="n">Jornadas</th>
+                            <th class="n" title="Lo hecho hasta el corte que la persona todavía no ha reportado">Por reportar</th>
+                            <th class="n" title="Lo que la persona reportó con este corte">Reportadas</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -81,6 +83,16 @@
                             <td class="n">{{ $h($f['hoy']) }} <span class="de">/ {{ $h($topeDia) }}</span></td>
                             <td class="n">{{ $h($f['disponible']) }} h</td>
                             <td class="n">{{ $f['jornadas'] }}</td>
+                            <td class="n">
+                                @if ($f['flexible'])
+                                    <span class="de">Contrato flexible</span>
+                                @elseif ($f['por_reportar'])
+                                    <strong style="color:rgb(217 119 6)">{{ $h($f['por_reportar']) }} h</strong>
+                                @else
+                                    <span class="de">—</span>
+                                @endif
+                            </td>
+                            <td class="n">{{ $f['reportado'] ? $h($f['reportado']) . ' h' : '—' }}</td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -90,7 +102,8 @@
             <p class="nota">
                 El sistema no deja programar por encima de ningún tope; si aparece «se pasó», es algo
                 programado antes de que existiera el tope diario o registrado a mano. Una jornada que se
-                compensa con tiempo no cuenta aquí.
+                compensa con tiempo no cuenta aquí. Cada persona genera su reporte para nómina desde «Mis horas
+                extras»; los topes se miran sobre lo trabajado, esté reportado o no.
             </p>
         </x-filament::section>
     </div>

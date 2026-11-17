@@ -171,7 +171,13 @@ class SolicitudDeProyectoController extends Controller
 
         $datos = $request->validate([
             'titulo'       => ['required', 'string', 'max:180'],
-            'resumen'      => ['required', 'string', 'min:20', 'max:2000'],
+            // Al menos dos palabras. Antes eran veinte caracteres, y «Llavero
+            // acrílico» rebotaba sin que se entendiera por qué.
+            'resumen'      => ['required', 'string', 'max:2000', function ($campo, $valor, $falla) {
+                if (count(preg_split('/\s+/u', trim((string) $valor), -1, PREG_SPLIT_NO_EMPTY)) < 2) {
+                    $falla('«De qué se trata» necesita al menos dos palabras.');
+                }
+            }],
             'entregables'  => ['nullable', 'string', 'max:2000'],
             'nombre'       => [Rule::requiredIf(! $identificado), 'nullable', 'string', 'max:120'],
             'correo'       => [Rule::requiredIf(! $identificado), 'nullable', 'email', 'max:180'],
@@ -210,7 +216,6 @@ class SolicitudDeProyectoController extends Controller
             // Trampa para robots: un campo que nadie ve y nadie debería llenar.
             'sitio_web'    => ['prohibited'],
         ], [
-            'resumen.min'          => 'Cuéntanos un poco más: con dos líneas no podemos evaluarlo.',
             'para_cuando.after'    => 'Esa fecha ya pasó.',
             ...SoportesDeSolicitud::mensajes(),
             'sitio_web.prohibited' => 'No pudimos procesar el formulario.',
@@ -335,11 +340,40 @@ class SolicitudDeProyectoController extends Controller
         $this->avisos->enviar('proyecto.recibido', $proyecto->requestedBy, [
             'proyecto' => $proyecto->name,
             'codigo'   => $proyecto->code,
+            'revision' => $this->semanaAplazadaDicha($proyecto, correo: true)
+                . (($cuando = $this->cuandoSeRevisa($proyecto))
+                    ? 'Tu solicitud ya tiene turno de revisión: la revisamos ' . $cuando . ".\n\n"
+                    : ''),
         ], $proyecto);
 
         app(\App\Services\Analitica\Analitica::class)->evento('solicitud_proyecto', $proyecto);
 
         return $this->aLaConfirmacion($request, $proyecto, $avisoPresupuesto);
+    }
+
+    /**
+     * Un proyecto por semana por estudiante: si este quedó para otra semana,
+     * se le dice por qué y cuál.
+     */
+    private function semanaAplazadaDicha(Project $proyecto, bool $correo = false): string
+    {
+        $semana = \App\Services\Projects\RevisionDeSolicitudes::semanaAplazada($proyecto);
+
+        if (! $semana) {
+            return '';
+        }
+
+        return 'Evaluamos un proyecto por semana por estudiante, y esta semana ya tienes uno. '
+            . 'Este queda asignado a la semana ' . $semana . ' y lo evaluamos en ella.'
+            . ($correo ? "\n\n" : '');
+    }
+
+    /** «hoy», «mañana», «el jueves 6 de noviembre»: cuándo le toca en la cola. */
+    private function cuandoSeRevisa(Project $proyecto): ?string
+    {
+        $franja = \App\Services\Projects\RevisionDeSolicitudes::de($proyecto);
+
+        return $franja ? \App\Services\Projects\RevisionDeSolicitudes::cuandoSeDice($franja) : null;
     }
 
     /**
@@ -355,6 +389,8 @@ class SolicitudDeProyectoController extends Controller
             'correo'   => $proyecto->requestedBy?->email,
             'aviso'    => $aviso,
             'repetido' => $repetido,
+            'revision' => $this->cuandoSeRevisa($proyecto),
+            'semana'   => $this->semanaAplazadaDicha($proyecto) ?: null,
         ]);
 
         return redirect()->route('proyectos.recibida');

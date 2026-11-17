@@ -62,6 +62,10 @@ class CredencialForm
                         TextInput::make('usuario')
                             ->label(fn ($get) => $get('tipo') === 'api' ? 'Identificador o cuenta' : 'Usuario')
                             ->maxLength(255)
+                            // Que el navegador no lo rellene con la cuenta que
+                            // tiene guardada: no es un inicio de sesión.
+                            ->autocomplete('off')
+                            ->extraInputAttributes(['data-1p-ignore' => true, 'data-lpignore' => 'true'])
                             ->visible(fn ($get) => $get('tipo') !== 'licencia')
                             ->helperText('Esto no se cifra: se ve en la lista, porque saber a qué cuenta pertenece no es el secreto.'),
 
@@ -83,6 +87,11 @@ class CredencialForm
                             })
                             ->password()
                             ->revealable()
+                            // «new-password» y no «off»: Chrome ignora el
+                            // segundo en las contraseñas. Rellenada sola, al
+                            // editar cambiaba la clave guardada sin querer.
+                            ->autocomplete('new-password')
+                            ->extraInputAttributes(['data-1p-ignore' => true, 'data-lpignore' => 'true'])
                             ->maxLength(4000)
                             ->dehydrated(fn (?string $state) => filled($state))
                             ->required(fn (string $operation) => $operation === 'create')

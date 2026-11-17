@@ -115,6 +115,31 @@ class EspacioBookingService
 
     public const OPERACION = 'operacion';
 
+    /** Una demostración de las máquinas de la zona: una hora, controlada. */
+    public const DEMO = 'demo';
+
+    public const MINUTOS_DEMO = 60;
+
+    /** La reserva madre del grupo de salas que se está armando. */
+    private ?int $grupoEnCurso = null;
+
+    /** Quien reserva vio con qué chocan los acompañantes fuera de fabOS, y decide que no estorba. */
+    private bool $aceptarChoquesDeAcompanantes = false;
+
+    /**
+     * Reservar aunque quien acompaña tenga algo en su calendario, un bloqueo
+     * o su descanso a esa hora: lo decide quien agenda. Lo reservado en fabOS
+     * no se salta.
+     */
+    public function aceptandoChoquesDeAcompanantes(): static
+    {
+        $this->aceptarChoquesDeAcompanantes = true;
+
+        return $this;
+    }
+
+    public const SIN_QUIEN_HAGA_LA_DEMO = 'Nadie del equipo está libre toda esa hora para hacer la demo: queda pendiente del visto bueno.';
+
     /** Cuántas personas hacen un grupo de recorrido. Informa; el tope real es el aforo. */
     public const GRUPO_DE_RECORRIDO = 15;
 
@@ -122,6 +147,91 @@ class EspacioBookingService
 
     /** Las duraciones que se ofrecen al reservar un espacio. */
     public const DURACIONES = [60, 90, 120, 180, 240, 360, 480];
+
+    /**
+     * Reserva una demo: el espacio en exclusiva por una hora, sin herramientas
+     * ni otras salas, y la hora entera de alguien del equipo, que es quien la
+     * hace. No es recibir a alguien cinco minutos: es estar con la máquina.
+     *
+     * Si nadie del equipo está libre toda esa hora, la demo no se confirma
+     * sola: queda pedida, y en la bandeja alguien decide quién la hace.
+     *
+     * @throws BookingException
+     */
+    public function reservarDemo(User $user, Space $espacio, CarbonInterface $desde, int $participantes = 1, ?string $proposito = null): Reservation
+    {
+        if ($espacio->esTodoElLaboratorio()) {
+            throw new BookingException('La demo es de un espacio y sus máquinas, no del laboratorio entero.');
+        }
+
+        $hasta = $desde->copy()->addMinutes(self::MINUTOS_DEMO);
+
+        return DB::transaction(function () use ($user, $espacio, $desde, $hasta, $participantes, $proposito) {
+            $reserva = $this->reservar(
+                $user, $espacio, $desde, $hasta, $participantes, [],
+                'Demo' . (filled($proposito) ? ': ' . trim($proposito) : ''),
+                self::OPERACION,
+            );
+
+            $reserva->update(['is_demo' => true]);
+
+            if ($reserva->status !== 'confirmada') {
+                return $reserva->refresh();
+            }
+
+            $quien = $this->quienHaceLaDemo($espacio, $desde, $hasta);
+
+            if (! $quien) {
+                $reserva->update([
+                    'status'        => 'solicitada',
+                    'mode'          => 'solo_solicitud',
+                    'supervisor_id' => null,
+                    'status_reason' => self::SIN_QUIEN_HAGA_LA_DEMO,
+                ]);
+
+                return $reserva->refresh();
+            }
+
+            $reserva->update(['supervisor_id' => $quien->id]);
+
+            // Su hora, apartada: mientras hace la demo no recibe asesorías ni
+            // acompaña otra cosa. La base no deja montar dos a la vez.
+            Reservation::create([
+                'parent_reservation_id' => $reserva->id,
+                'reservable_type'       => User::class,
+                'reservable_id'         => $quien->id,
+                'user_id'               => $user->id,
+                'status'                => 'confirmada',
+                'mode'                  => $reserva->mode,
+                'starts_at'             => $desde,
+                'ends_at'               => $hasta,
+                'purpose'               => 'Demo en ' . $espacio->name,
+            ]);
+
+            return $reserva->refresh();
+        });
+    }
+
+    /**
+     * Quien hace la demo: el mismo orden que para recibir —quien responde por
+     * la sala primero—, pero solo entre quienes están libres la hora entera.
+     */
+    private function quienHaceLaDemo(Space $espacio, CarbonInterface $desde, CarbonInterface $hasta): ?User
+    {
+        $reservas = app(BookingService::class);
+
+        $libres = $this->cobertura->enJornada($desde, $hasta)
+            ->filter(fn (User $u) => $u->status === 'activo' && $u->hasAnyRole(User::rolesDelEquipo())
+                && $reservas->personaLibre($u, $desde, $hasta));
+
+        if ($libres->isEmpty()) {
+            return null;
+        }
+
+        $preferido = $this->quienRecibe($espacio, $desde);
+
+        return $preferido && $libres->contains('id', $preferido->id) ? $preferido : $libres->sortBy('name')->first();
+    }
 
     /**
      * Si a esa hora hay quien atienda el espacio.
@@ -555,10 +665,22 @@ class EspacioBookingService
                     // no esta: se dice quien y que tiene, para que el
                     // operador elija a otro.
                     foreach ($acompanan as $quien) {
-                        $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta);
+                        // Elegido a mano: sus horas de revisión le ceden el paso.
+                        app(\App\Services\Projects\RevisionDeSolicitudes::class)->cederA($quien, $desde, $hasta);
+                        $ocupado = app(BookingService::class)->porQueNoEstaLibre($quien, $desde, $hasta, $this->grupoEnCurso);
 
                         if ($ocupado) {
-                            throw new BookingException($ocupado . ' Elige a otra persona para acompañar.');
+                            // Con qué choca, para verlo y —si es solo su
+                            // calendario, un bloqueo o su descanso— poder
+                            // decidir reservar igual.
+                            $conflictos = app(BookingService::class)->queOcupaA($quien, $desde, $hasta);
+                            $soloDeFuera = $conflictos !== [] && collect($conflictos)->doesntContain('tipo', 'reserva');
+
+                            if ($this->aceptarChoquesDeAcompanantes && $soloDeFuera) {
+                                continue;
+                            }
+
+                            throw new BookingException($ocupado . ' Elige a otra persona para acompañar.', conflictos: $conflictos);
                         }
                     }
 
@@ -766,6 +888,11 @@ class EspacioBookingService
                 $espacios->count() > 1 ? $notaConjunta : null,
             );
 
+            // Quien acompaña en la primera sala está en la misma actividad: no
+            // cuenta como ocupado para las demás del grupo.
+            $this->grupoEnCurso = $madre->id;
+
+            try {
             $hijas = $espacios->slice(1)->map(function (Space $espacio) use ($user, $desde, $hasta, $participantes, $proposito, $madre, $modalidad, $porEspacio, $acompanantesIds) {
                 // Sin nota propia: la del conjunto ya esta en la madre. Con su
                 // propia gente, o con la lista general si no se repartio.
@@ -777,6 +904,9 @@ class EspacioBookingService
 
                 return $hija;
             });
+            } finally {
+                $this->grupoEnCurso = null;
+            }
 
             $todas = $hijas->prepend($madre);
 

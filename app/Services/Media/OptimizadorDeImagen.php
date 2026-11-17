@@ -105,6 +105,12 @@ final class OptimizadorDeImagen
             $imagen = $this->enderezar($imagen, $ruta, $info[2]);
             $imagen = $this->reducir($imagen);
 
+            // Un PNG o GIF de paleta no se puede pasar a WebP tal cual: GD lo
+            // rechaza y la subida entera fallaba. A color verdadero, primero.
+            if (! imageistruecolor($imagen)) {
+                imagepalettetotruecolor($imagen);
+            }
+
             ob_start();
             $ok = function_exists('imagewebp')
                 ? imagewebp($imagen, null, self::CALIDAD)

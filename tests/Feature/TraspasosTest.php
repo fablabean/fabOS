@@ -251,7 +251,7 @@ class TraspasosTest extends TestCase
         ]);
 
         $this->expectException(BookingException::class);
-        $this->expectExceptionMessage('Beto ya tiene algo a esa hora');
+        $this->expectExceptionMessage('Beto ya tiene una asesoría');
 
         $this->traspasos()->proponer($r, $ana, $beto);
     }
@@ -276,6 +276,35 @@ class TraspasosTest extends TestCase
         $this->traspasos()->proponer($r, $ana, $beto->fresh());
     }
 
+    /**
+     * La coordinación puede asignarla aunque su calendario de fuera diga
+     * «Ocupado»: muchas veces es algo que se mueve. El aviso dice a qué hora
+     * es el choque, para saber de qué se habla.
+     */
+    public function test_la_coordinacion_la_asigna_aunque_su_calendario_diga_ocupado(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $jefa = $this->colaborador('Jefa');
+        $r = $this->asesoria($ana);
+
+        Http::fake(['*' => Http::response(
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20260820T120000Z\r\n"
+            . "DTSTART:20260824T150000Z\r\nDTEND:20260824T160000Z\r\nSUMMARY:Ocupado\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+        )]);
+        $beto->forceFill(['external_calendar_url' => 'https://outlook.office365.com/owa/calendar/x/reachcalendar.ics'])->save();
+
+        try {
+            $this->traspasos()->reasignar($r, $beto->fresh(), $jefa);
+            $this->fail('sin la casilla no debía pasar');
+        } catch (BookingException $e) {
+            $this->assertStringContainsString('de 10:00 a 11:00', $e->getMessage());
+        }
+
+        $r = $this->traspasos()->reasignar($r->fresh(), $beto->fresh(), $jefa, aunqueSuCalendario: true);
+        $this->assertSame($beto->id, $r->reservable_id);
+    }
+
     /** Lo que valía al proponer tiene que seguir valiendo al aceptar. */
     public function test_si_al_aceptar_ya_esta_ocupado_no_se_acepta(): void
     {
@@ -296,7 +325,7 @@ class TraspasosTest extends TestCase
             $this->traspasos()->aceptar($t, $beto);
             $this->fail('no debía aceptarse');
         } catch (BookingException $e) {
-            $this->assertStringContainsString('ya tiene algo a esa hora', $e->getMessage());
+            $this->assertStringContainsString('ya tiene tiempo apartado', $e->getMessage());
         }
 
         $this->assertSame($ana->id, $r->fresh()->reservable_id);
@@ -593,5 +622,36 @@ class TraspasosTest extends TestCase
 
         $this->assertSame(ReservationTransfer::RETIRADO, $propuesta->fresh()->status);
         $this->assertSame($carla->id, $r->fresh()->reservable_id);
+    }
+    /**
+     * Desde la ficha de la reserva también: en una asesoría lo que se cambia
+     * es quién atiende. Antes solo se veía «Supervisa», que en una asesoría
+     * no mueve a nadie, y quien estaba ahí ni salía en «Reasignar».
+     */
+    public function test_desde_la_ficha_se_cambia_quien_atiende_la_asesoria(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $beto = $this->colaborador('Beto');
+        $r = $this->asesoria($ana);
+        $r->update(['supervisor_id' => $beto->id]);   // lo que se probó primero
+
+        $jefa = User::factory()->create(['name' => 'Jefa', 'status' => 'activo']);
+        $jefa->assignRole(Role::findOrCreate(User::ROL_ADMINISTRADOR, 'web'));
+        $servicio = app(\App\Services\Auth\TwoFactorService::class);
+        $secreto = $servicio->generarSecreto($jefa);
+        $servicio->confirmar($jefa, app(\PragmaRX\Google2FA\Google2FA::class)->getCurrentOtp($secreto));
+        $this->actingAs($jefa->fresh())
+            ->withSession([\App\Support\FactoresDeSesion::CLAVE_PRUEBAS => ['correo' => true, 'app' => true]]);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Reservations\Pages\EditReservation::class, ['record' => $r->getRouteKey()])
+            ->assertFormFieldExists('atiende')
+            ->assertFormSet(['atiende' => $ana->id])
+            ->fillForm(['atiende' => $beto->id])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame($beto->id, $r->fresh()->reservable_id);
+        $this->assertTrue(NotificationLog::where('key', 'atencion.asignada')->where('user_id', $beto->id)->exists());
+        $this->assertTrue(NotificationLog::where('key', 'atencion.quitada')->where('user_id', $ana->id)->exists());
     }
 }

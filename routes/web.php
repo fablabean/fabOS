@@ -38,6 +38,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
+/*
+ * Las zonas de conocimiento por su subdominio: robotica.fablabean.com.
+ *
+ * Van ANTES que todo lo demás: una ruta sin dominio responde a cualquier host,
+ * y la portada del sitio se comería la de cada zona. «www» no es una zona.
+ * Lo que pide cuenta no se abre aquí sino en el dominio principal, donde vive
+ * la sesión: el controlador lo manda allá.
+ */
+Route::domain('{zona}.' . config('fabos.zonas.dominio'))
+    ->where(['zona' => '(?!www\.)[a-z0-9][a-z0-9-]{0,39}'])
+    ->middleware(\App\Http\Middleware\EnlacesAlSitioPrincipal::class)
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\ZonaController::class, 'subInicio'])->name('zonas.sub.inicio');
+        Route::get('/{modulo}', [\App\Http\Controllers\ZonaController::class, 'subModulo'])
+            ->where('modulo', '[a-z0-9][a-z0-9-]{0,79}')
+            ->name('zonas.sub.modulo');
+    });
+
+// Y por el dominio principal, que funciona siempre, con o sin subdominios.
+Route::get('/zonas', [\App\Http\Controllers\ZonaController::class, 'lista'])->name('zonas.lista');
+Route::get('/zonas/{zona}', [\App\Http\Controllers\ZonaController::class, 'inicio'])->name('zonas.inicio');
+Route::get('/zonas/{zona}/{modulo}', [\App\Http\Controllers\ZonaController::class, 'modulo'])
+    ->where('modulo', '[a-z0-9][a-z0-9-]{0,79}')
+    ->name('zonas.modulo');
+
 // Cara publica: no exige sesion (§3, portal publico).
 Route::get('/', [PublicSiteController::class, 'home'])->name('publico.home');
 
@@ -108,6 +133,15 @@ Route::get('/qr/{codigo}', EnlaceCortoController::class)
     ->middleware('throttle:120,1')
     ->name('qr');
 
+/*
+ * La presentacion del laboratorio para quienes hablan con los aspirantes
+ * (centro de contacto, admisiones). Es una pagina hecha a mano, sin layout del
+ * sitio: se comparte por enlace y se proyecta a pantalla completa.
+ */
+// Desde que hay zonas, es un módulo de «Conocimiento general» y se cambia desde
+// el panel. El enlace de siempre sigue sirviendo: ya circula por WhatsApp.
+Route::get('/conoce-el-fablab', [\App\Http\Controllers\ZonaController::class, 'conoceElFablab'])->name('conoce-el-fablab');
+
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
 
@@ -121,6 +155,10 @@ Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion'
  * la otra es la que sirve para cualquier curso que entre por preinscripcion.
  */
 Route::get('/fab-academy', [PreinscripcionController::class, 'fabAcademy'])->name('fab-academy');
+// Con la cohorte abierta, el correo dice si ya toca el registro oficial.
+Route::post('/fab-academy/correo', [PreinscripcionController::class, 'correo'])
+    ->middleware('throttle:30,60')
+    ->name('fab-academy.correo');
 Route::get('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'show'])->name('preinscripcion');
 Route::post('/preinscripcion/{course:slug}', [PreinscripcionController::class, 'store'])
     ->middleware(['throttle:40,60', 'captcha:correo'])
@@ -223,6 +261,13 @@ Route::get('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'creat
 // La confirmación, en su propia página: arriba del formulario, en el teléfono
 // no se veía y se volvía a enviar.
 Route::get('/proyectos/solicitud-recibida', [SolicitudDeProyectoController::class, 'recibida'])->name('proyectos.recibida');
+
+// Tomar la otra opción que la coordinación propuso para una solicitud. Por el
+// enlace firmado del correo, sin iniciar sesión; abrirlo no reserva, el botón sí.
+Route::get('/reservas/{reservation}/otra-opcion/{opcion}', [\App\Http\Controllers\OtraOpcionController::class, 'show'])
+    ->middleware('signed')->whereNumber('opcion')->name('reservas.otra-opcion');
+Route::post('/reservas/{reservation}/otra-opcion/{opcion}', [\App\Http\Controllers\OtraOpcionController::class, 'store'])
+    ->middleware(['signed', 'throttle:20,60'])->whereNumber('opcion')->name('reservas.otra-opcion.tomar');
 Route::post('/proyectos/solicitar', [SolicitudDeProyectoController::class, 'store'])
     ->middleware(['throttle:40,60', 'captcha:correo,diferido'])
     ->name('proyectos.solicitar.store');
@@ -367,6 +412,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/panel/archivo', [ArchivoPrivadoController::class, 'ver'])
         ->name('panel.archivo');
 
+    // El cuadro más reciente de una cámara, para la pantalla Cámaras.
+    Route::get('/panel/camaras/{numero}/foto', [\App\Http\Controllers\CamaraController::class, 'foto'])
+        ->whereNumber('numero')->name('panel.camara.foto');
+    Route::get('/panel/camaras/visitas/{id}', [\App\Http\Controllers\CamaraController::class, 'visita'])
+        ->whereNumber('id')->name('panel.camara.visita');
+    Route::get('/panel/camaras/huellas/{id}', [\App\Http\Controllers\CamaraController::class, 'huella'])
+        ->whereNumber('id')->name('panel.camara.huella');
+
     // Los beneficios para Educación Continua, en pantalla o en PDF para enviar.
     Route::get('/panel/beneficios-educacion-continua', \App\Http\Controllers\BeneficiosEducacionContinuaController::class)
         ->name('beneficios.educacion-continua');
@@ -503,6 +556,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/e/reserva/{reservation}/llegada', [ScanController::class, 'checkIn'])->name('escaneo.checkin');
     Route::post('/e/reserva/{reservation}/salida', [ScanController::class, 'checkOut'])->name('escaneo.checkout');
     Route::post('/e/{token}/falla', [ScanController::class, 'reportarFalla'])->name('escaneo.falla');
+    Route::post('/e/{token}/mantenimiento', [ScanController::class, 'mandarAMantenimiento'])->name('escaneo.mantenimiento');
 
     // Inventario ciclico: se escanea el QR de una ubicacion (§7).
     Route::get('/u/{token}', [InventoryController::class, 'show'])->name('inventario.ubicacion');
@@ -557,6 +611,10 @@ Route::middleware('auth')->group(function () {
     // El informe de cierre que se le entrega a la Universidad (§17).
     Route::get('/informes/cierre', [ReportController::class, 'cierre'])->name('informes.cierre');
 
+    // El ADF-404-f4 de horas extras, tal como se generó (§5).
+    Route::get('/nomina/reportes/{reporte}/descargar', [\App\Http\Controllers\ReporteDeExtrasController::class, 'descargar'])
+        ->name('nomina.reporte.descargar');
+
     // La requisición que se le entrega al área de compras de la Universidad (§13).
     Route::get('/compras/{purchaseRequest}/requisicion', [PurchaseRequestController::class, 'show'])
         ->name('compras.requisicion');
@@ -610,6 +668,17 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('/actas/firmar/{token}', [\App\Http\Controllers\ActaController::class, 'guardarFirma'])
         ->where('token', '[A-Za-z0-9]{32,64}')
         ->name('actas.firmar.guardar');
+
+    // Lo mismo para el reporte de horas extras: quien lo genera y quien coordina (§5).
+    Route::get('/nomina/firmar/{token}', [\App\Http\Controllers\ReporteDeExtrasController::class, 'firmar'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar');
+    Route::post('/nomina/firmar/{token}', [\App\Http\Controllers\ReporteDeExtrasController::class, 'guardarFirma'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar.guardar');
+    Route::get('/nomina/firmar/{token}/archivo', [\App\Http\Controllers\ReporteDeExtrasController::class, 'archivo'])
+        ->where('token', '[A-Za-z0-9]{32,64}')
+        ->name('nomina.firmar.archivo');
 });
 
 /*

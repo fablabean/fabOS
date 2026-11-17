@@ -222,6 +222,88 @@ class PreinscripcionService
         });
     }
 
+    /**
+     * Cruza la lista de quienes se registraron de verdad —la que manda Fab
+     * Academy— con los preinscritos, e inscribe a los que coinciden.
+     *
+     * Se pega como venga: una columna de correos, una hoja copiada entera, un
+     * correo reenviado. Se toman los correos y nada más. Lo que no coincide
+     * no se inventa: se devuelve para que alguien decida qué es.
+     *
+     * @return array{inscritos: list<string>, ya: list<string>, sin_preinscripcion: list<string>, errores: list<string>}
+     */
+    public function inscribirDesdeLista(CourseEdition $cohorte, string $lista): array
+    {
+        preg_match_all('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $lista, $m);
+        $correos = array_values(array_unique(array_map('mb_strtolower', $m[0])));
+
+        $resultado = ['inscritos' => [], 'ya' => [], 'sin_preinscripcion' => [], 'errores' => []];
+
+        foreach ($correos as $correo) {
+            $p = $cohorte->preenrollments()->where('email', $correo)->first();
+
+            if (! $p) {
+                $resultado['sin_preinscripcion'][] = $correo;
+            } elseif ($p->yaInscrito()) {
+                $resultado['ya'][] = $p->name;
+            } else {
+                try {
+                    $this->inscribir($p);
+                    $resultado['inscritos'][] = $p->name;
+                } catch (TrainingException $e) {
+                    $resultado['errores'][] = $p->name . ': ' . $e->getMessage();
+                }
+            }
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Invita al registro oficial a los preinscritos que ya pueden pasar
+     * (CourseEdition::habilitaElRegistro). Una vez por persona: pulsar el botón
+     * otra vez solo le escribe a quien no lo había recibido.
+     *
+     * @return array{enviados:int, ya:int, por_habilitar:int}
+     */
+    public function invitarAlRegistro(CourseEdition $cohorte, ?string $mensaje = null): array
+    {
+        $r = ['enviados' => 0, 'ya' => 0, 'por_habilitar' => 0];
+
+        foreach ($cohorte->preenrollments()->whereIn('status', ['preinscrito', 'confirmado'])->get() as $p) {
+            if (! $cohorte->habilitaElRegistro($p)) {
+                $r['por_habilitar']++;
+            } elseif ($this->yaSeLeAviso('curso.registro_oficial', $p)) {
+                $r['ya']++;
+            } else {
+                $this->avisar('curso.registro_oficial', $p, $this->datosDelRegistro($cohorte, $mensaje));
+                $r['enviados']++;
+            }
+        }
+
+        return $r;
+    }
+
+    /**
+     * Lo que lleva el correo de la invitación, también para verlo antes.
+     *
+     * @return array<string,string>
+     */
+    public function datosDelRegistro(CourseEdition $cohorte, ?string $mensaje = null): array
+    {
+        $registro = \App\Support\PaginaFabAcademy::contenido()['registro'];
+
+        return [
+            'inicio'      => $cohorte->starts_on?->locale('es')->isoFormat('D [de] MMMM [de] YYYY') ?? 'por definir',
+            'enlace'      => route('fab-academy'),
+            'registro'    => (string) ($registro['url'] ?? ''),
+            'condiciones' => collect(\App\Support\PaginaFabAcademy::lineas($registro['condiciones'] ?? null))
+                ->map(fn ($c) => '- ' . $c)->implode("\n"),
+            // Con su propio párrafo si lo hay; vacío no deja un hueco.
+            'mensaje'     => filled(trim((string) $mensaje)) ? "\n\n" . trim((string) $mensaje) : '',
+        ];
+    }
+
     // ------------------------------------------------------------- por dentro
 
     /** Estudiante si es de la casa, externo si viene de fuera: sale del correo. */

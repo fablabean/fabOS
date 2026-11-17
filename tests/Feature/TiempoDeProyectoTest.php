@@ -149,7 +149,7 @@ class TiempoDeProyectoTest extends TestCase
         $sala = Space::create(['slug' => 'sala', 'name' => 'Sala', 'capacity' => 10, 'is_reservable' => true]);
 
         $this->expectException(BookingException::class);
-        $this->expectExceptionMessageMatches('/Ana ya tiene algo a esa hora/');
+        $this->expectExceptionMessageMatches('/Ana ya tiene tiempo apartado/');
 
         app(EspacioBookingService::class)->reservar(
             $this->alguien(), $sala, $this->hora('15:00'), $this->hora('16:00'), 4, [], null, null, [$this->ana->id],

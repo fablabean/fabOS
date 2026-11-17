@@ -165,7 +165,7 @@ class BandejaTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<option value="' . $ocupado->id . '"[^>]*disabled/', $html, 'el ocupado no se puede elegir');
         $this->assertMatchesRegularExpression('/<option value="' . $libre->id . '"\s*>/', $html, 'el libre sí');
-        $this->assertStringContainsString('ocupado: ya tiene algo a esa hora', $html);
+        $this->assertStringContainsString('ocupado: ya tiene una asesoría', $html);
         $this->assertStringContainsString('habría que abrirle el día', $html);
     }
 

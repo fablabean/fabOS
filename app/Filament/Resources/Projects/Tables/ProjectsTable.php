@@ -38,6 +38,7 @@ class ProjectsTable
     {
         return $table
             ->defaultSort('id', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->with(['ultimoComentario.user:id,name', 'revision']))
             // El semaforo de la entrega: la fila se tiñe segun cuanto falta,
             // y en rojo si ya paso sin cerrarse. Los estilos van en el panel.
             //
@@ -83,6 +84,10 @@ class ProjectsTable
                             : ($r->proposal_sent_at
                                 ? ' · propuesta ' . ($r->propuestaVigente()?->etiqueta() ?? 'enviada')
                                 : ''))
+                        // Su turno en la cola de revisión, mientras no se le haya respondido.
+                        . (($rev = $r->revision) && $r->stage === 'idea' && ! $r->proposal_sent_at
+                            ? ' · revisión ' . $rev->starts_at->timezone(config('fabos.lab.timezone'))->locale('es')->isoFormat('ddd D/MM H:mm')
+                            : '')
                         // El pago que espera algo, a la vista sin abrir la ficha.
                         . (($pago = $r->pagoPendiente())
                             ? ' · pago ' . mb_strtolower(\App\Models\ProjectPayment::ESTADOS[$pago->status] ?? $pago->status)
@@ -98,7 +103,9 @@ class ProjectsTable
 
                 TextColumn::make('name')->sortable()
                     ->label('Proyecto')
-                    ->searchable()
+                    // También por la nota interna: es como le decimos al
+                    // proyecto entre nosotros.
+                    ->searchable(['name', 'notes'])
                     ->weight('medium')
                     ->wrap()
                     // Se queda con el ancho que sobra: es lo que se viene a
@@ -107,10 +114,23 @@ class ProjectsTable
                     // Debajo, quién pide; y si lleva más de un día hábil
                     // esperándonos, desde cuándo: el latido de la fila dice
                     // que algo pasa, y esto dice qué.
-                    ->description(fn (Project $r) => $r->sinRespuesta()
-                        ? new HtmlString(e($r->quienPide()) . '<span class="aviso-sin-respuesta">Sin respuesta '
-                            . e($r->esperaRespuestaDesde()->locale('es')->diffForHumans()) . '</span>')
-                        : $r->quienPide()),
+                    //
+                    // Y la nota interna, que es como le decimos al proyecto
+                    // entre nosotros, y lo último que se dijo con quien lo
+                    // pidió: se reconoce la conversación sin abrir la ficha.
+                    ->description(fn (Project $r) => new HtmlString(e($r->quienPide())
+                        . ($r->sinRespuesta()
+                            ? '<span class="aviso-sin-respuesta">Sin respuesta '
+                                . e($r->esperaRespuestaDesde()->locale('es')->diffForHumans()) . '</span>'
+                            : '')
+                        . (filled($r->notes)
+                            ? '<span class="proyecto-nota">' . e(\Illuminate\Support\Str::limit($r->notes, 120)) . '</span>'
+                            : '')
+                        . (($c = $r->ultimoComentario)
+                            ? '<span class="proyecto-mensaje" title="' . e($c->body) . '"><b>' . e($c->quien()) . ', '
+                                . e($c->created_at->locale('es')->diffForHumans()) . ':</b> '
+                                . e(\Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish(strip_tags($c->body)), 160)) . '</span>'
+                            : ''))),
 
                 // De quien es el encargo: estaba pegado al codigo, donde
                 // ensanchaba una columna que solo tiene que decir «PRY-2026-33».
@@ -199,15 +219,30 @@ class ProjectsTable
                     ->width('1px')
                     ->label('Estado')
                     ->badge()
-                    ->formatStateUsing(fn (string $state) => Project::ESTADOS[$state] ?? $state)
-                    ->color(fn (string $state) => match ($state) {
+                    // Lo que quien lo lleva todavía no ha abierto, distinto de
+                    // lo activo: así se ve qué nadie ha mirado. Abrir la ficha
+                    // lo pasa a «Activo».
+                    ->formatStateUsing(fn (string $state, Project $record) => $record->sinAbrir() ? 'Sin abrir' : (Project::ESTADOS[$state] ?? $state))
+                    ->color(fn (string $state, Project $record) => $record->sinAbrir() ? 'info' : match ($state) {
                         'activo'  => 'success',
                         'pausado' => 'warning',
                         'ganado'  => 'success',
                         'cerrado' => 'gray',
                         default   => 'danger',
                     })
+                    // Un clic en el estado lo cambia ahí mismo, sin abrir la
+                    // ficha ni buscar el icono de pausar entre los demás.
+                    ->action(self::cambiarEstado())
+                    ->tooltip(fn (Project $r) => self::puedeManejar($r) ? 'Cambiar el estado' : null)
                     ->toggleable(),
+            ])
+            // Varios a la vez: limpiar la lista después de un semestre es
+            // pausar o archivar veinte, y de uno en uno no se hace.
+            ->toolbarActions([
+                \Filament\Actions\BulkActionGroup::make([
+                    self::estadoEnBloque(),
+                    self::etapaEnBloque(),
+                ]),
             ])
             ->filters([
                 /*
@@ -224,6 +259,10 @@ class ProjectsTable
                     ->query(fn ($query) => $query->where(fn ($q) => $q
                         ->where('lead_id', auth()->id())
                         ->orWhereNull('lead_id'))),
+
+                Filter::make('sin_abrir')
+                    ->label('Sin abrir por quien lo lleva')
+                    ->query(fn ($query) => $query->where('status', 'activo')->whereNull('opened_at')),
 
                 Filter::make('sin_respuesta')
                     ->label('Sin respuesta hace más de un día hábil')
@@ -751,6 +790,153 @@ class ProjectsTable
         return $aviso->status === 'enviado'
             ? 'Le avisamos a ' . $aviso->to . ' que puede pasar por lo suyo.'
             : 'Ojo: el aviso no salió' . ($aviso->reason ? ' (' . mb_strtolower($aviso->reason) . ')' : '') . '.';
+    }
+
+    /**
+     * Lo que pide un cambio de estado: a cuál, y por qué si lo para o lo
+     * cierra. El porqué es el mismo de pausar y descartar: dentro de dos
+     * meses nadie recuerda qué se estaba esperando.
+     */
+    private static function camposDeEstado(bool $avisarDeEntrada): array
+    {
+        $conMotivo = fn ($get) => in_array($get('estado'), ['pausado', 'perdido', 'descartado'], true);
+
+        return [
+            Select::make('estado')
+                ->label('Estado')
+                ->options(Project::ESTADOS)
+                ->required()
+                ->live(),
+
+            Textarea::make('motivo')
+                ->label('Por qué')
+                ->visible($conMotivo)
+                ->required($conMotivo)
+                ->helperText('Queda en las notas de cierre, y va en el correo si se avisa.'),
+
+            Toggle::make('espera')
+                ->label('Espera una respuesta de quien lo pidió')
+                ->visible(fn ($get) => $get('estado') === 'pausado')
+                ->helperText(fn () => 'Si no responde en ' . config('fabos.proyectos.dias_sin_respuesta') . ' días, se cierra y se archiva solo.')
+                ->default(false),
+
+            Toggle::make('avisar')
+                ->label('Avisarle por correo a quien lo pidió')
+                ->visible($conMotivo)
+                ->default($avisarDeEntrada),
+        ];
+    }
+
+    /** Aplica el estado por el mismo camino que pausar, reanudar o descartar. */
+    private static function aplicarEstado(Project $proyecto, array $datos): void
+    {
+        $servicio = app(ProjectService::class);
+        $estado = $datos['estado'];
+
+        if ($proyecto->status === $estado) {
+            return;
+        }
+
+        $avisar = (bool) ($datos['avisar'] ?? false);
+
+        match ($estado) {
+            'activo'  => $proyecto->status === 'pausado' ? $servicio->reanudar($proyecto) : $servicio->reabrir($proyecto),
+            'pausado' => $servicio->pausar($proyecto, $datos['motivo'], quien: auth()->user(), avisar: $avisar,
+                esperaAlCliente: (bool) ($datos['espera'] ?? false)),
+            'perdido', 'descartado' => $servicio->descartar($proyecto, $datos['motivo'], $estado, quien: auth()->user(), avisar: $avisar),
+            default   => $proyecto->update(['status' => $estado]),
+        };
+    }
+
+    private static function cambiarEstado(): Action
+    {
+        return Action::make('cambiar_estado')
+            ->visible(fn (Project $r) => self::puedeManejar($r))
+            ->modalHeading(fn (Project $r) => 'Estado de ' . $r->code)
+            ->modalDescription(fn (Project $r) => $r->name . (filled($r->notes) ? ' · ' . $r->notes : ''))
+            ->modalWidth('lg')
+            ->fillForm(fn (Project $r) => ['estado' => $r->status, 'avisar' => true])
+            ->schema(self::camposDeEstado(true))
+            ->modalSubmitActionLabel('Cambiar')
+            ->action(function (Project $record, array $data) {
+                self::aplicarEstado($record, $data);
+
+                Notification::make()->title($record->code . ': ' . (Project::ESTADOS[$data['estado']] ?? $data['estado']))->success()->send();
+            });
+    }
+
+    /** Lo que no se puede tocar se salta y se dice, en vez de frenar a los demás. */
+    private static function enBloque(iterable $proyectos, \Closure $paso, string $hecho): void
+    {
+        $bien = 0;
+        $fallas = [];
+
+        foreach ($proyectos as $proyecto) {
+            if (! self::puedeManejar($proyecto)) {
+                $fallas[] = $proyecto->code . ': no lo puedes editar';
+
+                continue;
+            }
+
+            try {
+                $paso($proyecto);
+                $bien++;
+            } catch (ProjectException $e) {
+                $fallas[] = $proyecto->code . ': ' . $e->getMessage();
+            }
+        }
+
+        $aviso = Notification::make()
+            ->title($bien . ' ' . ($bien === 1 ? 'proyecto' : 'proyectos') . ' ' . $hecho)
+            ->body($fallas ? 'No se pudo con: ' . implode(' · ', $fallas) : null);
+
+        ($fallas ? $aviso->warning()->persistent() : $aviso->success())->send();
+    }
+
+    private static function estadoEnBloque(): \Filament\Actions\BulkAction
+    {
+        return \Filament\Actions\BulkAction::make('estado_en_bloque')
+            ->label('Cambiar el estado')
+            ->icon('heroicon-o-pause-circle')
+            ->modalHeading(fn ($records) => 'Cambiar el estado de ' . count($records) . ' proyectos')
+            ->modalWidth('lg')
+            // Sin avisar de entrada: veinte correos por un clic se mandan
+            // solo si se decide.
+            ->schema(self::camposDeEstado(false))
+            ->modalSubmitActionLabel('Cambiar')
+            ->deselectRecordsAfterCompletion()
+            ->action(fn ($records, array $data) => self::enBloque(
+                $records,
+                fn (Project $p) => self::aplicarEstado($p, $data),
+                'en «' . (Project::ESTADOS[$data['estado']] ?? $data['estado']) . '»',
+            ));
+    }
+
+    private static function etapaEnBloque(): \Filament\Actions\BulkAction
+    {
+        return \Filament\Actions\BulkAction::make('etapa_en_bloque')
+            ->label('Mover de etapa')
+            ->icon('heroicon-o-arrows-right-left')
+            ->modalHeading(fn ($records) => 'Mover ' . count($records) . ' proyectos de etapa')
+            ->modalWidth('lg')
+            ->schema([
+                Select::make('etapa')
+                    ->label('A qué etapa')
+                    ->options(Project::ETAPAS)
+                    ->required()
+                    ->helperText('Avanzar comprueba las compuertas de cada uno: el que no las cumple se queda donde está y se dice por qué.'),
+
+                Toggle::make('avisar')
+                    ->label('Avisarle por correo a quien pidió cada uno')
+                    ->default(false),
+            ])
+            ->modalSubmitActionLabel('Mover')
+            ->deselectRecordsAfterCompletion()
+            ->action(fn ($records, array $data) => self::enBloque(
+                $records,
+                fn (Project $p) => app(ProjectService::class)->moverA($p, $data['etapa'], quien: auth()->user(), avisar: (bool) $data['avisar']),
+                'en «' . (Project::ETAPAS[$data['etapa']] ?? $data['etapa']) . '»',
+            ));
     }
 
     private static function mover(): Action

@@ -279,7 +279,7 @@ class ProjectService
      */
     public function solicitarDesdeLaWeb(array $datos): Project
     {
-        return DB::transaction(function () use ($datos) {
+        $proyecto = DB::transaction(function () use ($datos) {
             $correo = mb_strtolower(trim($datos['correo']));
 
             // Si ya tiene cuenta se reutiliza: dos cuentas con el mismo correo
@@ -306,6 +306,7 @@ class ProjectService
             // nadie y se asignaba a mano después: de ciento tres proyectos,
             // cincuenta y dos acabaron en la misma persona.
             $area = $datos['area_id'] ?? null;
+            $cliente = $datos['cliente'] ?? 'externo';
 
             $proyecto = Project::create([
                 'name'            => trim($datos['titulo']),
@@ -314,7 +315,10 @@ class ProjectService
                 'source'          => 'formulario',
                 'area_id'         => $area,
                 'lead_id'         => $this->reparto->aQuienLeToca($area)?->id,
-                'client_kind'     => $datos['cliente'] ?? 'externo',
+                'client_kind'     => $cliente,
+                // Un proyecto por semana por estudiante: el segundo queda
+                // para la siguiente semana libre.
+                'review_week'     => $cliente === 'estudiante' ? $this->semanaDelEstudiante($persona)->toDateString() : null,
                 'summary'         => $datos['resumen'],
                 'organization'    => $datos['organizacion'] ?? null,
                 'contact_name'    => trim($datos['nombre']),
@@ -343,6 +347,42 @@ class ProjectService
 
             return $proyecto->refresh();
         });
+
+        // Y su hora de revisión en la agenda de quien lo recibe. Fuera de la
+        // transacción: si no hay franja, la solicitud igual queda anotada.
+        app(RevisionDeSolicitudes::class)->apartar($proyecto);
+
+        return $proyecto;
+    }
+
+    /**
+     * Un proyecto por semana por estudiante.
+     *
+     * Puede mandar varios, pero el laboratorio evalúa uno a la semana: el
+     * segundo queda asignado a la siguiente semana libre y se revisa en ella.
+     * Lo descartado o perdido no cuenta; lo que se hizo y se cerró, sí: esa
+     * semana ya la usó.
+     *
+     * @return \Illuminate\Support\Carbon el lunes de la semana asignada
+     */
+    public function semanaDelEstudiante(User $persona): \Illuminate\Support\Carbon
+    {
+        $semana = now(config('fabos.lab.timezone'))->startOfWeek(\Carbon\CarbonInterface::MONDAY)->startOfDay();
+
+        $ocupadas = Project::query()
+            ->where('requested_by', $persona->id)
+            ->where('client_kind', 'estudiante')
+            ->whereNotIn('status', ['descartado', 'perdido'])
+            ->whereDate('review_week', '>=', $semana->toDateString())
+            ->pluck('review_week')
+            ->map(fn ($d) => $d->toDateString())
+            ->all();
+
+        while (in_array($semana->toDateString(), $ocupadas, true)) {
+            $semana->addWeek();
+        }
+
+        return $semana;
     }
 
     /** Un texto de varias líneas, limpio de viñetas escritas a mano. */

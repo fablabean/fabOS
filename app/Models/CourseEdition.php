@@ -261,6 +261,12 @@ class CourseEdition extends Model
             return 'A este curso no se entra por preinscripción.';
         }
 
+        // Abierta con registro oficial afuera (Fab Academy): la preinscripción
+        // sigue, porque es la que cuenta cuántos somos.
+        if ($this->conRegistroExterno()) {
+            return null;
+        }
+
         if ($this->status !== 'planeada') {
             return $this->status === 'abierta'
                 ? 'Esta cohorte ya abrió inscripciones: la preinscripción terminó.'
@@ -274,5 +280,36 @@ class CourseEdition extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Abierta, y el registro de verdad se hace afuera: el de Fab Academy en
+     * fabacademy.org, que no es nuestro. Entonces la página sigue siendo la de
+     * siempre, la preinscripción sigue contando, y a quien ya está en la lista
+     * se le da el enlace al formulario oficial (PaginaFabAcademy, «registro»).
+     */
+    public function conRegistroExterno(): bool
+    {
+        return $this->status === 'abierta'
+            && $this->course?->level === 'tera'
+            && (bool) Course::deFabAcademy()?->is($this->course)
+            && filled(\App\Support\PaginaFabAcademy::contenido()['registro']['url'] ?? null);
+    }
+
+    /**
+     * Si esta preinscripción ya puede ir al registro oficial.
+     *
+     * Quien se preinscribió antes de publicarla, ya: era la lista con la que se
+     * decidió abrir. Quien llega después, cuando se junta el mínimo: antes de
+     * eso, mandarlo a pagar un registro de una cohorte que no se sabe si sale
+     * es prometer lo que no está.
+     */
+    public function habilitaElRegistro(Preenrollment $preinscripcion): bool
+    {
+        if ($this->published_at && $preinscripcion->created_at?->lt($this->published_at)) {
+            return true;
+        }
+
+        return $this->minimum_to_open === null || $this->preinscritos() >= $this->minimum_to_open;
     }
 }

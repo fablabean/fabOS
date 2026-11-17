@@ -19,7 +19,7 @@ class Project extends Model
         'contact_name', 'contact_email', 'contact_phone', 'organization',
         'requested_by', 'lead_id', 'area_id',
         'summary', 'reference_image_path', 'notes', 'agreed_value', 'estimated_value',
-        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at',
+        'starts_on', 'due_on', 'closed_at', 'closing_notes', 'proposal_sent_at', 'opened_at', 'aproximado_de', 'review_week',
         'accepted_at', 'accepted_by', 'acceptance_note',
         'modality', 'alliance_open', 'alliance_public', 'alliance_pitch', 'market_value',
         'paused_at', 'awaits_client', 'pause_reminded_at',
@@ -34,7 +34,9 @@ class Project extends Model
             'contract_sent_at' => UtcDateTime::class,
             'starts_on' => 'date',
             'due_on'    => 'date',
+            'review_week' => 'date',
             'closed_at'        => UtcDateTime::class,
+            'opened_at'        => UtcDateTime::class,
             'proposal_sent_at' => UtcDateTime::class,
             'accepted_at'      => UtcDateTime::class,
             'paused_at'         => UtcDateTime::class,
@@ -771,6 +773,55 @@ class Project extends Model
         return $this->hasMany(ProjectComment::class)->orderBy('created_at');
     }
 
+    /** El historial: responsables, etapas y estados, del más reciente al primero. */
+    public function changes(): HasMany
+    {
+        return $this->hasMany(ProjectChange::class)->latest('created_at')->latest('id');
+    }
+
+    /** Su turno en la cola de revisión (App\Services\Projects\RevisionDeSolicitudes). */
+    public function revision(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Reservation::class)->ofMany(['starts_at' => 'min'], fn ($q) => $q
+            ->where('mode', 'proyecto')
+            ->whereNull('project_task_id')
+            ->where('purpose', 'like', \App\Services\Projects\RevisionDeSolicitudes::MOTIVO . '%')
+            ->whereIn('status', Reservation::BLOQUEANTES));
+    }
+
+    /** Activo y sin que quien lo lleva lo haya abierto todavía. */
+    public function sinAbrir(): bool
+    {
+        return $this->status === 'activo' && $this->opened_at === null;
+    }
+
+    /**
+     * Quien lo lleva acaba de abrir la ficha: deja de estar sin abrir. Si no
+     * tiene responsable, cuenta cualquiera del equipo. Sin tocar nada más —ni
+     * la fecha de actualización ni los avisos—: mirar no es cambiar.
+     */
+    public function marcarAbierto(?User $quien): void
+    {
+        if ($this->opened_at !== null || ! $quien) {
+            return;
+        }
+
+        $cuenta = $this->lead_id
+            ? $this->lead_id === $quien->id
+            : $quien->hasAnyRole(User::rolesDelEquipo());
+
+        if ($cuenta) {
+            static::whereKey($this->id)->whereNull('opened_at')->update(['opened_at' => now()->utc()]);
+            $this->opened_at = now();
+        }
+    }
+
+    /** Lo último que se dijo: va en la lista, debajo del nombre. */
+    public function ultimoComentario(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ProjectComment::class)->latestOfMany();
+    }
+
     /** Lo que se gastó por fuera del laboratorio. */
     public function costs(): HasMany
     {
@@ -1023,12 +1074,62 @@ class Project extends Model
             );
         });
 
+        // El historial: con qué responsable llegó, y cada cambio de
+        // responsable, etapa o estado, con quién lo hizo. Aquí y no en el
+        // formulario, para que lo anote venga de donde venga el cambio.
+        static::created(function (self $proyecto) {
+            if ($proyecto->lead_id) {
+                ProjectChange::anotar($proyecto, 'responsable', null, User::find($proyecto->lead_id)?->name);
+            }
+        });
+
+        static::updated(function (self $proyecto) {
+            if ($proyecto->wasChanged('lead_id')) {
+                ProjectChange::anotar(
+                    $proyecto,
+                    'responsable',
+                    ($antes = $proyecto->getOriginal('lead_id')) ? User::find($antes)?->name : null,
+                    $proyecto->lead_id ? User::find($proyecto->lead_id)?->name : null,
+                );
+            }
+
+            if ($proyecto->wasChanged('stage')) {
+                $antes = (string) $proyecto->getOriginal('stage');
+                ProjectChange::anotar($proyecto, 'etapa', self::ETAPAS[$antes] ?? ($antes ?: null), self::ETAPAS[$proyecto->stage] ?? $proyecto->stage);
+            }
+
+            if ($proyecto->wasChanged('status')) {
+                $antes = (string) $proyecto->getOriginal('status');
+                ProjectChange::anotar($proyecto, 'estado', self::ESTADOS[$antes] ?? ($antes ?: null), self::ESTADOS[$proyecto->status] ?? $proyecto->status);
+            }
+        });
+
+        // Su turno en la cola de revisión sigue a lo que le pase: cambia de
+        // responsable, se le responde o se cierra.
+        static::updated(function (self $proyecto) {
+            if ($proyecto->wasChanged(['lead_id', 'proposal_sent_at', 'status', 'stage'])) {
+                app(\App\Services\Projects\RevisionDeSolicitudes::class)->ajustar($proyecto);
+            }
+        });
+
         // Un proyecto en la etapa de idea todavia no tiene valor acordado, y el
         // formulario manda ese campo vacio. La columna es NOT NULL con default
         // 0, pero un NULL explicito se salta el default y revienta el insert:
         // sin esto no se puede anotar una idea, que es justo lo primero que
         // hace cualquiera. Vacio significa "sin acordar", y eso son 0 pesos.
         static::saving(function (self $proyecto) {
+            // Quien escribe el valor a mano lo hace suyo: deja de ser el
+            // aproximado por área.
+            if ($proyecto->exists && $proyecto->aproximado_de !== null && $proyecto->isDirty(['estimated_value', 'agreed_value'])) {
+                $proyecto->aproximado_de = null;
+            }
+
+            // Con otro responsable, vuelve a estar sin abrir: quien lo recibe
+            // todavía no lo ha mirado.
+            if ($proyecto->exists && $proyecto->isDirty('lead_id')) {
+                $proyecto->opened_at = null;
+            }
+
             $proyecto->agreed_value ??= 0;
             $proyecto->estimated_value ??= 0;
 

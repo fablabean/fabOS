@@ -2,15 +2,22 @@
 
 namespace App\Filament\Resources\WorkOrders\Schemas;
 
+use App\Filament\Componentes\RecursosDeMantenimiento;
+use App\Filament\Resources\Assets\AssetResource;
+use App\Models\Asset;
 use App\Models\User;
 use App\Models\WorkOrder;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 
 /**
@@ -35,12 +42,22 @@ class WorkOrderForm
                             ->searchable()
                             // Desde la ficha del equipo llega ya elegido.
                             ->default(fn () => request()->integer('equipo') ?: null)
+                            ->live()
                             ->required(),
 
                         Select::make('kind')
                             ->label('Tipo')
                             ->options(WorkOrder::TIPOS)
                             ->default('correctivo')
+                            // Al crearla, un correctivo saca el equipo de
+                            // servicio y un preventivo no; la marca se puede
+                            // cambiar. Editando, cambiar el tipo no la toca.
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, string $operation) {
+                                if ($operation === 'create') {
+                                    $set('stops_equipment', $state === 'correctivo');
+                                }
+                            })
                             ->required(),
 
                         Select::make('status')
@@ -62,12 +79,57 @@ class WorkOrderForm
 
                         Toggle::make('stops_equipment')
                             ->label('Saca el equipo de servicio')
+                            ->default(true)
                             ->helperText('Mientras esté abierta con esta marca, el equipo no se puede reservar.'),
 
                         Select::make('assigned_to')
                             ->label('A cargo de')
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable(),
+                    ]),
+
+                // Lo que hay del equipo para consultar mientras se trabaja.
+                Section::make('Manuales y videos del equipo')
+                    ->key('recursos')
+                    // Se cargan o corrigen desde aquí, sin perder la orden:
+                    // es al reparar cuando se nota que falta el manual.
+                    ->afterHeader([
+                        Action::make('abrirFicha')
+                            ->label('Abrir la ficha')
+                            ->icon('heroicon-o-arrow-top-right-on-square')
+                            ->link()
+                            ->url(fn (Get $get) => filled($get('asset_id')) ? AssetResource::getUrl('edit', ['record' => $get('asset_id')]) : null)
+                            ->openUrlInNewTab()
+                            ->visible(fn (Get $get) => self::puedeEditarElEquipo($get('asset_id'))),
+
+                        Action::make('editarRecursos')
+                            ->label('Editar manuales y videos')
+                            ->icon('heroicon-o-pencil-square')
+                            ->size('sm')
+                            ->modalHeading('Manuales y videos del equipo')
+                            ->modalDescription('Quedan en la ficha del equipo: se ven en esta orden, en las siguientes y desde su QR.')
+                            ->modalSubmitActionLabel('Guardar en la ficha')
+                            ->fillForm(fn (Get $get): array => [
+                                'maintenance_resources' => Asset::find($get('asset_id'))?->maintenance_resources ?? [],
+                            ])
+                            ->schema([RecursosDeMantenimiento::campo()])
+                            ->action(function (array $data, Get $get): void {
+                                $equipo = Asset::find($get('asset_id'));
+
+                                if (! $equipo || ! self::puedeEditarElEquipo($equipo->id)) {
+                                    return;
+                                }
+
+                                $equipo->update(['maintenance_resources' => array_values($data['maintenance_resources'] ?? [])]);
+
+                                Notification::make()->title('Manuales y videos guardados en la ficha')->success()->send();
+                            })
+                            ->visible(fn (Get $get) => self::puedeEditarElEquipo($get('asset_id'))),
+                    ])
+                    ->schema([
+                        Placeholder::make('recursos_del_equipo')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get) => RecursosDeMantenimiento::lista(Asset::find($get('asset_id')))),
                     ]),
 
                 Section::make('Qué se hizo')
@@ -95,6 +157,8 @@ class WorkOrderForm
                             ->maxSize(4096)
                             ->columnSpanFull()
                             ->helperText('Antes y después. Una foto convierte «se arregló» en algo comprobable dentro de dos años.'),
+
+                        RecursosDeMantenimiento::videosDeLaOrden(),
 
                         TextInput::make('cost')
                             ->label('Costo de repuestos')
@@ -124,5 +188,13 @@ class WorkOrderForm
                             ->seconds(false),
                     ]),
             ]);
+    }
+
+    /** Quien puede editar la ficha del equipo puede cargarle manuales desde la orden. */
+    private static function puedeEditarElEquipo(mixed $id): bool
+    {
+        $equipo = filled($id) ? Asset::find($id) : null;
+
+        return $equipo && (auth()->user()?->can('update', $equipo) ?? false);
     }
 }

@@ -169,11 +169,87 @@
                     <span class="quien">
                         · reportado {{ $o->created_at->timezone($tz)->diffForHumans() }}
                     </span>
+                    @if ($gestiona)
+                        · <a href="{{ \App\Filament\Resources\WorkOrders\WorkOrderResource::getUrl('edit', ['record' => $o]) }}">abrir la orden</a>
+                    @endif
                 </p>
             @endforeach
         </div>
     @endif
 
+    @if ($gestiona)
+        {{-- Con el equipo delante es cuando hace falta el manual. --}}
+        @php $recursos = \App\Filament\Componentes\RecursosDeMantenimiento::de($activo); @endphp
+        <div class="panel">
+            <h2 style="margin-top:0">Manuales y videos</h2>
+            @forelse ($recursos as $r)
+                <p style="margin:0 0 .4rem">
+                    <a href="{{ $r['url'] }}" target="_blank" rel="noopener">{{ $r['titulo'] }}</a>
+                    <span class="help">· {{ ['manual' => 'PDF', 'video' => 'video'][$r['tipo']] ?? 'página' }}</span>
+                </p>
+            @empty
+                <p class="help" style="margin:0">
+                    Todavía no tiene. Se añaden en su ficha del panel, en «Manuales y videos de mantenimiento».
+                </p>
+            @endforelse
+        </div>
+
+        {{-- Quien gestiona el mantenimiento lo decide aquí mismo, con el
+             equipo delante: la misma orden que en el panel, con paro. --}}
+        <div class="panel">
+            <h2 style="margin-top:0">Mandar a mantenimiento</h2>
+            @if ($activo->status === 'mantenimiento')
+                <p class="help" style="margin:0">
+                    Ya está en mantenimiento. Vuelve a servicio al cerrar su orden
+                    @if ($ordenes->isNotEmpty())
+                        (enlace arriba)
+                    @else
+                        en <a href="{{ \App\Filament\Resources\WorkOrders\WorkOrderResource::getUrl('index') }}">Órdenes de trabajo</a>
+                    @endif.
+                </p>
+            @else
+                <p class="help" style="margin:0 0 .6rem">
+                    Abre una orden de trabajo y saca el equipo de servicio: deja de
+                    poder reservarse y se avisa a quien tenía reserva. Al cerrar la
+                    orden vuelve a servicio.
+                </p>
+                <form method="POST" action="{{ route('escaneo.mantenimiento', $activo->qr_token) }}">
+                    @csrf
+                    <label for="motivo">Qué tiene o qué se le va a hacer</label>
+                    <input id="motivo" name="motivo" type="text" required maxlength="500" value="{{ old('motivo') }}"
+                           placeholder="Cambio de boquilla, el láser no corta parejo…">
+
+                    <label for="tipo">Tipo</label>
+                    {{-- Un correctivo saca el equipo de servicio por defecto;
+                         un preventivo no. La casilla siempre manda. --}}
+                    <select id="tipo" name="tipo"
+                            onchange="var d=document.getElementById('detiene'); if (!d.dataset.tocada) d.checked = this.value === 'correctivo'">
+                        @foreach (\App\Models\WorkOrder::TIPOS as $valor => $nombre)
+                            <option value="{{ $valor }}" @selected(old('tipo', 'correctivo') === $valor)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+
+                    <label for="prioridad">Prioridad</label>
+                    <select id="prioridad" name="prioridad">
+                        @foreach (\App\Models\WorkOrder::PRIORIDADES as $valor => $nombre)
+                            <option value="{{ $valor }}" @selected(old('prioridad', 'normal') === $valor)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+
+                    <label style="display:flex;gap:.5rem;align-items:center;text-transform:none;letter-spacing:0;
+                                  font-family:inherit;font-size:.9rem;color:var(--ink-soft);margin-top:.9rem">
+                        <input type="hidden" name="detiene" value="0">
+                        <input type="checkbox" id="detiene" name="detiene" value="1" style="width:auto"
+                               onchange="this.dataset.tocada = 1"
+                               @checked(old('detiene', old('tipo', 'correctivo') === 'correctivo' ? '1' : '0') === '1')>
+                        Saca el equipo de servicio: no se puede reservar hasta cerrar la orden
+                    </label>
+
+                    <button type="submit">Mandar a mantenimiento</button>
+                </form>
+            @endif
+        </div>
+    @else
     {{-- Reportar una falla: quien detecta el problema es quien está delante. --}}
     <div class="panel">
         <h2 style="margin-top:0">¿Algo anda mal?</h2>
@@ -194,6 +270,7 @@
             </button>
         </form>
     </div>
+    @endif
 
     <p><a class="volver" href="{{ route('publico.reservas') }}">← Ir a Reservas</a></p>
 @endsection

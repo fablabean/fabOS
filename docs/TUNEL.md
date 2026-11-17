@@ -104,6 +104,50 @@ correo, que depende del proveedor que elijas para `<DOMINIO>`.
 
 ---
 
+## 4. Subdominios para las zonas de conocimiento (opcional)
+
+Cada zona de conocimiento (*Formación → Zonas de conocimiento*) puede abrirse en
+su propio subdominio: `robotica.<DOMINIO>`, `fabacademy.<DOMINIO>`. Con un
+comodín basta para todas, también para las que se creen después: no hace falta
+volver a Cloudflare por cada zona nueva.
+
+Mientras esto no esté, cada zona abre en `https://<DOMINIO>/zonas/<zona>`, que
+funciona siempre.
+
+**En el túnel** (*Zero Trust → Networks → Tunnels →* el túnel *→ Public
+Hostname → Add a public hostname*):
+
+| Campo | Valor |
+|---|---|
+| Subdomain | `*` |
+| Domain | `<DOMINIO>` |
+| Type | `HTTP` |
+| URL | `laravel.test:80` |
+
+**En el DNS** (*<DOMINIO> → DNS → Records*). Con el comodín, Cloudflare no
+crea el registro solo, así que hay que añadirlo a mano:
+
+| Tipo | Nombre | Destino | Proxy |
+|---|---|---|---|
+| `CNAME` | `*` | `<ID-DEL-TUNEL>.cfargotunnel.com` | Activado (nube naranja) |
+
+El certificado gratuito de Cloudflare ya cubre `*.<DOMINIO>`, un nivel por
+debajo del dominio, así que no hay que pedir otro.
+
+**En el servidor**, cuando `curl -I https://prueba.<DOMINIO>` responda desde
+fabOS:
+
+```bash
+echo 'ZONAS_SUBDOMINIOS=true' >> .env
+docker compose -f compose.yaml -f compose.produccion.yaml exec -T -u sail laravel.test php artisan config:cache
+```
+
+Desde ese momento los enlaces del sitio a cada zona salen con su subdominio.
+Lo que pide cuenta o inscripción se sigue abriendo en `<DOMINIO>/zonas/…`,
+porque la sesión vive en el dominio principal.
+
+---
+
 ## Dos cosas que conviene saber
 
 **Los QR de los equipos apuntan al dominio desde el que se imprimen.** La hoja de

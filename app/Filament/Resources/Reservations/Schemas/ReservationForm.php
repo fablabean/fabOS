@@ -48,8 +48,32 @@ class ReservationForm
                                 $record === null => '—',
                                 $record->esProduccion() => 'Producción (se programa desde el proyecto)',
                                 $record->esAsesoria() => 'Asesoría',
+                                (bool) $record->is_demo => 'Demo de las máquinas del espacio',
                                 default => Reservation::MODOS[$record->mode] ?? $record->mode,
                             }),
+
+                        // Lo que se le propuso desde la bandeja, tal como le llegó.
+                        Placeholder::make('propuesta_enviada')
+                            ->label('Otra opción propuesta')
+                            ->visible(fn (?Reservation $record) => filled($record?->propuesta))
+                            ->columnSpanFull()
+                            ->content(fn (?Reservation $record) => $record
+                                ? new \Illuminate\Support\HtmlString(view('filament.reservas.propuesta-enviada', ['reserva' => $record])->render())
+                                : null),
+
+                        // Lo que la persona subió para la demo: se baja desde
+                        // aquí para tenerlo listo en la máquina.
+                        Placeholder::make('archivos_demo')
+                            ->label('Archivos para la demo')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->is_demo)
+                            ->columnSpanFull()
+                            ->content(fn (?Reservation $record) => $record?->evidence->isEmpty()
+                                ? 'No subió archivos: la demo va con lo que tenga el laboratorio.'
+                                : new \Illuminate\Support\HtmlString($record->evidence
+                                    ->map(fn ($e) => '<a class="underline" target="_blank" rel="noopener" href="'
+                                        . e(\App\Filament\Componentes\ArchivoPrivado::url($e->file_path, $e->original_name, descargar: true)) . '">'
+                                        . e($e->original_name) . '</a>')
+                                    ->implode('<br>'))),
 
                         Select::make('user_id')
                             ->label('Para quién')
@@ -58,8 +82,33 @@ class ReservationForm
                             ->searchable()
                             ->required(),
 
+                        // En una asesoría o una práctica, lo que se cambia es
+                        // quién atiende: es la persona reservada, no un
+                        // supervisor. Se guarda por el mismo camino que
+                        // «Reasignar», que mira que esté libre y avisa.
+                        Select::make('atiende')
+                            ->label('Quién atiende')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->esAtencionPersonal())
+                            ->options(fn (?Reservation $record) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
+                                ->except([(int) $record?->user_id])
+                                ->all())
+                            ->afterStateHydrated(fn (Select $component, ?Reservation $record) => $component->state($record?->reservable_id))
+                            ->dehydrated(false)
+                            ->searchable()
+                            ->required()
+                            ->disabled(fn () => ! auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+                            ->helperText('Tiene que estar libre a esa hora; se le avisa a ella, a quien la tenía y a quien la pidió.'),
+
+                        \Filament\Forms\Components\Checkbox::make('atiende_aunque')
+                            ->label('Asignarla aunque su calendario diga que está ocupado')
+                            ->helperText('Su Outlook, un bloqueo o su descanso. Lo que ya tiene en fabOS no se pisa.')
+                            ->visible(fn (?Reservation $record) => (bool) $record?->esAtencionPersonal())
+                            ->disabled(fn () => ! auth()->user()?->hasAnyRole([User::ROL_ADMINISTRADOR, User::ROL_SUPERADMIN]))
+                            ->dehydrated(false),
+
                         Select::make('supervisor_id')
                             ->label('Supervisa')
+                            ->visible(fn (?Reservation $record) => ! $record?->esAtencionPersonal())
                             ->options(fn () => \App\Filament\Componentes\SelectorDePersona::equipo())
                             ->searchable()
                             ->placeholder('Nadie')

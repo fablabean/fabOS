@@ -24,7 +24,9 @@ class ArchivoPrivado
         // Lo que se subió a las producciones antes de que vivieran en proyectos/.
         'producciones/',
         // Las cotizaciones formales de las requisiciones de compra.
-        'compras/'];
+        'compras/',
+        // Los manuales de mantenimiento de los equipos.
+        'manuales/', 'reservas/demos/'];
 
     public static function previsualizar(FileUpload $campo): FileUpload
     {

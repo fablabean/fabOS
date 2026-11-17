@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 /**
  * El contador de horas extras del periodo, encima de las jornadas (§5).
  *
- * El periodo corta el 15: va del 16 de un mes al 15 del siguiente, que es como
+ * El periodo va de un corte de nómina al siguiente (ver CorteDeNomina), que es como
  * lo liquida la nómina. Por persona dice cuánto lleva en el corte, en la
  * semana y hoy, contra los tres topes —2 h al día, 12 a la semana, 48 en el
  * periodo—, y marca lo que ya se pasó. El control sigue siendo preventivo (no
@@ -57,8 +57,27 @@ class ContadorDeExtras extends Widget
         // En un corte pasado, «hoy» y «esta semana» son los de su último día.
         $referencia = $hasta->isPast() ? $hasta->copy()->setTime(12, 0) : $fecha;
 
+        /*
+         * Para nómina: lo hecho que cada quien todavía no ha reportado, y lo
+         * que reportó con este corte. Lo reporta cada persona desde «Mis
+         * horas extras»; aquí se ve quién falta.
+         */
+        $pendientes = ShiftAssignment::query()->pendientesDeReporte()
+            ->where('starts_at', '<=', $hasta->copy()->utc())
+            ->get()->groupBy('user_id')->map(fn ($g) => $g->sum(fn (ShiftAssignment $s) => $s->minutos()));
+        $reportadas = \App\Models\ReporteDeExtras::query()->vigentes()
+            ->whereDate('corte', $hasta->toDateString())
+            ->get()->groupBy('user_id')->map(fn ($g) => (int) $g->sum('minutos'));
+
+        $filas = app(OvertimeService::class)->resumen($personas, $referencia)
+            ->map(fn (array $f) => $f + [
+                'por_reportar' => (int) ($pendientes[$f['persona']->id] ?? 0),
+                'reportado'    => (int) ($reportadas[$f['persona']->id] ?? 0),
+                'flexible'     => $f['persona']->tieneContratoFlexible(),
+            ]);
+
         return [
-            'filas'      => app(OvertimeService::class)->resumen($personas, $referencia),
+            'filas'      => $filas,
             'desde'      => $desde,
             'hasta'      => $hasta,
             'esActual'   => ! $hasta->isPast() && ! $desde->isFuture(),

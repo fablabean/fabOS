@@ -271,4 +271,105 @@ class BackofficePreinscripcionTest extends TestCase
             ->assertSee('Ya alcanzamos el mínimo para abrir la cohorte.')
             ->assertSee('Preinscríbete');
     }
+
+    /**
+     * La lista que manda Fab Academy se pega tal cual: los preinscritos que
+     * aparecen quedan inscritos, y lo que no coincide se enseña.
+     */
+    public function test_la_lista_de_registrados_inscribe_a_los_que_coinciden(): void
+    {
+        $this->admin();
+        UserCategory::firstOrCreate(['slug' => 'externo'], ['name' => 'Externo', 'position' => 2]);
+        $cohorte = $this->cohorte([], ['capacity' => 20]);
+        $ana = $this->preinscrito($cohorte, ['name' => 'Ana', 'email' => 'ana@test.co']);
+        $luis = $this->preinscrito($cohorte, ['name' => 'Luis', 'email' => 'luis@test.co']);
+        $sin = $this->preinscrito($cohorte, ['name' => 'Sin registro', 'email' => 'sin@test.co']);
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+
+        $lista = "Nombre;Correo;Lab#NL#Ana P;ANA@test.co;EAN#NL#Luis;luis@test.co;EAN#NL#Otra;otra@fuera.org;EAN";
+
+        $this->pestana($cohorte->fresh())
+            ->callTableAction('cruzar_lista', data: ['lista' => str_replace('#NL#', "\n", $lista)])
+            ->assertHasNoTableActionErrors()
+            ->assertNotified();
+
+        $this->assertSame('inscrito', $ana->fresh()->status);
+        $this->assertSame('inscrito', $luis->fresh()->status);
+        $this->assertSame('preinscrito', $sin->fresh()->status);
+        $this->assertSame(2, $cohorte->fresh()->inscritos());
+
+        $r = app(PreinscripcionService::class)->inscribirDesdeLista($cohorte->fresh(), 'ana@test.co, otra@fuera.org');
+        $this->assertSame(['Ana'], $r['ya']);
+        $this->assertSame(['otra@fuera.org'], $r['sin_preinscripcion']);
+    }
+
+    /** La inscripción anulada antes de publicar no sale como alguien que se retiró. */
+    public function test_la_inscripcion_anulada_antes_de_publicar_no_asusta(): void
+    {
+        $this->admin();
+        $cohorte = $this->cohorte();
+        $u = User::create(['name' => 'Erick', 'email' => 'erick@test.co', 'status' => 'activo']);
+        $anulada = $cohorte->enrollments()->create(['user_id' => $u->id, 'status' => 'retirado']);
+
+        $this->travel(1)->minute();
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+
+        Livewire::test(\App\Filament\Resources\CourseEditions\RelationManagers\EnrollmentsRelationManager::class, [
+            'ownerRecord' => $cohorte->fresh(),
+            'pageClass'   => EditCourseEdition::class,
+        ])
+            ->assertCanNotSeeTableRecords([$anulada])
+            ->removeTableFilter('sin_anuladas')
+            ->assertCanSeeTableRecords([$anulada])
+            ->assertSee('Anulada antes de publicar la cohorte');
+    }
+
+    /**
+     * La invitación al registro oficial: se ve antes, se prueba con uno mismo,
+     * y le llega una vez a cada preinscrito que ya puede pasar.
+     */
+    public function test_invitar_al_registro_oficial(): void
+    {
+        $yo = $this->admin();
+        $cohorte = $this->cohorte(['slug' => 'tera-fab-academy'], ['capacity' => 20, 'minimum_to_open' => 18]);
+        $this->preinscrito($cohorte, ['name' => 'Ana Torres', 'email' => 'ana@test.co']);
+        $this->travel(1)->minute();
+        $cohorte->update(['status' => 'abierta', 'published_at' => now()]);
+        $this->travel(1)->minute();
+        $this->preinscrito($cohorte, ['name' => 'Luis', 'email' => 'luis@test.co']);
+
+        $this->pestana($cohorte->fresh())
+            ->assertTableActionVisible('invitar_registro')
+            ->mountTableAction('invitar_registro')
+            ->assertTableActionMounted('invitar_registro')
+            ->callMountedTableAction(['prueba' => true]);
+
+        // Lo que enseña la vista previa de la ventana.
+        $vista = app(\App\Services\Notifications\NotificationService::class)->previsualizar(
+            'curso.registro_oficial', null, 'Ana María',
+            app(PreinscripcionService::class)->datosDelRegistro($cohorte->fresh(), 'Hola'),
+        );
+        $this->assertSame('Fab Academy: ya puedes hacer tu registro oficial', $vista['asunto']);
+        $this->assertStringContainsString('form.jotform.com/FabAcademy/2027-student-registration-form', $vista['cuerpo']);
+        $this->assertStringContainsString(route('fab-academy'), $vista['cuerpo']);
+        $this->assertStringContainsString('EAN Colombia (Bogotá, Colombia)', $vista['cuerpo']);
+
+        // Sin mensaje no queda un hueco antes de la despedida.
+        $sinMensaje = app(\App\Services\Notifications\NotificationService::class)->previsualizar(
+            'curso.registro_oficial', null, 'Ana María', app(PreinscripcionService::class)->datosDelRegistro($cohorte->fresh()),
+        );
+        $this->assertDoesNotMatchRegularExpression('/\n\s*\n\s*\n/', $sinMensaje['cuerpo']);
+
+        $this->assertDatabaseHas('notification_logs', ['key' => 'curso.registro_oficial', 'user_id' => $yo->id]);
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'curso.registro_oficial', 'to' => 'ana@test.co']);
+
+        $this->pestana($cohorte->fresh())->callTableAction('invitar_registro', data: ['mensaje' => 'Nos vemos en enero.'])
+            ->assertHasNoTableActionErrors();
+        $this->pestana($cohorte->fresh())->callTableAction('invitar_registro');
+
+        $enviados = \App\Models\NotificationLog::where('key', 'curso.registro_oficial')->where('to', 'ana@test.co');
+        $this->assertSame(1, $enviados->count());
+        $this->assertStringContainsString('Nos vemos en enero.', $enviados->value('body'));
+        $this->assertDatabaseMissing('notification_logs', ['key' => 'curso.registro_oficial', 'to' => 'luis@test.co']);
+    }
 }

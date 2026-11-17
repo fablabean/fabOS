@@ -127,9 +127,15 @@ class EspacioController extends Controller
             'herramientas.*' => ['integer'],
             'espacios'       => ['array'],
             'espacios.*'     => ['integer'],
-            'modalidad'      => ['nullable', 'in:recorrido,operacion'],
+            'modalidad'      => ['nullable', 'in:recorrido,operacion,demo'],
             'proposito'      => ['nullable', 'string', 'max:500'],
+            'archivos'       => ['array', 'max:' . \App\Support\FormatosDeDemo::MAXIMO],
+            'archivos.*'     => ['file', 'max:' . \App\Support\FormatosDeDemo::TAMANO_KB],
         ]);
+
+        if (($datos['modalidad'] ?? null) === EspacioBookingService::DEMO && ! $space->esTodoElLaboratorio()) {
+            return $this->reservarDemo($request, $space, $datos);
+        }
 
         // Los otros espacios marcados, solo si de verdad se reservan: el
         // formulario se puede manipular.
@@ -190,5 +196,62 @@ class EspacioController extends Controller
             // La sugerencia de grupos, si la hay: es lo que hay que organizar.
             . ($reserva->status_reason ? ' ' . $reserva->status_reason : '')
         );
+    }
+
+    /**
+     * La demo: una hora, solo ese espacio, sin herramientas, y los archivos
+     * que se van a usar. Lo que el formulario traiga de más no cuenta: es una
+     * demo controlada.
+     */
+    private function reservarDemo(Request $request, Space $space, array $datos)
+    {
+        $formatos = \App\Support\FormatosDeDemo::para($space);
+        $archivos = array_values(array_filter((array) $request->file('archivos', [])));
+
+        foreach ($archivos as $archivo) {
+            $extension = strtolower($archivo->getClientOriginalExtension());
+
+            if (! in_array($extension, $formatos['extensiones'], true)) {
+                throw ValidationException::withMessages([
+                    'archivos' => $archivo->getClientOriginalName() . ' no sirve para la demo de ' . $space->name
+                        . '. Se reciben: .' . implode(', .', $formatos['extensiones']) . '.',
+                ]);
+            }
+        }
+
+        $tz = config('fabos.lab.timezone');
+        $desde = Carbon::parse($datos['fecha'] . ' ' . $datos['inicio'], $tz);
+        $hasta = $desde->copy()->addMinutes(EspacioBookingService::MINUTOS_DEMO);
+
+        try {
+            \App\Support\HorarioDeAutoservicio::exigir('espacios', $desde, $hasta);
+
+            $reserva = $this->espacios->reservarDemo(
+                $request->user(), $space, $desde, (int) $datos['participantes'], $datos['proposito'] ?? null,
+            );
+        } catch (BookingException $e) {
+            throw ValidationException::withMessages([
+                str_contains($e->getMessage(), 'caben') || str_contains($e->getMessage(), 'puesto') ? 'participantes' : 'fecha' => $e->getMessage(),
+            ]);
+        }
+
+        foreach ($archivos as $archivo) {
+            $extension = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $archivo->getClientOriginalExtension()));
+
+            $reserva->evidence()->create([
+                'kind'          => in_array($extension, ['jpg', 'jpeg', 'png'], true) ? 'foto' : 'archivo',
+                'file_path'     => $archivo->storeAs('reservas/demos', \Illuminate\Support\Str::random(40) . ($extension !== '' ? '.' . $extension : ''), 'local'),
+                'original_name' => mb_substr($archivo->getClientOriginalName(), 0, 255),
+                'uploaded_by'   => $request->user()->id,
+            ]);
+        }
+
+        $cuando = $desde->format('d/m/Y') . ' de ' . $desde->format('H:i') . ' a ' . $hasta->format('H:i');
+        $conArchivos = $archivos ? ' Recibimos ' . count($archivos) . ' archivo' . (count($archivos) > 1 ? 's' : '') . ' para la demo.' : '';
+
+        return redirect()->route('home')->with('status', $reserva->status === 'solicitada'
+            ? 'Pediste una demo en ' . $space->name . ' el ' . $cuando . '. ' . $reserva->status_reason . ' Te avisamos.' . $conArchivos
+            : 'Reservaste una demo en ' . $space->name . ' el ' . $cuando . '.'
+                . ($reserva->supervisor ? ' La hace ' . $reserva->supervisor->name . '.' : '') . $conArchivos);
     }
 }

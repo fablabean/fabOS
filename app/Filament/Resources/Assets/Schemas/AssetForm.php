@@ -148,7 +148,11 @@ class AssetForm
                         Select::make('status')
                             ->label('Estado')
                             ->options(Asset::ESTADOS)
-                            ->disableOptionWhen(fn (string $value) => $value === 'mantenimiento')
+                            // A mantenimiento no se llega a mano, pero el que ya
+                            // está ahí lo conserva: bloquear su propio valor
+                            // dejaba la ficha sin poder guardarse por nada.
+                            ->disableOptionWhen(fn (string $value, ?Asset $record) => $value === 'mantenimiento'
+                                && $record?->getOriginal('status') !== 'mantenimiento')
                             ->default('operativo')
                             ->required()
                             // Mientras una orden lo tenga detenido, lo devuelve la orden.
@@ -216,6 +220,11 @@ class AssetForm
                         Toggle::make('unattended_use')
                             ->label('Admite uso desatendido')
                             ->helperText('Impresión 3D: el trabajo corre sin la persona presente.')
+                            ->visible(fn ($get) => $get('is_reservable')),
+
+                        Toggle::make('ocupa_a_quien_la_usa')
+                            ->label('Ocupa a quien la opera')
+                            ->helperText('Termofijadora, láser: alguien la opera de principio a fin. Si la reserva alguien del equipo, en esa franja no se le asignan asesorías, acompañamientos ni revisiones.')
                             ->visible(fn ($get) => $get('is_reservable')),
 
                         /*
@@ -345,7 +354,7 @@ class AssetForm
                             ->label('Video')
                             ->url()
                             ->prefixIcon('heroicon-o-play')
-                            ->helperText('Enlace a YouTube o Vimeo, opcional.')
+                            ->helperText('Enlace a YouTube o Vimeo, opcional. Es el que se ve en el sitio; los de mantenimiento van en su sección.')
                             ->columnSpanFull(),
 
                         Textarea::make('public_description')
@@ -357,6 +366,14 @@ class AssetForm
                         Toggle::make('is_public')
                             ->label('Mostrar en el sitio público')
                             ->default(true),
+                    ]),
+
+                // Lo que se consulta para repararlo: no es la vitrina.
+                Section::make('Manuales y videos de mantenimiento')
+                    ->description('Lo que se consulta para hacerle mantenimiento: manuales en PDF y videos. Se ve desde cada orden de trabajo y desde el QR del equipo, no en el sitio público.')
+                    ->collapsed()
+                    ->schema([
+                        \App\Filament\Componentes\RecursosDeMantenimiento::campo(),
                     ]),
 
                 Section::make('Dependencias')

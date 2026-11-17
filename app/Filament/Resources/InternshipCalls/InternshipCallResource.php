@@ -10,6 +10,9 @@ use App\Filament\Resources\InternshipCalls\RelationManagers\ApplicationsRelation
 use App\Models\InternshipCall;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
+use App\Services\Media\OptimizadorDeImagen;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -88,11 +91,38 @@ class InternshipCallResource extends Resource
                         ->default('abierta')
                         ->required(),
 
-                    Textarea::make('description')
+                    // Con negrita y listas: «cómo funciona» en cuatro pasos se
+                    // lee mejor como lista que como un renglón con puntos.
+                    // La barra es corta a propósito, como en las páginas.
+                    RichEditor::make('description')
                         ->label('Qué se busca y qué se ofrece')
-                        ->rows(3)
+                        ->toolbarButtons([
+                            ['bold', 'italic', 'link'],
+                            ['bulletList', 'orderedList'],
+                            ['undo', 'redo'],
+                        ])
+                        // Lo escrito antes era texto plano: sus párrafos
+                        // entran al editor como párrafos y no como un bloque.
+                        ->formatStateUsing(fn (?string $state) => InternshipCall::comoHtml($state))
                         ->columnSpanFull()
                         ->helperText('Es lo que lee quien se está pensando si postularse.'),
+
+                    // Se publica: va al disco público, como la foto de un
+                    // curso, y el teléfono la encoge antes de subirla.
+                    FileUpload::make('photo_path')
+                        ->label('Foto')
+                        ->helperText('Sale arriba, en la lista de convocatorias y en el formulario de postulación. Mejor horizontal: el equipo trabajando, una máquina en marcha.')
+                        ->disk('public')
+                        ->visibility('public')
+                        ->image()
+                        ->directory('practicas')
+                        ->maxSize(20480)
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth(2000)
+                        ->imageResizeTargetHeight(2000)
+                        ->imageResizeUpscale(false)
+                        ->saveUploadedFileUsing(fn ($file) => app(OptimizadorDeImagen::class)->guardar($file, 'practicas'))
+                        ->columnSpanFull(),
 
                     Toggle::make('is_public')
                         ->label('Recibir postulaciones desde el sitio')

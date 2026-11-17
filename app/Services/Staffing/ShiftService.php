@@ -31,6 +31,11 @@ class ShiftService
         bool $cuentaComoExtra = true,
         ?Reservation $porReserva = null,
     ): ShiftAssignment {
+        // Contrato flexible: no hace extras, se le compensa con tiempo.
+        if ($persona->tieneContratoFlexible()) {
+            $cuentaComoExtra = false;
+        }
+
         if ($rechazo = $this->extras->motivoDeRechazo($persona, $desde, $hasta, $cuentaComoExtra)) {
             throw new BookingException($rechazo);
         }

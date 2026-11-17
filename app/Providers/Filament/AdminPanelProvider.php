@@ -93,6 +93,16 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.parciales.estilos')->render(),
             )
+            // En la ficha de un proyecto, la barra para pasar al anterior y al
+            // siguiente del listado sin volver a él.
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn (): string => \App\Support\RecorridoDeProyectos::barra(),
+                scopes: [
+                    \App\Filament\Resources\Projects\Pages\EditProject::class,
+                    \App\Filament\Resources\Projects\Pages\ViewProject::class,
+                ],
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])

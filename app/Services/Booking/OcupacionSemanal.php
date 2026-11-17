@@ -28,6 +28,9 @@ class OcupacionSemanal
     /** Lo que no ocupa nada: se pidió y no fue, o no se dio. */
     private const SIN_OCUPAR = ['rechazada', 'cancelada'];
 
+    /** Cuántos días se ven cuando se mira desde hoy: el de hoy y cinco más. */
+    public const DIAS_DESDE_HOY = 6;
+
     /**
      * La semana tal como la pide una pantalla: el día que se quiere ver, los
      * filtros y la vista, ya resueltos.
@@ -42,7 +45,7 @@ class OcupacionSemanal
      *
      * @return array<string,mixed>
      */
-    public function paraVer(?string $dia, ?int $espacio, bool $solo, ?string $vista, ?User $quien): array
+    public function paraVer(?string $dia, ?int $espacio, bool $solo, ?string $vista, ?User $quien, bool $desdeHoy = false): array
     {
         $tz = config('fabos.lab.timezone');
 
@@ -60,11 +63,12 @@ class OcupacionSemanal
             soloDelProyecto: $solo,
             conQuienReserva: $delEquipo,
             soloDe: $delEquipo ? null : $quien,
+            desdeHoy: $desdeHoy,
         ) + [
             'todoElLaboratorio' => $delEquipo,
             'espacio' => $espacio ?: null,
             'solo'    => $solo,
-            'vista'   => $vista === 'espacios' ? 'espacios' : 'horas',
+            'vista'   => in_array($vista, ['espacios', 'personas'], true) ? $vista : 'horas',
         ];
     }
 
@@ -93,11 +97,25 @@ class OcupacionSemanal
         bool $soloDelProyecto = false,
         bool $conQuienReserva = true,
         ?User $soloDe = null,
+        bool $desdeHoy = false,
     ): array {
         $tz = config('fabos.lab.timezone');
 
-        $desde = $cualquierDia->copy()->timezone($tz)->startOfWeek(Carbon::MONDAY);
-        $hasta = $desde->copy()->endOfWeek(Carbon::SUNDAY);
+        if ($desdeHoy) {
+            // Lo que viene, no la semana del calendario: el día pedido a la
+            // izquierda y cinco más. El domingo no cuenta entre los seis, que
+            // casi nunca abre; si tiene algo, se dibuja de más.
+            $desde = $cualquierDia->copy()->timezone($tz)->startOfDay();
+            $hasta = $desde->copy();
+            for ($n = 1; $n < self::DIAS_DESDE_HOY;) {
+                $hasta->addDay();
+                $n += $hasta->isSunday() ? 0 : 1;
+            }
+            $hasta->endOfDay();
+        } else {
+            $desde = $cualquierDia->copy()->timezone($tz)->startOfWeek(Carbon::MONDAY);
+            $hasta = $desde->copy()->endOfWeek(Carbon::SUNDAY);
+        }
 
         $reservas = Reservation::query()
             ->with([
@@ -137,6 +155,10 @@ class OcupacionSemanal
         $horaDesde = 7;
         $horaHasta = 19;
 
+        // Quiénes son del equipo, una vez: su propio uso de una máquina sale
+        // en su fila de la vista por persona.
+        $this->delEquipo = User::role(User::rolesDelEquipo())->pluck('id')->flip()->all();
+
         foreach ($reservas as $r) {
             $inicio = $r->starts_at->copy()->timezone($tz);
             $fin = $r->ends_at->copy()->timezone($tz);
@@ -170,10 +192,20 @@ class OcupacionSemanal
 
         $bloqueos = $this->bloqueos($desde, $hasta);
 
-        // Lunes a sábado siempre; el domingo solo si algo pasa ese día.
+        // Con hoy a la vista, la grilla alcanza la hora de ahora: la línea que
+        // la marca no se sale por abajo a las nueve de la noche.
+        $ahora = now($tz);
+        if ($ahora->betweenIncluded($desde, $hasta)) {
+            $horaDesde = min($horaDesde, $ahora->hour);
+            $horaHasta = max($horaHasta, $ahora->hour + 1);
+        }
+
+        // Lunes a sábado siempre; el domingo solo si algo pasa ese día, o si
+        // es el primero que se muestra.
         $dias = [];
         for ($d = $desde->copy(); $d->lte($hasta); $d->addDay()) {
-            if ($d->isSunday() && empty($bloques[$d->toDateString()]) && empty($bloqueos[$d->toDateString()])) {
+            if ($d->isSunday() && ! ($desdeHoy && $d->isSameDay($desde))
+                && empty($bloques[$d->toDateString()]) && empty($bloqueos[$d->toDateString()])) {
                 continue;
             }
             $dias[] = $d->copy();
@@ -187,6 +219,7 @@ class OcupacionSemanal
             'horaHasta' => min(24, $horaHasta),
             'bloques'   => $bloques,
             'bloqueos'  => $bloqueos,
+            'desdeHoy'  => $desdeHoy,
             'espacios'  => Space::query()->where('is_reservable', true)->orderBy('name')->get(['id', 'name']),
         ];
     }
@@ -264,7 +297,67 @@ class OcupacionSemanal
             'estadoTxt'  => Reservation::ESTADOS[$r->status] ?? $r->status,
             'tipo'       => $r->esProduccion() ? 'produccion' : $r->tipoDeRecurso(),
             'delProyecto' => $delProyecto,
+            'personas'   => $this->personasDe($r),
         ];
+    }
+
+    /** @var array<int,int> ids del equipo, para la vista por persona */
+    private array $delEquipo = [];
+
+    /**
+     * Quién del equipo está en esta reserva, y haciendo qué. `ocupa` dice si
+     * ese papel le toma la franja entera: recibir en una sala no —son los
+     * cinco minutos de ubicar a quien llega—; asesorar, acompañar, llevar un
+     * recorrido o una demo, sí. Su propio uso de una máquina —también la
+     * producción de un proyecto— se muestra siempre, y ocupa solo si la
+     * máquina está marcada como «Ocupa a quien la opera».
+     *
+     * @return list<array{id:int,nombre:string,rol:string,ocupa:bool}>
+     */
+    private function personasDe(Reservation $r): array
+    {
+        $lista = [];
+        $poner = function (?User $u, string $rol, bool $ocupa) use (&$lista) {
+            if ($u && ! isset($lista[$u->id])) {
+                $lista[$u->id] = ['id' => $u->id, 'nombre' => $u->name, 'rol' => $rol, 'ocupa' => $ocupa];
+            }
+        };
+
+        if ($r->reservable instanceof User) {
+            $poner($r->reservable, match (true) {
+                $r->mode === 'practica' => 'Evaluación práctica',
+                $r->esAtencionPersonal() => 'Asesoría',
+                str_starts_with((string) $r->purpose, \App\Services\Projects\RevisionDeSolicitudes::MOTIVO) => 'Revisión de solicitud',
+                $r->esBloqueDeProyecto() => 'Tiempo de proyecto',
+                default => 'Tiempo apartado',
+            }, true);
+        }
+
+        if ($r->supervisor) {
+            $enSala = $r->reservable instanceof Space;
+            $poner($r->supervisor, match (true) {
+                $r->esRecorrido() => 'Lleva el recorrido',
+                (bool) $r->is_demo => 'Hace la demo',
+                $enSala => 'Recibe',
+                default => 'Acompaña',
+            }, ! $enSala || $r->esRecorrido() || $r->is_demo);
+        }
+
+        foreach ($r->companions as $c) {
+            $poner($c, $r->esRecorrido() ? 'Acompaña el recorrido' : 'Acompaña', true);
+        }
+
+        // Lo que se reservó para sí, también si es la producción de un
+        // proyecto. Sale siempre en su fila, pero solo lo ocupa —y se marca si
+        // se cruza— en una máquina que se opera de principio a fin: una
+        // impresión que corre sola no ocupa a nadie.
+        if ($r->user && isset($this->delEquipo[$r->user->id]) && ! $r->reservable instanceof User
+            && ! ($r->reservable instanceof Asset && $r->reservable->esHerramienta())) {
+            $poner($r->user, $r->esProduccion() ? 'Producción' : 'Su uso',
+                $r->reservable instanceof Asset && $r->reservable->ocupa_a_quien_la_usa);
+        }
+
+        return array_values($lista);
     }
 
     private function reloj(int $minutos): string

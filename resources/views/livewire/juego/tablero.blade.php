@@ -50,7 +50,17 @@
                 <div style="font-size:1.8rem;font-weight:800;color:var(--muted);text-align:center">{{ $puesto + 1 }}</div>
 
                 <div>
-                    <div style="font-size:1.25rem;font-weight:700">{{ $e->nombre }}</div>
+                    <div style="font-size:1.25rem;font-weight:700">
+                        {{ $e->nombre }}
+                        {{-- Cuántos son: un equipo de dos y uno de seis no
+                             corren la misma carrera. --}}
+                        @if ($cuantos = $e->integrantes->count())
+                            <span class="muted" style="font-size:.85rem;font-weight:600;margin-left:.4rem;white-space:nowrap"
+                                  title="{{ $e->integrantes->pluck('nombre')->join(', ') }}">
+                                · {{ $cuantos }} {{ $cuantos === 1 ? 'integrante' : 'integrantes' }}
+                            </span>
+                        @endif
+                    </div>
                     <div class="muted">
                         {{ $e->seLeAcaboLaJornada() ? 'Se le acabó la jornada' : (\App\Models\Recorrido\Equipo::ESTADOS[$e->estado] ?? $e->estado) }}
                         @if ($lider = $e->avances->firstWhere('etapa', $e->etapa)?->lider)

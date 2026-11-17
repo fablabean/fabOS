@@ -665,4 +665,40 @@ class CrearReservaDesdeElPanelTest extends TestCase
         $this->assertSame(2, Reservation::where('reservable_type', Asset::class)->count());
         $this->assertSame(1, Reservation::where('reservable_type', User::class)->count());
     }
+
+    /**
+     * En un espacio igual: si quien acompaña solo choca con su calendario, se
+     * ve con qué y se puede reservar de todas formas. Lo provisional cuenta,
+     * pero se salta a mano.
+     */
+    public function test_en_un_espacio_el_choque_con_su_calendario_tambien_se_salta(): void
+    {
+        $jefa = User::whereHas('roles')->first();
+        $jefa->forceFill(['external_calendar_url' => 'https://outlook.office365.com/owa/calendar/x/reachcalendar.ics'])->save();
+
+        \Illuminate\Support\Facades\Http::fake(['*' => \Illuminate\Support\Facades\Http::response(
+            implode("\r\n", [
+                'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:1', 'DTSTAMP:20260820T120000Z',
+                'DTSTART:20260824T100000Z', 'DTEND:20260825T030000Z', 'SUMMARY:Provisional',
+                'END:VEVENT', 'END:VCALENDAR', '',
+            ])
+        )]);
+
+        $pagina = Livewire::test(CreateReservation::class)
+            ->fillForm([
+                'tipo' => 'espacio', 'user_id' => $this->alguien()->id, 'space_ids' => [\App\Models\Space::todoElLaboratorio()->id],
+                'modalidad' => 'recorrido', 'participantes' => 20,
+                'starts_at' => $this->hora('14:00'), 'ends_at' => $this->hora('15:00'),
+                'acompanantes' => [$jefa->id],
+            ])
+            ->call('create');
+
+        $this->assertSame(0, Reservation::where('reservable_type', \App\Models\Space::class)->count());
+        $this->assertSame('Provisional', $pagina->get('conflictos')[0]['que']);
+
+        $pagina->call('abrirConflicto')->callMountedAction();
+
+        $r = Reservation::where('reservable_type', \App\Models\Space::class)->firstOrFail();
+        $this->assertSame([$jefa->id], $r->companions->pluck('id')->all());
+    }
 }

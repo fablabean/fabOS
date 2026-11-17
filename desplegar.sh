@@ -228,6 +228,10 @@ $ARTISAN config:cache
 $ARTISAN route:cache
 $ARTISAN view:cache
 
+# Quien escucha a las cámaras es un proceso que no termina: sin reiniciarlo se
+# quedaría con el código y la configuración de antes del despliegue.
+$COMPOSE restart camaras >/dev/null 2>&1 || true
+
 # El propio comando se niega a sembrar si ya hay personas, así que correrlo
 # siempre es seguro: en el primer despliegue instala, en los demás no hace nada.
 paso 'Datos iniciales'

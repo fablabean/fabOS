@@ -143,10 +143,14 @@ class SemanaDelLaboratorioTest extends TestCase
 
         $this->actingAs($admin);
 
+        // Desde el día pedido y cinco más; el domingo vacío no cuenta.
         \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
             ->call('irA', '2026-09-29')
-            ->assertSee('28/09 – 04/10/2026')
+            ->assertSee('29/09 – 05/10/2026')
             ->assertSee('Ana Torres')
+            ->assertSeeHtml("irA('2026-10-06')")
+            ->call('irA', '2026-09-30')
+            ->assertDontSee('Ana Torres', 'El lunes ya no se ve.')
             ->call('irA', '2026-10-06')
             ->assertDontSee('Ana Torres')
             ->call('irA', '2026-09-29')
@@ -154,6 +158,53 @@ class SemanaDelLaboratorioTest extends TestCase
             ->assertSee('sem-tabla', false)
             ->set('solo', true)
             ->assertDontSee('Ana Torres');
+    }
+
+    /**
+     * Abre con hoy a la izquierda y con la raya de la hora de ahora en la
+     * columna de hoy; «Anterior» lleva a los días que ya pasaron.
+     */
+    public function test_el_widget_abre_en_hoy_con_la_hora_marcada(): void
+    {
+        Carbon::setTestNow($this->martes('10:30'));
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $this->reserva($admin, '09:00', '11:00', ['purpose' => 'Corte de prueba']);
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class)
+            ->assertSee('29/09 – 05/10/2026')
+            ->assertSee('← Anterior')
+            ->assertDontSeeHtml('>Hoy</button>')
+            ->assertSeeHtml('class="sem-ahora"')
+            ->assertSee('10:30')
+            ->call('irA', '2026-10-06')
+            ->assertSee('← Anterior')
+            ->assertSeeHtml('>Hoy</button>')
+            ->assertDontSeeHtml('class="sem-ahora"')
+            ->call('irA', '2026-09-29')
+            ->call('irA', '2026-09-22')
+            ->assertSee('22/09 – 28/09/2026')
+            ->assertSeeHtml('>Hoy</button>');
+
+        Carbon::setTestNow();
+    }
+
+    /** En la lista de proyectos, solo lo de proyectos, sin ofrecer el filtro. */
+    public function test_en_proyectos_el_widget_solo_muestra_lo_de_proyectos(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $p = $this->proyecto($admin);
+        $this->reserva($admin, '10:00', '12:00', ['project_id' => $p->id]);
+        $this->reserva($this->persona('Beto Suelto'), '14:00', '15:00');
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Widgets\SemanaDelLaboratorio::class, ['soloFijo' => true])
+            ->call('irA', '2026-09-29')
+            ->assertSee($p->code)
+            ->assertDontSee('Beto Suelto')
+            ->assertDontSee('Solo de proyectos');
     }
 
     /**
@@ -226,5 +277,58 @@ class SemanaDelLaboratorioTest extends TestCase
                 ->assertSee('10:00–12:00')
                 ->assertDontSee($ficha, false);
         }
+    }
+
+    /**
+     * Por persona: una fila por cada quien del equipo, con lo que hace en cada
+     * franja. Lo que le toma la franja entera y se cruza sale marcado; recibir
+     * en una sala no cuenta, son cinco minutos.
+     */
+    public function test_por_persona_se_ve_lo_que_se_le_monta_encima(): void
+    {
+        $admin = $this->persona('Admin', User::ROL_ADMINISTRADOR);
+        $jhon = $this->persona('Jhonatan Cortés', User::ROL_PRACTICANTE);
+        $estudiante = $this->persona('Estudiante');
+
+        // Recibe en la sala de 09:00 a 11:00: no lo ocupa.
+        $this->reserva($estudiante, '09:00', '11:00', ['supervisor_id' => $jhon->id, 'purpose' => 'Trabajo de clase']);
+        // Una asesoría a las 10:00…
+        Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $jhon->id, 'user_id' => $estudiante->id,
+            'mode' => 'asesoria', 'status' => 'confirmada',
+            'starts_at' => $this->martes('10:00'), 'ends_at' => $this->martes('10:45'),
+        ]);
+        // …y él mismo se reservó la sala de 10:30 a 12:00.
+        $termo = \App\Models\Asset::create([
+            'name' => 'Termofijadora', 'slug' => 'termofijadora', 'status' => 'operativo', 'is_reservable' => true,
+            'space_id' => $this->sala->id, 'ocupa_a_quien_la_usa' => true,
+        ]);
+        $this->reserva($jhon, '10:30', '12:00', ['purpose' => 'Una sublimación', 'reservable_type' => \App\Models\Asset::class, 'reservable_id' => $termo->id]);
+
+        $html = $this->actingAs($admin)
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
+            ->assertOk()
+            ->assertSee('Por persona')
+            ->assertSeeInOrder(['Jhonatan Cortés', '09:00–11:00', 'Recibe', '10:00–10:45', 'Asesoría · se cruza', '10:30–12:00', 'Su uso · se cruza'])
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, ' · se cruza'));
+
+        // La producción de un proyecto que se reservó para sí también sale en su
+        // fila; en una impresora, que trabaja sola, no lo ocupa ni se marca.
+        $impresora = \App\Models\Asset::create(['name' => 'Impresora', 'slug' => 'impresora', 'status' => 'operativo', 'is_reservable' => true, 'space_id' => $this->sala->id]);
+        Reservation::create([
+            'reservable_type' => User::class, 'reservable_id' => $jhon->id, 'user_id' => $estudiante->id,
+            'mode' => 'asesoria', 'status' => 'confirmada',
+            'starts_at' => $this->martes('14:30'), 'ends_at' => $this->martes('15:00'),
+        ]);
+        $this->reserva($jhon, '14:00', '15:30', ['reservable_type' => \App\Models\Asset::class, 'reservable_id' => $impresora->id,
+            'is_production' => true, 'project_id' => $this->proyecto($jhon)->id]);
+
+        $html = $this->actingAs($admin)
+            ->get(route('proyectos.cronograma') . '?semana=2026-09-30&vista=personas')
+            ->assertSeeInOrder(['Jhonatan Cortés', '14:00–15:30', 'Producción'])
+            ->getContent();
+        $this->assertSame(2, substr_count($html, ' · se cruza'));
     }
 }

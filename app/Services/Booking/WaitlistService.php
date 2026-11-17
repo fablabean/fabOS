@@ -121,6 +121,11 @@ class WaitlistService
             return 0;   // un hueco que ya pasó no le sirve a nadie
         }
 
+        // Ni uno dentro de un bloqueo —un festivo, un cierre—: nadie lo podría tomar.
+        if (\App\Support\BloqueoDeReservas::cubre($reserva->starts_at, $reserva->ends_at)) {
+            return 0;
+        }
+
         return $this->avisarHueco($equipo, $reserva->starts_at, $reserva->ends_at);
     }
 

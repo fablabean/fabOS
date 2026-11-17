@@ -12,6 +12,14 @@ class EditProject extends EditRecord
 {
     protected static string $resource = ProjectResource::class;
 
+    /** Abrirla es haberlo visto: deja de salir «Sin abrir» en la lista. */
+    public function mount(int | string $record): void
+    {
+        parent::mount($record);
+
+        $this->getRecord()->marcarAbierto(auth()->user());
+    }
+
     protected function getHeaderActions(): array
     {
         return [

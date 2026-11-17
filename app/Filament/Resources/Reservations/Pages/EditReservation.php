@@ -6,6 +6,10 @@ use App\Filament\Resources\Reservations\ReservationResource;
 use App\Models\Reservation;
 use App\Services\Booking\EliminarReserva;
 use Filament\Actions\DeleteAction;
+use App\Models\User;
+use App\Services\Booking\BookingException;
+use App\Services\Booking\TraspasoDeAtencion;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditReservation extends EditRecord
@@ -30,5 +34,33 @@ class EditReservation extends EditRecord
                 })
                 ->successRedirectUrl(ReservationResource::getUrl()),
         ];
+    }
+
+    /**
+     * Si cambió quién atiende una asesoría, se pasa como en «Reasignar»:
+     * después de guardar lo demás, para que la ficha no pise su motivo.
+     */
+    protected function afterSave(): void
+    {
+        $nuevo = $this->data['atiende'] ?? null;
+
+        if (! $this->record->esAtencionPersonal() || ! $nuevo || (int) $nuevo === (int) $this->record->reservable_id) {
+            return;
+        }
+
+        try {
+            app(TraspasoDeAtencion::class)->reasignar($this->record, User::findOrFail($nuevo), auth()->user(), (bool) ($this->data['atiende_aunque'] ?? false));
+        } catch (BookingException $e) {
+            $this->data['atiende'] = $this->record->reservable_id;
+            Notification::make()->danger()->persistent()
+                ->title('No se pudo cambiar quién atiende')
+                ->body($e->getMessage() . ' Lo demás sí quedó guardado.')
+                ->send();
+
+            return;
+        }
+
+        $this->record->refresh();
+        Notification::make()->success()->title('Ahora la atiende ' . User::find($nuevo)?->name)->send();
     }
 }

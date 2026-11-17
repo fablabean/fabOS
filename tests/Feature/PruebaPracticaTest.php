@@ -568,7 +568,7 @@ class PruebaPracticaTest extends TestCase
         $i = $this->conTeoria();
 
         $this->expectException(TrainingException::class);
-        $this->expectExceptionMessage('Michael ya tiene algo a esa hora');
+        $this->expectExceptionMessage('Michael ya tiene una evaluación práctica');
 
         app(PracticaService::class)->citar($i, $michael, $this->hora('10:30'));
     }

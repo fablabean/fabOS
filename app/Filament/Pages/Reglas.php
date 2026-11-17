@@ -135,6 +135,26 @@ class Reglas extends Page
                 'bandeja'   => \App\Models\Reservation::where('status', 'solicitada')->where('ends_at', '>', now())->count(),
                 'esperando' => \App\Models\WaitlistEntry::whereIn('status', ['esperando', 'avisado'])->count(),
             ],
+            'agenda'     => [
+                'ocupan'    => Asset::where('ocupa_a_quien_la_usa', true)->orderBy('name')->pluck('name'),
+                'demos'     => \App\Models\Reservation::where('is_demo', true)->count(),
+                'propuestas' => \App\Models\Reservation::whereNotNull('propuesta')->count(),
+            ],
+            'cola'       => [
+                'minutos'    => \App\Services\Projects\RevisionDeSolicitudes::minutos(),
+                'dias'       => (int) config('fabos.proyectos.dias_para_buscar_revision', 21),
+                'pendientes' => \App\Models\Reservation::where('mode', \App\Services\Projects\TiempoDeProyecto::MODO)
+                    ->whereNull('project_task_id')
+                    ->where('purpose', 'like', \App\Services\Projects\RevisionDeSolicitudes::MOTIVO . '%')
+                    ->whereIn('status', \App\Models\Reservation::BLOQUEANTES)
+                    ->where('ends_at', '>', now())->count(),
+                'sinAbrir'   => Project::where('status', 'activo')->whereNull('opened_at')->count(),
+                'aplazados'  => Project::where('client_kind', 'estudiante')
+                    ->whereNotIn('status', ['descartado', 'perdido'])
+                    ->whereDate('review_week', '>', now(config('fabos.lab.timezone'))->startOfWeek(\Carbon\CarbonInterface::MONDAY)->toDateString())
+                    ->count(),
+                'aproximados' => Project::whereNotNull('aproximado_de')->count(),
+            ],
             'umbrales'   => [
                 'min'      => Asset::query()->min('min_minutes'),
                 'autonomo' => Asset::query()->distinct()->orderBy('autonomous_minutes')->pluck('autonomous_minutes'),

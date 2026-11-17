@@ -13,7 +13,7 @@ class WorkOrder extends Model
         'asset_id', 'maintenance_plan_id', 'kind', 'status', 'priority',
         'reported_issue', 'reported_by', 'assigned_to',
         'checklist_snapshot', 'checklist_answers',
-        'diagnosis', 'work_done', 'photos', 'cost',
+        'diagnosis', 'work_done', 'photos', 'reference_videos', 'cost',
         'stops_equipment', 'down_since', 'up_since', 'due_at', 'closed_at',
     ];
 
@@ -23,6 +23,7 @@ class WorkOrder extends Model
             'checklist_snapshot' => 'array',
             'checklist_answers'  => 'array',
             'photos'             => 'array',
+            'reference_videos'   => 'array',
             'stops_equipment'    => 'boolean',
             'cost'               => 'decimal:2',
             'down_since'         => UtcDateTime::class,

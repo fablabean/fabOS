@@ -91,8 +91,14 @@ class MatrizDeAccesos
 
             // Ya configurado a mano: solo lo que acaba de existir, y solo al
             // administrador, que es quien lo ve todo salvo lo del superadmin.
-            if ($nombre === User::ROL_ADMINISTRADOR && $nuevos !== []) {
-                $rol->givePermissionTo($nuevos);
+            // Lo del superadmin (las cámaras, por ejemplo) no se le abre solo.
+            $suyos = array_values(array_filter(
+                $nuevos,
+                fn (string $p) => array_key_exists(explode('.', $p, 2)[1] ?? '', $porSeccion),
+            ));
+
+            if ($nombre === User::ROL_ADMINISTRADOR && $suyos !== []) {
+                $rol->givePermissionTo($suyos);
             }
         }
 

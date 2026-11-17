@@ -46,7 +46,7 @@ class NotificationTemplateSeeder extends Seeder
                     Proyecto: {proyecto}
                     Código: {codigo}
 
-                    Ahora alguien del laboratorio la va a mirar: si cabe, con qué
+                    {revision}Ahora alguien del laboratorio la va a mirar: si cabe, con qué
                     máquinas y cuánto tomaría. Cuando tengamos una propuesta te llega
                     por correo con el detalle.
 
@@ -667,6 +667,25 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'equipo', 'fecha', 'inicio', 'motivo'],
             ],
             [
+                'key'          => 'reserva.cancelada_por_festivo',
+                'name'         => 'Reserva cancelada por caer en festivo',
+                'description'  => 'A quien tenía una reserva en un día festivo, cuando el laboratorio la cancela porque ese día no abre.',
+                'is_essential' => true,
+                'subject'      => 'Tu reserva del {fecha}: era festivo y la cancelamos',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Tu reserva de {equipo} del {fecha}, de {inicio} a {fin}, cayó en un día festivo ({festivo}), y los festivos el laboratorio no abre. Por eso la cancelamos.
+
+                    El sistema te dejó hacerla porque todavía no reconocía los festivos. Ya lo corregimos, y lamentamos el inconveniente. Si te había costado FabCoins, ya te los devolvimos.
+
+                    Cuando quieras, reserva de nuevo para otro día: {enlace}
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'equipo', 'fecha', 'inicio', 'fin', 'festivo', 'enlace', 'laboratorio'],
+            ],
+            [
                 'key'          => 'reserva.no_show',
                 'name'         => 'Reserva liberada por no llegar',
                 'description'  => 'Se envía cuando pasa la tolerancia de llegada y la reserva se suelta.',
@@ -829,6 +848,53 @@ class NotificationTemplateSeeder extends Seeder
                     Si necesitas corregir algo, vuelve a enviar el formulario con este mismo correo: reemplaza lo anterior.
                     TXT,
                 'variables'    => ['nombre_pila', 'curso', 'cohorte', 'inicio', 'costo', 'faltan', 'enlace'],
+            ],
+            [
+                'key'          => 'curso.registro_oficial',
+                'name'         => 'Invitación al registro oficial de Fab Academy',
+                'description'  => 'A cada preinscrito que ya puede pasar, una sola vez, cuando el equipo lo envía desde la pestaña de preinscritos.',
+                'is_essential' => true,
+                'subject'      => 'Fab Academy: ya puedes hacer tu registro oficial',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Fab Academy ya está publicada en {laboratorio} y empieza el {inicio}. Como estás en la lista de preinscritos, el siguiente paso es tu registro oficial en Fab Academy.
+
+                    1. Revisa la página del programa: cómo funciona, la inversión y las preguntas frecuentes.
+                    {enlace}
+
+                    2. Completa el formulario de registro de Fab Academy.
+                    {registro}
+
+                    Antes de enviarlo, ten en cuenta:
+                    {condiciones}{mensaje}
+
+                    Si tienes dudas, responde este correo.
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'inicio', 'enlace', 'registro', 'condiciones', 'mensaje', 'laboratorio'],
+            ],
+            [
+                'key'          => 'reserva.otra_opcion',
+                'name'         => 'Otra opción para una solicitud',
+                'description'  => 'A quien pidió una reserva que no se puede tal cual, cuando la coordinación le propone otras opciones desde la bandeja.',
+                'is_essential' => true,
+                'subject'      => 'Tu solicitud de {recurso}: te proponemos otra opción',
+                'body'         => <<<'TXT'
+                    Hola {nombre_pila},
+
+                    Revisamos tu solicitud de {recurso} para el {pedida}.{mensaje}
+
+                    Estas opciones sí te las podemos confirmar. Abre la que te sirva y queda reservada:
+
+                    {opciones}
+
+                    Si ninguna te sirve, responde este correo y lo vemos.
+
+                    — {laboratorio}
+                    TXT,
+                'variables'    => ['nombre_pila', 'recurso', 'pedida', 'mensaje', 'opciones', 'laboratorio'],
             ],
             [
                 'key'          => 'curso.cohorte_abierta',

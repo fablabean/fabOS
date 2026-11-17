@@ -724,4 +724,118 @@ class AsesoriasTest extends TestCase
             );
         }
     }
+
+    /** Un recorrido del laboratorio a cargo de alguien: responsable o acompañante. */
+    private function recorridoCon(User $persona, bool $comoAcompanante): Reservation
+    {
+        $r = Reservation::create([
+            'reservable_type' => \App\Models\Space::class,
+            'reservable_id'   => \App\Models\Space::todoElLaboratorio()->id,
+            'user_id'         => $this->alguien()->id,
+            'supervisor_id'   => $comoAcompanante ? null : $persona->id,
+            'status'          => 'confirmada',
+            'mode'            => Reservation::MODO_RECORRIDO,
+            'participants'    => 20,
+            'starts_at'       => $this->hora('10:00'),
+            'ends_at'         => $this->hora('12:00'),
+            'purpose'         => 'Inducción al FabLab',
+        ]);
+
+        if ($comoAcompanante) {
+            $r->companions()->attach($persona->id);
+        }
+
+        return $r;
+    }
+
+    /**
+     * Quien lleva un recorrido —como responsable o acompañando— no recibe
+     * asesorías ni acompaña máquinas en esa franja. Lo único que cabe es
+     * prestar herramientas.
+     */
+    public function test_quien_lleva_un_recorrido_no_recibe_asesorias_ni_acompana(): void
+    {
+        foreach ([true, false] as $comoAcompanante) {
+            Reservation::query()->delete();
+
+            $ana = $this->colaborador('Ana ' . (int) $comoAcompanante);
+            $this->asesora($ana);
+            $this->certificar($ana);
+            $this->recorridoCon($ana, $comoAcompanante);
+
+            $servicio = app(BookingService::class);
+
+            $this->assertNull(app(AsesoriaService::class)->agendar(
+                $this->alguien(), $this->equipo, $this->hora('11:15'), $this->hora('12:00'),
+            ));
+            $this->assertFalse($servicio->acompanantesDisponibles($this->equipo, $this->hora('10:30'), $this->hora('11:15'))->contains('id', $ana->id));
+            $this->assertStringContainsString('recorrido', (string) $servicio->porQueNoEstaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+            $this->assertNotEmpty(array_filter($servicio->queOcupaA($ana, $this->hora('10:30'), $this->hora('11:15')),
+                fn ($c) => str_starts_with($c['que'], 'Recorrido')));
+
+            // Una herramienta sí se le puede pedir.
+            $herramienta = Asset::create([
+                'name' => 'Taladro ' . uniqid(), 'slug' => 'taladro-' . uniqid(), 'area_id' => $this->equipo->area_id,
+                'status' => 'operativo', 'is_reservable' => true, 'kind' => Asset::DE_PRESTAMO[0],
+            ]);
+            \App\Models\Certifab::create([
+                'public_code' => 'CFH-' . $herramienta->id, 'user_id' => $ana->id, 'asset_id' => $herramienta->id,
+                'level' => 'autonomo', 'granted_at' => now()->subMonth(),
+            ]);
+            $this->assertTrue($servicio->acompanantesDisponibles($herramienta, $this->hora('10:30'), $this->hora('11:15'))->contains('id', $ana->id));
+
+            // Y después del recorrido, todo vuelve.
+            $this->assertNotNull(app(AsesoriaService::class)->agendar(
+                $this->alguien(), $this->equipo, $this->hora('12:00'), $this->hora('12:45'),
+            ));
+
+            AssetAdvisor::query()->delete();
+        }
+    }
+
+    /** Quien figura entre los acompañantes de una actividad tampoco recibe asesorías; quien solo la recibe, sí. */
+    public function test_acompanar_una_actividad_ocupa_y_recibirla_no(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+        $sala = \App\Models\Space::create(['slug' => 'taller', 'name' => 'Taller', 'capacity' => 10, 'is_reservable' => true]);
+
+        $evento = Reservation::create([
+            'reservable_type' => \App\Models\Space::class, 'reservable_id' => $sala->id,
+            'user_id' => $this->alguien()->id, 'supervisor_id' => $ana->id,
+            'status' => 'confirmada', 'mode' => 'directa',
+            'starts_at' => $this->hora('10:00'), 'ends_at' => $this->hora('12:00'),
+        ]);
+
+        // Solo la recibe: sigue libre.
+        $this->assertTrue(app(BookingService::class)->personaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+
+        $evento->update(['supervisor_id' => null]);
+        $evento->companions()->attach($ana->id);
+
+        $this->assertStringContainsString('acompaña una actividad', (string) app(BookingService::class)->porQueNoEstaLibre($ana, $this->hora('10:30'), $this->hora('11:15')));
+        $this->assertNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('10:30'), $this->hora('11:15')));
+    }
+
+    /** Lo que alguien del equipo reserva para sí ocupa solo si la máquina está marcada. */
+    public function test_operar_una_maquina_marcada_ocupa_y_una_que_trabaja_sola_no(): void
+    {
+        $ana = $this->colaborador('Ana');
+        $this->asesora($ana);
+
+        $impresora = Asset::create(['name' => 'Impresora', 'slug' => 'impresora', 'area_id' => $this->equipo->area_id, 'status' => 'operativo', 'is_reservable' => true]);
+        $termo = Asset::create(['name' => 'Termofijadora', 'slug' => 'termo', 'area_id' => $this->equipo->area_id, 'status' => 'operativo', 'is_reservable' => true, 'ocupa_a_quien_la_usa' => true]);
+
+        $suya = fn (Asset $a, string $d, string $h) => Reservation::create([
+            'reservable_type' => Asset::class, 'reservable_id' => $a->id, 'user_id' => $ana->id,
+            'status' => 'confirmada', 'mode' => 'directa', 'starts_at' => $this->hora($d), 'ends_at' => $this->hora($h),
+        ]);
+
+        $suya($impresora, '09:00', '12:00');
+        $this->assertNotNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('10:00'), $this->hora('10:45')));
+
+        $suya($termo, '14:00', '15:30');
+        $this->assertStringContainsString('está operando Termofijadora', (string) app(BookingService::class)->porQueNoEstaLibre($ana, $this->hora('14:30'), $this->hora('15:15')));
+        $this->assertNull(app(AsesoriaService::class)->agendar($this->alguien(), $this->equipo, $this->hora('14:30'), $this->hora('15:15')));
+    }
 }

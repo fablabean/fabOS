@@ -17,7 +17,7 @@ class Bloqueo extends Model
 {
     protected $table = 'bloqueos_de_reservas';
 
-    protected $fillable = ['motivo', 'desde', 'hasta', 'avisar_desde', 'dias_completos', 'por', 'levantado_at'];
+    protected $fillable = ['motivo', 'desde', 'hasta', 'avisar_desde', 'dias_completos', 'festivo', 'por', 'levantado_at'];
 
     protected static function booted(): void
     {
@@ -33,6 +33,7 @@ class Bloqueo extends Model
             'avisar_desde'   => 'datetime',
             'levantado_at'   => 'datetime',
             'dias_completos' => 'boolean',
+            'festivo'        => 'date',
         ];
     }
 

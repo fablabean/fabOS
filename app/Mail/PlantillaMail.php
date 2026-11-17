@@ -27,6 +27,7 @@ class PlantillaMail extends Mailable
         public string $cuerpo,
         public array $adjuntos = [],
         public array $responderA = [],
+        public ?string $responderEnLinea = null,
     ) {}
 
     /** @return list<\Illuminate\Mail\Mailables\Attachment> */
@@ -41,8 +42,8 @@ class PlantillaMail extends Mailable
     public function envelope(): Envelope
     {
         /*
-         * Sale de una dirección que nadie lee. Si hay una persona detrás —quien
-         * pidió la compra—, «Responder» le llega a ella y no a ese buzón.
+         * Sale de una dirección que nadie lee. «Responder» le llega a quien
+         * tiene el asunto y al buzón del laboratorio (App\Support\ResponderA).
          */
         return new Envelope(
             subject: $this->asunto,
@@ -56,6 +57,36 @@ class PlantillaMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(markdown: 'mail.plantilla');
+        [$cuerpo, $firma] = self::separarFirma($this->cuerpo);
+
+        return new Content(markdown: 'mail.plantilla', with: [
+            'texto' => $cuerpo,
+            'firma' => $firma ?? config('fabos.lab.name'),
+        ]);
+    }
+
+    /**
+     * Una sola firma por correo.
+     *
+     * Muchas plantillas terminan en «— {laboratorio}» o «— {quien},
+     * {laboratorio}», y el sobre ya cierra con «Gracias, FABLAB EAN»: llegaba
+     * firmado dos veces. Si el texto termina en una línea con raya, esa línea
+     * es la firma y va abajo, después de «Gracias,»; si no, firma el
+     * laboratorio. Se hace aquí y no en cada plantilla porque las plantillas
+     * se editan desde el panel.
+     *
+     * @return array{0:string,1:?string}  el texto sin la firma, y la firma
+     */
+    public static function separarFirma(string $cuerpo): array
+    {
+        $texto = rtrim($cuerpo);
+        $corte = max((int) strrpos($texto, "\n"), 0);
+        $ultima = trim(substr($texto, $corte));
+
+        if ($corte === 0 || ! preg_match('/^—\s*(\S.*)$/u', $ultima, $m)) {
+            return [$cuerpo, null];
+        }
+
+        return [rtrim(substr($texto, 0, $corte)), trim($m[1])];
     }
 }

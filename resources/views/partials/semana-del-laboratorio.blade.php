@@ -20,6 +20,29 @@
     $tz = config('fabos.lab.timezone');
     $hoy = now($tz)->toDateString();
     $estaSemana = now($tz)->startOfWeek()->toDateString();
+    $desdeHoy = $s['desdeHoy'] ?? false;
+    // Adónde llevan las flechas. Desde hoy se avanza y se retrocede de seis en
+    // seis días; también antes de hoy, para mirar lo que ya pasó.
+    if ($desdeHoy) {
+        $siguiente = $s['hasta']->copy()->addDay()->toDateString();
+        $atras = $s['desde']->copy();
+        for ($n = 0; $n < \App\Services\Booking\OcupacionSemanal::DIAS_DESDE_HOY;) {
+            $atras->subDay();
+            $n += $atras->isSunday() ? 0 : 1;
+        }
+        // Si el tramo de atrás se pasaría de hoy, cae justo en hoy.
+        $anterior = $s['desde']->toDateString() > $hoy && $atras->toDateString() < $hoy
+            ? $hoy
+            : $atras->toDateString();
+        $volver = $s['desde']->toDateString() !== $hoy ? ['dia' => $hoy, 'txt' => 'Hoy'] : null;
+    } else {
+        $siguiente = $s['desde']->copy()->addWeek()->toDateString();
+        $anterior = $s['desde']->copy()->subWeek()->toDateString();
+        $volver = $s['desde']->toDateString() !== $estaSemana ? ['dia' => $hoy, 'txt' => 'Esta semana'] : null;
+    }
+    // Desde hoy el tramo termina en el último día que se dibuja; la semana, el domingo.
+    $ultimo = $desdeHoy ? (collect($s['dias'])->last() ?? $s['hasta']) : $s['hasta'];
+    $ahoraMin = now($tz)->hour * 60 + now($tz)->minute;
     $nombresDia = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
     $total = collect($s['bloques'])->flatten(1);
     // Los bloqueos de reservas: se dibujan debajo de las reservas, rayados.
@@ -31,7 +54,7 @@
     $filtros = array_filter([
         'espacio' => $s['espacio'],
         'solo'    => $s['solo'] ? 1 : null,
-        'vista'   => $s['vista'] === 'espacios' ? 'espacios' : null,
+        'vista'   => $s['vista'] !== 'horas' ? $s['vista'] : null,
     ]);
     $conservar = array_filter($conservar ?? []);
     $url = fn (array $cambios) => ($base ?? '') . '?'
@@ -61,18 +84,18 @@
     <div class="sem-barra">
         <div class="sem-nav">
             @if ($livewire)
-                <button type="button" wire:click="irA('{{ $s['desde']->copy()->subWeek()->toDateString() }}')">← Anterior</button>
-                <strong>{{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}</strong>
-                <button type="button" wire:click="irA('{{ $s['desde']->copy()->addWeek()->toDateString() }}')">Siguiente →</button>
-                @if ($s['desde']->toDateString() !== $estaSemana)
-                    <button type="button" wire:click="irA('{{ $hoy }}')">Esta semana</button>
+                @if ($anterior) <button type="button" wire:click="irA('{{ $anterior }}')">← Anterior</button> @endif
+                <strong>{{ $s['desde']->format('d/m') }} – {{ $ultimo->format('d/m/Y') }}</strong>
+                <button type="button" wire:click="irA('{{ $siguiente }}')">Siguiente →</button>
+                @if ($volver)
+                    <button type="button" wire:click="irA('{{ $volver['dia'] }}')">{{ $volver['txt'] }}</button>
                 @endif
             @else
-                <a href="{{ $url(['semana' => $s['desde']->copy()->subWeek()->toDateString()]) }}">← Anterior</a>
-                <strong>{{ $s['desde']->format('d/m') }} – {{ $s['hasta']->format('d/m/Y') }}</strong>
-                <a href="{{ $url(['semana' => $s['desde']->copy()->addWeek()->toDateString()]) }}">Siguiente →</a>
-                @if ($s['desde']->toDateString() !== $estaSemana)
-                    <a href="{{ $url(['semana' => $hoy]) }}">Esta semana</a>
+                @if ($anterior) <a href="{{ $url(['semana' => $anterior]) }}">← Anterior</a> @endif
+                <strong>{{ $s['desde']->format('d/m') }} – {{ $ultimo->format('d/m/Y') }}</strong>
+                <a href="{{ $url(['semana' => $siguiente]) }}">Siguiente →</a>
+                @if ($volver)
+                    <a href="{{ $url(['semana' => $volver['dia']]) }}">{{ $volver['txt'] }}</a>
                 @endif
             @endif
         </div>
@@ -81,9 +104,11 @@
             @if ($livewire)
                 <button type="button" wire:click="$set('vista', 'horas')" class="{{ $s['vista'] === 'horas' ? 'activa' : '' }}">Por horas</button>
                 <button type="button" wire:click="$set('vista', 'espacios')" class="{{ $s['vista'] === 'espacios' ? 'activa' : '' }}">Por espacios</button>
+                <button type="button" wire:click="$set('vista', 'personas')" class="{{ $s['vista'] === 'personas' ? 'activa' : '' }}">Por persona</button>
             @else
                 <a href="{{ $url(['vista' => null]) }}" class="{{ $s['vista'] === 'horas' ? 'activa' : '' }}">Por horas</a>
                 <a href="{{ $url(['vista' => 'espacios']) }}" class="{{ $s['vista'] === 'espacios' ? 'activa' : '' }}">Por espacios</a>
+                <a href="{{ $url(['vista' => 'personas']) }}" class="{{ $s['vista'] === 'personas' ? 'activa' : '' }}">Por persona</a>
             @endif
         </div>
 
@@ -95,9 +120,11 @@
                         <option value="{{ $esp->id }}">{{ $esp->name }}</option>
                     @endforeach
                 </select>
-                <label class="sem-check">
-                    <input type="checkbox" wire:model.live="solo"> Solo de proyectos
-                </label>
+                @unless ($s['soloFijo'] ?? false)
+                    <label class="sem-check">
+                        <input type="checkbox" wire:model.live="solo"> Solo de proyectos
+                    </label>
+                @endunless
             </div>
         @else
             <form method="get" action="{{ $base }}#semana" class="sem-filtro">
@@ -105,7 +132,7 @@
                 @foreach ($conservar as $clave => $valor)
                     <input type="hidden" name="{{ $clave }}" value="{{ $valor }}">
                 @endforeach
-                @if ($s['vista'] === 'espacios') <input type="hidden" name="vista" value="espacios"> @endif
+                @if ($s['vista'] !== 'horas') <input type="hidden" name="vista" value="{{ $s['vista'] }}"> @endif
                 <select name="espacio" onchange="this.form.submit()" aria-label="Espacio">
                     <option value="">Todos los espacios</option>
                     @foreach ($s['espacios'] as $esp)
@@ -123,8 +150,78 @@
 
     @if ($total->isEmpty() && empty($bloqueos))
         <p class="sem-vacio">
-            Nada reservado esta semana{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
+            Nada reservado {{ $desdeHoy ? 'en estos días' : 'esta semana' }}{{ $s['espacio'] ? ' en este espacio' : '' }}{{ $s['solo'] ? ' para proyectos' : '' }}.
         </p>
+    @elseif ($s['vista'] === 'personas')
+        {{-- Una fila por persona del equipo: lo que se pregunta es «¿qué
+             tiene Jhonatan el jueves?», y si algo se le monta encima. Lo que
+             le toma la franja entera y se cruza con otra cosa igual sale en
+             rojo; recibir en una sala sale tenue, porque son cinco minutos. --}}
+        @php
+            $porPersona = [];
+            foreach ($s['bloques'] as $fecha => $delDia) {
+                foreach ($delDia as $b) {
+                    foreach ($b['personas'] ?? [] as $p) {
+                        $porPersona[$p['id']]['nombre'] = $p['nombre'];
+                        $porPersona[$p['id']]['dias'][$fecha][] = $b + ['rol' => $p['rol'], 'ocupa' => $p['ocupa'], 'choca' => false];
+                    }
+                }
+            }
+            foreach ($porPersona as $id => $persona) {
+                foreach ($persona['dias'] as $fecha => $lista) {
+                    usort($lista, fn ($a, $b) => $a['desde'] <=> $b['desde']);
+                    foreach ($lista as $i => $x) {
+                        foreach ($lista as $j => $y) {
+                            if ($i !== $j && $x['ocupa'] && $y['ocupa'] && $x['desde'] < $y['hasta'] && $y['desde'] < $x['hasta']) {
+                                $lista[$i]['choca'] = true;
+                            }
+                        }
+                    }
+                    $porPersona[$id]['dias'][$fecha] = $lista;
+                }
+            }
+            uasort($porPersona, fn ($a, $b) => strcmp($a['nombre'], $b['nombre']));
+        @endphp
+        @if (empty($porPersona))
+            <p class="sem-vacio">Nadie del equipo tiene algo asignado {{ $desdeHoy ? 'en estos días' : 'esta semana' }}.</p>
+        @else
+        <div class="sem-scroll">
+            <table class="sem-tabla">
+                <thead>
+                    <tr>
+                        <th></th>
+                        @foreach ($s['dias'] as $dia)
+                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
+                                {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
+                            </th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($porPersona as $persona)
+                    <tr>
+                        <th scope="row">{{ $persona['nombre'] }}</th>
+                        @foreach ($s['dias'] as $dia)
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
+                                @foreach ($persona['dias'][$dia->toDateString()] ?? [] as $b)
+                                    @php $href = $enlaceDe($b); @endphp
+                                    <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
+                                        class="sem-f {{ $clasesDe($b) }} {{ $b['choca'] ? 'choca' : '' }} {{ $b['ocupa'] ? '' : 'tenue' }}"
+                                        title="{{ $b['rol'] }} · {{ $tituloDe($b) }}{{ $b['choca'] ? "\nSe cruza con otra cosa que también lo ocupa" : '' }}{{ $href ? "\nClic para abrir la reserva" : '' }}">
+                                        <span class="h">{{ $b['hora'] }}</span>
+                                        <span class="q">{{ $b['rol'] }}{{ $b['choca'] ? ' · se cruza' : '' }}</span>
+                                        <span class="r">{{ $b['que'] }}</span>
+                                        @if ($b['para'])<span class="p">{{ $b['para'] }}</span>@endif
+                                    </{{ $href ? 'a' : 'div' }}>
+                                @endforeach
+                            </td>
+                        @endforeach
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     @elseif ($s['vista'] === 'espacios')
         {{-- Una fila por espacio: lo que se pregunta es «¿cuándo está libre
              la sala de corte?», y eso se lee de corrido en su fila. --}}
@@ -134,7 +231,7 @@
                     <tr>
                         <th></th>
                         @foreach ($s['dias'] as $dia)
-                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <th class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
                             </th>
                         @endforeach
@@ -145,7 +242,7 @@
                     <tr>
                         <th scope="row">Bloqueo de reservas</th>
                         @foreach ($s['dias'] as $dia)
-                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
                                     <div class="sem-f bloqueo" title="{{ $tituloBq($q) }}">
                                         <span class="h">{{ $q['desde'] === 0 && $q['hasta'] === 1440 ? 'Todo el día' : $hhmm($q['desde']) . '–' . $hhmm($q['hasta']) }}</span>
@@ -161,7 +258,7 @@
                     <tr>
                         <th scope="row">{{ $espacio }}</th>
                         @foreach ($s['dias'] as $dia)
-                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                            <td class="{{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}">
                                 @foreach (collect($s['bloques'][$dia->toDateString()] ?? [])->where('espacio', $espacio)->sortBy('desde') as $b)
                                     @php $href = $enlaceDe($b); @endphp
                                     <{{ $href ? 'a' : 'div' }} @if ($href) href="{{ $href }}" @endif
@@ -203,7 +300,7 @@
             <div class="sem" style="grid-template-columns:3rem {{ $columnas }}">
                 <div></div>
                 @foreach ($s['dias'] as $dia)
-                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }}">
+                    <div class="sem-dia {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}" @if ($loop->index > 0 && $dia->dayOfWeekIso === 1) title="Antes de este lunes va el domingo: el laboratorio no abre" @endif>
                         {{ $nombresDia[$dia->dayOfWeekIso - 1] }} <span>{{ $dia->format('d') }}</span>
                         @if (! empty($bloqueos[$dia->toDateString()])) <b class="sem-dia-bq">bloqueado</b> @endif
                     </div>
@@ -216,7 +313,7 @@
                 </div>
 
                 @foreach ($s['dias'] as $dia)
-                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }}"
+                    <div class="sem-col {{ $dia->toDateString() === $hoy ? 'hoy' : '' }} {{ $dia->toDateString() < $hoy ? 'atras' : '' }} {{ $loop->index > 0 && $dia->dayOfWeekIso === 1 ? 'dom' : '' }}"
                          style="height:{{ $alto }}rem;background-size:100% {{ $hPx }}rem">
                         @foreach ($bloqueos[$dia->toDateString()] ?? [] as $q)
                             @php
@@ -250,6 +347,16 @@
                                 @if ($b['para'])<div class="p">{{ $b['para'] }}</div>@endif
                             </{{ $href ? 'a' : 'div' }}>
                         @endforeach
+                        @if ($dia->toDateString() === $hoy)
+                            {{-- La hora de ahora, de lado a lado del día. Se mueve sola
+                                 (el script de abajo); la página no tiene que recargarse. --}}
+                            <div class="sem-ahora" aria-hidden="true"
+                                 data-tz="{{ $tz }}" data-desde="{{ $s['horaDesde'] }}" data-hasta="{{ $s['horaHasta'] }}" data-hpx="{{ $hPx }}"
+                                 style="top:{{ ($ahoraMin / 60 - $s['horaDesde']) * $hPx }}rem"
+                                 @if ($ahoraMin < $s['horaDesde'] * 60 || $ahoraMin >= $s['horaHasta'] * 60) hidden @endif>
+                                <span>{{ $hhmm($ahoraMin) }}</span>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -325,6 +432,12 @@
         .sem-col { position:relative; background-color:var(--s-ground); border-radius:3px;
                    background-image:linear-gradient(to bottom, var(--s-rule) 1px, transparent 1px); }
         .sem-col.hoy { outline:2px solid color-mix(in srgb, var(--s-accent) 45%, transparent); }
+        /* El domingo no se dibuja: una barra negra marca dónde va, para que
+           el sábado y el lunes no se lean como días seguidos. */
+        .sem-dia.dom, .sem-col.dom { margin-left:9px; position:relative; }
+        .sem-dia.dom::before, .sem-col.dom::before { content:''; position:absolute; left:-8px; top:0; bottom:0;
+                                                     width:5px; border-radius:2px; background:var(--s-ink); z-index:4; pointer-events:none; }
+        .sem-tabla th.dom, .sem-tabla td.dom { box-shadow:-5px 0 0 var(--s-ink); }
 
         .sem-b, .sem-f { border-radius:3px; line-height:1.2; color:var(--s-ink);
                          background:color-mix(in srgb, var(--s-muted) 22%, var(--s-surface));
@@ -341,6 +454,10 @@
         a.sem-b:hover, a.sem-f:hover, a.sem-b:focus-visible, a.sem-f:focus-visible {
             outline:2px solid var(--s-ink); outline-offset:-1px; filter:brightness(.97); z-index:3; }
         .sem-f span { display:block; }
+        /* Por persona: lo que se le monta encima, en rojo; recibir, tenue. */
+        .sem-f.choca { box-shadow: inset 3px 0 0 #C53030; background: color-mix(in srgb, #C53030 14%, var(--s-surface, #fff)); }
+        .sem-f.choca .q { color: #C53030; }
+        .sem-f.tenue { opacity: .55; }
         .sem-b .h, .sem-f .h { font-family:ui-monospace,Consolas,monospace; font-size:.62rem; color:var(--s-soft); }
         .sem-b .q, .sem-f .q { font-weight:600; }
         .sem-b .r, .sem-f .r { color:var(--s-soft); }
@@ -370,6 +487,16 @@
         .sem-dia-bq { font-weight:700; color:#B91C1C; letter-spacing:.04em; margin-left:.3rem; }
         .dark .sem-dia-bq { color:#F87171; }
 
+        /* Ahora: una raya por encima de las reservas, que no estorba el cursor. */
+        .sem-ahora { position:absolute; left:0; right:0; height:0; z-index:4; pointer-events:none;
+                     border-top:2px solid var(--s-ink); }
+        .sem-ahora[hidden] { display:none; }
+        .sem-ahora::before { content:""; position:absolute; left:-4px; top:-5px; width:8px; height:8px;
+                             border-radius:50%; background:var(--s-ink); }
+        .sem-ahora span { position:absolute; right:2px; top:-.95rem; padding:0 .25rem; border-radius:2px;
+                          font-family:ui-monospace,Consolas,monospace; font-size:.62rem; font-weight:700;
+                          background:var(--s-ink); color:var(--s-surface); }
+
         .sem-tabla { width:100%; min-width:44rem; border-collapse:separate; border-spacing:2px; table-layout:fixed; }
         .sem-tabla th, .sem-tabla td { vertical-align:top; padding:.3rem; border:0; background:none; }
         .sem-tabla thead th { font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--s-muted);
@@ -391,4 +518,19 @@
         .sem-m.pasada { opacity:.5; }
         .sem-nota { margin:.5rem 0 0; font-size:.8rem; color:var(--s-muted); }
     </style>
+    <script>
+        // Mueve la raya de ahora cada medio minuto. Busca las rayas en cada
+        // vuelta: Livewire redibuja la semana al cambiar de vista o de filtro.
+        window.semAhora ??= setInterval(function () {
+            document.querySelectorAll('.sem-ahora').forEach(function (el) {
+                const [h, m] = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: el.dataset.tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+                }).format(new Date()).split(':');
+                const min = +h * 60 + +m, a = el.dataset.desde * 60, z = el.dataset.hasta * 60;
+                el.hidden = min < a || min >= z;
+                el.style.top = ((min - a) / 60 * el.dataset.hpx) + 'rem';
+                el.querySelector('span').textContent = h + ':' + m;
+            });
+        }, 30000);
+    </script>
 @endonce

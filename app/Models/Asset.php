@@ -31,10 +31,11 @@ class Asset extends Model
         'area_id', 'risk_family_id', 'location_id', 'space_id', 'puede_salir', 'reserva_con_espacio', 'name', 'kind',
         'brand', 'model', 'serial', 'asset_tag', 'qr_token', 'status',
         'is_reservable', 'booking_mode', 'allows_off_hours_requests',
-        'unattended_use', 'exige_certifab', 'pool_key',
+        'unattended_use', 'ocupa_a_quien_la_usa', 'exige_certifab', 'pool_key',
         'min_minutes', 'autonomous_minutes', 'max_minutes',
         'purchase_cost', 'purchased_at', 'warranty_until',
         'photo_path', 'video_url', 'public_description', 'is_public',
+        'maintenance_resources',
     ];
 
     /**
@@ -54,12 +55,14 @@ class Asset extends Model
             'is_reservable'  => 'boolean',
             'is_public'      => 'boolean',
             'unattended_use' => 'boolean',
+            'ocupa_a_quien_la_usa' => 'boolean',
             // Nulo a propósito: es «lo que diga la regla», distinto de «no».
             'exige_certifab' => 'boolean',
             'allows_off_hours_requests' => 'boolean',
             'purchased_at'   => 'date',
             'warranty_until' => 'date',
             'purchase_cost'  => 'decimal:2',
+            'maintenance_resources' => 'array',
         ];
     }
 

@@ -20,6 +20,12 @@ Schedule::command('fabos:pausas-sin-respuesta')
     ->dailyAt('09:00')
     ->timezone(config('fabos.lab.timezone'));
 
+// Los festivos que vienen quedan bloqueados para reservas, con tiempo para
+// avisarse en el sitio y para levantar el que sí se abra.
+Schedule::command('fabos:bloquear-festivos')
+    ->dailyAt('00:10')
+    ->timezone(config('fabos.lab.timezone'));
+
 // Los planes preventivos se vuelven órdenes reales cada madrugada (§8).
 Schedule::command('fabos:generar-preventivas')->dailyAt('05:00');
 
@@ -58,6 +64,17 @@ Schedule::command('fabos:limpiar-analitica')->dailyAt('03:30');
  * beneficio semanal de arriba —hasta 8 cada lunes, sin acumular— y el saldo
  * de bienvenida de cada categoría. Los asientos que emitió siguen en el libro.
  */
+
+// Las cámaras cuentan personas cada minuto. De noche se borran las huellas y
+// los recortes de antes de ayer: ayer se puede revisar todo hoy, y luego solo
+// quedan los totales.
+// Lo normal es que las cuente fabos:escuchar-camaras cuando la cámara avisa
+// que ve personas; el conteo por minuto queda para CONTEO_DISPARO=minuto.
+Schedule::command('fabos:contar-personas')->everyMinute()->withoutOverlapping(2)->runInBackground()
+    ->when(fn () => config('fabos.conteo.disparo') === 'minuto');
+// De noche se olvida a quien no ha venido en 30 días (CONTEO_DIAS_DE_PERSONAS),
+// con sus huellas y sus fotos.
+Schedule::command('fabos:contar-personas --cerrar-dia')->dailyAt('00:05');
 
 // El latido del propio planificador. Sin esto, `fabos:revisar` solo puede
 // buscar rastro de tareas ya ejecutadas, y entonces no distingue «nadie

@@ -123,6 +123,37 @@ class BloqueoDeReservasTest extends TestCase
         $this->assertFalse(BloqueoDeReservas::activo());
     }
 
+    /**
+     * El mensaje se corrige con el bloqueo puesto: sigue bloqueado, con las
+     * mismas fechas, y el aviso cambia de versión para volver a salir.
+     */
+    public function test_el_mensaje_se_edita_sin_quitar_el_bloqueo(): void
+    {
+        $this->admin();
+        $b = BloqueoDeReservas::activar('Inventario anual', now()->addDay(), 'Admin');
+        $version = BloqueoDeReservas::version();
+        $this->travel(1)->seconds();
+
+        Livewire::test(Pantalla::class)
+            ->assertSee('Editar el mensaje')
+            ->mountAction('editarMensaje', ['bloqueo' => $b->id])
+            ->assertSchemaStateSet(['motivo' => 'Inventario anual'])
+            ->fillForm(['motivo' => '  Inventario anual: abrimos el lunes a las 8  '])
+            ->callMountedAction()
+            ->assertHasNoErrors();
+
+        $this->assertTrue(BloqueoDeReservas::activo());
+        $this->assertSame('Inventario anual: abrimos el lunes a las 8', BloqueoDeReservas::motivo());
+        $this->assertEquals($b->hasta, $b->fresh()->hasta);
+        $this->assertNotSame($version, BloqueoDeReservas::version());
+
+        Livewire::test(Pantalla::class)
+            ->mountAction('editarMensaje', ['bloqueo' => $b->id])
+            ->fillForm(['motivo' => ''])
+            ->callMountedAction()
+            ->assertHasFormErrors(['motivo' => 'required']);
+    }
+
     public function test_sin_motivo_no_se_bloquea(): void
     {
         $this->admin();

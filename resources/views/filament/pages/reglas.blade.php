@@ -986,6 +986,30 @@
                 fracaso si se sabe: es información para la próxima cotización.
             </div>
 
+            <h3 style="margin-top:1.2rem">Ingresos por proyectos</h3>
+            <ul>
+                <li><b>Cuenta lo ejecutado con valor registrado</b> —el acordado o, si no hay, el
+                    estimado—. No entran los descartados, los perdidos, los que están en pausa ni
+                    las alianzas. Un proyecto en pausa que se reactiva vuelve a sumar.</li>
+                <li><b>Lo interno va aparte</b>: se grafica (en gris, más delgado) pero no entra en
+                    la proyección ni en la comparación con la meta de venta.</li>
+                <li><b>La proyección</b> es el promedio mensual de los últimos doce meses, contra la
+                    meta de venta del año siguiente (el presupuesto de tipo venta). La línea
+                    optimista es ese promedio; la realista, la mitad.</li>
+                <li><b>La estacionalidad se ajusta a mano</b>, por mes y por tipo de cliente, y el
+                    ajuste se guarda para todos. Un mes es <em>bajo</em> si queda por debajo de la
+                    mitad de la mediana.</li>
+                <li><b>Valor aproximado por área</b>: a un proyecto ejecutado sin valor se le puede
+                    poner el valor típico de su área, como trabajo interno, sin avisarle a nadie.
+                    Se puede deshacer, y en cuanto alguien escribe el valor a mano deja de ser
+                    aproximado. Hoy hay {{ $cola['aproximados'] }} con valor aproximado.</li>
+            </ul>
+            <div class="porque">
+                <b>Solo lo registrado, y lo interno aparte.</b> Una proyección que mezcla lo que se
+                cobró con lo que se hizo para la casa promete una venta que no va a llegar. Pero el
+                trabajo interno es trabajo: por eso se ve, aunque no cuente para la meta.
+            </div>
+
             <dl>
                 <dt>Proyectos activos</dt>
                 <dd>{{ $proyectos['activos'] }}</dd>
@@ -1060,6 +1084,34 @@
                 vuelve a pedir lo mismo la semana siguiente.
             </div>
 
+            <h3 style="margin-top:1.2rem">Demo de un espacio</h3>
+            <ul>
+                <li>Una hora, solo ese espacio y sus máquinas: sin herramientas ni otras salas.
+                    No aplica al laboratorio entero.</li>
+                <li>Quien pide adjunta los archivos en los formatos de la zona: .dxf en milímetros
+                    para láser, con rojo para cortar y azul para grabar; .stl o .3mf para
+                    impresión 3D; el código y el esquema para electrónica.</li>
+                <li>La hace alguien del equipo que esté libre <b>la hora entera</b>, empezando por
+                    quien responde por la sala. Si no hay nadie libre, la demo no se confirma
+                    sola: queda pedida y llega a la bandeja.</li>
+            </ul>
+            <div class="porque">
+                <b>Es una demo controlada.</b> Hacer una demo no es recibir a alguien cinco
+                minutos: es estar con la máquina, por eso ocupa la hora completa de quien la hace.
+                Y con los archivos listos de antemano, la hora se usa en la máquina y no en
+                convertir formatos. Demos reservadas hasta hoy: {{ $agenda['demos'] }}.
+            </div>
+
+            <h3 style="margin-top:1.2rem">Proponer otra opción</h3>
+            <div class="porque">
+                <b>Antes de rechazar, se ofrece otra hora.</b> Desde la bandeja se le escribe a
+                quien pidió con franjas cercanas que sí se pueden atender y quién las atendería.
+                La que la persona elige desde el enlace del correo queda reservada y aprobada en
+                ese momento, sin otra vuelta por la bandeja. La propuesta enviada se ve en la
+                bandeja y en la ficha de la reserva, para que nadie le escriba dos veces.
+                Propuestas enviadas: {{ $agenda['propuestas'] }}.
+            </div>
+
             <h3 style="margin-top:1.2rem">Lista de espera</h3>
             <div class="porque">
                 <b>Se guarda la ventana, no solo el equipo.</b> Avisarle a alguien que se liberó el
@@ -1078,9 +1130,123 @@
             </dl>
         </x-filament::section>
 
+        {{-- ------------------------------------- cuándo alguien está ocupado --}}
+        <x-filament::section collapsible collapsed>
+            <x-slot name="heading">16 · Cuándo una persona del equipo está ocupada</x-slot>
+
+            <p class="text-sm">Antes de asignarle a alguien una asesoría, un acompañamiento o una
+                demo, el sistema pregunta si está libre. Estas son las razones por las que no lo
+                está, en el orden en que se revisan; el aviso dice la primera que encuentra, con
+                qué choca y a qué hora.</p>
+            <table>
+                <thead><tr><th>#</th><th>Razón</th><th>¿Se puede saltar desde el panel?</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td><b>Algo reservado en fabOS a su nombre</b>: una asesoría, el
+                        tiempo apartado para acompañar, un bloque de proyecto, una evaluación
+                        práctica.</td><td>No</td></tr>
+                    <tr><td>2</td><td><b>Un recorrido</b> que lleva o acompaña, o una reserva en la
+                        que figura como acompañante.</td><td>No</td></tr>
+                    <tr><td>3</td><td><b>Su propio uso de una máquina</b> marcada «Ocupa a quien la
+                        opera».</td><td>No</td></tr>
+                    <tr><td>4</td><td><b>Su calendario de Outlook</b>, también lo provisional.</td><td>Sí</td></tr>
+                    <tr><td>5</td><td><b>Una franja bloqueada</b>.</td><td>Sí</td></tr>
+                    <tr><td>6</td><td><b>Su descanso</b>.</td><td>Sí</td></tr>
+                </tbody>
+            </table>
+            <div class="porque">
+                <b>Saltar se decide viendo con qué choca.</b> Al crear una reserva desde el panel,
+                si quien acompaña solo choca con su calendario, un bloqueo o su descanso, el aviso
+                trae «Ver con qué choca» y desde ahí «Reservar de todas formas». Lo de fuera de
+                fabOS puede ser una reunión que se mueve; lo reservado en fabOS es un compromiso
+                con otra persona, y saltarlo sería prometer a alguien en dos sitios a la vez.
+            </div>
+            <div class="porque">
+                <b>Los recorridos ocupan, salvo para préstamos.</b> Quien lleva o acompaña un
+                recorrido no puede recibir una asesoría a esa hora. Un préstamo de herramientas sí
+                se puede entregar: toma un minuto y no saca a nadie del grupo. La regla vale para lo
+                que se reserva de aquí en adelante; lo que ya estaba se respeta.
+            </div>
+            <div class="porque">
+                <b>«Ocupa a quien la opera» es una marca por máquina.</b> Hay máquinas que se dejan
+                trabajando solas y otras que exigen estar al lado todo el tiempo. Solo las marcadas
+                dejan ocupada a la persona que las usa (incluida la producción); las demás, no.
+                Hoy están marcadas:
+                {{ $agenda['ocupan']->isEmpty() ? 'ninguna' : $agenda['ocupan']->join(', ', ' y ') }}.
+            </div>
+            <div class="porque">
+                <b>Las revisiones ceden.</b> La hora de revisión de una solicitud de proyecto
+                (sección 17) no impide elegir a esa persona para otra cosa: si se la elige a mano,
+                la revisión pasa a su siguiente hora libre. La cola reparte lo que nadie decidió;
+                lo que alguien decide gana.
+            </div>
+            <div class="porque">
+                <b>El tiempo apartado sigue a quien acompaña.</b> Si en la ficha de una reserva se
+                cambia el acompañante, su tiempo apartado pasa al nuevo, y el anterior queda libre.
+                Si el nuevo ya tenía algo a esa hora, el bloque se suelta y la ficha lo dice. Si se
+                quita el acompañante, el tiempo se libera.
+            </div>
+            <div class="porque">
+                <b>Recibir no es acompañar.</b> En la vista «Por persona» de la semana del
+                laboratorio, quien recibe a alguien en una sala aparece pero no queda ocupado:
+                abrir la puerta y explicar toma minutos. Llevar un recorrido o hacer una demo sí lo
+                ocupa. Los choques se marcan en esa vista.
+            </div>
+        </x-filament::section>
+
+        {{-- ------------------------------------------ solicitudes de proyecto --}}
+        <x-filament::section collapsible collapsed>
+            <x-slot name="heading">17 · Solicitudes de proyecto</x-slot>
+
+            <h3>La cola de revisión</h3>
+            <ul>
+                <li>Cada solicitud que llega por la web toma <b>{{ $cola['minutos'] }} minutos</b>
+                    en la agenda de quien la recibe, en su siguiente franja libre dentro de su
+                    jornada (presencial o remota), buscando hasta {{ $cola['dias'] }} días
+                    adelante.</li>
+                <li>A quien pidió se le dice el día: «la revisamos el jueves», en la confirmación y
+                    en el correo de recibido. Sin responsable o sin franja, no se promete fecha.</li>
+                <li>Si cambia el responsable, la revisión pasa a la agenda del nuevo. Cuando el
+                    proyecto se responde, se pausa o se cierra, la hora se suelta.</li>
+            </ul>
+            <div class="porque">
+                <b>Una fecha honesta en vez de «pronto».</b> Cuando entraban diez solicitudes el
+                mismo día, todas se prometían igual de rápido y la capacidad de responder se
+                copaba. Responder toma diez minutos; la hora es la holgura para mirar si cabe, con
+                qué máquinas y cuánto tomaría. Revisiones pendientes hoy: {{ $cola['pendientes'] }}.
+            </div>
+
+            <h3 style="margin-top:1.2rem">Un proyecto por semana por estudiante</h3>
+            <div class="porque">
+                <b>Puede mandar varios, pero se evalúa uno por semana.</b> El segundo de la misma
+                semana queda asignado a la siguiente semana libre, su revisión se busca desde el
+                lunes de esa semana, y se le dice al pedirlo, en la confirmación y en el correo. Un
+                proyecto descartado o perdido libera su semana; uno ya hecho y cerrado no. Solo
+                aplica a estudiantes y a lo que llega por la web, y vale desde el 5 de noviembre
+                de 2026: lo anterior quedó en la semana en que llegó. Proyectos asignados a una
+                semana próxima: {{ $cola['aplazados'] }}.
+            </div>
+
+            <h3 style="margin-top:1.2rem">«Sin abrir»</h3>
+            <div class="porque">
+                <b>En la lista, un proyecto activo que su responsable todavía no ha abierto sale
+                como «Sin abrir»</b>, con su filtro. Al entrar a la ficha deja de estarlo; si cambia
+                el responsable, vuelve a estar sin abrir para el nuevo. Así se distingue lo que
+                nadie ha mirado de lo que está esperando respuesta. Hoy: {{ $cola['sinAbrir'] }}.
+            </div>
+
+            <h3 style="margin-top:1.2rem">Responder</h3>
+            <div class="porque">
+                <b>Al responder en la conversación del proyecto, el aviso por correo viene
+                activado</b>, y se puede apagar en ese momento. Las respuestas a esos correos le
+                llegan a quien lleva el proyecto, con copia a os@fablabean.com (o solo a
+                os@fablabean.com si no hay responsable), y el correo trae el botón «Responder en la
+                plataforma» para que la conversación no se quede en el correo de nadie.
+            </div>
+        </x-filament::section>
+
         {{-- ------------------------------------------------ pendientes --}}
         <x-filament::section>
-            <x-slot name="heading">16 · Decisiones pendientes</x-slot>
+            <x-slot name="heading">18 · Decisiones pendientes</x-slot>
 
             <ul>
                 <li><span class="pendiente">Talento Humano:</span> confirmar duración del descanso,

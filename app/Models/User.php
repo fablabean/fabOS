@@ -20,6 +20,7 @@ use Spatie\Permission\Traits\HasRoles;
     'phone', 'status', 'external_id', 'identity_verified_at',
     'identity_verified_via', 'category_confirmed', 'locale', 'email_verified_at',
     'carnet_subject', 'carnet_linked_at', 'recibe_proyectos',
+    'tipo_contrato', 'contrato_flexible', 'area_de_nomina', 'jefe_inmediato',
 ])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements FilamentUser, \Filament\Models\Contracts\HasAvatar
@@ -232,6 +233,7 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
             'external_calendar_synced_at' => 'datetime',
             'category_confirmed'   => 'boolean',
             'recibe_proyectos'     => 'boolean',
+            'contrato_flexible'    => 'boolean',
             'password'             => 'hashed',
         ];
     }
@@ -299,6 +301,26 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
     }
 
     /** Patron semanal de jornada, una fila por dia (§5). */
+    public function shiftAssignments(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
+
+    public function reportesDeExtras(): HasMany
+    {
+        return $this->hasMany(ReporteDeExtras::class);
+    }
+
+    /**
+     * Contrato flexible: no hace horas extras. Lo que trabaja fuera de su
+     * jornada —un sábado— se le compensa con tiempo dentro de la semana
+     * siguiente, y solo se le reconoce el recargo nocturno.
+     */
+    public function tieneContratoFlexible(): bool
+    {
+        return (bool) $this->contrato_flexible;
+    }
+
     public function workSchedules(): HasMany
     {
         return $this->hasMany(WorkSchedule::class);

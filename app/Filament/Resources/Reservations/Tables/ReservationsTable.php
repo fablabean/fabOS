@@ -547,15 +547,18 @@ class ReservationsTable
                         Select::make('a')
                             ->label(fn (Reservation $r) => $r->reservable_type === \App\Models\Space::class ? 'Quién recibe ahora' : 'Quién la atiende ahora')
                             ->options(fn (Reservation $r) => collect(\App\Filament\Componentes\SelectorDePersona::equipo())
-                                ->except([(int) $r->reservable_id, (int) $r->user_id, (int) $r->supervisor_id])
+                                ->except(array_filter([(int) $r->reservable_id, (int) $r->user_id, $r->esAtencionPersonal() ? null : (int) $r->supervisor_id]))
                                 ->all())
                             ->searchable()
                             ->required(),
+                        \Filament\Forms\Components\Checkbox::make('aunque')
+                            ->label('Aunque su calendario diga que está ocupado')
+                            ->helperText('Su Outlook, un bloqueo o su descanso. Lo que ya tiene en fabOS no se pisa.'),
                     ])
                     ->action(function (Reservation $r, array $data) {
                         try {
                             app(\App\Services\Booking\TraspasoDeAtencion::class)->reasignar(
-                                $r, \App\Models\User::findOrFail($data['a']), auth()->user(),
+                                $r, \App\Models\User::findOrFail($data['a']), auth()->user(), (bool) ($data['aunque'] ?? false),
                             );
                         } catch (\App\Services\Booking\BookingException $e) {
                             Notification::make()->danger()->title('No se pudo reasignar')->body($e->getMessage())->persistent()->send();

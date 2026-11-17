@@ -73,6 +73,32 @@ services:
     cloudflared:
         restart: unless-stopped
 
+    # Quien escucha a las cámaras.
+    #
+    # Cada cámara avisa por ONVIF cuando ve personas, y mientras dura el aviso
+    # se le toma una foto por segundo para contarlas con el PGX. Es un proceso
+    # que no termina, por eso va aparte y Docker lo levanta si se cae. Si no hay
+    # cámaras o el conteo está apagado, duerme y no hace nada.
+    camaras:
+        restart: unless-stopped
+        build:
+            context: './docker/aplicacion'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        command: ['php', 'artisan', 'fabos:escuchar-camaras']
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+            - redis
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: 'off'
+
     # Quien atiende la cola.
     #
     # `.env` declara `QUEUE_CONNECTION=redis`, y sin alguien que la atienda todo

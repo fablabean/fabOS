@@ -36,6 +36,12 @@ class SemanaDelLaboratorio extends Widget
 
     public bool $solo = false;
 
+    /**
+     * En la lista de proyectos solo cuenta lo de proyectos: la semana de
+     * todos ya está en la de reservas. Ahí el filtro va fijo y no se ofrece.
+     */
+    public bool $soloFijo = false;
+
     public string $vista = 'horas';
 
     public static function canView(): bool
@@ -50,14 +56,17 @@ class SemanaDelLaboratorio extends Widget
 
     protected function getViewData(): array
     {
+        // Desde hoy y no por semanas: abre en lo que viene, y con «Anterior»
+        // se mira lo que ya pasó.
         return [
             's' => app(OcupacionSemanal::class)->paraVer(
                 $this->semana,
                 (int) $this->espacio ?: null,
-                $this->solo,
+                $this->solo || $this->soloFijo,
                 $this->vista,
                 auth()->user(),
-            ),
+                desdeHoy: true,
+            ) + ['soloFijo' => $this->soloFijo],
         ];
     }
 }

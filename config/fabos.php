@@ -9,6 +9,14 @@ return [
     | fabOS esta pensado para poder desplegarse en otros Fab Labs (§3). Nada
     | especifico de la EAN va incrustado en el codigo: vive aqui.
     */
+    /*
+    | A dónde llega lo que se responde a un aviso cuando no hay nadie asignado,
+    | y en copia cuando sí. Los avisos salen de una dirección que nadie lee.
+    */
+    'correo' => [
+        'responder_a' => env('FABOS_RESPONDER_A', 'os@fablabean.com'),
+    ],
+
     'lab' => [
         // En versales porque así está dibujado el logo: el nombre escrito y la
         // marca contando cosas distintas en la misma pantalla es lo que hace
@@ -315,9 +323,86 @@ return [
         'timeout' => (int) env('FABLAB_VOZ_TIMEOUT', 300),
     ],
 
+    /*
+     * El servidor de IA del laboratorio (el PGX), servicio `vision`.
+     *
+     * Una sola conexión para todo fabOS: el conteo de personas hoy, el
+     * inventario cuando suba. Acepta PGX_* o los IA_URL / IA_API_KEY de la
+     * guía del PGX. La clave se manda siempre, también en la red local, para
+     * que el PGX sepa que la petición es de fabOS.
+     */
+    'pgx' => [
+        'url' => rtrim((string) env('PGX_URL', env('IA_URL', '')), '/'),
+        'clave' => env('PGX_API_KEY', env('IA_API_KEY')),
+        'timeout' => (int) env('PGX_TIMEOUT', 20),
+    ],
+
+    /*
+     * Conteo de personas con las cámaras.
+     *
+     * Cuando la cámara avisa que ve personas, se toma un cuadro cada segundo
+     * mientras dura el aviso, y el PGX dice cuántas personas hay y sus huellas
+     * faciales. Sin personas no se manda nada. Las huellas sirven para no contar
+     * dos veces a la misma persona y para saber si ya vino otros días: cada
+     * persona es un número, nunca un nombre ni un documento. Quien no aparece
+     * en `dias_de_personas` (30) se borra con sus huellas y sus fotos (dato
+     * sensible, Ley 1581). Lo que queda son los totales de cada día.
+     *
+     * `ancho_minimo` y `nitidez_minima`: un rostro más pequeño o más borroso
+     * da una huella poco fiable, y esa persona va como «sin identificar».
+     *
+     * `disparo`: qué aviso de la cámara hace tomar fotos —`personas` (la
+     * detección de personas de la cámara), `movimiento`, o `minuto` para no
+     * escuchar avisos y tomar una foto por minuto—. `cada_segundos` es el
+     * ritmo mientras dura el aviso, y `segundos_despues` cuánto se sigue tras
+     * el último «hay personas», por si la cámara tarda en repetirlo.
+     */
+    'conteo' => [
+        'activo' => (bool) env('CONTEO_PERSONAS', true),
+        'ancho_minimo' => (int) env('CONTEO_ANCHO_MINIMO', 60),
+        'nitidez_minima' => (float) env('CONTEO_NITIDEZ_MINIMA', 30),
+        'dias_de_lecturas' => (int) env('CONTEO_DIAS_DE_LECTURAS', 90),
+        'dias_de_personas' => (int) env('CONTEO_DIAS_DE_PERSONAS', 30),
+        'disparo' => env('CONTEO_DISPARO', 'personas'),
+        'cada_segundos' => (float) env('CONTEO_CADA_SEGUNDOS', 1),
+        'segundos_despues' => (float) env('CONTEO_SEGUNDOS_DESPUES', 3),
+    ],
+
+    /*
+     * Las cámaras del laboratorio (Operación → Cámaras).
+     *
+     * Cada una es una dirección RTSP con su usuario y clave: CAMARA_1_URL,
+     * CAMARA_2_URL… y su nombre en CAMARA_N_NOMBRE. Solo se ven desde la red
+     * del laboratorio, como el servidor de voz: el servidor lee la cámara y le
+     * pasa al navegador la foto, así que el puerto 554 nunca sale a internet.
+     */
+    'camaras' => array_values(array_filter(array_map(
+        fn (int $n) => env("CAMARA_{$n}_URL") ? [
+            'numero' => $n,
+            'nombre' => env("CAMARA_{$n}_NOMBRE", "Cámara {$n}"),
+            'url' => env("CAMARA_{$n}_URL"),
+            'onvif' => (int) env("CAMARA_{$n}_ONVIF", 2020),
+        ] : null,
+        range(1, 8),
+    ))),
+
     'asesorias' => [
         'minutos' => (int) env('ASESORIA_MINUTOS', 45),
         'dias_vista' => (int) env('ASESORIA_DIAS_VISTA', 7),
+    ],
+
+    /*
+     * Las zonas de conocimiento: robotica.fablabean.com y las que vengan.
+     *
+     * `dominio` es la base de los subdominios; sale del APP_URL. Los
+     * subdominios se anuncian solo con ZONAS_SUBDOMINIOS=true, cuando el
+     * comodín *.fablabean.com ya esté en Cloudflare (docs/TUNEL.md): antes de
+     * eso, cada zona vive en /zonas/{zona} del dominio principal, que funciona
+     * siempre.
+     */
+    'zonas' => [
+        'dominio' => env('ZONAS_DOMINIO', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+        'subdominios' => (bool) env('ZONAS_SUBDOMINIOS', false),
     ],
 
     'formacion' => [
@@ -382,6 +467,14 @@ return [
          * pieza, una firma— no tienen plazo.
          */
         'dias_sin_respuesta' => (int) env('PROYECTO_DIAS_SIN_RESPUESTA', 7),
+
+        /*
+         * La cola de revisión: cada solicitud que llega aparta este tiempo en
+         * la agenda de quien la recibe, en su siguiente franja libre, y se le
+         * dice a quien pidió qué día se revisa. Se busca hasta estos días.
+         */
+        'minutos_de_revision' => (int) env('PROYECTO_MINUTOS_DE_REVISION', 60),
+        'dias_para_buscar_revision' => (int) env('PROYECTO_DIAS_PARA_BUSCAR_REVISION', 21),
 
         /*
          * Y el paso anterior: un proyecto ACTIVO al que se le escribió y que
