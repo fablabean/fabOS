@@ -288,6 +288,78 @@ class ConteoDePersonasTest extends TestCase
         $this->assertSame(1, (int) DB::table('aforo_diario')->where('fecha', '2026-10-01')->value('personas_distintas'));
     }
 
+    /** Una persona del cuadro con su cuerpo (y su cara, si se ve). */
+    private function conCuerpo(?array $rostro, array $cuerpo, array $color = [1, 0, 0]): array
+    {
+        return ['rostro' => $rostro, 'huella_cuerpo' => $cuerpo, 'color' => $color];
+    }
+
+    private function cuadroConCuerpos(array $detalle): array
+    {
+        return ['personas' => count($detalle), 'detalle' => $detalle, 'rostros_sin_persona' => [], 'umbral_misma_persona' => 0.363];
+    }
+
+    public function test_de_espaldas_se_la_reconoce_por_el_cuerpo_el_mismo_dia(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo($this->rostro($this->huella(0)), $this->huella(40))]), $this->en('2026-11-17 10:00'));
+
+        // Se volteó: sin cara, el mismo cuerpo (casi) y la misma ropa.
+        $lectura = $conteo->registrar(2, $this->cuadroConCuerpos([$this->conCuerpo(null, $this->huella(40, 0.4))]), $this->en('2026-11-17 10:05'));
+
+        $this->assertSame(['personas' => 1, 'identificadas' => 1, 'sin_identificar' => 0, 'nuevas' => 0], $lectura);
+        $this->assertSame(2, (int) DB::table('visitas_del_dia')->value('veces'));
+
+        // Con otra ropa no es ella: queda sin identificar y no se crea nadie.
+        $otra = $conteo->registrar(2, $this->cuadroConCuerpos([$this->conCuerpo(null, $this->huella(40, 0.4), [0, 0, 1])]), $this->en('2026-11-17 10:06'));
+        $this->assertSame(1, $otra['sin_identificar']);
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+    }
+
+    public function test_un_cuerpo_que_se_parece_a_dos_personas_no_se_le_asigna_a_ninguna(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        // Dos personas con cuerpos casi iguales (mismo uniforme).
+        $conteo->registrar(1, $this->cuadroConCuerpos([
+            $this->conCuerpo($this->rostro($this->huella(0)), $this->huella(40, 0.2)),
+            $this->conCuerpo($this->rostro($this->huella(5)), $this->huella(40, 0.3)),
+        ]), $this->en('2026-11-17 10:00'));
+
+        $lectura = $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo(null, $this->huella(40, 0.25))]), $this->en('2026-11-17 10:01'));
+
+        $this->assertSame(1, $lectura['sin_identificar']);
+    }
+
+    public function test_una_cara_dudosa_con_el_mismo_cuerpo_del_dia_es_la_misma_persona(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo($this->rostro($this->huella(0)), $this->huella(40))]), $this->en('2026-11-17 10:00'));
+
+        // La cara se parece 0,33: no alcanza el umbral (0,363), pero el cuerpo es el suyo.
+        $lectura = $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo($this->rostro($this->huella(0, 2.86)), $this->huella(40, 0.3))]), $this->en('2026-11-17 10:02'));
+
+        $this->assertSame(0, $lectura['nuevas']);
+        $this->assertSame(1, DB::table('personas_anonimas')->count());
+
+        // La misma cara dudosa con otro cuerpo sí es otra persona.
+        $otra = $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo($this->rostro($this->huella(0, -2.86)), $this->huella(70))]), $this->en('2026-11-17 10:03'));
+        $this->assertSame(1, $otra['nuevas']);
+    }
+
+    public function test_el_cuerpo_solo_sirve_el_mismo_dia_y_en_la_noche_se_borra(): void
+    {
+        $conteo = app(ConteoDePersonas::class);
+        $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo($this->rostro($this->huella(0)), $this->huella(40))]), $this->en('2026-11-16 10:00'));
+        $this->assertSame(1, DB::table('cuerpos_del_dia')->count());
+
+        // Al otro día, el mismo cuerpo de espaldas no se reconoce: la ropa pudo cambiar.
+        $lectura = $conteo->registrar(1, $this->cuadroConCuerpos([$this->conCuerpo(null, $this->huella(40))]), $this->en('2026-11-17 10:00'));
+        $this->assertSame(1, $lectura['sin_identificar']);
+
+        $conteo->cerrarDiasPasados($this->en('2026-11-17 00:05'));
+        $this->assertSame(0, DB::table('cuerpos_del_dia')->count());
+    }
+
     /** Un cuadro de 1280×720 de verdad, para recortar. */
     private function cuadro(): string
     {

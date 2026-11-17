@@ -312,6 +312,17 @@ return [
         'disparo' => env('CONTEO_DISPARO', 'personas'),
         'cada_segundos' => (float) env('CONTEO_CADA_SEGUNDOS', 1),
         'segundos_despues' => (float) env('CONTEO_SEGUNDOS_DESPUES', 3),
+        // La huella del cuerpo (silueta y ropa), solo dentro del mismo día. Medido
+        // en la cámara 2: la misma persona entre cuadros da 0,6–0,97 y dos
+        // distintas casi siempre menos de 0,55 (alguna vez 0,75). Por eso se pide
+        // `cuerpo_umbral`, que la ropa no sea muy distinta (`color_minimo`) y que
+        // la que sigue quede `cuerpo_margen` más abajo.
+        'cuerpo_umbral' => (float) env('CONTEO_CUERPO_UMBRAL', 0.72),
+        'cuerpo_margen' => (float) env('CONTEO_CUERPO_MARGEN', 0.1),
+        'color_minimo' => (float) env('CONTEO_COLOR_MINIMO', 0.7),
+        // Una cara que se queda hasta esto por debajo del umbral se acepta si el
+        // cuerpo de ese día coincide.
+        'rostro_dudoso' => (float) env('CONTEO_ROSTRO_DUDOSO', 0.08),
     ],
 
     /*

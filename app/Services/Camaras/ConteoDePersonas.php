@@ -27,9 +27,13 @@ use Throwable;
  * `dias_de_personas` se borra con sus huellas y sus fotos (dato sensible,
  * Ley 1581).
  *
- * Las personas sin rostro fiable (de espaldas, lejos, borrosas) no se pueden
- * distinguir entre sí: no entran a «distintas», y del día solo se guarda
- * cuántas hubo a la vez como máximo.
+ * Las personas sin rostro fiable (de espaldas, lejos, borrosas) no crean
+ * personas nuevas: del día solo se guarda cuántas hubo a la vez como máximo.
+ *
+ * El cuerpo ayuda dentro del mismo día. Cada persona reconocida por la cara
+ * deja la huella de su cuerpo (silueta y ropa) en `cuerpos_del_dia`, y con
+ * ella, ese mismo día, se la reconoce de espaldas y se desempata una cara
+ * dudosa. Otro día la ropa es otra: en la noche esas huellas se borran.
  */
 class ConteoDePersonas
 {
@@ -49,6 +53,9 @@ class ConteoDePersonas
      */
     public const DESCARTADA = 0.45;
 
+    /** Cuántas huellas del cuerpo junta una persona en un día. */
+    public const CUERPOS_POR_DIA = 6;
+
     /**
      * Registra un cuadro ya analizado por el PGX.
      *
@@ -61,18 +68,23 @@ class ConteoDePersonas
         $ahora = $ahora->copy()->setTimezone(config('app.timezone'));
         $umbral = (float) ($respuesta['umbral_misma_persona'] ?? 0.363);
 
-        // Cada rostro con la caja de su persona, que es lo que se recorta: con
-        // la ropa se reconoce mejor que con la cara sola.
+        // Cada rostro con la caja de su persona, que es lo que se recorta, y la
+        // huella de su cuerpo. Quien no muestra la cara queda solo con el cuerpo.
         $rostros = [];
+        $soloCuerpos = [];
 
         foreach ($respuesta['detalle'] ?? [] as $d) {
+            $cuerpo = ! empty($d['huella_cuerpo']) ? ['huella' => $d['huella_cuerpo'], 'color' => $d['color'] ?? null] : null;
+
             if (! empty($d['rostro'])) {
-                $rostros[] = $d['rostro'] + ['caja_persona' => $d['caja'] ?? null, 'suelto' => false];
+                $rostros[] = $d['rostro'] + ['caja_persona' => $d['caja'] ?? null, 'suelto' => false, 'cuerpo' => $cuerpo];
+            } elseif ($cuerpo) {
+                $soloCuerpos[] = $cuerpo;
             }
         }
 
         foreach ($respuesta['rostros_sin_persona'] ?? [] as $r) {
-            $rostros[] = $r + ['caja_persona' => null, 'suelto' => true];
+            $rostros[] = $r + ['caja_persona' => null, 'suelto' => true, 'cuerpo' => null];
         }
 
         // Los rostros sueltos también son personas (alguien cortado por el borde).
@@ -80,7 +92,7 @@ class ConteoDePersonas
 
         // Cada cámara cuenta en su propio proceso: de a una, para que dos no
         // creen la misma persona nueva en el mismo segundo.
-        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($camara, $rostros, $personas, $fecha, $umbral, $ahora, $foto) {
+        return Cache::lock('conteo-de-personas', 20)->block(20, fn () => DB::transaction(function () use ($camara, $rostros, $soloCuerpos, $personas, $fecha, $umbral, $ahora, $foto) {
             $conocidas = DB::table('huellas_de_persona')->get(['persona_id', 'huella'])
                 ->map(fn ($h) => ['persona' => (int) $h->persona_id, 'huella' => json_decode($h->huella, true)])
                 ->all();
@@ -89,12 +101,21 @@ class ConteoDePersonas
                 ->map(fn ($h) => ['persona' => (int) $h->id, 'huella' => json_decode($h->huella, true)])
                 ->all();
 
+            $cuerpos = DB::table('cuerpos_del_dia')->where('fecha', $fecha)->get(['persona_id', 'huella', 'color'])
+                ->map(fn ($c) => ['persona' => (int) $c->persona_id, 'huella' => json_decode($c->huella, true), 'color' => json_decode($c->color ?? 'null', true)])
+                ->all();
+
             $identificadas = 0;
             $nuevas = 0;
             $enEsteCuadro = [];
 
             foreach ($rostros as $rostro) {
                 if (! $this->esFiable($rostro)) {
+                    // La cara no sirve, pero el cuerpo quizá sí.
+                    if ($rostro['cuerpo']) {
+                        $soloCuerpos[] = $rostro['cuerpo'];
+                    }
+
                     continue;
                 }
 
@@ -114,7 +135,20 @@ class ConteoDePersonas
                 $identificadas++;
                 [$persona, $similitud] = $this->masParecida($rostro['huella'], $conocidas, $enEsteCuadro);
 
-                if ($persona === null || $similitud < $umbral) {
+                // Una cara dudosa: si su cuerpo es el de alguien visto hoy y su
+                // cara se le parece casi lo suficiente, es esa persona.
+                $esElla = $persona !== null && $similitud >= $umbral;
+
+                if (! $esElla && $rostro['cuerpo']
+                    && ($porCuerpo = $this->porElCuerpo($rostro['cuerpo'], $cuerpos, $enEsteCuadro)) !== null) {
+                    $suya = $this->masParecida($rostro['huella'], array_filter($conocidas, fn ($c) => $c['persona'] === $porCuerpo), [])[1];
+
+                    if ($suya >= $umbral - (float) config('fabos.conteo.rostro_dudoso')) {
+                        [$persona, $similitud, $esElla] = [$porCuerpo, $suya, true];
+                    }
+                }
+
+                if (! $esElla) {
                     $persona = DB::table('personas_anonimas')->insertGetId([
                         'primera_vez' => $ahora, 'ultima_vez' => $ahora, 'created_at' => $ahora, 'updated_at' => $ahora,
                     ]);
@@ -137,6 +171,27 @@ class ConteoDePersonas
                 if ($this->anotarVisita($persona, $fecha, $rostro, $camara, $ahora, $foto)) {
                     $nuevas++;
                 }
+
+                if ($rostro['cuerpo'] && $this->guardarCuerpo($persona, $rostro['cuerpo'], $cuerpos, $fecha, $camara, $ahora)) {
+                    $cuerpos[] = ['persona' => $persona] + $rostro['cuerpo'];
+                }
+            }
+
+            // De espaldas o sin cara clara: si el cuerpo es, sin duda, el de
+            // alguien visto hoy, es esa persona. Si no, queda sin identificar
+            // (con el cuerpo solo no se crean personas).
+            foreach ($soloCuerpos as $cuerpo) {
+                $persona = $this->porElCuerpo($cuerpo, $cuerpos, $enEsteCuadro);
+
+                if ($persona === null) {
+                    continue;
+                }
+
+                $identificadas++;
+                $enEsteCuadro[] = $persona;
+                DB::table('personas_anonimas')->where('id', $persona)->update(['ultima_vez' => $ahora, 'updated_at' => $ahora]);
+                DB::table('visitas_del_dia')->where('persona_id', $persona)->where('fecha', $fecha)
+                    ->update(['ultima_vez' => $ahora, 'veces' => DB::raw('veces + 1')]);
             }
 
             $sinIdentificar = max($personas - $identificadas, 0);
@@ -178,6 +233,7 @@ class ConteoDePersonas
 
             foreach ($todas->slice(1) as $otra) {
                 DB::table('huellas_de_persona')->where('persona_id', $otra->id)->update(['persona_id' => $queda->id]);
+                DB::table('cuerpos_del_dia')->where('persona_id', $otra->id)->update(['persona_id' => $queda->id]);
 
                 foreach (DB::table('visitas_del_dia')->where('persona_id', $otra->id)->get() as $v) {
                     $fechas[] = substr((string) $v->fecha, 0, 10);
@@ -459,6 +515,9 @@ class ConteoDePersonas
             ->where('leido_at', '<', $ahora->copy()->subDays(config('fabos.conteo.dias_de_lecturas')))
             ->delete();
 
+        // La ropa es de un día: las huellas del cuerpo se borran todas las noches.
+        DB::table('cuerpos_del_dia')->where('fecha', '<', $ahora->copy()->setTimezone(config('fabos.lab.timezone'))->toDateString())->delete();
+
         $viejas = DB::table('personas_anonimas')->where('ultima_vez', '<', $limite)->pluck('id')->all();
         DB::table('huellas_descartadas')->where('ultima_vez', '<', $limite)->delete();
 
@@ -623,6 +682,76 @@ class ConteoDePersonas
         imagedestroy($recorte);
 
         return Storage::disk('local')->put($ruta, ob_get_clean()) ? $marco : null;
+    }
+
+    /**
+     * La persona de hoy a la que, sin duda, pertenece ese cuerpo: su huella
+     * del cuerpo se le parece desde `cuerpo_umbral`, la ropa no es muy
+     * distinta y la que sigue (otra persona) queda `cuerpo_margen` más abajo.
+     *
+     * @param  array{huella:array,color:?array}  $cuerpo
+     * @param  list<array{persona:int,huella:array,color:?array}>  $cuerpos
+     */
+    private function porElCuerpo(array $cuerpo, array $cuerpos, array $excluidas): ?int
+    {
+        $mejores = [];
+
+        foreach ($cuerpos as $c) {
+            if (in_array($c['persona'], $excluidas, true)) {
+                continue;
+            }
+
+            $s = self::similitud($cuerpo['huella'], $c['huella']);
+
+            if (! isset($mejores[$c['persona']]) || $s > $mejores[$c['persona']][0]) {
+                $mejores[$c['persona']] = [$s, $c['color']];
+            }
+        }
+
+        if ($mejores === []) {
+            return null;
+        }
+
+        uasort($mejores, fn ($a, $b) => $b[0] <=> $a[0]);
+        $persona = array_key_first($mejores);
+        [$s, $color] = $mejores[$persona];
+        $siguiente = array_values($mejores)[1][0] ?? -1.0;
+        $ropa = $color && $cuerpo['color'] ? self::coseno($cuerpo['color'], $color) : 1.0;
+
+        return $s >= (float) config('fabos.conteo.cuerpo_umbral')
+            && $s - $siguiente >= (float) config('fabos.conteo.cuerpo_margen')
+            && $ropa >= (float) config('fabos.conteo.color_minimo')
+            ? $persona : null;
+    }
+
+    /**
+     * Guarda la huella del cuerpo de la persona en el día, si aporta (no es
+     * casi igual a una que ya tiene) y no tiene ya `CUERPOS_POR_DIA`.
+     */
+    private function guardarCuerpo(int $persona, array $cuerpo, array $cuerpos, string $fecha, int $camara, CarbonInterface $ahora): bool
+    {
+        $suyos = array_values(array_filter($cuerpos, fn ($c) => $c['persona'] === $persona));
+
+        if (count($suyos) >= self::CUERPOS_POR_DIA || ($suyos && $this->masParecida($cuerpo['huella'], $suyos, [])[1] >= 0.9)) {
+            return false;
+        }
+
+        DB::table('cuerpos_del_dia')->insert([
+            'persona_id' => $persona, 'fecha' => $fecha, 'camara' => $camara, 'vista_at' => $ahora,
+            'huella' => json_encode(array_map('floatval', $cuerpo['huella'])),
+            'color' => $cuerpo['color'] ? json_encode(array_map('floatval', $cuerpo['color'])) : null,
+        ]);
+
+        return true;
+    }
+
+    /** El coseno de dos vectores sin normalizar (el histograma de la ropa). */
+    public static function coseno(array $a, array $b): float
+    {
+        $na = sqrt(self::similitud($a, $a));
+        $nb = sqrt(self::similitud($b, $b));
+
+        return $na > 0 && $nb > 0 ? self::similitud($a, $b) / $na / $nb : 0.0;
     }
 
     private function esFiable(array $rostro): bool
