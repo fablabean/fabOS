@@ -14,7 +14,10 @@
     --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --code:#0A100E;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth;scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
+  /* Cada bloque se ajusta a la pantalla: la portada, la ruta y cada paso. */
+  header.portada,section.indice,section.paso{scroll-snap-align:start}
+  footer{scroll-snap-align:end}
   body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
   a{color:var(--accent)}
   code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
@@ -154,7 +157,7 @@
     header.portada{padding:3rem 0 2rem}
   }
   @media print{
-    .barra,.copiar,.elige{display:none} body{background:#fff;color:#000}
+    .barra,.copiar,.elige{display:none} body{background:#fff;color:#000} html{scroll-snap-type:none}
     header.portada{min-height:0}
     [data-so]{display:block !important}
     section.paso,section.indice{min-height:0} .siguiente,.nivel,.nivel-tit{display:none}
