@@ -164,7 +164,7 @@
   .flujo small{color:var(--muted);font-size:.78rem}
   .mini-cmd{position:relative;width:100%;max-width:17rem;background:var(--code);border:1px solid var(--rule);border-radius:9px;padding:.65rem .8rem;
     font:13px "JetBrains Mono",monospace;color:#D8F5EA}
-  .mini-cmd .btn{position:absolute;right:.45rem;top:50%;transform:translateY(-50%);padding:.2rem .55rem;border-radius:6px;border:1px solid var(--accent);
+  .mini-cmd .btn{cursor:pointer;position:absolute;right:.45rem;top:50%;transform:translateY(-50%);padding:.2rem .55rem;border-radius:6px;border:1px solid var(--accent);
     background:color-mix(in srgb,var(--accent) 18%,var(--card));color:var(--ink);font:600 11px Inter,sans-serif}
   .mini-cmd .mano{position:absolute;right:-.3rem;bottom:-.9rem;font-size:1.3rem}
 
@@ -391,7 +391,7 @@ Copyright (C) Microsoft Corporation.
       <div class="vista">
         <figure class="fig">
           <div class="flujo">
-            <div class="mini-cmd">echo hola<span class="btn">Copiar</span><span class="mano" aria-hidden="true">👆</span></div>
+            <div class="mini-cmd">echo hola<button type="button" class="btn" data-copia="echo hola">Copiar</button><span class="mano" aria-hidden="true">👆</span></div>
             <span class="flecha">↓</span>
             <div class="teclas" data-so="win"><span class="tecla">Ctrl</span>+<span class="tecla">V</span></div>
             <div class="teclas" data-so="mac"><span class="tecla">⌘</span>+<span class="tecla">V</span></div>
@@ -880,7 +880,9 @@ print(respuesta.output_text)</pre></div>
       var aMano = function () {
         var t = document.createElement('textarea');
         t.value = texto; document.body.appendChild(t); t.select();
-        try { document.execCommand('copy'); listo(); } catch (_) { b.textContent = 'Selecciona y copia'; }
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) {}
+        if (ok) { listo(); } else { b.textContent = 'Selecciona y copia'; }
         t.remove();
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -888,6 +890,23 @@ print(respuesta.output_text)</pre></div>
       } else { aMano(); }
     });
     pre.parentNode.appendChild(b);
+  });
+
+  // Botones de copiar sueltos (como el del dibujo de la escena 3).
+  document.querySelectorAll('[data-copia]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var texto = b.dataset.copia;
+      var listo = function () { b.textContent = 'Copiado ✓'; setTimeout(function () { b.textContent = 'Copiar'; }, 1600); };
+      var aMano = function () {
+        var t = document.createElement('textarea');
+        t.value = texto; document.body.appendChild(t); t.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) {}
+        if (ok) { listo(); } else { b.textContent = 'Selecciona y copia'; }
+        t.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
+    });
   });
 
   // Avance: cada casilla, y el paso se marca cuando todas las suyas lo están.
