@@ -106,7 +106,7 @@
 
   /* Básico: cada paso en escenas, una imagen de lo que se ve y su explicación. */
   .vista{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:1.6rem;align-items:center;margin:1.6rem 0}
-  .vista + .vista{border-top:1px solid var(--rule);padding-top:1.6rem}
+  .vista.sep{border-top:1px solid var(--rule);padding-top:1.6rem}
   .vista .fig{margin:0;min-height:12rem;display:grid;place-items:center;padding:1.3rem;border-radius:14px;border:1px solid var(--rule);
     background:radial-gradient(30rem 14rem at 30% 0%,color-mix(in srgb,var(--accent) 8%,transparent),transparent),var(--bg2)}
   .vista .txt h3{margin:.35rem 0 .35rem;font-size:1.2rem;letter-spacing:-.01em}
@@ -196,6 +196,7 @@
   .ventana ul{list-style:none;margin:0;padding:.7rem .9rem;display:grid;gap:.35rem}
   .ventana li{display:flex;gap:.5rem;align-items:flex-start;padding:.15rem .3rem;border-radius:4px}
   .ventana li::before{content:"✓";display:grid;place-items:center;flex:0 0 auto;width:.95rem;height:.95rem;border-radius:2px;background:#0067c0;color:#fff;font-size:10px;font-weight:700}
+  .ventana ul.sin li::before{display:none}
   .ventana li.ojo{outline:2px solid var(--warn);background:#fff8e1}
   .ventana .vb{display:flex;justify-content:flex-end;gap:.4rem;padding:.55rem .8rem;border-top:1px solid #ddd}
   .ventana .vb > span{position:relative;padding:.25rem .9rem;border:1px solid #adadad;border-radius:3px;background:#fdfdfd}
@@ -344,6 +345,36 @@
   .ventana .vg{display:flex;gap:.8rem;padding:.9rem;background:#fff;align-items:flex-start}
   .ventana .vg .logo-git{display:grid;place-items:center;flex:0 0 auto;width:2.6rem;height:2.6rem;border-radius:6px;background:#f05133;color:#fff;font:700 15px "JetBrains Mono",monospace;transform:rotate(45deg)}
   .ventana .vg .logo-git span{transform:rotate(-45deg)}
+
+  /* Páginas web de las consolas (la llave). */
+  .navg .pag.consola{text-align:left;padding:1rem 1.1rem 1.2rem}
+  .navg .pag.consola h4{margin:0 0 .25rem;font-size:16px}
+  .navg .pag.consola .fila{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-top:.7rem;padding:.5rem .6rem;border:1px solid #e1e4ea;border-radius:6px;background:#fff;font-size:12px;color:#444}
+  .navg .boton.osc{background:#141413}
+  /* Una ventana de la página que muestra la llave. */
+  .modal{width:100%;max-width:24rem;border-radius:10px;background:#fff;color:#1f1f1f;box-shadow:0 14px 34px rgba(0,0,0,.45);padding:1rem 1.1rem;font:12.5px Inter,sans-serif;text-align:left}
+  .modal b{display:block;font-size:14px;margin-bottom:.2rem}
+  .modal .aviso{color:#a15c00;font-size:11.5px;margin:.2rem 0 .6rem}
+  .modal .clave{display:flex;align-items:center;gap:.5rem;padding:.45rem .55rem;border:1px solid #d9dde3;border-radius:6px;background:#f6f7f9;font:12px "JetBrains Mono",monospace}
+  .modal .clave > span:first-child{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .modal .copiar-m{flex:0 0 auto}
+  .modal .copiar-m{position:relative;padding:.25rem .6rem;border-radius:5px;background:#1f1f1f;color:#fff;font:600 11px Inter,sans-serif;outline:2px solid var(--warn);outline-offset:2px}
+  .modal .copiar-m .mano{position:absolute;right:-.7rem;bottom:-1rem;font-size:1.2rem}
+  /* El explorador con los archivos. */
+  .arbol{width:100%;max-width:19rem;border-radius:9px;overflow:hidden;background:#181818;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);font:12px Inter,sans-serif;color:#ccc;text-align:left}
+  .arbol .at{padding:.45rem .7rem;font:600 10px Inter,sans-serif;letter-spacing:.08em;color:#bbb;border-bottom:1px solid #2b2b2b}
+  .arbol .ar{display:flex;align-items:center;gap:.5rem;padding:.28rem .7rem .28rem 1.3rem;font-family:"JetBrains Mono",monospace;font-size:11.5px}
+  .arbol .ar i{font-style:normal;width:1rem;text-align:center;color:#888}
+  .arbol .ar.nuevo{color:#e8f2ff} .arbol .ar.nuevo::after{content:"nuevo";margin-left:auto;font:600 9px Inter,sans-serif;color:#06231A;background:var(--accent);border-radius:99px;padding:0 .4rem}
+  .arbol .ar.si{background:#04395e;outline:2px solid var(--warn);outline-offset:-2px}
+  /* Un archivo abierto en el editor. */
+  .archivo{width:100%;max-width:25rem;border-radius:9px;overflow:hidden;background:#1f1f1f;border:1px solid #333;box-shadow:0 14px 34px rgba(0,0,0,.45);font:12px "JetBrains Mono",monospace;color:#ddd;text-align:left}
+  .archivo .pest{display:inline-block;padding:.3rem .8rem;border-top:2px solid #0078d4;background:#1f1f1f;color:#fff;font:11px Inter,sans-serif}
+  .archivo .barra-p{background:#181818;border-bottom:1px solid #2b2b2b}
+  .archivo .lin{display:flex;gap:.9rem;padding:.7rem .8rem 1rem}
+  .archivo .lin .n{color:#6e7681} .archivo .var{color:#9cdcfe} .archivo .val{color:#ce9178}
+  .archivo .tachado{text-decoration:line-through;color:#888} .archivo .nuevo-v{background:color-mix(in srgb,var(--warn) 25%,transparent);outline:1px solid var(--warn);color:#fff;padding:0 .15rem}
+  .archivo .pie{display:flex;justify-content:flex-end;padding:0 .8rem .8rem}
 
   /* La paleta de comandos. */
   .paleta{width:100%;max-width:26rem;border-radius:8px;background:#252526;border:1px solid #454545;box-shadow:0 14px 34px rgba(0,0,0,.5);font:12px Inter,sans-serif;color:#ccc;text-align:left;padding:.45rem}
@@ -1098,28 +1129,77 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Es distinta de tu cuenta del chat: aunque pagues Claude Pro o ChatGPT Plus, la llave se paga aparte. La de Gemini es gratis para empezar.</p>
       <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
-      <div data-ia="gemini">
+
+      <div data-nivel="basico" class="escenas">
+        <div class="vista" data-ia="claude gpt">
+          <figure class="fig">
+            <div class="navg" data-ia="claude"><div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">console.anthropic.com/settings/billing</span></div><div class="pag consola"><h4>Billing</h4><div class="fila">Saldo <b>0,00 USD</b></div><div class="fila">Recarga <b>5 USD</b><span class="boton osc" style="position:relative;padding:.35rem .8rem">Buy credits<span class="mano" aria-hidden="true">👆</span></span></div></div></div>
+            <div class="navg" data-ia="gpt"><div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">platform.openai.com/settings/billing</span></div><div class="pag consola"><h4>Billing</h4><div class="fila">Credit balance <b>0,00 USD</b></div><div class="fila">Monto <b>5 USD</b><span class="boton" style="position:relative;padding:.35rem .8rem;background:#10a37f">Add to credit balance<span class="mano" aria-hidden="true">👆</span></span></div></div></div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Carga saldo</h3>
+            <p>Entra a <span data-ia="claude"><a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a></span><span data-ia="gemini"></span><span data-ia="gpt"><a href="https://platform.openai.com/" target="_blank" rel="noopener">platform.openai.com</a></span>, crea tu cuenta y ve a <strong>Billing</strong>.</p>
+            <p>Carga la recarga mínima, <strong>5 USD</strong>: sobra para el bootcamp.</p>
+            <p class="para">¿No quieres pagar? Arriba elige <em>Gemini</em>: su llave es gratis y la prueba funciona igual.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="navg" data-ia="gemini"><div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">aistudio.google.com/apikey</span></div><div class="pag consola"><h4>API Keys</h4><p style="margin:0 0 .6rem;color:#555;font-size:12px">Usa una llave para llamar a Gemini desde tu código.</p><span class="boton" style="position:relative">+ Create API key<span class="mano" aria-hidden="true">👆</span></span></div></div>
+            <div class="navg" data-ia="claude"><div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">console.anthropic.com/settings/keys</span></div><div class="pag consola"><h4>API Keys</h4><p style="margin:0 0 .6rem;color:#555;font-size:12px">Las llaves para usar Claude desde tu código.</p><span class="boton osc" style="position:relative">+ Create Key<span class="mano" aria-hidden="true">👆</span></span></div></div>
+            <div class="navg" data-ia="gpt"><div class="bn"><span class="pt"><i></i><i></i><i></i></span><span class="url">platform.openai.com/api-keys</span></div><div class="pag consola"><h4>API keys</h4><p style="margin:0 0 .6rem;color:#555;font-size:12px">Las llaves para usar la API de OpenAI.</p><span class="boton" style="position:relative;background:#10a37f">+ Create new secret key<span class="mano" aria-hidden="true">👆</span></span></div></div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Crea la llave</h3>
+            <p data-ia="gemini">Entra a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google. Si te pide aceptar términos, acéptalos. Haz clic en <strong>Create API key</strong>.</p>
+            <p data-ia="claude">En el menú, entra a <strong>API Keys</strong> y haz clic en <strong>Create Key</strong>. Ponle un nombre, por ejemplo <em>bootcamp</em>.</p>
+            <p data-ia="gpt">Entra a <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API keys</a> y haz clic en <strong>Create new secret key</strong>. Ponle un nombre, por ejemplo <em>bootcamp</em>.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="modal">
+              <b><span data-ia="claude">Your API key</span><span data-ia="gemini">API key created</span><span data-ia="gpt">Save your key</span></b>
+              <div class="aviso" data-ia="claude gpt">Cópiala ahora: no se volverá a mostrar.</div>
+              <div class="aviso" data-ia="gemini">Úsala en tu código. No la compartas.</div>
+              <div class="clave"><span><span data-ia="claude">sk-ant-api03-…••••••••</span><span data-ia="gemini">AIzaSy…••••••••••••</span><span data-ia="gpt">sk-proj-…••••••••</span></span><span class="copiar-m">Copy<span class="mano" aria-hidden="true">👆</span></span></div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Cópiala y guárdala</h3>
+            <p>Aparece la llave: una clave larga que empieza por <span class="mono"><span data-ia="claude">sk-ant-api03-</span><span data-ia="gemini">AIzaSy</span><span data-ia="gpt">sk-proj-</span></span>. Haz clic en <strong>Copy</strong>.</p>
+            <p data-ia="claude gpt"><strong>Cópiala ya:</strong> esta página no la vuelve a mostrar. Si la pierdes, se borra y se crea otra.</p>
+            <p>Pégala en una nota privada o en tu gestor de contraseñas. En el paso siguiente la usas.</p>
+          </div>
+        </div>
+      </div>
+      <div data-ia="gemini" data-nivel="inter">
         <ol class="pasitos">
           <li>Entra a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google. Si te pide aceptar términos, acéptalos.</li>
           <li>Haz clic en <em>Create API key</em>. Aparece una clave larga que empieza por <span class="mono">AIza…</span>.</li>
           <li>Cópiala y guárdala en un lugar seguro: una nota privada o tu gestor de contraseñas.</li>
         </ol>
       </div>
-      <div data-ia="claude">
+      <div data-ia="claude" data-nivel="inter">
         <ol class="pasitos">
           <li>Entra a <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> y crea tu cuenta.</li>
           <li>En <em>Billing</em>, carga saldo: con la recarga mínima (5 USD) sobra para el bootcamp.</li>
           <li>En <em>API Keys</em>, haz clic en <em>Create Key</em>. Empieza por <span class="mono">sk-ant-…</span>: cópiala y guárdala en un lugar seguro.</li>
         </ol>
       </div>
-      <div data-ia="gpt">
+      <div data-ia="gpt" data-nivel="inter">
         <ol class="pasitos">
           <li>Entra a <a href="https://platform.openai.com/" target="_blank" rel="noopener">platform.openai.com</a> y crea tu cuenta.</li>
           <li>En <em>Billing</em>, carga saldo: con la recarga mínima (5 USD) sobra para el bootcamp.</li>
           <li>En <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API keys</a>, haz clic en <em>Create new secret key</em>. Empieza por <span class="mono">sk-…</span>: cópiala y guárdala en un lugar seguro.</li>
         </ol>
       </div>
-      <p class="nota ok" data-ia="claude gpt"><b>¿No quieres pagar saldo?</b> Elige <em>Gemini</em> arriba: su llave es gratis y la prueba final funciona igual. Puedes seguir usando Claude o GPT en el editor.</p>
+      <p class="nota ok" data-ia="claude gpt" data-nivel="inter"><b>¿No quieres pagar saldo?</b> Elige <em>Gemini</em> arriba: su llave es gratis y la prueba final funciona igual. Puedes seguir usando Claude o GPT en el editor.</p>
       <p class="nota"><b>Cuida tu llave como una contraseña.</b> No la pegues en el chat de la clase, no la subas a GitHub y no la mandes por WhatsApp. Si se te escapa, bórrala en la misma página y crea otra: tarda un minuto. En las de pago, pon un límite de gasto mensual.</p>
       <label class="check"><input type="checkbox" data-hecho><span>Tengo mi llave de <span data-ia="claude">Anthropic</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">OpenAI</span>, guardada en un lugar seguro</span></label>
     </div>
@@ -1130,9 +1210,106 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
   <section class="paso" id="prueba" data-paso>
     <div class="cab"><div class="num"><span data-nivel="basico">05</span><span data-nivel="inter">06</span></div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de pocas líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
     <div class="cuerpo">
-      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. Copia y pega cada bloque, uno a la vez, y espera a que termine antes del siguiente.</p>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. La IA del editor hace casi todo; tú abres la carpeta y pones tu llave.</p>
       <div class="ia-elige"><span>Tu IA:</span><div class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></div></div>
 
+
+      <div data-nivel="basico" class="escenas">
+        <div class="vista">
+          <figure class="fig">
+            <div class="flujo">
+              <div class="despliega">
+                <div class="barra-m"><span class="abierto">File</span><span>Edit</span><span>Selection</span><span>View</span><span>Terminal</span></div>
+                <div class="lista" style="margin-left:0">
+                  <div>New File…</div>
+                  <div>Open File…</div>
+                  <div class="si">Open Folder… <small><span data-so="win linux">Ctrl+K Ctrl+O</span><span data-so="mac">⌘O</span></small></div>
+                </div>
+              </div>
+              <span class="flecha">↓</span>
+              <div class="ventana" style="max-width:21rem">
+                <div class="vt"><span>Abrir carpeta</span><i>✕</i></div>
+                <div class="vc"><small>Documentos</small></div>
+                <ul class="sin"><li>📁 Otra carpeta</li><li class="ojo">📁 bootcamp-agentic <span style="margin-left:auto;color:#a15c00;font-size:10px">nueva</span></li></ul>
+                <div class="vb"><span class="si"><span data-ia="claude">Seleccionar carpeta</span><span data-ia="gemini">Seleccionar carpeta</span><span data-ia="gpt">Seleccionar carpeta</span><span class="mano" aria-hidden="true">👆</span></span></div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Abre una carpeta nueva</h3>
+            <p>En VS Code, menú <strong>File → Open Folder…</strong>.</p>
+            <p>En la ventana que se abre, ve a <em>Documentos</em>, crea una carpeta nueva llamada <strong>bootcamp-agentic</strong> y ábrela.</p>
+            <p class="para">Si VS Code pregunta si confías en los autores de la carpeta, di que sí (<em>Yes, I trust the authors</em>): la creaste tú.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="flujo">
+              <div class="pedido" data-ia="claude"><span class="quien">TÚ</span>En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y anthropic. Crea un archivo .env con la línea ANTHROPIC_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo claude-haiku-5-5 un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.<button type="button" class="btn" data-copia="En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y anthropic. Crea un archivo .env con la línea ANTHROPIC_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo claude-haiku-5-5 un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.">Copiar</button><span class="mano" aria-hidden="true">👆</span></div><div class="pedido" data-ia="gemini"><span class="quien">TÚ</span>En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y google-genai. Crea un archivo .env con la línea GEMINI_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo gemini-flash-latest un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.<button type="button" class="btn" data-copia="En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y google-genai. Crea un archivo .env con la línea GEMINI_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo gemini-flash-latest un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.">Copiar</button><span class="mano" aria-hidden="true">👆</span></div><div class="pedido" data-ia="gpt"><span class="quien">TÚ</span>En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y openai. Crea un archivo .env con la línea OPENAI_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo gpt-5-mini un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.<button type="button" class="btn" data-copia="En esta carpeta prepara la prueba del bootcamp: crea un entorno de Python llamado .venv e instala python-dotenv y openai. Crea un archivo .env con la línea OPENAI_API_KEY=pega-aqui-tu-llave, un .gitignore que deje fuera .env y .venv, y un prueba.py que lea la llave del .env y le pida al modelo gpt-5-mini un saludo corto para el Bootcamp AGENTIC. No lo ejecutes todavía: avísame cuando esté listo.">Copiar</button><span class="mano" aria-hidden="true">👆</span></div>
+              <span class="flecha">↓</span>
+              <div class="arbol">
+                <div class="at">BOOTCAMP-AGENTIC</div>
+                <div class="ar nuevo"><i>▸</i>.venv</div>
+                <div class="ar nuevo"><i>⚙</i>.env</div>
+                <div class="ar nuevo"><i>◦</i>.gitignore</div>
+                <div class="ar nuevo"><i>🐍</i>prueba.py</div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Pídele a la IA que prepare todo</h3>
+            <p>Abre el chat de tu IA (como en el paso 02), copia el pedido de la imagen, pégalo y presiona <span class="mono">Enter</span>.</p>
+            <p>Te va a pedir permiso varias veces: dale <strong>Permitir</strong>, como en el paso 03. Tarda uno o dos minutos.</p>
+            <p class="para">Al final, en el explorador de la izquierda aparecen los archivos nuevos, como en la imagen.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="flujo">
+              <div class="arbol"><div class="at">BOOTCAMP-AGENTIC</div><div class="ar"><i>▸</i>.venv</div><div class="ar si"><i>⚙</i>.env</div><div class="ar"><i>◦</i>.gitignore</div><div class="ar"><i>🐍</i>prueba.py</div></div>
+              <span class="flecha">↓</span>
+              <div class="archivo">
+                <div class="barra-p"><span class="pest">.env</span></div>
+                <div class="lin"><span class="n">1</span><span><span class="var"><span data-ia="claude">ANTHROPIC_API_KEY</span><span data-ia="gemini">GEMINI_API_KEY</span><span data-ia="gpt">OPENAI_API_KEY</span></span>=<span class="tachado">pega-aqui-tu-llave</span> <span class="nuevo-v"><span data-ia="claude">sk-ant-api03-…</span><span data-ia="gemini">AIzaSy…</span><span data-ia="gpt">sk-proj-…</span></span></span></div>
+                <div class="pie"><span class="teclas" style="display:flex;gap:.3rem"><span class="tecla" style="height:1.9rem;min-width:1.9rem;font-size:.75rem"><span data-so="win linux">Ctrl</span><span data-so="mac">⌘</span></span>+<span class="tecla" style="height:1.9rem;min-width:1.9rem;font-size:.75rem">S</span></span></div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Pon tu llave</h3>
+            <p>En el explorador, haz clic en <strong>.env</strong>: se abre el archivo.</p>
+            <p>Borra <span class="mono">pega-aqui-tu-llave</span> y pega en su lugar la llave del paso anterior, <strong>sin espacios ni comillas</strong>. Guarda con <span class="mono" data-so="win linux">Ctrl + S</span><span class="mono" data-so="mac">⌘ + S</span>.</p>
+            <p class="para">La llave la pegas tú, en el archivo, y no en el chat: así no queda escrita en ninguna conversación.</p>
+          </div>
+        </div>
+
+        <div class="vista">
+          <figure class="fig">
+            <div class="chatv">
+              <div class="ct"><span data-ia="claude">CLAUDE CODE</span><span data-ia="gemini">GEMINI</span><span data-ia="gpt">CODEX</span></div>
+              <div class="cc">
+                <div class="yo">Listo, ya puse mi llave. Ejecuta prueba.py</div>
+                <div class="permiso"><span data-ia="claude">Claude</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">Codex</span> quiere ejecutar:<code>python prueba.py</code><div class="bp"><span class="si">Permitir<span class="mano" aria-hidden="true">👆</span></span><span>Rechazar</span></div></div>
+                <div class="ia">El modelo respondió:<br><strong style="color:var(--accent)">«¡Hola, Bootcamp AGENTIC! A construir con agentes. 🚀»</strong></div>
+              </div>
+            </div>
+          </figure>
+          <div class="txt">
+            <span class="escena"></span>
+            <h3>Que la IA lo ejecute</h3>
+            <p>Escríbele en el chat: <em>«Listo, ya puse mi llave. Ejecuta prueba.py»</em>, y dale <strong>Permitir</strong>.</p>
+            <p><strong>Si ves una frase de saludo, lo lograste.</strong> Tu editor, tu IA, Python y tu llave funcionan juntos.</p>
+            <p class="para">Si sale un error, pregúntale: <em>«¿Qué falló y cómo lo arreglo?»</em>. Lo más común es un espacio de más en el <span class="mono">.env</span> o haberlo guardado sin la llave.</p>
+          </div>
+        </div>
+        <p class="para">¿Prefieres hacerlo con comandos, uno por uno? Arriba cambia a <em>Intermedio</em>: ahí están todos.</p>
+      </div>
+      <div data-nivel="inter">
       <ol class="pasitos">
         <li>Crea la carpeta del bootcamp y ábrela en VS Code:</li>
       </ol>
@@ -1208,6 +1385,7 @@ print(respuesta.output_text)</pre></div>
       <div class="cmd" data-so="win"><pre>py prueba.py</pre></div>
       <div class="cmd" data-so="mac linux"><pre>python3 prueba.py</pre></div>
       <p class="nota ok"><b>Si ves una frase de saludo, lo lograste.</b> Tu editor, tu terminal, Python y tu llave de API funcionan juntos.</p>
+      </div>
 
       <label class="check"><input type="checkbox" data-hecho><span><span class="mono">prueba.py</span> me respondió con un saludo</span></label>
 
@@ -1254,7 +1432,20 @@ print(respuesta.output_text)</pre></div>
       b.setAttribute('aria-pressed', b.dataset.elige === s ? 'true' : 'false');
     });
     try { localStorage.setItem('agentic-so', s); } catch (_) {}
+    if (typeof separar === 'function') { separar(); }
   }
+  // La raya entre escenas va solo entre las que se ven (otro sistema, otra IA u
+  // otro nivel no cuentan).
+  function separar() {
+    document.querySelectorAll('.vista').forEach(function (v) {
+      var antes = v.previousElementSibling, hay = false;
+      for (; antes; antes = antes.previousElementSibling) {
+        if (antes.classList.contains('vista') && getComputedStyle(antes).display !== 'none') { hay = true; break; }
+      }
+      v.classList.toggle('sep', hay);
+    });
+  }
+
   // La IA: Claude, Gemini o GPT. Se elige en los pasos 03 a 06 y se recuerda.
   var iaGuardada = null;
   try { iaGuardada = localStorage.getItem('agentic-ia'); } catch (_) {}
@@ -1266,6 +1457,7 @@ print(respuesta.output_text)</pre></div>
     document.querySelectorAll('[data-ia-elige]').forEach(function (b) {
       b.setAttribute('aria-pressed', b.dataset.iaElige === x ? 'true' : 'false');
     });
+    separar();
   }
   document.querySelectorAll('[data-ia-elige]').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -1418,6 +1610,7 @@ print(respuesta.output_text)</pre></div>
       if (!todas) { cerrado = true; }
     });
     document.body.classList.toggle('falta-paso', cerrado);
+    separar();
     document.getElementById('listo').hidden = n !== visibles.length;
   }
   pintar();
