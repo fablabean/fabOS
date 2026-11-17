@@ -23,7 +23,7 @@
   /* barra de progreso */
   .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);
          backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
-  .barra .wrap{display:flex;gap:1rem;align-items:center;justify-content:space-between;padding-top:.6rem;padding-bottom:.6rem;flex-wrap:wrap}
+  .barra .wrap{display:flex;gap:.8rem;align-items:center;justify-content:space-between;padding-top:.6rem;padding-bottom:.6rem;flex-wrap:wrap}
   .marca{font-weight:800;letter-spacing:.04em;font-size:.9rem}
   .marca b{color:var(--accent2)}
   .so{display:inline-flex;border:1px solid var(--rule);border-radius:99px;overflow:hidden}
@@ -33,7 +33,7 @@
   .so button svg{width:1.05em;height:1.05em;flex:0 0 auto}
   .barra .so{visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s,visibility .2s}
   body.so-fijo .barra .so{visibility:visible;opacity:1;transform:none}
-  .avance{flex:1 1 12rem;max-width:18rem}
+  .avance{flex:1 1 8rem;max-width:13rem}
   .avance .txt{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between}
   .avance .pista{height:6px;background:var(--rule);border-radius:9px;overflow:hidden;margin-top:.2rem}
   .avance .lleno{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--warn));transition:width .3s}
@@ -72,7 +72,36 @@
   .resumen .t{font-weight:600}
   .resumen .s{font-size:.82rem;color:var(--muted)}
 
-  /* pasos */
+  /* nivel: básico o intermedio */
+  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
+  .nivel-tit{margin:2.2rem 0 .7rem;font-weight:600;color:var(--ink)}
+  .nivel{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;max-width:46rem}
+  .nivel button{position:relative;text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:14px;
+    padding:1rem 3rem 1rem 1.2rem;color:var(--ink);cursor:pointer;font:inherit;transition:border-color .2s,background .2s}
+  .nivel button:hover{border-color:var(--accent)}
+  .nivel button::before{content:"";position:absolute;top:1.1rem;right:1.1rem;width:1.1rem;height:1.1rem;border-radius:50%;
+    border:2px solid var(--muted);box-sizing:border-box}
+  .nivel button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+  .nivel button[aria-pressed=true]::before{border:4px solid var(--accent);background:#06231A}
+  .nivel .t{display:block;font-weight:800;font-size:1.2rem;letter-spacing:-.01em}
+  .nivel .s{display:block;color:var(--soft);font-size:.9rem;margin-top:.25rem;line-height:1.45}
+  .nivel.llamando button::after{content:"";position:absolute;inset:-1px;border-radius:14px;pointer-events:none;
+    box-shadow:0 0 0 2px var(--warn),0 0 18px color-mix(in srgb,var(--warn) 50%,transparent);opacity:0;animation:llamar 2.4s ease-in-out infinite}
+  .nivel.llamando button:nth-child(2)::after{animation-delay:1.2s}
+  @media (prefers-reduced-motion:reduce){.nivel.llamando button::after{animation:none}}
+  .simple{border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));background:color-mix(in srgb,var(--accent) 5%,transparent);
+    border-radius:10px;padding:.75rem 1rem;margin:1rem 0 1.1rem;color:var(--soft)}
+  .simple b{color:var(--accent)}
+
+  /* pasos: cada uno ocupa la pantalla */
+  section.paso, section.indice{min-height:calc(100vh - var(--barra,3.3rem));min-height:calc(100svh - var(--barra,3.3rem));
+    display:flex;flex-direction:column;justify-content:center;scroll-margin-top:var(--barra,3.3rem)}
+  section.indice{padding:3rem 0;border-bottom:1px solid var(--rule)}
+  section.indice h2{margin-bottom:.2rem}
+  .siguiente{align-self:flex-start;margin:2.2rem 0 0 4rem;display:inline-flex;align-items:center;gap:.5rem;color:var(--accent);
+    text-decoration:none;font-weight:600;border:1px solid var(--rule);border-radius:99px;padding:.5rem 1.1rem;background:var(--bg2)}
+  .siguiente:hover{border-color:var(--accent)}
+  section.indice .siguiente{margin-left:0}
   section.paso{padding:3rem 0;border-bottom:1px solid var(--rule)}
   .cab{display:flex;gap:1rem;align-items:flex-start}
   .num{flex:0 0 auto;width:3rem;height:3rem;border-radius:12px;display:grid;place-items:center;
@@ -120,6 +149,7 @@
 
   @media (max-width:640px){
     .cuerpo{margin-left:0}
+    .siguiente{margin-left:0}
     .cab{margin-bottom:.6rem}
     header.portada{padding:3rem 0 2rem}
   }
@@ -127,6 +157,7 @@
     .barra,.copiar,.elige{display:none} body{background:#fff;color:#000}
     header.portada{min-height:0}
     [data-so]{display:block !important}
+    section.paso,section.indice{min-height:0} .siguiente,.nivel,.nivel-tit{display:none}
   }
 </style>
 </head>
@@ -135,6 +166,10 @@
 <div class="barra">
   <div class="wrap">
     <div class="marca">BOOTCAMP <b>AGENTIC</b> · prepárate</div>
+    <div class="so" role="group" aria-label="Cómo ver la guía">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
+    </div>
     <div class="so" role="group" aria-label="Tu sistema operativo">
       <button type="button" data-elige="win" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 5.6 10.4 4.5v7H3zM11.6 4.3 21 3v8.5h-9.4zM3 12.6h7.4v7L3 18.5zM11.6 12.6H21V21l-9.4-1.3z"/></svg>Windows</button>
       <button type="button" data-elige="mac" aria-pressed="false"><svg viewBox="4 2.6 16.5 19" aria-hidden="true" fill="currentColor"><path d="M16.4 12.6c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.8.9-3.6 2.2-1.5 2.7-.4 6.6 1.1 8.8.7 1 1.6 2.2 2.7 2.2 1.1 0 1.5-.7 2.8-.7 1.3 0 1.7.7 2.9.7 1.2 0 1.9-1.1 2.6-2.1.8-1.2 1.2-2.4 1.2-2.5 0 0-2.3-.9-2.3-3.6zM14.2 6.1c.6-.7 1-1.7.9-2.8-.9 0-1.9.6-2.5 1.3-.6.6-1.1 1.7-.9 2.7 1 .1 2-.5 2.5-1.2z"/></svg>macOS</button>
@@ -153,10 +188,15 @@
     <h1>Llega con tu computador <span>listo para trabajar</span>.</h1>
     <p class="lead">En el bootcamp no hay tiempo para instalar: las seis horas son para construir. Esta guía deja tu equipo con el editor, la terminal, un agente y una llave de API funcionando. Hazla con calma, de arriba abajo, y marca cada paso cuando lo termines.</p>
     <div class="datos">
-      <div class="dato"><b>Cuánto toma</b>45 a 60 minutos</div>
+      <div class="dato"><b>Cuánto toma</b><span data-nivel="basico">60 a 90 minutos</span><span data-nivel="inter">45 a 60 minutos</span></div>
       <div class="dato"><b>Cuándo</b>Antes del 24 de noviembre</div>
       <div class="dato"><b>Sesiones</b>24, 25 y 26 de nov · 6:00–8:00 p. m.</div>
       <div class="dato"><b>Costo extra</b>Ninguno obligatorio</div>
+    </div>
+    <p class="nivel-tit">¿Cómo quieres ver la guía?</p>
+    <div class="nivel llamando" role="group" aria-label="Cómo ver la guía">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">Nunca he usado una terminal. Explícame todo, clic por clic.</span></button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya uso la terminal y he instalado cosas. Dame los comandos.</span></button>
     </div>
     <div class="elige">
       <p class="para">Elige tu sistema operativo: los comandos cambian solos.</p>
@@ -171,7 +211,12 @@
 
 <main class="wrap">
 
+  <section class="indice" id="ruta">
+    <div class="kicker">Tu ruta</div>
+    <h2><span data-nivel="basico">Siete pasos, uno por pantalla</span><span data-nivel="inter">Seis pasos, uno por pantalla</span></h2>
+    <p class="para">Marca cada uno cuando lo termines: tu avance queda arriba y se guarda en este navegador.</p>
     <div class="resumen">
+      <a href="#terminal" data-nivel="basico"><div class="n">00</div><div class="t">La terminal</div><div class="s">Qué es y cómo se usa</div></a>
       <a href="#editor"><div class="n">01</div><div class="t">El editor</div><div class="s">VS Code</div></a>
       <a href="#base"><div class="n">02</div><div class="t">Lo de base</div><div class="s">Git, Node.js y Python</div></a>
       <a href="#asistentes"><div class="n">03</div><div class="t">Asistentes en el editor</div><div class="s">Sesión 01</div></a>
@@ -179,11 +224,52 @@
       <a href="#llaves"><div class="n">05</div><div class="t">Llaves de API</div><div class="s">Sesión 03</div></a>
       <a href="#prueba"><div class="n">06</div><div class="t">La prueba final</div><div class="s">Todo junto, funcionando</div></a>
     </div>
+    <a class="siguiente" href="#terminal" data-nivel="basico">Empezar: la terminal ↓</a>
+    <a class="siguiente" href="#editor" data-nivel="inter">Empezar: el editor ↓</a>
+  </section>
+
+  <!-- 00: solo en básico -->
+  <section class="paso" id="terminal" data-paso data-nivel="basico">
+    <div class="cab"><div class="num">00</div><div><h2>Antes de empezar: la terminal</h2><p class="para">La vas a usar en casi todos los pasos. Cinco minutos y le pierdes el miedo.</p></div></div>
+    <div class="cuerpo">
+      <p class="simple"><b>En palabras simples:</b> la terminal es una ventana donde le das órdenes al computador escribiendo, en vez de hacer clic. Se ve como una caja oscura con texto. Abrirla no daña nada, y en esta guía no tienes que memorizar ni inventar nada: vas a copiar y pegar cada orden.</p>
+      <p><strong>Ábrela así:</strong></p>
+      <div data-so="win"><p>Presiona la tecla <span class="mono">⊞ Windows</span>, escribe <strong>PowerShell</strong> y presiona <span class="mono">Enter</span>. Se abre una ventana con una línea que termina en algo como <span class="mono">PS C:\Users\tu-nombre&gt;</span>.</p></div>
+      <div data-so="mac"><p>Presiona <span class="mono">⌘ + Espacio</span>, escribe <strong>Terminal</strong> y presiona <span class="mono">Enter</span>. La línea termina en algo como <span class="mono">tu-nombre@MacBook ~ %</span>.</p></div>
+      <div data-so="linux"><p>Presiona <span class="mono">Ctrl + Alt + T</span>. La línea termina en algo como <span class="mono">tu-nombre@equipo:~$</span>.</p></div>
+      <p><strong>Para dar una orden:</strong></p>
+      <ol class="pasitos">
+        <li>En esta guía cada orden está en un recuadro oscuro con un botón <em>Copiar</em> a la derecha. Haz clic en <em>Copiar</em>.</li>
+        <li>Ve a la terminal y pega:
+          <span data-so="win">clic derecho dentro de la ventana (o <span class="mono">Ctrl + V</span>).</span><span data-so="mac"><span class="mono">⌘ + V</span>.</span><span data-so="linux"><span class="mono">Ctrl + Shift + V</span>.</span></li>
+        <li>Presiona <span class="mono">Enter</span> y espera. Cuando vuelve a aparecer la línea del principio, la orden terminó.</li>
+      </ol>
+      <p>Pruébalo con esta, que solo le pide a la terminal que diga «hola»:</p>
+      <div class="cmd"><pre>echo hola</pre></div>
+      <p class="nota ok"><b>Es normal</b> que muchas órdenes no respondan nada cuando todo salió bien, y que otras muestren mucho texto mientras instalan. Lo que importa es si al final aparece la palabra <em>error</em>.</p>
+      <p class="nota" data-so="mac linux"><b>Si te pide tu contraseña,</b> es la misma con la que entras al computador. Escríbela aunque no veas nada en pantalla (no se muestran las letras, por seguridad) y presiona <span class="mono">Enter</span>.</p>
+      <p class="nota"><b>Cuando una orden diga «abre una terminal nueva»,</b> cierra la ventana y ábrela otra vez como arriba: así se entera de lo que acabas de instalar.</p>
+      <label class="check"><input type="checkbox" data-hecho><span>Abrí la terminal, pegué <span class="mono">echo hola</span> y me respondió <span class="mono">hola</span></span></label>
+    </div>
+      <a class="siguiente" href="#editor">Siguiente: el editor ↓</a>
+  </section>
 
   <!-- 01 -->
   <section class="paso" id="editor" data-paso>
     <div class="cab"><div class="num">01</div><div><h2>El editor: VS Code</h2><p class="para">Es donde vamos a trabajar las tres sesiones.</p></div></div>
     <div class="cuerpo">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> VS Code es el programa donde se escribe código, como un Word para programadores. Es gratis, y adentro trae su propia terminal y los asistentes de IA que vamos a usar.</p>
+      <div data-nivel="basico">
+        <ol class="pasitos">
+          <li>Entra a <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> y haz clic en el botón azul grande de descarga: ya sabe cuál es tu sistema.</li>
+          <li data-so="win">Abre el archivo que bajó (queda en <em>Descargas</em>). Acepta el acuerdo y, cuando aparezcan casillas, márcalas todas: sobre todo <em>«Agregar a PATH»</em>. Luego <em>Siguiente</em> hasta <em>Instalar</em>.</li>
+          <li data-so="mac">Abre el archivo que bajó (queda en <em>Descargas</em>) y arrastra <em>Visual Studio Code</em> a la carpeta <em>Aplicaciones</em>. Ábrelo desde ahí; si pregunta si confías en la app, di que sí.</li>
+          <li data-so="mac">Dentro de VS Code presiona <span class="mono">⌘ ⇧ P</span>, escribe <em>shell command</em> y elige <em>«Install 'code' command in PATH»</em>. Esto deja que la terminal lo abra.</li>
+          <li data-so="linux">Elige el <span class="mono">.deb</span> si tienes Ubuntu o Debian (el <span class="mono">.rpm</span> si es Fedora), ábrelo con doble clic y pulsa <em>Instalar</em>.</li>
+          <li>Ábrelo una vez para ver que funciona. Si ya lo tenías, actualízalo: <em>Ayuda → Buscar actualizaciones</em>.</li>
+        </ol>
+      </div>
+      <div data-nivel="inter">
       <p>Descárgalo de <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> e instálalo con las opciones que trae. Si ya lo tienes, actualízalo: <em>Ayuda → Buscar actualizaciones</em>.</p>
       <div data-so="win">
         <p class="nota"><b>En Windows,</b> durante la instalación marca <em>«Agregar a PATH»</em> y <em>«Abrir con Code»</em> en el menú contextual. O instálalo desde la terminal:</p>
@@ -196,16 +282,46 @@
         <p class="nota"><b>En Linux,</b> descarga el <span class="mono">.deb</span> (Ubuntu, Debian) o el <span class="mono">.rpm</span> (Fedora) e instálalo con doble clic, o:</p>
         <div class="cmd"><div class="lbl">Terminal</div><pre>sudo snap install code --classic</pre></div>
       </div>
-      <p>Para comprobarlo, abre una terminal nueva y escribe:</p>
+      </div>
+      <p><span data-nivel="basico">Para comprobarlo, abre una terminal nueva (como en el paso 00) y pega esto. Debe responder con un número, como <span class="mono">1.106.0</span>:</span><span data-nivel="inter">Para comprobarlo, abre una terminal nueva y escribe:</span></p>
       <div class="cmd"><pre>code --version</pre></div>
       <label class="check"><input type="checkbox" data-hecho><span>VS Code abre y <span class="mono">code --version</span> responde con un número<small>Si dice «no se reconoce», cierra la terminal y abre una nueva.</small></span></label>
     </div>
+      <a class="siguiente" href="#base">Siguiente: Git, Node.js y Python ↓</a>
   </section>
 
   <!-- 02 -->
   <section class="paso" id="base" data-paso>
     <div class="cab"><div class="num">02</div><div><h2>Lo de base: Git, Node.js y Python</h2><p class="para">Los agentes de terminal corren sobre Node.js; el código de la sesión 03 lo escribimos en Python.</p></div></div>
     <div class="cuerpo">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son tres programas que trabajan por debajo y no se abren como una app. <strong>Git</strong> guarda el historial de tu trabajo. <strong>Node.js</strong> y <strong>Python</strong> son los «motores» que hacen correr los programas del bootcamp. Solo hay que instalarlos y comprobar que la terminal los encuentra.</p>
+      <div data-nivel="basico">
+        <div data-so="win">
+          <ol class="pasitos">
+            <li><strong>Git:</strong> en <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git-scm.com/download/win</a> descarga <em>«64-bit Git for Windows Setup»</em>, ábrelo y dale <em>Next</em> a todo: las opciones que trae están bien.</li>
+            <li><strong>Node.js:</strong> en <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> descarga la versión que dice <strong>LTS</strong>, ábrela y dale <em>Next</em> a todo.</li>
+            <li><strong>Python:</strong> en <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org/downloads</a> haz clic en el botón amarillo. Al abrirlo, <strong>antes de nada marca abajo la casilla <em>«Add python.exe to PATH»</em></strong> y luego <em>Install Now</em>.</li>
+          </ol>
+          <p class="nota"><b>La casilla de Python es la que más problemas evita.</b> Si se te pasó, vuelve a abrir el instalador, elige <em>Modify</em> y márcala.</p>
+        </div>
+        <div data-so="mac">
+          <ol class="pasitos">
+            <li><strong>Git:</strong> pega esto en la terminal. Aparece una ventana: dale <em>Instalar</em> y espera unos minutos.</li>
+          </ol>
+          <div class="cmd"><pre>xcode-select --install</pre></div>
+          <ol class="pasitos" start="2">
+            <li><strong>Node.js:</strong> en <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> descarga la versión <strong>LTS</strong> (un <span class="mono">.pkg</span>), ábrela y dale <em>Continuar</em> a todo.</li>
+            <li><strong>Python:</strong> en <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org/downloads</a> haz clic en el botón amarillo y sigue el instalador.</li>
+          </ol>
+        </div>
+        <div data-so="linux">
+          <p>Pega esto en la terminal (te va a pedir tu contraseña):</p>
+          <div class="cmd"><pre>sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip</pre></div>
+          <p><strong>Node.js:</strong> en <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> ve a <em>Download</em>, elige <em>Linux</em> y la versión <strong>LTS</strong>, y copia y pega en la terminal, una por una, las órdenes que aparecen ahí.</p>
+        </div>
+      </div>
+      <div data-nivel="inter">
       <p>Instala las tres. Si alguna ya la tienes, revisa que la versión sea igual o más nueva que la indicada.</p>
 
       <div data-so="win">
@@ -225,11 +341,14 @@ sudo apt install -y git python3 python3-venv python3-pip</pre></div>
         <p>Node.js: el de <span class="mono">apt</span> suele venir viejo. Instala la versión LTS desde <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> (sección <em>«Package manager»</em>).</p>
       </div>
 
+      </div>
+
       <p>Dile a Git quién eres (una sola vez, con tu nombre y tu correo):</p>
+      <p class="para" data-nivel="basico" style="margin-bottom:.4rem">Antes de presionar <span class="mono">Enter</span>, cambia <em>Tu Nombre</em> y <em>tu@correo.com</em> por los tuyos, dejando las comillas. Si es más fácil, pégalo primero en el Bloc de notas, cámbialo allí y cópialo de nuevo.</p>
       <div class="cmd"><pre>git config --global user.name "Tu Nombre"
 git config --global user.email "tu@correo.com"</pre></div>
 
-      <p>Cierra la terminal, abre una nueva y comprueba:</p>
+      <p>Cierra la terminal, abre una nueva y comprueba:<span data-nivel="basico"> cada línea debe responder con un número de versión, por ejemplo <span class="mono">git version 2.47.1</span>. Si alguna dice «no se reconoce», mira la ayuda al final de la página.</span></p>
       <div class="cmd" data-so="win"><pre>git --version      <span class="c"># 2.40 o más</span>
 node -v            <span class="c"># v20 o más</span>
 npm -v
@@ -240,13 +359,21 @@ npm -v
 python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       <label class="check"><input type="checkbox" data-hecho><span>Las cuatro responden con su versión</span></label>
     </div>
+      <a class="siguiente" href="#asistentes">Siguiente: asistentes en el editor ↓</a>
   </section>
 
   <!-- 03 -->
   <section class="paso" id="asistentes" data-paso>
     <div class="cab"><div class="num">03</div><div><h2>Asistentes dentro del editor <span class="sesion">sesión 01</span></h2><p class="para">Trabajaremos con Claude, GPT y Gemini desde VS Code.</p></div></div>
     <div class="cuerpo">
-      <p>En VS Code abre <em>Extensiones</em> (<span class="mono" data-so="win linux">Ctrl+Shift+X</span><span class="mono" data-so="mac">⌘⇧X</span>) e instala:</p>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> son extensiones, complementos que se le agregan a VS Code, para chatear con una IA ahí mismo mientras ves tu código: le preguntas, te explica y te propone cambios.</p>
+      <ol class="pasitos" data-nivel="basico">
+        <li>En VS Code, en la barra de íconos de la izquierda, haz clic en el de cuatro cuadritos: <em>Extensiones</em>.</li>
+        <li>En el buscador de arriba escribe <strong>GitHub Copilot</strong>, elige el que es de <em>GitHub</em> y haz clic en <em>Install</em>.</li>
+        <li>Haz lo mismo con <strong>Gemini Code Assist</strong> (el de <em>Google</em>).</li>
+        <li>Cada una te pide iniciar sesión: se abre el navegador, entras con tu cuenta y vuelves a VS Code. Para Copilot necesitas una cuenta de <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub</a> (es gratis); para Gemini, tu cuenta de Gmail.</li>
+      </ol>
+      <p data-nivel="inter">En VS Code abre <em>Extensiones</em> (<span class="mono" data-so="win linux">Ctrl+Shift+X</span><span class="mono" data-so="mac">⌘⇧X</span>) e instala:</p>
       <div class="opciones">
         <div class="opcion"><h3>GitHub Copilot <span class="etq rec">instálala</span></h3><p>Tiene plan gratuito. Pide iniciar sesión con una cuenta de <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub</a>: créala si no tienes. Desde su chat se elige el modelo (GPT, Claude, Gemini).</p></div>
         <div class="opcion"><h3>Gemini Code Assist <span class="etq rec">instálala</span></h3><p>De Google, gratis para uso personal con tu cuenta de Gmail.</p></div>
@@ -255,12 +382,26 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       <p class="nota ok"><b>No hace falta pagar</b> ChatGPT Plus ni Claude Pro: con los planes gratuitos alcanza para seguir las sesiones.</p>
       <label class="check"><input type="checkbox" data-hecho><span>Copilot y Gemini Code Assist instalados, con la sesión iniciada<small>Prueba: abre su chat y pregúntale «¿qué hace este archivo?» con cualquier archivo abierto.</small></span></label>
     </div>
+      <a class="siguiente" href="#agente">Siguiente: un agente en la terminal ↓</a>
   </section>
 
   <!-- 04 -->
   <section class="paso" id="agente" data-paso>
     <div class="cab"><div class="num">04</div><div><h2>Un agente en la terminal <span class="sesion">sesión 02</span></h2><p class="para">Los agentes leen tu proyecto, ejecutan comandos y hacen tareas enteras por ti.</p></div></div>
     <div class="cuerpo">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> un agente es una IA que, además de conversar, puede leer los archivos de tu proyecto y ejecutar órdenes en tu computador, siempre pidiéndote permiso antes. Vive en la terminal. Para el bootcamp basta con <strong>Gemini CLI</strong>, que es gratis con tu cuenta de Google.</p>
+      <div data-nivel="basico">
+        <ol class="pasitos">
+          <li>Abre una terminal nueva y pega esto. Tarda uno o dos minutos y muestra bastante texto: es normal.</li>
+        </ol>
+        <div class="cmd"><pre>npm install -g @google/gemini-cli</pre></div>
+        <ol class="pasitos" start="2">
+          <li>Cuando termine, escribe <span class="mono">gemini</span> y presiona <span class="mono">Enter</span>.</li>
+          <li>La primera vez te pregunta cómo entrar: con las flechas del teclado elige la opción de entrar con Google y presiona <span class="mono">Enter</span>. Se abre el navegador: entra con tu cuenta de Gmail y vuelve a la terminal.</li>
+          <li>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em> y presiona <span class="mono">Enter</span>. Para salir, escribe <span class="mono">/quit</span>.</li>
+        </ol>
+      </div>
+      <div data-nivel="inter">
       <p>Instala <strong>al menos uno</strong>. Si no sabes cuál, el primero: es gratuito con tu cuenta de Google.</p>
       <div class="opciones">
         <div class="opcion"><h3>Gemini CLI <span class="etq rec">recomendado</span></h3><p>Gratis con cuenta de Google. Se abre con <span class="mono">gemini</span>.</p></div>
@@ -270,36 +411,48 @@ python3 --version  <span class="c"># 3.11 o más</span></pre></div>
       <div class="cmd"><div class="lbl">Terminal · el recomendado</div><pre>npm install -g @google/gemini-cli</pre></div>
       <div class="cmd"><div class="lbl">Opcionales</div><pre>npm install -g @anthropic-ai/claude-code   <span class="c"># Claude Code</span>
 npm install -g @openai/codex               <span class="c"># Codex CLI</span></pre></div>
+      </div>
       <div data-so="win"><p class="nota"><b>Si PowerShell dice que «la ejecución de scripts está deshabilitada»,</b> ejecuta esto una vez y vuelve a intentarlo:</p>
         <div class="cmd"><pre>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</pre></div></div>
       <div data-so="mac linux"><p class="nota"><b>Si npm pide permisos («EACCES»),</b> no uses <span class="mono">sudo</span>: es mejor instalar Node.js con el instalador oficial o con <a href="https://github.com/nvm-sh/nvm" target="_blank" rel="noopener">nvm</a>, que dejan los paquetes globales en tu usuario.</p></div>
+      <div data-nivel="inter">
       <p>Ábrelo por primera vez para iniciar sesión (abre el navegador y te pide entrar con tu cuenta):</p>
       <div class="cmd"><pre>gemini</pre></div>
       <p>Cuando te salude, escríbele <em>«¿en qué carpeta estoy y qué hay aquí?»</em>. Para salir: <span class="mono">/quit</span> o <span class="mono">Ctrl+C</span> dos veces.</p>
+      </div>
       <label class="check"><input type="checkbox" data-hecho><span>Tengo un agente instalado, con la sesión iniciada, y me respondió</span></label>
     </div>
+      <a class="siguiente" href="#llaves">Siguiente: una llave de API ↓</a>
   </section>
 
   <!-- 05 -->
   <section class="paso" id="llaves" data-paso>
     <div class="cab"><div class="num">05</div><div><h2>Una llave de API <span class="sesion">sesión 03</span></h2><p class="para">Para que tu propio código hable con el modelo.</p></div></div>
     <div class="cuerpo">
-      <p>Una llave de API es una contraseña que le da a tu programa acceso al modelo. Con <strong>una</strong> basta; la de Gemini tiene nivel gratuito y es la que usaremos en la prueba.</p>
-      <div class="opciones">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una llave de API es una contraseña larga que le permite a <em>tu propio programa</em> usar la IA. Con la de Gemini basta: es gratis para empezar y es la que usamos en la prueba final.</p>
+      <ol class="pasitos" data-nivel="basico">
+        <li>Entra a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google. Si te pide aceptar términos, acéptalos.</li>
+        <li>Haz clic en <em>Create API key</em>. Aparece una clave larga que empieza por <span class="mono">AIza…</span>.</li>
+        <li>Cópiala con el botón de copiar y guárdala en un lugar seguro: una nota privada o tu gestor de contraseñas. En el paso siguiente la usamos.</li>
+      </ol>
+      <p data-nivel="inter">Una llave de API es una contraseña que le da a tu programa acceso al modelo. Con <strong>una</strong> basta; la de Gemini tiene nivel gratuito y es la que usaremos en la prueba.</p>
+      <div class="opciones" data-nivel="inter">
         <div class="opcion"><h3>Gemini <span class="etq rec">gratis para empezar</span></h3><p>En <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> → <em>Create API key</em>. Solo con tu cuenta de Google.</p></div>
         <div class="opcion"><h3>Anthropic (Claude) <span class="etq pago">con saldo</span></h3><p>En <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> → <em>API Keys</em>. Necesita una recarga pequeña (desde 5 USD).</p></div>
         <div class="opcion"><h3>OpenAI (GPT) <span class="etq pago">con saldo</span></h3><p>En <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>. También con una recarga pequeña.</p></div>
       </div>
       <p class="nota"><b>Cuida tu llave como una contraseña.</b> No la pegues en el chat de la clase, no la subas a GitHub y no la mandes por WhatsApp. Si se te escapa, bórrala en la misma página y crea otra: tarda un minuto. En las de pago, pon un límite de gasto mensual.</p>
-      <p>Guárdala por ahora en un lugar seguro (tu gestor de contraseñas, por ejemplo). En el siguiente paso la ponemos donde va.</p>
+      <p data-nivel="inter">Guárdala por ahora en un lugar seguro (tu gestor de contraseñas, por ejemplo). En el siguiente paso la ponemos donde va.</p>
       <label class="check"><input type="checkbox" data-hecho><span>Tengo al menos la llave de Gemini, guardada en un lugar seguro</span></label>
     </div>
+      <a class="siguiente" href="#prueba">Siguiente: la prueba final ↓</a>
   </section>
 
   <!-- 06 -->
   <section class="paso" id="prueba" data-paso>
     <div class="cab"><div class="num">06</div><div><h2>La prueba final</h2><p class="para">Una carpeta de trabajo y un programa de cinco líneas que le habla al modelo. Si esto funciona, estás listo.</p></div></div>
     <div class="cuerpo">
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> vas a crear una carpeta para el bootcamp y, dentro, un programa muy corto que le pide a la IA un saludo. Copia y pega cada bloque, uno a la vez, y espera a que termine antes del siguiente.</p>
       <ol class="pasitos">
         <li>Crea la carpeta del bootcamp y ábrela en VS Code:</li>
       </ol>
@@ -318,7 +471,8 @@ pip install google-genai python-dotenv openai anthropic</pre></div>
       <div class="cmd" data-so="mac linux"><div class="lbl">Terminal de VS Code</div><pre>python3 -m venv .venv
 source .venv/bin/activate
 pip install google-genai python-dotenv openai anthropic</pre></div>
-      <p class="para">Al activarlo, la línea de la terminal empieza con <span class="mono">(.venv)</span>. Así sabes que estás dentro.</p>
+      <p class="para">Al activarlo, la línea de la terminal empieza con <span class="mono">(.venv)</span>. Así sabes que estás dentro.<span data-nivel="basico"> El «entorno» es una caja aparte para las librerías de este proyecto, para no desordenar el resto del computador. La instalación tarda un minuto.</span></p>
+      <p class="nota ok" data-nivel="basico"><b>Para crear un archivo en VS Code:</b> en el panel de la izquierda pasa el mouse sobre el nombre de la carpeta (<em>BOOTCAMP-AGENTIC</em>) y haz clic en el ícono de la hoja con un <em>+</em>. Escribe el nombre exacto, presiona <span class="mono">Enter</span>, pega el contenido y guarda con <span class="mono" data-so="win linux">Ctrl + S</span><span class="mono" data-so="mac">⌘ + S</span>.</p>
       <ol class="pasitos" start="3">
         <li>Crea un archivo llamado <span class="mono">.env</span> (con el punto al principio) y pega tu llave así, sin comillas ni espacios:</li>
       </ol>
@@ -375,6 +529,7 @@ print(mensaje.content[0].text)</pre></div>
         <p style="margin:0;color:var(--soft)">Llega cinco minutos antes, con el computador conectado a la corriente y la carpeta <span class="mono">bootcamp-agentic</span> abierta en VS Code.</p>
       </div>
     </div>
+      <a class="siguiente" href="#problemas">¿Algo no funcionó? Ayuda ↓</a>
   </section>
 
   <!-- problemas -->
@@ -414,6 +569,32 @@ print(mensaje.content[0].text)</pre></div>
     });
     try { localStorage.setItem('agentic-so', s); } catch (_) {}
   }
+  // Nivel: básico (explicado desde cero) o intermedio (directo). Hasta elegirlo, las tarjetas se marcan.
+  var casillas = null;
+  var nivel = 'basico';
+  var tarjetas = document.querySelector('.nivel.llamando');
+  var nivelGuardado = null;
+  try { nivelGuardado = localStorage.getItem('agentic-nivel'); } catch (_) {}
+  if (nivelGuardado) { tarjetas.classList.remove('llamando'); }
+  elegirNivel(nivelGuardado || 'basico');
+
+  function elegirNivel(n) {
+    nivel = n === 'inter' ? 'inter' : 'basico';
+    document.body.classList.remove('nivel-basico', 'nivel-inter');
+    document.body.classList.add('nivel-' + nivel);
+    document.querySelectorAll('[data-nivel-elige]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.nivelElige === nivel ? 'true' : 'false');
+    });
+    if (casillas) { pintar(); }
+  }
+  document.querySelectorAll('[data-nivel-elige]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      elegirNivel(b.dataset.nivelElige);
+      tarjetas.classList.remove('llamando');
+      try { localStorage.setItem('agentic-nivel', nivel); } catch (_) {}
+    });
+  });
+
   // Hasta que la persona elige (aunque sea el que ya estaba), las opciones se marcan.
   var llamando = document.querySelector('.so.llamando');
   try { if (localStorage.getItem('agentic-so-elegido')) { llamando.classList.remove('llamando'); } } catch (_) {}
@@ -460,9 +641,20 @@ print(mensaje.content[0].text)</pre></div>
   });
 
   // Avance: cada casilla, y el paso se marca cuando todas las suyas lo están.
-  var casillas = Array.prototype.slice.call(document.querySelectorAll('[data-hecho]'));
+  casillas = Array.prototype.slice.call(document.querySelectorAll('[data-hecho]'));
+  // Solo cuentan las del nivel que se está viendo.
+  function delNivel(c) { var z = c.closest('[data-nivel]'); return !z || z.dataset.nivel === nivel; }
   var marcadas = {};
   try { marcadas = JSON.parse(localStorage.getItem('agentic-hecho') || '{}'); } catch (_) {}
+  try {
+    if (!localStorage.getItem('agentic-hecho-v2')) {
+      var corridas = {};
+      Object.keys(marcadas).forEach(function (k) { corridas[+k + 1] = marcadas[k]; });
+      marcadas = corridas;
+      localStorage.setItem('agentic-hecho', JSON.stringify(marcadas));
+      localStorage.setItem('agentic-hecho-v2', '1');
+    }
+  } catch (_) {}
   casillas.forEach(function (c, i) {
     c.checked = !!marcadas[i];
     c.addEventListener('change', function () {
@@ -472,16 +664,17 @@ print(mensaje.content[0].text)</pre></div>
     });
   });
   function pintar() {
-    var n = casillas.filter(function (c) { return c.checked; }).length;
-    document.getElementById('cuenta').textContent = n + ' de ' + casillas.length;
-    document.getElementById('lleno').style.width = (100 * n / casillas.length) + '%';
+    var visibles = casillas.filter(delNivel);
+    var n = visibles.filter(function (c) { return c.checked; }).length;
+    document.getElementById('cuenta').textContent = n + ' de ' + visibles.length;
+    document.getElementById('lleno').style.width = (100 * n / visibles.length) + '%';
     casillas.forEach(function (c) { c.closest('.check').classList.toggle('ok', c.checked); });
     document.querySelectorAll('[data-paso]').forEach(function (p) {
       var suyas = p.querySelectorAll('[data-hecho]');
       var todas = suyas.length > 0 && Array.prototype.every.call(suyas, function (c) { return c.checked; });
       p.classList.toggle('hecho', todas);
     });
-    document.getElementById('listo').hidden = n !== casillas.length;
+    document.getElementById('listo').hidden = n !== visibles.length;
   }
   pintar();
 })();
