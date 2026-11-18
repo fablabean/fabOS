@@ -177,7 +177,22 @@ class ActivoIaTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_analiza_la_foto_propone_y_no_guarda_hasta_confirmar(): void
+    public function test_una_foto_nunca_va_a_claude(): void
+    {
+        // Con el servidor del FabLab apagado, la foto no busca otro camino.
+        Http::fake();
+
+        Livewire::test(ActivoIa::class)
+            ->set('foto', UploadedFile::fake()->image('impresora.jpg', 2400, 1800))
+            ->set('texto', 'Analiza esta foto y prepara el registro.')
+            ->call('enviar')
+            ->assertSee('servidor de IA del FabLab');
+
+        Http::assertNothingSent();
+        $this->assertSame(0, ConsultaDeInventarioIa::count());
+    }
+
+    public function test_un_pedido_escrito_propone_y_no_guarda_hasta_confirmar(): void
     {
         $this->laApiContesta(
             $this->usa(['buscar_activos', ['texto' => 'Creality K1', 'area_id' => null, 'estado' => null, 'tipo' => null, 'limite' => null]]),
@@ -186,8 +201,7 @@ class ActivoIaTest extends TestCase
         );
 
         $pagina = Livewire::test(ActivoIa::class)
-            ->set('foto', UploadedFile::fake()->image('impresora.jpg', 2400, 1800))
-            ->set('texto', 'Analiza esta foto y prepara el registro. No lo guardes todavía.')
+            ->set('texto', 'Registra la impresora Creality K1 que llegó. No la guardes todavía.')
             ->call('enviar')
             ->assertSee('Dejé propuesto el registro')
             ->assertSee('Propuesta: registrar un activo')
@@ -199,17 +213,13 @@ class ActivoIaTest extends TestCase
 
         $consulta = ConsultaDeInventarioIa::sole();
         $this->assertSame('respondida', $consulta->estado);
-        $this->assertNotNull($consulta->foto_path);
-        Storage::disk('local')->assertExists($consulta->foto_path);
 
-        // La foto viaja reducida, como imagen, delante del texto.
+        // A Claude solo le llega texto.
         Http::assertSent(function (Request $r) {
             $primero = $r['messages'][0]['content'];
 
-            return $r['model'] === 'claude-opus-5-5'
-                && $primero[0]['type'] === 'image'
-                && $primero[0]['source']['media_type'] === 'image/jpeg'
-                && $primero[1]['type'] === 'text'
+            return $r['model'] === config('fabos.asistente_inventario.modelo')
+                && collect($primero)->every(fn ($c) => $c['type'] === 'text')
                 && $r['fallbacks'] === 'default'
                 && ! isset($r['thinking'])
                 && collect($r['tools'])->every(fn ($t) => $t['strict'] === true);

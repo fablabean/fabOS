@@ -151,6 +151,22 @@ class ActivoIa extends Page
             return;
         }
 
+        // Una foto nunca va a Claude: si el servidor del FabLab no está, se
+        // dice y ya. Mandarla a Claude la sacaría del laboratorio y se cobra.
+        if ($foto) {
+            $this->mensajes[] = [
+                'rol' => 'ia',
+                'texto' => '',
+                'miniatura' => null,
+                'propuestas' => [],
+                'error' => 'Las fotos las reconoce el servidor de IA del FabLab, y ahora está apagado en la configuración (FABLAB_IA_ACTIVO / FABLAB_IA_URL). Escribe la pregunta sin foto o vuelve a intentarlo cuando esté encendido.',
+                'hora' => now()->format('H:i'),
+            ];
+            $this->reset('texto', 'foto', 'fotos');
+
+            return;
+        }
+
         // Sin Claude, las preguntas escritas no tienen quién las conteste.
         if (! $asistente->disponible() && $reconocedor->disponible()) {
             $this->mensajes[] = [
@@ -166,7 +182,7 @@ class ActivoIa extends Page
             return;
         }
 
-        $respuesta = $asistente->responder($this->conversacion, $texto, $foto, auth()->user());
+        $respuesta = $asistente->responder($this->conversacion, $texto, null, auth()->user());
 
         foreach ($respuesta['propuestas'] as $propuesta) {
             $this->propuestas[$propuesta['clave']] = $propuesta + [

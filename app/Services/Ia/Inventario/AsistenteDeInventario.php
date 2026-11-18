@@ -235,13 +235,9 @@ class AsistenteDeInventario
     {
         $contenido = [];
 
-        if ($foto) {
-            $contenido[] = [
-                'type' => 'image',
-                'source' => ['type' => 'base64', 'media_type' => $foto['media_type'], 'data' => $foto['data']],
-            ];
-        }
-
+        // Las fotos no se le mandan a Claude: las ve el servidor de IA del
+        // FabLab, dentro del laboratorio y sin costo por uso. A Claude solo le
+        // llega el texto.
         $contenido[] = [
             'type' => 'text',
             'text' => $texto !== '' ? $texto : 'Analiza esta foto: ¿qué es, es activo o insumo, y ya está en el inventario?',

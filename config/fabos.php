@@ -248,7 +248,8 @@ return [
      */
     'asistente_inventario' => [
         'activa' => (bool) env('IA_INVENTARIO_ACTIVA', true),
-        'modelo' => env('IA_INVENTARIO_MODELO', 'claude-opus-5-5'),
+        // El mismo modelo que el resto de la IA de texto, salvo que se pida otro.
+        'modelo' => env('IA_INVENTARIO_MODELO', env('IA_MODELO', 'claude-sonnet-5')),
         // low | medium | high: cuánto piensa antes de contestar.
         'esfuerzo' => env('IA_INVENTARIO_ESFUERZO', 'medium'),
         'max_tokens' => (int) env('IA_INVENTARIO_MAX_TOKENS', 16000),
