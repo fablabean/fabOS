@@ -283,5 +283,13 @@ class PantallasDeSalonesTest extends TestCase
             ->assertActionMounted('importar');
 
         $this->assertStringContainsString('salon;fecha;hora_inicio;duracion_min;actividad;responsable', ImportadorDeAgenda::plantillaCsv());
+
+        // Quien programa el firmware lee la guía en el panel, sin el repositorio.
+        $this->get(\App\Filament\Pages\ApiDePantallas::getUrl())
+            ->assertOk()
+            ->assertSee('/api/iot/pantalla/estado')
+            ->assertSee('/api/iot/pantalla/imagen')
+            ->assertSee('drawBitmap')
+            ->assertSee('Cómo probar sin la pantalla');
     }
 }

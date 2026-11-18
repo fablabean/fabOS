@@ -41,7 +41,9 @@ class PantallaResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Pantallas de salones';
 
-    protected static ?int $navigationSort = 41;
+    protected static ?string $navigationLabel = 'Pantallas de salones';
+
+    protected static ?int $navigationSort = 42;
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
