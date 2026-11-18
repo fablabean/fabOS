@@ -431,6 +431,27 @@ class NotificationTemplateSeeder extends Seeder
                 'variables'    => ['nombre_pila', 'proyecto', 'codigo', 'enlace', 'mensaje'],
             ],
             [
+                'key'          => 'pantalla.novedad',
+                'name'         => 'Novedad en un salón',
+                'description'  => 'A quien cuida un salón con pantalla e-paper, cuando alguien reporta una novedad desde el QR.',
+                'is_essential' => true,
+                'subject'      => 'Novedad en el salón {salon}',
+                'body'         => <<<'TXT'
+                    Hola,
+
+                    Alguien reportó una novedad en el salón {salon} ({ubicacion}):
+
+                    {descripcion}
+
+                    Actividad en ese momento: {actividad}
+                    Contacto: {contacto}
+                    Foto: {foto}
+
+                    Se ve y se marca como resuelta en el panel: {enlace}
+                    TXT,
+                'variables'    => ['salon', 'ubicacion', 'descripcion', 'actividad', 'contacto', 'foto', 'enlace'],
+            ],
+            [
                 'key'          => 'asesoria.confirmada',
                 'name'         => 'Asesoría confirmada',
                 'description'  => 'A quien pide una asesoría, cuando queda agendada.',

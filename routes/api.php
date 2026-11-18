@@ -32,3 +32,13 @@ Route::prefix('recorridos/visor')->name('api.visor.')->group(function () {
  */
 Route::get('/iot/dispositivo/estado', [\App\Http\Controllers\Api\DispositivoController::class, 'estado'])
     ->middleware('throttle:120,1')->name('api.iot.estado');
+
+/*
+ * La API de las pantallas e-paper de los salones (docs/PANTALLAS-API.md): la
+ * pantalla cuenta su batería, sabe si algo cambió y cuándo volver a despertar,
+ * y baja la imagen ya dibujada. Se identifica con la clave del panel.
+ */
+Route::prefix('iot/pantalla')->name('api.pantalla.')->middleware('throttle:30,1')->group(function () {
+    Route::get('/estado', [\App\Http\Controllers\Api\PantallaController::class, 'estado'])->name('estado');
+    Route::get('/imagen', [\App\Http\Controllers\Api\PantallaController::class, 'imagen'])->name('imagen');
+});

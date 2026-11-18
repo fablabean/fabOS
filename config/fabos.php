@@ -268,6 +268,14 @@ return [
      * https://ia.fablabean.com con FABLAB_IA_CLAVE. Si el contenedor no
      * resuelve el nombre .local, poner la IP del servidor (cambia: preguntarla).
      */
+    /*
+     * Pantallas e-paper de los salones (IoT). Las novedades que se reportan
+     * desde el QR van a los correos de cada pantalla; si una no tiene, a este.
+     */
+    'pantallas' => [
+        'correo_novedades' => env('PANTALLAS_CORREO_NOVEDADES'),
+    ],
+
     'servidor_fablab' => [
         'activo' => (bool) env('FABLAB_IA_ACTIVO', true),
         'url' => rtrim((string) env('FABLAB_IA_URL', 'http://spark-885a.local:11434'), '/'),

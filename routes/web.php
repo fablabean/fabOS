@@ -745,6 +745,20 @@ Route::get('/activo-ia/foto/{ruta}', function (string $ruta) {
     return Storage::disk('local')->response($ruta, null, ['Cache-Control' => 'private, max-age=86400']);
 })->where('ruta', '.*')->middleware(['auth', 'signed:relative'])->name('activo-ia.foto');
 
+// Los salones con pantalla e-paper: a esto lleva el QR de la pantalla. Marcar
+// llegada pide la cuenta (nadie marca por otro); una novedad la reporta
+// cualquiera, con captcha porque manda correo.
+Route::prefix('salon/{codigo}')->name('salon.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\SalonController::class, 'show'])->name('show');
+    Route::middleware('auth')->group(function () {
+        Route::get('/llegada', [\App\Http\Controllers\SalonController::class, 'llegada'])->name('llegada');
+        Route::post('/llegada', [\App\Http\Controllers\SalonController::class, 'marcarLlegada'])
+            ->middleware('throttle:60,60')->name('llegada.store');
+    });
+    Route::post('/novedad', [\App\Http\Controllers\SalonController::class, 'novedad'])
+        ->middleware(['throttle:40,60', 'captcha:descripcion'])->name('novedad');
+});
+
 // La ficha de una pregunta va al final: si fuera antes, /preguntas/nueva
 // se interpretaria como el slug de una pregunta llamada «nueva».
 Route::get('/preguntas/{question:slug}', [PreguntaController::class, 'show'])->name('preguntas.show');
