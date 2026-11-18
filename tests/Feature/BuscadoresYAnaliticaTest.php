@@ -283,7 +283,7 @@ class BuscadoresYAnaliticaTest extends TestCase
     {
         $this->taller();
         $this->aviso(['t' => 'v', 'p' => '/formacion', 'r' => 'https://perplexity.ai/']);
-        DB::table('analitica_rastreos')->insert(['dia' => now()->toDateString(), 'bot' => 'ClaudeBot', 'familia' => 'ia', 'ruta' => '/', 'estado' => 200, 'created_at' => now()]);
+        DB::table('analitica_rastreos')->insert(['dia' => now(config('fabos.lab.timezone'))->toDateString(), 'bot' => 'ClaudeBot', 'familia' => 'ia', 'ruta' => '/', 'estado' => 200, 'created_at' => now()]);
 
         $this->jefa();
 
