@@ -133,3 +133,29 @@ services:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
             XDEBUG_MODE: 'off'
+
+    # El trabajador de Activo IA: reconocer las fotos en el servidor de IA del
+    # FabLab puede tardar varios minutos, y por eso va en la cola y no en la
+    # página (Cloudflare corta a los 100 s). Es aparte del `worker` para que
+    # una repisa de cuatro minutos no detenga los correos ni los anuncios.
+    # Uno solo, a propósito: el PGX atiende una foto a la vez de todos modos.
+    # `--timeout` por debajo del retry_after (1800) de la conexión redis-ia.
+    worker-ia:
+        restart: unless-stopped
+        build:
+            context: './docker/aplicacion'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        command: ['php', 'artisan', 'queue:work', 'redis-ia', '--queue=activo-ia', '--tries=1', '--timeout=1700', '--max-time=3600', '--sleep=2']
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+            - redis
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: 'off'

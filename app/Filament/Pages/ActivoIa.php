@@ -77,6 +77,19 @@ class ActivoIa extends Page
 
     public const MAX_FOTOS = 6;
 
+    /**
+     * El reconocimiento que corre en la cola: su id, qué es y lo que hace
+     * falta para terminarlo cuando llegue. Mientras está, la página pregunta
+     * cada pocos segundos (revisarReconocimiento) y no se manda otra foto.
+     *
+     * @var array{id:string,tipo:string,desde:int,contexto:array<string,mixed>}|null
+     */
+    #[Locked]
+    public ?array $enCurso = null;
+
+    /** Más que esto sin respuesta es que el trabajador no está corriendo. */
+    public const ESPERA_MAXIMA = 1800;
+
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
         return 'Laboratorio';
@@ -94,6 +107,10 @@ class ActivoIa extends Page
 
     public function enviar(): void
     {
+        if ($this->enCurso) {
+            return;
+        }
+
         $this->validate([
             'texto' => ['nullable', 'string', 'max:4000'],
             'foto' => ['nullable', 'image', 'max:15360'],
@@ -141,12 +158,14 @@ class ActivoIa extends Page
         ];
 
         // Las fotos las reconoce el servidor del FabLab: no salen del laboratorio.
+        // Se encolan: con varios objetos tarda minutos, más de lo que el túnel
+        // deja esperar a una página.
         if ($foto && $reconocedor->disponible()) {
-            count($preparadas) > 1
-                ? $this->reconocerVarias($preparadas, $texto)
-                : $this->reconocer($foto, $texto);
-
             $this->reset('texto', 'foto', 'fotos');
+
+            count($preparadas) > 1
+                ? $this->lanzar('varias', ['fotos' => $preparadas], ['fotos' => $preparadas, 'texto' => $texto])
+                : $this->reconocer($foto, $texto);
 
             return;
         }
@@ -218,37 +237,32 @@ class ActivoIa extends Page
      *
      * @param  list<array{ruta:string,miniatura:string}>  $fotos
      */
-    private function reconocerVarias(array $fotos, string $texto): void
+    private function terminarVarias(array $fotos, string $texto, array $r): void
     {
-        $reconocedor = app(ReconocedorDeFotos::class);
         $indice = count($this->mensajes);
-        $porFoto = [];
         $consultas = [];
         $fallidas = [];
 
+        // El reconocimiento lo hizo la cola (ReconocerParaActivoIa); aquí se
+        // registra y se arma la conversación.
+        if (isset($r['error'])) {
+            $r = ['por_foto' => array_fill(0, count($fotos), []), 'errores' => array_fill(0, count($fotos), $r['error']['mensaje']), 'relacion' => ['tarjetas' => [], 'relaciones' => []]];
+        }
+
         foreach ($fotos as $n => $foto) {
-            try {
-                $tarjetas = $reconocedor->reconocer($foto);
-            } catch (\Throwable $e) {
-                report($e);
+            if (array_key_exists($n, $r['errores'])) {
                 $fallidas[] = $n + 1;
-                $porFoto[] = [];
                 ConsultaDeInventarioIa::create([
                     'user_id' => auth()->id(), 'conversacion' => $this->conversacion, 'instruccion' => $texto,
                     'foto_path' => $foto['ruta'], 'modelo' => 'servidor del FabLab', 'estado' => 'fallida',
-                    'error' => \Illuminate\Support\Str::limit($e->getMessage(), 2000),
+                    'error' => \Illuminate\Support\Str::limit((string) $r['errores'][$n], 2000),
                 ]);
 
                 continue;
             }
 
-            // Cada tarjeta sabe de qué foto viene.
+            $tarjetas = $r['por_foto'][$n] ?? [];
             $total = count($tarjetas);
-            $tarjetas = array_map(fn ($t, $i) => array_replace_recursive($t, ['objeto' => [
-                'foto' => $n + 1,
-                'indice' => $t['objeto']['indice'] ?? $i + 1,
-                'total' => $t['objeto']['total'] ?? $total,
-            ]]), $tarjetas, array_keys($tarjetas));
 
             $consultas[$n] = ConsultaDeInventarioIa::create([
                 'user_id' => auth()->id(),
@@ -262,22 +276,9 @@ class ActivoIa extends Page
                 'modelo' => 'servidor del FabLab',
                 'estado' => 'respondida',
             ])->id;
-
-            $porFoto[] = $tarjetas;
         }
 
-        // La huella de cada foto entera: apoya la decisión de si es la misma escena.
-        $enteras = [];
-        foreach ($fotos as $n => $foto) {
-            try {
-                $enteras[$n] = app(ServidorDeIaDelFablab::class)
-                    ->analizar(\Illuminate\Support\Facades\Storage::disk('local')->path($foto['ruta']), conPropuesta: false)['huella'];
-            } catch (\Throwable) {
-                // Sin ella se decide solo por los objetos en común.
-            }
-        }
-
-        $relacion = $reconocedor->relacionarFotos($porFoto, $enteras);
+        $relacion = $r['relacion'];
         $claves = [];
 
         foreach ($relacion['tarjetas'] as $n => $tarjetas) {
@@ -412,13 +413,64 @@ class ActivoIa extends Page
 
     private function reconocer(array $foto, string $texto): void
     {
-        $reconocedor = app(ReconocedorDeFotos::class);
+        $this->lanzar('una', ['foto' => $foto], ['foto' => $foto, 'texto' => $texto]);
+    }
+
+    /**
+     * Encola el reconocimiento y, si ya terminó (en las pruebas la cola es
+     * inmediata), lo recoge en el acto.
+     *
+     * @param  array<string,mixed>  $datos  lo que necesita la cola
+     * @param  array<string,mixed>  $contexto  lo que necesita la página para terminar
+     */
+    private function lanzar(string $tipo, array $datos, array $contexto): void
+    {
+        $id = (string) \Illuminate\Support\Str::uuid();
+        \App\Jobs\ReconocerParaActivoIa::marcarEnEspera($id);
+        $this->enCurso = ['id' => $id, 'tipo' => $tipo, 'desde' => now()->getTimestamp(), 'contexto' => $contexto];
+
+        \App\Jobs\ReconocerParaActivoIa::dispatch($id, $tipo, $datos);
+
+        $this->revisarReconocimiento();
+    }
+
+    /** La página pregunta cada pocos segundos (wire:poll) si la cola ya terminó. */
+    public function revisarReconocimiento(): void
+    {
+        if (! $this->enCurso) {
+            return;
+        }
+
+        $id = $this->enCurso['id'];
+        $r = \App\Jobs\ReconocerParaActivoIa::resultado($id);
+
+        if (($r['estado'] ?? null) !== 'listo') {
+            if ($r !== null && now()->getTimestamp() - $this->enCurso['desde'] < self::ESPERA_MAXIMA) {
+                return;
+            }
+
+            // Se perdió (la caché se vació) o nadie lo tomó en media hora.
+            $r = ['estado' => 'listo', 'error' => ['mensaje' => 'El reconocimiento no terminó: el trabajador de la cola de Activo IA no respondió.', 'conexion' => false]];
+        }
+
+        ['tipo' => $tipo, 'contexto' => $c] = $this->enCurso;
+        $this->enCurso = null;
+        \App\Jobs\ReconocerParaActivoIa::olvidar($id);
+
+        match ($tipo) {
+            'una' => $this->terminarDeReconocer($c['foto'], (string) $c['texto'], $r),
+            'varias' => $this->terminarVarias($c['fotos'], (string) $c['texto'], $r),
+            'otros' => $this->terminarBuscarOtro((int) $c['indice'], (int) $c['foto'], $r),
+        };
+    }
+
+    /** @param  array<string,mixed>  $r  lo que dejó la cola */
+    private function terminarDeReconocer(array $foto, string $texto, array $r): void
+    {
         $indice = count($this->mensajes);
 
-        try {
-            $tarjetas = $reconocedor->reconocer($foto);
-        } catch (\Throwable $e) {
-            report($e);
+        if (isset($r['error'])) {
+            $e = \App\Jobs\ReconocerParaActivoIa::excepcion($r['error']);
 
             ConsultaDeInventarioIa::create([
                 'user_id' => auth()->id(), 'conversacion' => $this->conversacion, 'instruccion' => $texto,
@@ -440,6 +492,8 @@ class ActivoIa extends Page
 
             return;
         }
+
+        $tarjetas = $r['tarjetas'];
 
         // Las partes de una máquina (su consola, su torre de luces, su mesa) no
         // cuentan como objetos aparte.
@@ -567,7 +621,7 @@ class ActivoIa extends Page
         $intento = $this->mensajes[$indice]['reintentar'] ?? null;
 
         // Solo fotos de esta carpeta: la ruta viene de la pantalla.
-        if (! $intento || ! str_starts_with((string) $intento['ruta'], 'activo-ia/') || str_contains((string) $intento['ruta'], '..')
+        if ($this->enCurso || ! $intento || ! str_starts_with((string) $intento['ruta'], 'activo-ia/') || str_contains((string) $intento['ruta'], '..')
             || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($intento['ruta'])) {
             return;
         }
@@ -755,7 +809,7 @@ class ActivoIa extends Page
         $mensaje = $this->mensajes[$indice] ?? null;
         $datos = $mensaje['fotos_filtro'][$foto] ?? null;
 
-        if (! $mensaje || ! ($mensaje['filtro'] ?? false) || ! $datos
+        if ($this->enCurso || ! $mensaje || ! ($mensaje['filtro'] ?? false) || ! $datos
             || ! str_starts_with((string) $datos['ruta'], 'activo-ia/') || str_contains((string) $datos['ruta'], '..')) {
             return;
         }
@@ -763,14 +817,26 @@ class ActivoIa extends Page
         $deLaFoto = collect($mensaje['propuestas'])->map(fn ($c) => $this->propuestas[$c] ?? null)->filter()
             ->filter(fn ($p) => ($p['clase'] ?? null) === 'reconocimiento' && (int) ($p['objeto']['foto'] ?? 1) === $foto);
 
-        try {
-            $nuevas = app(ReconocedorDeFotos::class)->buscarOtros(
-                ['ruta' => $datos['ruta']],
-                $deLaFoto->map(fn ($p) => ['nombre' => $p['propuesta']['nombre'] ?? null, 'caja' => $p['objeto']['caja'] ?? null, 'clave' => $p['clave']])->values()->all(),
-                $deLaFoto->max(fn ($p) => (int) ($p['objeto']['indice'] ?? 0)) ?? 0,
-            );
-        } catch (\Throwable $e) {
-            report($e);
+        $this->lanzar('otros', [
+            'foto' => ['ruta' => $datos['ruta']],
+            'revisados' => $deLaFoto->map(fn ($p) => ['nombre' => $p['propuesta']['nombre'] ?? null, 'caja' => $p['objeto']['caja'] ?? null, 'clave' => $p['clave']])->values()->all(),
+            'ya_hay' => $deLaFoto->max(fn ($p) => (int) ($p['objeto']['indice'] ?? 0)) ?? 0,
+        ], ['indice' => $indice, 'foto' => $foto]);
+    }
+
+    /** @param  array<string,mixed>  $r  lo que dejó la cola */
+    private function terminarBuscarOtro(int $indice, int $foto, array $r): void
+    {
+        $mensaje = $this->mensajes[$indice] ?? null;
+        $datos = $mensaje['fotos_filtro'][$foto] ?? null;
+
+        if (! $mensaje || ! $datos) {
+            return;
+        }
+
+        $nuevas = $r['nuevas'] ?? [];
+
+        if (isset($r['error'])) {
             Notification::make()->title('No pude volver a mirar la foto')->body('El servidor de IA del FabLab no respondió. Prueba otra vez en un momento.')->danger()->send();
 
             return;

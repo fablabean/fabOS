@@ -485,6 +485,82 @@ class ActivoIaTest extends TestCase
         Storage::disk('local')->assertExists($foto->ruta);
     }
 
+    /**
+     * Una repisa puede tardar minutos en el PGX y Cloudflare corta a los 100 s:
+     * la página encola, responde al instante y recoge el resultado después.
+     */
+    public function test_la_foto_se_reconoce_en_la_cola_y_la_pagina_no_se_queda_esperando(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->servidorDelFablab($this->huella(0));
+
+        $pagina = Livewire::test(ActivoIa::class)
+            ->set('foto', UploadedFile::fake()->image('k1.jpg', 1600, 1200))
+            ->call('enviar')
+            ->assertSee('Mirando las fotos y el inventario')
+            ->assertSee('wire:poll.3s="revisarReconocimiento"', false)
+            ->assertDontSee('CREALITY K1 SN-123');
+
+        // La página no llamó al servidor: eso lo hace la cola, en la suya.
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), '/vision/analizar'));
+        $this->assertSame(0, ConsultaDeInventarioIa::count());
+
+        $trabajo = null;
+        \Illuminate\Support\Facades\Queue::assertPushedOn(\App\Jobs\ReconocerParaActivoIa::COLA, \App\Jobs\ReconocerParaActivoIa::class,
+            function ($t) use (&$trabajo) {
+                $trabajo = $t;
+
+                return true;
+            });
+
+        // Mientras tanto no se manda otra foto encima.
+        $pagina->set('foto', UploadedFile::fake()->image('otra.jpg', 800, 600))->call('enviar');
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\ReconocerParaActivoIa::class, 1);
+
+        // Preguntar antes de que termine no hace nada.
+        $pagina->call('revisarReconocimiento')->assertSee('Mirando las fotos y el inventario');
+
+        // La cola termina; la siguiente pregunta de la página lo recoge.
+        $trabajo->handle(app(\App\Services\Ia\Inventario\ReconocedorDeFotos::class));
+
+        $pagina->call('revisarReconocimiento')
+            ->assertSee('Reconocimiento por foto')
+            ->assertSee('CREALITY K1 SN-123')
+            ->assertDontSee('wire:poll.3s="revisarReconocimiento"', false);
+
+        $this->assertNull($pagina->get('enCurso'));
+        $this->assertSame('respondida', ConsultaDeInventarioIa::sole()->estado);
+        $this->assertSame($this->jefa->id, ConsultaDeInventarioIa::sole()->user_id);
+    }
+
+    public function test_si_la_cola_no_responde_la_pagina_lo_dice_y_deja_reintentar(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->servidorDelFablab($this->huella(0));
+
+        $pagina = Livewire::test(ActivoIa::class)
+            ->set('foto', UploadedFile::fake()->image('k1.jpg', 1600, 1200))
+            ->call('enviar');
+
+        $this->travel(ActivoIa::ESPERA_MAXIMA + 60)->seconds();
+
+        $pagina->call('revisarReconocimiento')
+            ->assertSee('Reintentar')
+            ->assertDontSee('wire:poll.3s="revisarReconocimiento"', false);
+
+        $this->assertSame('fallida', ConsultaDeInventarioIa::sole()->estado);
+    }
+
+    public function test_en_produccion_va_por_su_propia_cola_para_no_frenar_los_correos(): void
+    {
+        config(['queue.default' => 'redis']);
+        $this->assertSame('redis-ia', \App\Jobs\ReconocerParaActivoIa::conexion());
+        $this->assertGreaterThan((new \App\Jobs\ReconocerParaActivoIa('x', 'una', []))->timeout, config('queue.connections.redis-ia.retry_after'));
+
+        config(['queue.default' => 'sync']);
+        $this->assertSame('sync', \App\Jobs\ReconocerParaActivoIa::conexion());
+    }
+
     public function test_una_foto_conocida_se_reconoce_y_se_guarda_como_otro_angulo(): void
     {
         $k1 = Asset::create(['name' => 'Impresora Creality K1', 'kind' => 'fijo',

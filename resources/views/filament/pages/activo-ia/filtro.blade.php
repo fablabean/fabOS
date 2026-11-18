@@ -63,10 +63,10 @@
 
         <div style="margin-top:.4rem">
             <x-filament::button size="xs" color="gray" icon="heroicon-m-magnifying-glass" wire:click="buscarOtro({{ $i }}, {{ $numeroDeFoto }})"
-                                wire:loading.attr="disabled" wire:target="buscarOtro">
+                                wire:loading.attr="disabled" wire:target="buscarOtro" :disabled="(bool) $this->enCurso">
                 Busca otro en la foto{{ $variasFotos ? ' ' . $numeroDeFoto : '' }}
             </x-filament::button>
-            <span wire:loading wire:target="buscarOtro" class="gris" style="font-size:.76rem">Mirando la foto otra vez… puede tardar un minuto.</span>
+            <span wire:loading wire:target="buscarOtro" class="gris" style="font-size:.76rem">Enviando…</span>
         </div>
     @endforeach
 

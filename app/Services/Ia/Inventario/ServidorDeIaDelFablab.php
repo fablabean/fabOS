@@ -212,6 +212,9 @@ class ServidorDeIaDelFablab
         $r = $this->cliente((int) config('fabos.servidor_fablab.timeout_vision', 240))->post('/api/chat', [
             'model' => config('fabos.servidor_fablab.modelo_vision', 'qwen3.5:9b'),
             'stream' => false,
+            // Que el modelo siga cargado entre una foto y otra: sin esto el
+            // PGX lo descarga a los 5 minutos y la siguiente foto lo espera.
+            'keep_alive' => config('fabos.servidor_fablab.mantener_cargado', '30m'),
             'think' => false,
             'format' => $esquema,
             // Con tope: si se enreda, falla rápido y se cae al reconocimiento de uno.
@@ -278,6 +281,9 @@ class ServidorDeIaDelFablab
         $r = $this->cliente((int) config('fabos.servidor_fablab.timeout_vision', 240))->post('/api/chat', [
             'model' => config('fabos.servidor_fablab.modelo_vision', 'qwen3.5:9b'),
             'stream' => false,
+            // Que el modelo siga cargado entre una foto y otra: sin esto el
+            // PGX lo descarga a los 5 minutos y la siguiente foto lo espera.
+            'keep_alive' => config('fabos.servidor_fablab.mantener_cargado', '30m'),
             'think' => false,
             'format' => [
                 'type' => 'object',

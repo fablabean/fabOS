@@ -288,13 +288,25 @@
                         </div>
                     @endforelse
 
-                    <div class="msg ia" wire:loading.flex wire:target="enviar,reintentar">
-                        <span class="avatar">{!! $chispa !!}</span>
-                        <div class="burbuja cargando">
-                            <span class="puntos"><i></i><i></i><i></i></span>
-                            Mirando las fotos y el inventario… con varios objetos o varias fotos puede tardar unos minutos.
+                    @if ($enCurso)
+                        {{-- El reconocimiento corre en la cola: se pregunta cada 3 s si ya está. --}}
+                        <div class="msg ia" wire:poll.3s="revisarReconocimiento" style="display:flex">
+                            <span class="avatar">{!! $chispa !!}</span>
+                            <div class="burbuja cargando">
+                                <span class="puntos"><i></i><i></i><i></i></span>
+                                {{ $enCurso['tipo'] === 'otros' ? 'Mirando la foto otra vez…' : 'Mirando las fotos y el inventario…' }}
+                                con varios objetos o varias fotos puede tardar unos minutos. Puedes seguir revisando lo de arriba mientras tanto; no cierres esta página.
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="msg ia" wire:loading.flex wire:target="enviar,reintentar">
+                            <span class="avatar">{!! $chispa !!}</span>
+                            <div class="burbuja cargando">
+                                <span class="puntos"><i></i><i></i><i></i></span>
+                                Enviando la foto…
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <form class="composer" wire:submit="enviar"
@@ -376,7 +388,7 @@
                             </div>
 
                             <x-filament::button type="submit" size="sm" icon="heroicon-m-paper-airplane" icon-position="after"
-                                                wire:loading.attr="disabled" wire:target="enviar,foto,fotos" :disabled="! $estado['disponible']">
+                                                wire:loading.attr="disabled" wire:target="enviar,foto,fotos" :disabled="! $estado['disponible'] || $enCurso">
                                 Enviar
                             </x-filament::button>
                         </div>

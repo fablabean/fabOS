@@ -76,6 +76,20 @@ return [
             'after_commit' => false,
         ],
 
+        // Activo IA: reconocer las fotos de una repisa en el servidor del
+        // FabLab puede tomar varios minutos (ReconocerParaActivoIa). Va por
+        // aquí, con su propio trabajador (worker-ia), para no detener los
+        // correos ni los anuncios, y con un retry_after mayor que el tiempo
+        // del trabajo: si no, la cola lo daría por perdido y lo repetiría.
+        'redis-ia' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'activo-ia',
+            'retry_after' => 1800,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],
