@@ -2348,4 +2348,35 @@ class ActivoIaTest extends TestCase
             ->assertOk()
             ->assertSee(ActivoIa::getUrl());
     }
+
+    public function test_las_fotos_de_reconocimiento_se_ven_en_la_ficha_y_pueden_ir_a_la_vitrina(): void
+    {
+        Storage::fake('public');
+
+        $robot = Asset::create(['name' => 'Robot Unitree G1', 'kind' => 'fijo', 'area_id' => $this->area->id, 'status' => 'operativo']);
+        Storage::disk('local')->put('activo-ia/2026-11/recorte.jpg', 'jpeg-grande');
+        Storage::disk('local')->put('activo-ia/2026-11/recorte.mini.jpg', 'jpeg-mini');
+        $foto = \App\Models\FotoDeInventario::create([
+            'registro_type' => Asset::class, 'registro_id' => $robot->id,
+            'ruta' => 'activo-ia/2026-11/recorte.jpg', 'huella' => [0.1, 0.2], 'user_id' => $this->jefa->id,
+        ]);
+
+        // En la ficha se ve la miniatura, por su enlace firmado.
+        $tabla = Livewire::test(\App\Filament\RelationManagers\FotosDeReconocimientoRelationManager::class, [
+            'ownerRecord' => $robot, 'pageClass' => \App\Filament\Resources\Assets\Pages\EditAsset::class,
+        ])
+            ->assertCanSeeTableRecords([$foto])
+            ->assertSee('/activo-ia/foto/activo-ia/2026-11/recorte.mini.jpg', false);
+
+        // Pasarla a la vitrina copia el recorte al disco público.
+        $tabla->callTableAction('vitrina', $foto);
+
+        $robot->refresh();
+        $this->assertStringStartsWith('activos/', $robot->photo_path);
+        $this->assertSame('jpeg-grande', Storage::disk('public')->get($robot->photo_path));
+
+        // Quitarla deja de usarla para reconocer.
+        $tabla->callTableAction('quitar', $foto);
+        $this->assertSame(0, \App\Models\FotoDeInventario::count());
+    }
 }

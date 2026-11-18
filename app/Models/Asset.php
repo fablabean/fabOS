@@ -158,6 +158,12 @@ class Asset extends Model
             ->withTimestamps();
     }
 
+    /** Las fotos confirmadas en Activo IA: con ellas se reconoce la próxima vez. */
+    public function fotosDeInventario(): MorphMany
+    {
+        return $this->morphMany(FotoDeInventario::class, 'registro')->latest('id');
+    }
+
     public function reservations(): MorphMany
     {
         return $this->morphMany(Reservation::class, 'reservable');

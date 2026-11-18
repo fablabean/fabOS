@@ -82,6 +82,7 @@ class AssetResource extends Resource
     {
         return [
             AdvisorsRelationManager::class,
+            \App\Filament\RelationManagers\FotosDeReconocimientoRelationManager::class,
         ];
     }
 

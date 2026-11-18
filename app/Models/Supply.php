@@ -270,4 +270,10 @@ class Supply extends Model
         return $this->morphMany(ReferenciaDePrecio::class, 'priceable')
             ->orderByDesc('consultado_el');
     }
+
+    /** Las fotos confirmadas en Activo IA: con ellas se reconoce la próxima vez. */
+    public function fotosDeInventario(): MorphMany
+    {
+        return $this->morphMany(FotoDeInventario::class, 'registro')->latest('id');
+    }
 }
