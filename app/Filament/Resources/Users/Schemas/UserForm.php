@@ -51,14 +51,21 @@ class UserForm
                  * llena al generar su reporte; aquí se corrige. El contrato
                  * flexible lo decide la coordinación, no la persona.
                  */
-                Section::make('Nómina y horas extras')
+                Section::make('Modalidad de trabajo y nómina')
                     ->columns(2)
                     ->collapsible()
-                    ->collapsed(fn (?\App\Models\User $record) => ! $record?->contrato_flexible && blank($record?->tipo_contrato))
+                    ->collapsed(fn (?\App\Models\User $record) => ($record?->modalidad_trabajo ?? 'normal') === 'normal' && blank($record?->tipo_contrato))
                     ->schema([
-                        Toggle::make('contrato_flexible')
-                            ->label('Contrato flexible')
-                            ->helperText('No hace horas extras: lo que trabaje fuera de su jornada (un sábado) se le compensa con tiempo dentro de la semana siguiente, y solo se le reconoce el recargo nocturno. Sus jornadas no van al reporte de horas extras.')
+                        \Filament\Forms\Components\Radio::make('modalidad_trabajo')
+                            ->label('Modalidad de trabajo')
+                            ->options(\App\Models\User::MODALIDADES_DE_TRABAJO)
+                            ->descriptions([
+                                'normal' => 'Su horario es el de siempre, en el laboratorio. No cambia su semana por su cuenta.',
+                                'hibrida' => 'En «Mi semana» reparte las horas de cada día entre presencial y remoto, sin mover el horario.',
+                                'flexible' => 'Además mueve el horario de un día (de 14:00 a 22:00). Para la nómina: no hace horas extras; lo que trabaje fuera de su jornada se le compensa con tiempo la semana siguiente y solo se le reconoce el recargo nocturno.',
+                            ])
+                            ->default('normal')
+                            ->required()
                             ->columnSpanFull(),
                         Select::make('tipo_contrato')
                             ->label('Tipo de contrato')

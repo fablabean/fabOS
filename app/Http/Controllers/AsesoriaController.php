@@ -115,6 +115,8 @@ class AsesoriaController extends Controller
                 $ambito,
                 $request->user(),
                 (int) config('fabos.asesorias.dias_vista', 7),
+                // Si quien asesora está en remoto, la hora se ofrece como virtual (§5).
+                permitirVirtual: true,
             )->filter(fn (array $f) => \App\Support\HorarioDeAutoservicio::permite('asesorias', $f['inicio'], $f['fin']))
                 ->groupBy(fn (array $f) => $f['inicio']->toDateString()),
             'minutos' => (int) config('fabos.asesorias.minutos', 45),
@@ -163,6 +165,7 @@ class AsesoriaController extends Controller
 
             $reserva = $this->asesorias->agendar(
                 $request->user(), $ambito, $inicio, $fin, $datos['motivo'] ?? null,
+                permitirVirtual: true,
             );
         } catch (BookingException $e) {
             // Sin saldo para la asesoría: se dice con el importe, al lado de la hora.
@@ -194,17 +197,20 @@ class AsesoriaController extends Controller
 
         $avisos->enviar('asesoria.confirmada', $request->user(), $datos + [
             'asesor' => $reserva->reservable->name,
+            'donde'  => AsesoriaService::donde($reserva),
         ], $reserva);
 
         $avisos->enviar('asesoria.asignada', $reserva->reservable, $datos + [
             'solicitante' => $request->user()->name,
             'motivo'      => $reserva->purpose ?: 'No lo dijo.',
+            'donde'       => AsesoriaService::donde($reserva, paraQuienAtiende: true),
         ], $reserva);
 
         return redirect()->route('home')->with(
             'status',
             'Asesoría confirmada para el ' . $inicio->format('d/m/Y') . ' a las '
-            . $inicio->format('H:i') . ' con ' . $reserva->reservable->name . '.'
+            . $inicio->format('H:i') . ' con ' . $reserva->reservable->name . '. '
+            . AsesoriaService::donde($reserva)
         );
     }
 }

@@ -444,6 +444,7 @@ class NotificationTemplateSeeder extends Seeder
                     Equipo: {equipo}
                     Cuándo: {fecha}, de {inicio} a {fin}
                     Te atiende: {asesor}
+                    Dónde: {donde}
 
                     No hace falta que tengas el certifab: para eso es la asesoría.
 
@@ -469,6 +470,7 @@ class NotificationTemplateSeeder extends Seeder
                     Cuándo: {fecha}, de {inicio} a {fin}
                     La pidió: {solicitante}
                     Lo que quiere hacer: {motivo}
+                    Dónde: {donde}
 
                     Queda reservado en tu agenda, así que a esa hora no se te
                     asignará nada más.

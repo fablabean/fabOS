@@ -27,6 +27,32 @@ use Illuminate\Support\Facades\DB;
  */
 class AsesoriaService
 {
+    /** Cómo se atiende una asesoría (§5): quien la pide tiene que saberlo. */
+    public const PRESENCIAL = 'presencial';
+    public const VIRTUAL = 'virtual';
+
+    /**
+     * «Dónde» de una asesoría, en palabras: para la confirmación y los avisos.
+     */
+    public static function donde(\App\Models\Reservation $asesoria, bool $paraQuienAtiende = false): string
+    {
+        if ($asesoria->modalidad_asesoria !== self::VIRTUAL) {
+            return 'Presencial, en el laboratorio.';
+        }
+
+        $enlace = $asesoria->reservable instanceof User ? $asesoria->reservable->enlace_reunion : null;
+
+        if ($paraQuienAtiende) {
+            return $enlace
+                ? 'Virtual, por tu enlace de reunión: ' . $enlace
+                : 'Virtual. No tienes enlace de reunión guardado en «Mi semana»: envíale uno a quien la pidió.';
+        }
+
+        return $enlace
+            ? 'Virtual. Entra por este enlace a la hora: ' . $enlace
+            : 'Virtual. Quien te atiende te enviará el enlace de la reunión por correo.';
+    }
+
     public function __construct(
         private CoverageService $cobertura,
         private BookingService $reservas,
@@ -72,6 +98,7 @@ class AsesoriaService
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?User $solicitante = null,
+        bool $virtual = false,
     ): Collection {
         $declarados = $this->asesoresDe($ambito);
 
@@ -79,7 +106,8 @@ class AsesoriaService
             return collect();
         }
 
-        $enJornada = $this->cobertura->enJornada($desde, $hasta)->pluck('id');
+        // Virtual (§5): también quien ese rato trabaja desde casa.
+        $enJornada = $this->cobertura->enJornada($desde, $hasta, incluirRemota: $virtual)->pluck('id');
 
         return $declarados
             ->whereIn('id', $enJornada)
@@ -119,8 +147,9 @@ class AsesoriaService
         CarbonInterface $desde,
         CarbonInterface $hasta,
         ?User $solicitante = null,
+        bool $virtual = false,
     ): ?User {
-        $candidatos = $this->disponiblesPara($ambito, $desde, $hasta, $solicitante);
+        $candidatos = $this->disponiblesPara($ambito, $desde, $hasta, $solicitante, $virtual);
 
         if ($candidatos->isEmpty()) {
             return null;
@@ -175,10 +204,11 @@ class AsesoriaService
         CarbonInterface $hasta,
         ?string $motivo = null,
         ?User $asesor = null,
+        bool $permitirVirtual = false,
     ): ?Reservation {
         \App\Support\BloqueoDeReservas::exigirAbierto($desde, $hasta);
 
-        return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo, $asesor) {
+        return DB::transaction(function () use ($solicitante, $ambito, $desde, $hasta, $motivo, $asesor, $permitirVirtual) {
             // Quien pide tambien tiene que estar libre. Se comprobaba solo al
             // asesor, asi que una misma persona podia agendarse dos asesorias a
             // la misma hora —con dos asesores distintos— y dejar plantado a uno.
@@ -195,15 +225,27 @@ class AsesoriaService
              * declaradas para el equipo. Lo unico que se le exige es lo mismo
              * que a cualquiera: estar en jornada presencial y con la hora libre.
              */
-            if ($asesor) {
-                $puede = $this->cobertura->enJornada($desde, $hasta)->contains('id', $asesor->id)
-                    && $this->reservas->personaLibre($asesor, $desde, $hasta);
+            // Presencial si se puede; si no, y se admite, virtual (§5). Quien la
+            // pide lo ve al elegir la hora y en la confirmación.
+            $modalidad = self::PRESENCIAL;
 
-                if (! $puede) {
+            if ($asesor) {
+                $presencial = $this->cobertura->enJornada($desde, $hasta)->contains('id', $asesor->id);
+                $remoto = ! $presencial && $permitirVirtual
+                    && $this->cobertura->enJornada($desde, $hasta, incluirRemota: true)->contains('id', $asesor->id);
+
+                if (! ($presencial || $remoto) || ! $this->reservas->personaLibre($asesor, $desde, $hasta)) {
                     return null;
                 }
+
+                $modalidad = $presencial ? self::PRESENCIAL : self::VIRTUAL;
             } else {
                 $asesor = $this->elegir($ambito, $desde, $hasta, $solicitante);
+
+                if (! $asesor && $permitirVirtual) {
+                    $asesor = $this->elegir($ambito, $desde, $hasta, $solicitante, virtual: true);
+                    $modalidad = self::VIRTUAL;
+                }
             }
 
             if (! $asesor) {
@@ -219,6 +261,7 @@ class AsesoriaService
                 'advisory_asset_id' => $ambito instanceof Asset ? $ambito->id : null,
                 'advisory_area_id'  => $ambito instanceof Area ? $ambito->id : null,
                 'mode'              => 'asesoria',
+                'modalidad_asesoria' => $modalidad,
                 'status'            => 'confirmada',
                 'starts_at'         => $desde,
                 'ends_at'           => $hasta,
@@ -323,6 +366,7 @@ class AsesoriaService
         ?User $solicitante = null,
         int $dias = 7,
         ?int $minutos = null,
+        bool $permitirVirtual = false,
     ): Collection {
         if ($this->asesoresDe($ambito)->isEmpty()) {
             return collect();
@@ -336,9 +380,9 @@ class AsesoriaService
 
         for ($i = 0; $i < $dias; $i++) {
             $dia = $ahora->copy()->addDays($i)->startOfDay();
-            $atendido = $this->cobertura->franjaAtendida($dia);
+            $atendido = $this->cobertura->franjaAtendida($dia, incluirRemota: $permitirVirtual);
 
-            // Dia sin cobertura presencial: ni se mira.
+            // Dia sin nadie en jornada: ni se mira.
             if (! $atendido) {
                 continue;
             }
@@ -354,12 +398,21 @@ class AsesoriaService
                 // Una hora que ya paso no es una opcion.
                 if ($inicio->greaterThan($ahora)) {
                     $cuantos = $this->disponiblesPara($ambito, $inicio, $hasta, $solicitante)->count();
+                    $modalidad = self::PRESENCIAL;
+
+                    // Nadie en el laboratorio, pero sí alguien desde casa: se
+                    // ofrece, dicho como virtual.
+                    if ($cuantos === 0 && $permitirVirtual) {
+                        $cuantos = $this->disponiblesPara($ambito, $inicio, $hasta, $solicitante, virtual: true)->count();
+                        $modalidad = self::VIRTUAL;
+                    }
 
                     if ($cuantos > 0) {
                         $franjas->push([
-                            'inicio'  => $inicio->copy(),
-                            'fin'     => $hasta->copy(),
-                            'cuantos' => $cuantos,
+                            'inicio'    => $inicio->copy(),
+                            'fin'       => $hasta->copy(),
+                            'cuantos'   => $cuantos,
+                            'modalidad' => $modalidad,
                         ]);
                     }
                 }

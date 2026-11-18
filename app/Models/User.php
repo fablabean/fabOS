@@ -21,6 +21,7 @@ use Spatie\Permission\Traits\HasRoles;
     'identity_verified_via', 'category_confirmed', 'locale', 'email_verified_at',
     'carnet_subject', 'carnet_linked_at', 'recibe_proyectos',
     'tipo_contrato', 'contrato_flexible', 'area_de_nomina', 'jefe_inmediato',
+    'modalidad_trabajo', 'enlace_reunion',
 ])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements FilamentUser, \Filament\Models\Contracts\HasAvatar
@@ -321,6 +322,34 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
         return (bool) $this->contrato_flexible;
     }
 
+    public const TRABAJO_NORMAL = 'normal';
+    public const TRABAJO_HIBRIDO = 'hibrida';
+    public const TRABAJO_FLEXIBLE = 'flexible';
+
+    /**
+     * Modalidad de trabajo (§5): qué puede cambiar la persona de su semana.
+     *
+     * Normal: su horario es el de siempre, en el laboratorio. Híbrida: reparte
+     * las horas de cada día entre presencial y remoto. Flexible: además mueve
+     * el horario de un día (de 14:00 a 22:00 en vez de 8:00 a 17:30).
+     */
+    public const MODALIDADES_DE_TRABAJO = [
+        self::TRABAJO_NORMAL => 'Normal',
+        self::TRABAJO_HIBRIDO => 'Híbrida',
+        self::TRABAJO_FLEXIBLE => 'Flexible',
+    ];
+
+    public function modalidadDeTrabajo(): string
+    {
+        return isset(self::MODALIDADES_DE_TRABAJO[$this->modalidad_trabajo]) ? $this->modalidad_trabajo : self::TRABAJO_NORMAL;
+    }
+
+    /** Los cambios de horario por fecha (§5). */
+    public function jornadasDelDia(): HasMany
+    {
+        return $this->hasMany(JornadaDelDia::class);
+    }
+
     public function workSchedules(): HasMany
     {
         return $this->hasMany(WorkSchedule::class);
@@ -413,6 +442,12 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
     {
         // El nick va siempre pegado al correo: cambia el correo, cambia el nick.
         static::saving(function (self $user) {
+            // La modalidad flexible es la misma que el contrato flexible de la
+            // nómina: se cambia aquí y vale en los dos.
+            if ($user->isDirty('modalidad_trabajo')) {
+                $user->contrato_flexible = $user->modalidad_trabajo === self::TRABAJO_FLEXIBLE;
+            }
+
             if ($user->isDirty('email') || ($user->nick === null && $user->email)) {
                 $user->nick = self::nickDe($user->email);
             }

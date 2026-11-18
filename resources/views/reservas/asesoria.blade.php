@@ -51,6 +51,7 @@
                 <h2 style="margin-top:0">Elige una hora</h2>
                 <p class="help">
                     Solo aparecen horas en las que alguien puede atenderte de verdad.
+                    Las marcadas <strong>Virtual</strong> son por videollamada: quien te atiende ese rato trabaja desde casa.
                 </p>
                 @include('reservas._horario', ['tipo' => 'asesorias'])
 
@@ -69,6 +70,9 @@
                                        style="position:absolute;opacity:0">
                                 <span class="chip">
                                     {{ $f['inicio']->format('H:i') }}
+                                    @if (($f['modalidad'] ?? 'presencial') === 'virtual')
+                                        <small class="virtual" title="Quien te atiende ese rato trabaja desde casa: la asesoría es por videollamada.">· Virtual</small>
+                                    @endif
                                     @if ($f['cuantos'] > 1)
                                         <small style="opacity:.6">· {{ $f['cuantos'] }} disponibles</small>
                                     @endif
@@ -95,6 +99,7 @@
     @endif
 
     <style>
+        .chip .virtual { color:#1d4ed8; font-weight:600; }
         .chip { display:inline-block; padding:.45rem .8rem; border-radius:.5rem;
                 border:1px solid rgba(128,128,128,.4); font-variant-numeric:tabular-nums; }
         label:has(input:checked) .chip { border-color:#0f766e; background:rgba(15,118,110,.12);

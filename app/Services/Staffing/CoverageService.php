@@ -4,6 +4,7 @@ namespace App\Services\Staffing;
 
 use App\Models\Asset;
 use App\Models\Certifab;
+use App\Models\JornadaDelDia;
 use App\Models\ScheduleException;
 use App\Models\ShiftAssignment;
 use App\Models\User;
@@ -223,13 +224,19 @@ class CoverageService
         }
 
         $ausentes = $this->ausentesEn($fecha);
+        $ajustes = $this->ajustesDelDia($fecha);
 
         $jornadas = WorkSchedule::query()
             ->vigenteEn($fecha)
             ->where('weekday', $fecha->isoWeekday())
             ->when(! $incluirRemota, fn ($q) => $q->where('modalidad', WorkSchedule::PRESENCIAL))
             ->whereNotIn('user_id', $ausentes)
-            ->get();
+            // Quien cambió ese día cuenta por sus bloques, no por su horario.
+            ->whereNotIn('user_id', $ajustes->pluck('user_id')->unique()->all())
+            ->get(['starts_at', 'ends_at'])
+            ->concat($ajustes
+                ->reject(fn (JornadaDelDia $j) => in_array($j->user_id, $ausentes))
+                ->when(! $incluirRemota, fn ($c) => $c->filter(fn (JornadaDelDia $j) => $j->esPresencial())));
 
         if ($jornadas->isEmpty()) {
             return null;
@@ -251,10 +258,19 @@ class CoverageService
         }
 
         $ausentes = $this->ausentesEn($d);
+        $ajustes = $this->ajustesDelDia($d);
+
+        // Los que cambiaron ese día (§5): cuentan por sus bloques de la fecha.
+        $porAjuste = $ajustes
+            ->reject(fn (JornadaDelDia $j) => in_array($j->user_id, $ausentes))
+            ->when(! $incluirRemota, fn ($c) => $c->filter(fn (JornadaDelDia $j) => $j->esPresencial()))
+            ->filter(fn (JornadaDelDia $j) => $j->starts_at <= $d->format('H:i:s') && $j->ends_at >= $h->format('H:i:s'))
+            ->pluck('user_id');
 
         $ids = WorkSchedule::query()
             ->vigenteEn($d)
             ->where('weekday', $d->isoWeekday())
+            ->whereNotIn('user_id', $ajustes->pluck('user_id')->unique()->all())
             // Una jornada remota es jornada, pero no cobertura: quien trabaja
             // desde casa no abre la puerta ni acompana una maquina. Salvo que
             // lo que se atiende sea virtual, y entonces si cuenta.
@@ -268,6 +284,7 @@ class CoverageService
             // asesorias ni se le asignan acompanamientos.
             ->reject(fn (WorkSchedule $j) => $j->descansoOcupa($d, $h))
             ->pluck('user_id')
+            ->merge($porAjuste)
             ->unique();
 
         return User::whereIn('id', $ids)->where('status', 'activo')->get();
@@ -281,6 +298,10 @@ class CoverageService
     {
         $tz = config('fabos.lab.timezone');
         $d = $desde->copy()->setTimezone($tz);
+
+        if ($this->ajustesDelDia($d)->contains('user_id', $persona->id)) {
+            return null;
+        }
 
         return WorkSchedule::query()
             ->where('user_id', $persona->id)
@@ -311,6 +332,24 @@ class CoverageService
      * Los bloqueos de una franja no van aqui: quien tiene clase de cuatro a
      * cinco sigue abriendo el laboratorio el resto del dia.
      */
+    /**
+     * Los bloques por fecha de ese día (§5), de todo el equipo. Una consulta por
+     * día y por petición: la cobertura se pregunta muchas veces seguidas.
+     *
+     * @return Collection<int,JornadaDelDia>
+     */
+    private function ajustesDelDia(CarbonInterface $dia): Collection
+    {
+        $fecha = $dia->format('Y-m-d');
+
+        return $this->ajustesEnMemoria[$fecha] ??= JornadaDelDia::query()
+            ->whereDate('fecha', $fecha)
+            ->get(['user_id', 'starts_at', 'ends_at', 'modalidad']);
+    }
+
+    /** @var array<string,Collection<int,JornadaDelDia>> */
+    private array $ajustesEnMemoria = [];
+
     private function ausentesEn(CarbonInterface $dia): array
     {
         return ScheduleException::query()

@@ -218,12 +218,13 @@ class CreateReservation extends CreateRecord
 
                             $franjas = $asesor
                                 ? app(AsesoriaService::class)->franjasDe($asesor, $solicitante, $dias)
-                                : app(AsesoriaService::class)->franjasDisponibles($ambito, $solicitante, $dias);
+                                : app(AsesoriaService::class)->franjasDisponibles($ambito, $solicitante, $dias, permitirVirtual: true);
 
                             return $franjas
                                 ->mapWithKeys(fn (array $f) => [
                                     $f['inicio']->format('Y-m-d H:i') => ucfirst(rtrim($f['inicio']->locale('es')->isoFormat('ddd'), '.'))
                                         . ' ' . $f['inicio']->format('d/m') . ' · ' . $f['inicio']->format('H:i') . '–' . $f['fin']->format('H:i')
+                                        . ((($f['modalidad'] ?? null) === AsesoriaService::VIRTUAL) ? ' · Virtual' : '')
                                         . (($f['cuantos'] ?? 1) > 1 ? ' · ' . $f['cuantos'] . ' pueden' : ''),
                                 ])
                                 ->all();
@@ -568,7 +569,7 @@ class CreateReservation extends CreateRecord
 
         $sobreQue = $clase === 'area' ? Area::findOrFail($id) : Asset::findOrFail($id);
 
-        $reserva = app(AsesoriaService::class)->agendar($quien, $sobreQue, $desde, $hasta, $paraQue, $asesor);
+        $reserva = app(AsesoriaService::class)->agendar($quien, $sobreQue, $desde, $hasta, $paraQue, $asesor, permitirVirtual: true);
 
         // Null es «nadie puede»: la persona ya tiene algo a esa hora, o ningún
         // asesor de ese equipo está en jornada y libre. Se dice, no se calla.
