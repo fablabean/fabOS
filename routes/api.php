@@ -20,6 +20,9 @@ Route::prefix('recorridos/visor')->name('api.visor.')->group(function () {
         Route::get('/pistas', [VisorController::class, 'pistas'])->name('pistas');
         Route::post('/secuencia', [VisorController::class, 'secuencia'])->name('secuencia');
         Route::post('/lider', [VisorController::class, 'lider'])->name('lider');
+        // Los mini juegos: suman o restan tiempo al equipo.
+        Route::post('/penalizacion', [VisorController::class, 'penalizacion'])->name('penalizacion');
+        Route::post('/recompensa', [VisorController::class, 'recompensa'])->name('recompensa');
     });
 });
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Recorrido\Equipo;
+use App\Models\Recorrido\Evento;
 use App\Services\Recorrido\Juego;
 use App\Services\Recorrido\JuegoException;
 use Illuminate\Http\JsonResponse;
@@ -95,6 +96,47 @@ class VisorController extends Controller
         }
 
         return response()->json(['estado' => $this->juego->estado($equipo->fresh())]);
+    }
+
+    /** Un mini juego penaliza: suma los segundos de la partida, como un fallo. */
+    public function penalizacion(Request $request): JsonResponse
+    {
+        return $this->minijuego($request, Evento::PENALIZACION);
+    }
+
+    /** Un mini juego recompensa: resta los segundos de la partida. */
+    public function recompensa(Request $request): JsonResponse
+    {
+        return $this->minijuego($request, Evento::RECOMPENSA);
+    }
+
+    private function minijuego(Request $request, string $tipo): JsonResponse
+    {
+        $datos = $request->validate([
+            // Cuál mini juego fue, para el reporte. Libre: lo nombra la app.
+            'juego' => ['nullable', 'string', 'max:60'],
+            // Único por evento: si la app reintenta, no se cuenta dos veces.
+            'id' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        $equipo = $this->equipo($request);
+
+        try {
+            $r = $this->juego->minijuego($equipo, $tipo, $datos['juego'] ?? null, $datos['id'] ?? null);
+        } catch (JuegoException $e) {
+            return $this->rechazo($equipo, $e);
+        }
+
+        $s = abs($r['segundos']);
+
+        return response()->json([
+            'aplicado' => $r['aplicado'],
+            'segundos' => $r['segundos'],
+            'mensaje' => ! $r['aplicado']
+                ? 'Ya estaba contado.'
+                : ($tipo === Evento::RECOMPENSA ? "¡Bien! Se les restan {$s} s." : "Suma {$s} s de penalización."),
+            'estado' => $this->juego->estado($equipo->fresh()),
+        ]);
     }
 
     private function equipo(Request $request): Equipo

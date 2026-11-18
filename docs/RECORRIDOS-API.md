@@ -38,6 +38,8 @@ En cada etapa el líder es otra persona: el equipo se pasa las gafas. **Las gafa
 | `GET` | `https://fablabean.com/api/recorridos/visor/pistas` | Bearer | Las imágenes de las pistas, otra vez (ya vienen al emparejar) |
 | `POST` | `https://fablabean.com/api/recorridos/visor/secuencia` | Bearer | Enviar los 4 botones que marcó el líder |
 | `POST` | `https://fablabean.com/api/recorridos/visor/lider` | Bearer | Elegir quién lleva las gafas (opcional) |
+| `POST` | `https://fablabean.com/api/recorridos/visor/penalizacion` | Bearer | Un mini juego penaliza: suma tiempo al equipo |
+| `POST` | `https://fablabean.com/api/recorridos/visor/recompensa` | Bearer | Un mini juego recompensa: resta tiempo al equipo |
 
 ### Emparejar las gafas con un equipo
 
@@ -78,7 +80,7 @@ Content-Type: application/json
     { "id": 19, "numero": 3, "imagen": null }
   ],
   "estado": {
-    "partida": { "nombre": "Colegio San José", "estado": "preparada", "modo": "simultanea", "iniciada_at": null, "cierra_at": null },
+    "partida": { "nombre": "Colegio San José", "estado": "preparada", "modo": "simultanea", "iniciada_at": null, "cierra_at": null, "penalizacion_por_fallo": 30, "recompensa_por_acierto": 30 },
     "equipo": {
       "id": 6, "nombre": "Equipo Rojo", "color": "#E5484D",
       "integrantes": [ { "id": 17, "nombre": "Ana" }, { "id": 18, "nombre": "Luis" } ]
@@ -97,6 +99,8 @@ Content-Type: application/json
     ],
     "fallos": 0,
     "penalizacion_segundos": 0,
+    "recompensas": 0,
+    "recompensa_segundos": 0,
     "segundos": null,
     "terminado_at": null
   }
@@ -155,7 +159,7 @@ Authorization: Bearer <token>
 ```json
 {
   "estado": {
-    "partida": { "nombre": "Colegio San José", "estado": "en_curso", "modo": "simultanea", "iniciada_at": "2026-10-02T14:00:03-05:00", "cierra_at": null },
+    "partida": { "nombre": "Colegio San José", "estado": "en_curso", "modo": "simultanea", "iniciada_at": "2026-10-02T14:00:03-05:00", "cierra_at": null, "penalizacion_por_fallo": 30, "recompensa_por_acierto": 20 },
     "equipo": {
       "id": 12, "nombre": "Rojos", "color": "#E5484D",
       "integrantes": [ { "id": 31, "nombre": "Ana" }, { "id": 32, "nombre": "Luis" } ]
@@ -174,7 +178,9 @@ Authorization: Bearer <token>
     ],
     "fallos": 1,
     "penalizacion_segundos": 30,
-    "segundos": 412,
+    "recompensas": 1,
+    "recompensa_segundos": 20,
+    "segundos": 392,
     "terminado_at": null
   }
 }
@@ -187,7 +193,9 @@ Qué significa cada campo:
 - `pista` es `null` cuando no hay pista que mostrar, es decir, en `esperando` o en `terminado`. `pista.imagen` puede ser `null`.
 - El nombre y el lugar de la estación **no se mandan**, y es a propósito: la pista está escrita en acertijo y mandar «Cortadora láser» al lado la resolvería sola. El código del QR tampoco: eso es lo que el equipo va a buscar.
 - `lider` es `null` mientras el equipo no lo haya elegido.
-- `segundos` es el tiempo de juego del equipo, ya con la penalización sumada. Es `null` si la partida no ha empezado.
+- `segundos` es el tiempo de juego del equipo, ya con la penalización sumada y las recompensas restadas (nunca menos de 0). Es `null` si la partida no ha empezado.
+- `fallos` y `penalizacion_segundos` cuentan los fallos y los segundos sumados, tanto de pruebas y secuencias como de mini juegos. `recompensas` y `recompensa_segundos` cuentan las recompensas de mini juegos y los segundos restados.
+- `partida.penalizacion_por_fallo` y `partida.recompensa_por_acierto` dicen cuánto vale cada penalización y cada recompensa en esta partida, para mostrar «+30 s» o «−20 s» antes de que pase. Los configura el laboratorio en cada partida.
 - `partida.modo` es `simultanea` (todos los equipos arrancan a la vez) o `jornadas` (cada equipo llega en el horario de la partida y arranca su propio reloj).
 - `partida.iniciada_at` es cuándo arrancó **el reloj de este equipo**: en una simultánea es el de todos; por jornadas, el suyo.
 - `partida.cierra_at` solo viene en las partidas por jornadas, una vez el equipo arrancó: a esa hora se le acaba el tiempo para jugar y el servidor deja de aceptarle pasos. En las simultáneas es `null`.
@@ -231,6 +239,48 @@ Content-Type: application/json
 ```
 
 `200` con `estado` actualizado. Si se envía `null`, se borra la elección.
+
+### Mini juegos: penalización y recompensa
+
+Durante el recorrido las gafas pueden lanzar mini juegos. Cuando uno termina, la app le dice al servidor si el equipo ganó o perdió:
+
+```http
+POST https://fablabean.com/api/recorridos/visor/recompensa
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "juego": "laser-esquivar", "id": "6f1c2b0e-8d1a-4c55-9a51-0d2f7c3b9e11" }
+```
+
+```http
+POST https://fablabean.com/api/recorridos/visor/penalizacion
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "juego": "laser-esquivar", "id": "a3d9e4f2-1b77-4e0c-8c2a-5f6e7d8c9b10" }
+```
+
+Los dos campos son opcionales, pero recomendamos enviarlos:
+
+| Campo | Qué es |
+|---|---|
+| `juego` | El nombre del mini juego, como lo llame la app (hasta 60 caracteres). Sale en el reporte de la partida. |
+| `id` | Un identificador **único de este evento**, por ejemplo un UUID generado al terminar el mini juego (hasta 64 caracteres). Si la app reintenta porque no llegó la respuesta, debe mandar **el mismo `id`**: el servidor lo reconoce y no lo cuenta dos veces. |
+
+**Cuántos segundos** no los decide la app: los configura el laboratorio en cada partida («Penalización por fallo» y «Recompensa por mini juego»). La recompensa **resta** esos segundos al tiempo del equipo; la penalización los **suma** y cuenta como un fallo, igual que una secuencia equivocada.
+
+`200`:
+```json
+{ "aplicado": true, "segundos": -20, "mensaje": "¡Bien! Se les restan 20 s.", "estado": { … } }
+```
+
+- `segundos` es lo que cambió el tiempo del equipo: negativo para una recompensa (resta), positivo para una penalización (suma).
+- `aplicado` es `false` cuando ese `id` ya se había recibido: no se volvió a contar, y `mensaje` dice «Ya estaba contado.». Para la app es un éxito; no hay que reintentar.
+- `estado` es el estado completo del equipo, ya con el tiempo actualizado.
+- **`409` (`no_permitido`):** el equipo no está jugando (la partida no ha empezado o terminó, el equipo ya terminó, o por jornadas no ha empezado o se le acabó la jornada). No se aplicó nada.
+- **`422`:** `juego` o `id` son demasiado largos.
+
+Se pueden mandar en cualquier momento del recorrido (`buscando`, `resolviendo` o `secuencia`); no cambian la etapa ni la pista.
 
 ## Errores
 

@@ -86,6 +86,11 @@ class PartidaResource extends Resource
                         ->searchable(),
                     TextInput::make('penalizacion_segundos')
                         ->label('Penalización por fallo (segundos)')
+                        ->helperText('Se suma por cada respuesta o secuencia equivocada, y cuando un mini juego de las gafas penaliza.')
+                        ->numeric()->minValue(0)->maxValue(3600)->default(30)->required(),
+                    TextInput::make('recompensa_segundos')
+                        ->label('Recompensa por mini juego (segundos)')
+                        ->helperText('Se resta del tiempo del equipo cada vez que un mini juego de las gafas lo recompensa.')
                         ->numeric()->minValue(0)->maxValue(3600)->default(30)->required(),
                     Toggle::make('rotar_orden')
                         ->label('Cada equipo empieza en una estación distinta')

@@ -32,11 +32,11 @@ class Partida extends Model
     ];
 
     /** Los mismos de la base: sin esto, una recién creada no los trae en memoria. */
-    protected $attributes = ['estado' => 'preparada', 'modo' => 'simultanea', 'penalizacion_segundos' => 30, 'rotar_orden' => true];
+    protected $attributes = ['estado' => 'preparada', 'modo' => 'simultanea', 'penalizacion_segundos' => 30, 'recompensa_segundos' => 30, 'rotar_orden' => true];
 
     protected $fillable = [
         'circuito_id', 'reservation_id', 'nombre', 'codigo', 'estado', 'modo', 'jornadas',
-        'penalizacion_segundos', 'rotar_orden', 'iniciada_at', 'terminada_at',
+        'penalizacion_segundos', 'recompensa_segundos', 'rotar_orden', 'iniciada_at', 'terminada_at',
         'reporte_token', 'reporte_enviado_a', 'reporte_enviado_at',
     ];
 

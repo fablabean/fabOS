@@ -87,7 +87,7 @@
                                         Llegó a la etapa {{ $e->etapa }} de {{ $e->totalDeEtapas() }}
                                     @endif
                                 </td>
-                                <td class="num" data-titulo="Fallos">{{ $e->fallos }}@if ($e->penalizacion) <span class="muted">(+{{ $e->penalizacion }} s)</span>@endif</td>
+                                <td class="num" data-titulo="Fallos">{{ $e->fallos }}@if ($e->penalizacion) <span class="muted">(+{{ $e->penalizacion }} s)</span>@endif @if ($e->recompensa)<br><span class="muted">{{ $e->recompensas }} {{ $e->recompensas === 1 ? 'recompensa' : 'recompensas' }} (−{{ $e->recompensa }} s)</span>@endif</td>
                                 <td class="num" data-titulo="Tiempo" style="font-weight:700">{{ $reloj($e->segundos()) }}</td>
                             </tr>
                         @endforeach
@@ -97,7 +97,7 @@
         @endif
 
         <p class="muted" style="margin-top:1.2rem">
-            Gana el menor tiempo total. Cada respuesta o secuencia equivocada sumó {{ $partida->penalizacion_segundos }} s.
+            Gana el menor tiempo total. Cada respuesta o secuencia equivocada sumó {{ $partida->penalizacion_segundos }} s, y cada recompensa de un mini juego restó {{ $partida->recompensa_segundos }} s.
             @if ($partida->esPorJornadas())
                 Cada equipo tuvo su propio reloj, desde que empezó.
             @endif

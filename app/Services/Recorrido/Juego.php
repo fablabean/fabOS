@@ -5,6 +5,7 @@ namespace App\Services\Recorrido;
 use App\Models\Recorrido\Avance;
 use App\Models\Recorrido\Equipo;
 use App\Models\Recorrido\Estacion;
+use App\Models\Recorrido\Evento;
 use App\Models\Recorrido\Integrante;
 use App\Models\Recorrido\Partida;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Una respuesta o una secuencia equivocada suma la penalización de la
  * partida. Escanear el QR de otro lugar no penaliza: buscar es el juego.
+ *
+ * Los mini juegos de las gafas mandan también penalizaciones (suman los mismos
+ * segundos) y recompensas (restan los de la partida).
  *
  * Una partida simultánea arranca para todos a la vez. Una por jornadas no se
  * inicia: los equipos se inscriben en el horario de la partida y cada uno
@@ -82,11 +86,12 @@ class Juego
 
         $equipo->update([
             'orden' => array_values($estaciones), 'etapa' => 1, 'estado' => 'buscando',
-            'secuencia' => null, 'fallos' => 0, 'penalizacion' => 0, 'terminado_at' => null,
+            'secuencia' => null, 'fallos' => 0, 'penalizacion' => 0, 'recompensas' => 0, 'recompensa' => 0, 'terminado_at' => null,
             'iniciado_at' => $partida->esPorJornadas() ? now() : $partida->iniciada_at,
         ]);
 
         $equipo->avances()->delete();
+        $equipo->eventos()->delete();
         $this->abrirEtapa($equipo);
     }
 
@@ -340,6 +345,9 @@ class Juego
                 'iniciada_at' => $equipo->inicio()?->toIso8601String(),
                 // Por jornadas: a qué hora se le acaba el tiempo para jugar.
                 'cierra_at' => $equipo->cierre()?->toIso8601String(),
+                // Cuánto vale cada fallo y cada recompensa de un mini juego.
+                'penalizacion_por_fallo' => (int) $equipo->partida->penalizacion_segundos,
+                'recompensa_por_acierto' => (int) $equipo->partida->recompensa_segundos,
             ],
             'equipo' => [
                 'id' => $equipo->id,
@@ -379,6 +387,8 @@ class Juego
             ])->values()->all(),
             'fallos' => $equipo->fallos,
             'penalizacion_segundos' => $equipo->penalizacion,
+            'recompensas' => (int) $equipo->recompensas,
+            'recompensa_segundos' => (int) $equipo->recompensa,
             'segundos' => $equipo->segundos(),
             'terminado_at' => $equipo->terminado_at?->toIso8601String(),
         ];
@@ -405,6 +415,45 @@ class Juego
             ['equipo_id' => $equipo->id, 'etapa' => $equipo->etapa],
             ['estacion_id' => $equipo->orden[$equipo->etapa - 1], 'pista_at' => now()],
         );
+    }
+
+    /**
+     * Un mini juego de las gafas penaliza o recompensa al equipo.
+     *
+     * La penalización suma los segundos de la partida, como un fallo; la
+     * recompensa los resta. Si la app manda el mismo `evento_id` otra vez —un
+     * reintento por mala señal—, no se aplica de nuevo.
+     *
+     * @return array{aplicado:bool,segundos:int} segundos: + suma, − resta
+     */
+    public function minijuego(Equipo $equipo, string $tipo, ?string $juego = null, ?string $eventoId = null): array
+    {
+        if (! in_array($tipo, [Evento::PENALIZACION, Evento::RECOMPENSA], true)) {
+            throw new \InvalidArgumentException("Tipo de evento desconocido: {$tipo}");
+        }
+
+        return $this->conElEquipo($equipo, function (Equipo $e) use ($tipo, $juego, $eventoId) {
+            if ($eventoId !== null && ($ya = $e->eventos()->where('evento_id', $eventoId)->first())) {
+                return ['aplicado' => false, 'segundos' => $ya->tipo === Evento::RECOMPENSA ? -$ya->segundos : $ya->segundos];
+            }
+
+            $this->exigirEnJuego($e);
+
+            $segundos = (int) ($tipo === Evento::RECOMPENSA ? $e->partida->recompensa_segundos : $e->partida->penalizacion_segundos);
+
+            if ($tipo === Evento::RECOMPENSA) {
+                $e->update(['recompensas' => $e->recompensas + 1, 'recompensa' => $e->recompensa + $segundos]);
+            } else {
+                $this->penalizar($e);
+            }
+
+            $e->eventos()->create([
+                'tipo' => $tipo, 'segundos' => $segundos, 'etapa' => $e->etapa,
+                'juego' => $juego, 'evento_id' => $eventoId,
+            ]);
+
+            return ['aplicado' => true, 'segundos' => $tipo === Evento::RECOMPENSA ? -$segundos : $segundos];
+        });
     }
 
     private function penalizar(Equipo $equipo): void

@@ -51,12 +51,12 @@ class Equipo extends Model
     /** Colores para distinguir los equipos en el tablero. */
     public const COLORES = ['#0D6E63', '#3E63DD', '#E5484D', '#F76B15', '#8E4EC6', '#30A46C', '#D6409F', '#A18072'];
 
-    protected $attributes = ['estado' => 'esperando', 'etapa' => 0, 'fallos' => 0, 'penalizacion' => 0, 'color' => '#0D6E63', 'posicion' => 0];
+    protected $attributes = ['estado' => 'esperando', 'etapa' => 0, 'fallos' => 0, 'penalizacion' => 0, 'recompensas' => 0, 'recompensa' => 0, 'color' => '#0D6E63', 'posicion' => 0];
 
     protected $fillable = [
         'partida_id', 'nombre', 'color', 'posicion', 'codigo', 'token',
         'visor_token_hash', 'visor_visto_at', 'orden', 'etapa', 'estado',
-        'secuencia', 'fallos', 'penalizacion', 'iniciado_at', 'terminado_at',
+        'secuencia', 'fallos', 'penalizacion', 'recompensas', 'recompensa', 'iniciado_at', 'terminado_at',
     ];
 
     protected $hidden = ['token', 'visor_token_hash', 'secuencia'];
@@ -99,6 +99,12 @@ class Equipo extends Model
     public function avances(): HasMany
     {
         return $this->hasMany(Avance::class)->orderBy('etapa');
+    }
+
+    /** Las penalizaciones y recompensas de los mini juegos. */
+    public function eventos(): HasMany
+    {
+        return $this->hasMany(Evento::class)->orderBy('id');
     }
 
     public function avanceActual(): ?Avance
@@ -151,7 +157,11 @@ class Equipo extends Model
         return ! $this->terminado() && ($this->cierre()?->isPast() ?? false);
     }
 
-    /** Segundos de juego, con la penalización sumada. */
+    /**
+     * Segundos de juego, con la penalización sumada y las recompensas de los
+     * mini juegos restadas. Nunca menos de cero: una recompensa no devuelve
+     * tiempo que no se jugó.
+     */
     public function segundos(): ?int
     {
         $inicio = $this->inicio();
@@ -162,7 +172,7 @@ class Equipo extends Model
 
         $fin = $this->terminado_at ?? collect([$this->partida->terminada_at, $this->cierre(), now()])->filter()->min();
 
-        return (int) $inicio->diffInSeconds(max($inicio, $fin)) + $this->penalizacion;
+        return max(0, (int) $inicio->diffInSeconds(max($inicio, $fin)) + $this->penalizacion - $this->recompensa);
     }
 
     public function urlDelCelular(): string

@@ -160,7 +160,7 @@
                 {{ sprintf('%d:%02d', intdiv($s, 60), $s % 60) }}
             </p>
             <p class="muted">
-                Tiempo total{{ $equipo->penalizacion ? ', con ' . $equipo->penalizacion . ' s de penalización por ' . $equipo->fallos . ' ' . ($equipo->fallos === 1 ? 'fallo' : 'fallos') : '' }}.
+                Tiempo total{{ $equipo->penalizacion ? ', con ' . $equipo->penalizacion . ' s de penalización por ' . $equipo->fallos . ' ' . ($equipo->fallos === 1 ? 'fallo' : 'fallos') : '' }}{{ $equipo->recompensa ? ($equipo->penalizacion ? ' y ' : ', con ') . $equipo->recompensa . ' s menos por ' . $equipo->recompensas . ' ' . ($equipo->recompensas === 1 ? 'recompensa' : 'recompensas') : '' }}.
             </p>
         </div>
     @endif

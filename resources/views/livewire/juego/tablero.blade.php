@@ -83,6 +83,9 @@
                         @endforeach
                         @if ($e->fallos)
                             <span style="color:var(--danger)">{{ $e->fallos }} {{ $e->fallos === 1 ? 'fallo' : 'fallos' }} · +{{ $e->penalizacion }} s</span>
+                            @if ($e->recompensa)
+                                <span style="color:#30A46C">· {{ $e->recompensas }} {{ $e->recompensas === 1 ? 'recompensa' : 'recompensas' }} · −{{ $e->recompensa }} s</span>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -95,6 +98,6 @@
     </div>
 
     <p class="muted" style="margin-top:1.2rem">
-        Gana el menor tiempo total. Cada respuesta o secuencia equivocada suma {{ $partida->penalizacion_segundos }} s.
+        Gana el menor tiempo total. Cada respuesta o secuencia equivocada suma {{ $partida->penalizacion_segundos }} s; cada recompensa de un mini juego resta {{ $partida->recompensa_segundos }} s.
     </p>
 </div>
