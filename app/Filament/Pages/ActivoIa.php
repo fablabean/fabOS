@@ -427,11 +427,20 @@ class ActivoIa extends Page
     {
         $id = (string) \Illuminate\Support\Str::uuid();
         \App\Jobs\ReconocerParaActivoIa::marcarEnEspera($id);
-        $this->enCurso = ['id' => $id, 'tipo' => $tipo, 'desde' => now()->getTimestamp(), 'contexto' => $contexto];
+        // El contexto (las fotos con sus miniaturas) se queda en el servidor:
+        // en la página iba de ida y vuelta en cada pregunta de wire:poll y,
+        // con una conversación larga, pasaba el límite de 1 MB de Livewire.
+        \Illuminate\Support\Facades\Cache::put(self::claveDelContexto($id), $contexto, now()->addHours(2));
+        $this->enCurso = ['id' => $id, 'tipo' => $tipo, 'desde' => now()->getTimestamp()];
 
         \App\Jobs\ReconocerParaActivoIa::dispatch($id, $tipo, $datos);
 
         $this->revisarReconocimiento();
+    }
+
+    private static function claveDelContexto(string $id): string
+    {
+        return 'activo-ia:contexto:' . auth()->id() . ':' . $id;
     }
 
     /** La página pregunta cada pocos segundos (wire:poll) si la cola ya terminó. */
@@ -453,9 +462,20 @@ class ActivoIa extends Page
             $r = ['estado' => 'listo', 'error' => ['mensaje' => 'El reconocimiento no terminó: el trabajador de la cola de Activo IA no respondió.', 'conexion' => false]];
         }
 
-        ['tipo' => $tipo, 'contexto' => $c] = $this->enCurso;
+        $tipo = $this->enCurso['tipo'];
+        $c = \Illuminate\Support\Facades\Cache::pull(self::claveDelContexto($id));
         $this->enCurso = null;
         \App\Jobs\ReconocerParaActivoIa::olvidar($id);
+
+        if (! is_array($c)) {
+            $this->mensajes[] = [
+                'rol' => 'ia', 'texto' => '', 'miniatura' => null, 'propuestas' => [],
+                'error' => 'Se perdió el reconocimiento en curso. Vuelve a enviar la foto.',
+                'hora' => now()->format('H:i'),
+            ];
+
+            return;
+        }
 
         match ($tipo) {
             'una' => $this->terminarDeReconocer($c['foto'], (string) $c['texto'], $r),

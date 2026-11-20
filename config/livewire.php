@@ -29,4 +29,15 @@ return [
         'cleanup' => true,
     ],
 
+    // Activo IA arma conversaciones largas (tarjetas con miniaturas y
+    // sugerencias) y pasaba el 1 MB de Livewire: cada pregunta de la página
+    // fallaba con «Error al cargar la página». El panel exige sesión; nginx
+    // acepta hasta 96 MB.
+    'payload' => [
+        'max_size' => 4 * 1024 * 1024,
+        'max_nesting_depth' => 10,
+        'max_calls' => 50,
+        'max_components' => 200,
+    ],
+
 ];
