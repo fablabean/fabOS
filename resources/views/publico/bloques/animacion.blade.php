@@ -8,7 +8,9 @@
     $parametros = [$pagina->slug, basename((string) $datos['archivo'])];
     $src = $pagina->estaVisible()
         ? route('publico.pagina.animacion', $parametros)
-        : \Illuminate\Support\Facades\URL::temporarySignedRoute('publico.pagina.animacion', now()->addHours(6), $parametros);
+        // Firma relativa: detrás de Cloudflare el servidor ve http y no https,
+        // y una firma con el dominio entero nunca coincidía.
+        : \Illuminate\Support\Facades\URL::temporarySignedRoute('publico.pagina.animacion', now()->addHours(6), $parametros, absolute: false);
     $forma = in_array($datos['proporcion'] ?? null, ['16/9', '4/3', '1/1', '3/4'], true) ? $datos['proporcion'] : '16/9';
 @endphp
 <figure class="bloque medio animacion">

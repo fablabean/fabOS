@@ -60,7 +60,7 @@ class PaginaPublicaController extends Controller
          * editando. La firma solo la recibe quien ya pudo abrir el borrador.
          */
         abort_unless(
-            $pagina->estaVisible() || $request->hasValidSignature() || (auth()->user()?->can('update', $pagina) ?? false),
+            $pagina->estaVisible() || $request->hasValidSignature(absolute: false) || (auth()->user()?->can('update', $pagina) ?? false),
             404,
         );
 
