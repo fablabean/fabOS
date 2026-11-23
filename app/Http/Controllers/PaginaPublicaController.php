@@ -49,12 +49,18 @@ class PaginaPublicaController extends Controller
      * en su nombre—. Sus animaciones y sus botones siguen funcionando. Se ve
      * cuando se ve la página: en borrador, solo quien la edita.
      */
-    public function animacion(string $slug, string $archivo)
+    public function animacion(\Illuminate\Http\Request $request, string $slug, string $archivo)
     {
         $pagina = Pagina::query()->where('slug', $slug)->firstOrFail();
 
+        /*
+         * En borrador, la dirección viene firmada desde la página. El iframe
+         * va con `sandbox` (sin origen propio) y el navegador no manda la
+         * cookie de sesión: preguntar por quién es daba 404 a quien la estaba
+         * editando. La firma solo la recibe quien ya pudo abrir el borrador.
+         */
         abort_unless(
-            $pagina->estaVisible() || (auth()->user()?->can('update', $pagina) ?? false),
+            $pagina->estaVisible() || $request->hasValidSignature() || (auth()->user()?->can('update', $pagina) ?? false),
             404,
         );
 

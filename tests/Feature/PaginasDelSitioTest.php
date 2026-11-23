@@ -510,5 +510,16 @@ class PaginasDelSitioTest extends TestCase
         // En borrador, la animación tampoco existe para quien llega de fuera.
         $p->update(['is_active' => false]);
         $this->get('/p/la-feria/animacion/muro.html')->assertNotFound();
+
+        // Pero quien revisa el borrador la ve: el iframe aislado no lleva su
+        // sesión, así que la página le da una dirección firmada.
+        $this->entra($this->admin());
+        $html = $this->get('/p/la-feria')->assertOk()->getContent();
+        preg_match('#src="([^"]+/animacion/muro\.html\?[^"]+)"#', $html, $m);
+        $this->assertNotEmpty($m, 'la animación del borrador va firmada');
+        auth()->logout();
+        $this->flushSession();
+        $this->get(html_entity_decode($m[1]))->assertOk();
+        $this->get('/p/la-feria/animacion/muro.html?signature=falsa')->assertNotFound();
     }
 }
