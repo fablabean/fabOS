@@ -476,4 +476,39 @@ class PaginasDelSitioTest extends TestCase
             // Sin nada que decir, el nombre del tipo a secas.
             ->assertDontSee('Video ·');
     }
+
+    /**
+     * Una animación en HTML: aislada, y sin el archivo no aparece. El
+     * bloque vacío guarda el lugar mientras alguien la termina.
+     */
+    public function test_la_animacion_html_se_ve_aislada_y_sin_archivo_no_aparece(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('paginas/animaciones/muro.html', '<html><body><script>girar()</script></body></html>');
+        Storage::disk('local')->put('paginas/animaciones/ajena.html', '<html>otra</html>');
+
+        $p = $this->pagina(['bloques' => [
+            ['type' => 'animacion', 'data' => ['titulo' => 'Así gira el muro', 'archivo' => 'paginas/animaciones/muro.html', 'proporcion' => '4/3']],
+            ['type' => 'animacion', 'data' => ['titulo' => 'La línea de tiempo', 'archivo' => null, 'nota' => 'Pendiente']],
+        ]]);
+
+        $this->get('/p/la-feria')
+            ->assertOk()
+            ->assertSee('Así gira el muro')
+            ->assertSee('sandbox="allow-scripts', escape: false)
+            ->assertSee('/p/la-feria/animacion/muro.html', escape: false)
+            ->assertDontSee('La línea de tiempo');
+
+        $r = $this->get('/p/la-feria/animacion/muro.html')->assertOk();
+        $this->assertStringStartsWith('sandbox allow-scripts', $r->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString('girar()', $r->getContent());
+
+        // Solo lo que está en un bloque de esa página, no cualquier archivo.
+        $this->get('/p/la-feria/animacion/ajena.html')->assertNotFound();
+        $this->get('/p/la-feria/animacion/..%2F..%2F.env')->assertNotFound();
+
+        // En borrador, la animación tampoco existe para quien llega de fuera.
+        $p->update(['is_active' => false]);
+        $this->get('/p/la-feria/animacion/muro.html')->assertNotFound();
+    }
 }

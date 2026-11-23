@@ -84,6 +84,14 @@
     }
     @media (max-width:74rem){.medio.completo{width:100%;margin-left:0}}
 
+    /* ---------- animación (HTML aislado) ---------- */
+    .animacion iframe{
+        width:100%;display:block;border:1px solid var(--rule);border-radius:8px;
+        background:var(--surface);
+    }
+    .animacion figcaption{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .animacion-abrir{color:var(--muted);white-space:nowrap}
+
     /* ---------- galería ---------- */
     .galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.8rem}
     .galeria figure{margin:0}

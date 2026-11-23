@@ -83,7 +83,27 @@ class Pagina extends Model
         'botones' => 'Botones',
         'tarjetas' => 'Tarjetas con botón',
         'dispositivo' => 'Activar un dispositivo',
+        'animacion' => 'Animación (HTML)',
     ];
+
+    /** Donde se guardan los HTML del bloque «Animación»: disco privado, se sirven aislados. */
+    public const CARPETA_ANIMACIONES = 'paginas/animaciones';
+
+    /**
+     * La ruta de la animación de esta página que se llama así, o null.
+     *
+     * Solo un archivo que esté en uno de sus bloques: el nombre viene de la
+     * dirección y no se sirve cualquier cosa del disco.
+     */
+    public function animacion(string $archivo): ?string
+    {
+        $ruta = self::CARPETA_ANIMACIONES . '/' . $archivo;
+
+        return collect($this->bloques ?? [])
+            ->contains(fn ($b) => is_array($b) && ($b['type'] ?? null) === 'animacion' && ($b['data']['archivo'] ?? null) === $ruta)
+            ? $ruta
+            : null;
+    }
 
     public function project(): BelongsTo
     {
@@ -219,6 +239,9 @@ class Pagina extends Model
             // Una tarjeta sin título o sin destino no lleva a ningún lado.
             'tarjetas' => collect($datos['tarjetas'] ?? [])->contains(fn ($t) => filled($t['titulo'] ?? null) && filled($t['url'] ?? null)),
             'dispositivo' => filled($datos['dispositivo_id'] ?? null),
+            // Sin el HTML no se enseña: el bloque guarda el lugar en el editor
+            // mientras la animación se termina.
+            'animacion' => filled($datos['archivo'] ?? null),
             default => false,
         };
     }

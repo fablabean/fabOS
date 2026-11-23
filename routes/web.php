@@ -100,6 +100,11 @@ Route::get('/p/{slug}', PaginaPublicaController::class)
     ->where('slug', '[a-z0-9-]+')
     ->name('publico.pagina');
 
+// El HTML de un bloque «Animación», aislado: lo pinta un iframe de la página.
+Route::get('/p/{slug}/animacion/{archivo}', [PaginaPublicaController::class, 'animacion'])
+    ->where(['slug' => '[a-z0-9-]+', 'archivo' => '[A-Za-z0-9_-]+\.html'])
+    ->name('publico.pagina.animacion');
+
 /*
  * Reservas: la direccion dice lo que es.
  *

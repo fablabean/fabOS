@@ -541,6 +541,48 @@ class PaginaForm
                         ->maxLength(400)
                         ->placeholder('Regístrate y la consola se enciende. Para seguir jugando, invita a alguien.'),
                 ]),
+
+            // Un HTML propio con su animación (un mecanismo girando, una
+            // comparación, una línea de tiempo). Se sirve aislado, como los
+            // módulos de las zonas: trae su propio código y no debe poder leer
+            // la sesión de quien visita. Sin archivo no se ve: guarda el lugar.
+            Block::make('animacion')
+                ->label(fn (?array $state): string => self::rotuloDe('animacion', $state))
+                ->icon('heroicon-o-sparkles')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('titulo')
+                        ->label('Título de la sección')
+                        ->maxLength(120)
+                        ->placeholder('Así gira el muro')
+                        ->columnSpanFull(),
+
+                    FileUpload::make('archivo')
+                        ->label('Archivo HTML')
+                        ->disk('local')
+                        ->directory(Pagina::CARPETA_ANIMACIONES)
+                        ->acceptedFileTypes(['text/html'])
+                        ->maxSize(10240)
+                        ->helperText('Un solo archivo .html con todo adentro (estilos, código e imágenes en base64), hasta 10 MB. Mientras no lo subas, el bloque no aparece en la página.')
+                        ->columnSpanFull(),
+
+                    ToggleButtons::make('proporcion')
+                        ->label('Forma')
+                        ->options(['16/9' => 'Panorámica', '4/3' => 'Clásica', '1/1' => 'Cuadrada', '3/4' => 'Vertical'])
+                        ->default('16/9')
+                        ->inline(),
+
+                    TextInput::make('pie')
+                        ->label('Pie')
+                        ->maxLength(200),
+
+                    Textarea::make('nota')
+                        ->label('Qué debe mostrar (nota para quien la hace)')
+                        ->helperText('Solo se ve aquí, en el editor.')
+                        ->rows(3)
+                        ->maxLength(1000)
+                        ->columnSpanFull(),
+                ]),
         ];
     }
 
