@@ -1,4 +1,6 @@
 * text=auto eol=lf
+# Windows (cmd) no encuentra las etiquetas de un .bat con saltos de linea LF.
+*.bat text eol=crlf
 
 *.blade.php diff=html
 *.css diff=css
