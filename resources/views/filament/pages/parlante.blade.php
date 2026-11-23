@@ -70,7 +70,7 @@
                     .pl-select{border:1px solid #d1d5db;border-radius:.5rem;padding:.4rem 2rem .4rem .6rem;font-size:.88rem;background-color:transparent;min-width:13rem}
                     .dark .pl-select{border-color:rgba(255,255,255,.15)}
                     .pl-listas{border-top:1px solid rgba(128,128,128,.2);padding-top:.7rem}
-                    .pl-volumen{flex:1;min-width:8rem;max-width:16rem;accent-color:rgb(var(--primary-600,217 119 6))}
+                    .pl-volumen{flex:1;min-width:8rem;max-width:16rem;accent-color:var(--primary-600,rgb(217 119 6))}
                     .pl-rotulo{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;margin-bottom:.35rem}
                 </style>
 

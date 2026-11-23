@@ -1,0 +1,20 @@
+# Solo desarrollo en Windows: las librerías de PHP (vendor/) viven en un
+# volumen de Docker, dentro de Linux, y no en el disco de Windows.
+#
+# Por qué: cada página de Laravel abre unos 1 500 archivos, casi todos de
+# vendor/. En el montaje de Windows cada consulta al disco cuesta ~1 ms, y
+# una página tardaba ~10 s (el ingreso al backoffice, más de un minuto).
+# En el volumen, lo mismo es casi instantáneo.
+#
+# La primera vez el volumen está vacío: iniciar.bat instala las librerías
+# dentro del contenedor (necesita internet, unos minutos). La carpeta vendor/
+# de Windows se queda como estaba (la usa el editor y para construir la imagen).
+#
+# Para volver a como era antes: borrar este archivo y ejecutar iniciar.bat.
+services:
+    laravel.test:
+        volumes:
+            - 'vendor:/var/www/html/vendor'
+
+volumes:
+    vendor:

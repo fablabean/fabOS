@@ -13,6 +13,8 @@ use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\ContenidoController;
 use App\Http\Controllers\EnlaceCortoController;
 use App\Http\Controllers\EspacioController;
+use App\Http\Controllers\Galeria3dController;
+use App\Http\Controllers\Galeria3dPanelController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LabelController;
 use App\Http\Controllers\LoteCompartidoController;
@@ -300,6 +302,45 @@ Route::post('/practicas/{call:slug}', [PracticasController::class, 'store'])
     ->name('practicas.postular.store');
 Route::get('/practicas/{call:slug}/gracias', [PracticasController::class, 'gracias'])
     ->name('practicas.gracias');
+
+/*
+ * La Galería 3D: modelos para girar en el navegador y ver en realidad
+ * aumentada. Pública, como el resto de lo que se enseña. Cada modelo tiene su
+ * dirección para compartirla y para el QR que la abre en el teléfono.
+ */
+Route::get('/galeria-3d', [Galeria3dController::class, 'index'])->name('galeria.index');
+// El túnel del celular, encendido desde la ficha (solo en el computador de
+// desarrollo y pedido desde él mismo: lo comprueba el controlador). Antes que
+// la ficha, para que «tunel-celular» no se tome por el nombre de una figura.
+Route::get('/galeria-3d/tunel-celular', [Galeria3dController::class, 'estadoTunel'])->name('galeria.tunel');
+Route::post('/galeria-3d/tunel-celular', [Galeria3dController::class, 'encenderTunel'])
+    ->middleware('throttle:6,1')
+    ->name('galeria.tunel.encender');
+Route::get('/galeria-3d/{modelo}', [Galeria3dController::class, 'show'])
+    ->where('modelo', '[a-z0-9-]+')
+    ->name('galeria.show');
+Route::get('/galeria-3d/{modelo}/qr.svg', [Galeria3dController::class, 'qr'])
+    ->where('modelo', '[a-z0-9-]+')
+    ->name('galeria.qr');
+// Vistas, «me gusta» y descargas de cada figura (sin cuenta: por sesión).
+Route::post('/galeria-3d/{modelo}/contar', [Galeria3dController::class, 'contar'])
+    ->where('modelo', '[a-z0-9-]+')
+    ->middleware('throttle:60,1')
+    ->name('galeria.contar');
+// La experiencia de realidad aumentada de cada figura: a donde lleva su QR.
+Route::get('/galeria-3d/{modelo}/ra', [Galeria3dController::class, 'ra'])
+    ->where('modelo', '[a-z0-9-]+')
+    ->name('galeria.ra');
+// Lo que sube el panel (Galería 3D → Subir modelo): llega ya convertido y
+// optimizado por el navegador. Con la misma puerta que el panel: sesión y
+// segundo factor; el permiso de la sección lo mira el controlador.
+Route::post('/panel/galeria-3d/modelos', [Galeria3dPanelController::class, 'guardar'])
+    ->middleware(['auth', \App\Http\Middleware\RequiereSegundoFactor::class, 'throttle:30,1'])
+    ->name('galeria.panel.guardar');
+// La hoja con el QR de cada figura, para imprimir y poner junto a la pieza.
+Route::get('/panel/galeria-3d/codigos-qr', [Galeria3dPanelController::class, 'codigosQr'])
+    ->middleware(['auth', \App\Http\Middleware\RequiereSegundoFactor::class])
+    ->name('galeria.panel.qr');
 
 /*
  * Las alianzas abiertas (§11): lo que el laboratorio esta construyendo con

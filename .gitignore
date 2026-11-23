@@ -26,3 +26,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 storage/app/respaldos/
+# Modelos subidos a la Galería 3D desde el panel (son datos, no código)
+/public/3d/subidos
