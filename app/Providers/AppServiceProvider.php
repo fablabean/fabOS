@@ -76,6 +76,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         /*
+         * El asistente del Bootcamp AGENTIC: el límite va por persona (su
+         * sesión), no por IP. En el salón todos salen por la misma IP de la
+         * universidad y un límite por IP lo compartiría el grupo entero. El
+         * tope general cuida al servidor de IA del FabLab.
+         */
+        \Illuminate\Support\Facades\RateLimiter::for('asistente-agentic', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinutes(10, 30)->by('persona:' . ($r->hasSession() ? $r->session()->getId() : $r->ip())),
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(90)->by('todos'),
+        ]);
+
+        /*
          * El menú del panel con lo decidido en Configuración → Menú. En boot
          * y no en register: Filament registra el suyo en su propio register, y
          * el que se registre después es el que se usa.

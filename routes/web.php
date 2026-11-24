@@ -109,7 +109,7 @@ Route::get('/p/{slug}/animacion/{archivo}', [PaginaPublicaController::class, 'an
 Route::get('/asistente/agentic', [\App\Http\Controllers\AsistenteAgenticController::class, 'pagina'])
     ->name('asistente.agentic');
 Route::post('/asistente/agentic/mensaje', [\App\Http\Controllers\AsistenteAgenticController::class, 'mensaje'])
-    ->middleware('throttle:30,10')
+    ->middleware('throttle:asistente-agentic')
     ->name('asistente.agentic.mensaje');
 
 // La carpeta multimedia: lo que las animaciones cargan por su dirección.
