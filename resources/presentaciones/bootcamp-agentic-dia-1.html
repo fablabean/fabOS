@@ -219,9 +219,10 @@
   .qr-portada b{display:block;margin:.7rem 0 .15rem;font-size:.95rem}
   .qr-portada span{display:block;font:600 .72rem "JetBrains Mono",monospace;color:var(--accent);word-break:break-all}
   .qr-portada small{display:block;color:var(--muted);font-size:.78rem;margin-top:.3rem;line-height:1.35}
-  header.portada .lead, header.portada h1{max-width:calc(100% - 17rem)}
+  @media (min-width:1101px){header.portada > .wrap{padding-right:calc(1.2rem + 17rem)}}
   @media (max-width:1100px){.qr-portada{position:static;width:auto;max-width:22rem;display:grid;grid-template-columns:7rem 1fr;gap:.9rem;align-items:center;text-align:left;margin-top:1.4rem}
-    .qr-portada b{margin-top:0} header.portada .lead, header.portada h1{max-width:none}}
+    .qr-portada b{margin-top:0}
+    header.portada > .wrap{display:flex;flex-direction:column} .qr-portada{order:1} header.portada .dias,header.portada .nivel-tit,header.portada .nivel{order:2}}
   @media (max-width:760px){.qr-portada{display:none}}
   .qr-grande{position:fixed;inset:0;z-index:50;display:grid;place-items:center;align-content:center;gap:1rem;background:color-mix(in srgb,var(--bg) 94%,transparent);cursor:pointer;text-align:center;padding:1rem}
   .qr-grande[hidden]{display:none}
