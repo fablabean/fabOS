@@ -197,6 +197,18 @@
   .pista::after{content:"";position:absolute;left:0;right:0;top:-10px;bottom:-10px}
   .pista:hover{background:color-mix(in srgb,var(--rule) 70%,var(--muted))}
 
+  /* Las notas para quien facilita: un ícono; el texto, al pasar el mouse.
+     La pantalla del profesor se proyecta y los participantes no las ven. */
+  .facilita{display:inline-block;position:relative;border:0;background:none;padding:0;margin:.5rem 0;vertical-align:middle}
+  .facilita > .ico-f{display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid var(--rule);background:transparent;
+    color:var(--muted);font:700 .8rem Inter,sans-serif;cursor:help;opacity:.55;padding:0}
+  .facilita:hover > .ico-f,.facilita:focus-within > .ico-f{opacity:1;color:var(--accent2);border-color:var(--accent2)}
+  .facilita > .facilita-txt{display:none;position:absolute;left:0;top:calc(100% + .4rem);z-index:30;width:min(34rem,82vw);
+    border:1px solid color-mix(in srgb,var(--accent2) 55%,var(--rule));border-radius:10px;padding:.7rem .95rem;font-size:.9rem;color:var(--soft);
+    background:color-mix(in srgb,var(--accent2) 7%,var(--card));box-shadow:0 14px 34px rgba(0,0,0,.5)}
+  .facilita:hover > .facilita-txt,.facilita:focus-within > .facilita-txt{display:block}
+  body.es-participante .facilita{display:none !important}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -708,6 +720,18 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
     for (i = ss.length - 1; i > 0 && ss[i].getBoundingClientRect().top > h + 4; i--) {}
     var destino = adelante ? ss[Math.min(i + 1, ss.length - 1)] : (ss[i].getBoundingClientRect().top < h - 4 ? ss[i] : ss[Math.max(i - 1, 0)]);
     destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+})();
+</script>
+<script>
+(function () {
+  // Cada nota «Para quien facilita» queda detrás de un ícono.
+  document.querySelectorAll('.facilita').forEach(function (f) {
+    var txt = document.createElement('div'); txt.className = 'facilita-txt';
+    while (f.firstChild) { txt.appendChild(f.firstChild); }
+    var ico = document.createElement('button'); ico.type = 'button'; ico.className = 'ico-f';
+    ico.textContent = '?'; ico.setAttribute('aria-label', 'Nota para quien facilita');
+    f.appendChild(ico); f.appendChild(txt);
   });
 })();
 </script>

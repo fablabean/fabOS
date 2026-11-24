@@ -263,7 +263,7 @@
   body.es-profe .tarjeta-m{cursor:pointer} body.es-profe .tarjeta-m:hover{border-color:var(--warn)}
   .tarjeta-m .quitar{position:absolute;top:.45rem;right:.45rem;width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid var(--rule);background:var(--card);color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;align-items:center;justify-content:center}
   .tarjeta-m .quitar:hover{color:var(--bad);border-color:var(--bad)}
-  body.es-profe .facilita.solo-profe{display:block !important}
+  body.es-profe .facilita.solo-profe{display:inline-block !important}
   /* El bloque 2 en dos columnas: escribir a la izquierda, el muro a la derecha. */
   .muro-zona{display:grid;grid-template-columns:minmax(18rem,27rem) minmax(0,1fr);gap:1.6rem;align-items:start;margin-top:1rem}
   .muro-izq .minuto{margin-top:0}
@@ -276,6 +276,18 @@
   .muro-der .muro{grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
   .muro-der .muro-vacio{border:1px dashed var(--rule);border-radius:12px;padding:2.5rem 1rem;text-align:center}
   @media (max-width:900px){.muro-zona{grid-template-columns:1fr}}
+
+  /* Las notas para quien facilita: un ícono; el texto, al pasar el mouse.
+     La pantalla del profesor se proyecta y los participantes no las ven. */
+  .facilita{display:inline-block;position:relative;border:0;background:none;padding:0;margin:.5rem 0;vertical-align:middle}
+  .facilita > .ico-f{display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid var(--rule);background:transparent;
+    color:var(--muted);font:700 .8rem Inter,sans-serif;cursor:help;opacity:.55;padding:0}
+  .facilita:hover > .ico-f,.facilita:focus-within > .ico-f{opacity:1;color:var(--accent2);border-color:var(--accent2)}
+  .facilita > .facilita-txt{display:none;position:absolute;left:0;top:calc(100% + .4rem);z-index:30;width:min(34rem,82vw);
+    border:1px solid color-mix(in srgb,var(--accent2) 55%,var(--rule));border-radius:10px;padding:.7rem .95rem;font-size:.9rem;color:var(--soft);
+    background:color-mix(in srgb,var(--accent2) 7%,var(--card));box-shadow:0 14px 34px rgba(0,0,0,.5)}
+  .facilita:hover > .facilita-txt,.facilita:focus-within > .facilita-txt{display:block}
+  body.es-participante .facilita{display:none !important}
 
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
@@ -1067,6 +1079,18 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
     for (i = ss.length - 1; i > 0 && ss[i].getBoundingClientRect().top > h + 4; i--) {}
     var destino = adelante ? ss[Math.min(i + 1, ss.length - 1)] : (ss[i].getBoundingClientRect().top < h - 4 ? ss[i] : ss[Math.max(i - 1, 0)]);
     destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+})();
+</script>
+<script>
+(function () {
+  // Cada nota «Para quien facilita» queda detrás de un ícono.
+  document.querySelectorAll('.facilita').forEach(function (f) {
+    var txt = document.createElement('div'); txt.className = 'facilita-txt';
+    while (f.firstChild) { txt.appendChild(f.firstChild); }
+    var ico = document.createElement('button'); ico.type = 'button'; ico.className = 'ico-f';
+    ico.textContent = '?'; ico.setAttribute('aria-label', 'Nota para quien facilita');
+    f.appendChild(ico); f.appendChild(txt);
   });
 })();
 </script>
