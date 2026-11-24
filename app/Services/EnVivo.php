@@ -173,6 +173,23 @@ class EnVivo
     public function reiniciarAgenda(string $sala): void
     {
         $this->c()->forget("envivo:$sala:agenda");
+        $this->c()->forget("envivo:$sala:seccion");
+    }
+
+    /**
+     * La sección que el profesor tiene en pantalla: los celulares que lo
+     * siguen pasan a ella, y ahí votan.
+     */
+    public function guardarSeccion(string $sala, ?string $seccion): void
+    {
+        if ($seccion !== null && preg_match('/^[a-z0-9-]{1,40}$/', $seccion)) {
+            $this->c()->put("envivo:$sala:seccion", $seccion, self::DURA);
+        }
+    }
+
+    public function seccion(string $sala): ?string
+    {
+        return $this->c()->get("envivo:$sala:seccion");
     }
 
     // ---------------------------------------------------------------- estado
@@ -189,6 +206,7 @@ class EnVivo
             'mios' => $quien ? $this->mios($sala, $quien) : [],
             'vivos' => $this->vivos($sala),
             'agenda' => $this->agenda($sala),
+            'seccion' => $this->seccion($sala),
             'profe' => $this->esProfe($sala, $clave),
             'ahora' => (int) floor(microtime(true) * 1000),
         ];

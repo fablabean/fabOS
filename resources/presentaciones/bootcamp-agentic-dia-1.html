@@ -212,6 +212,25 @@
   .pista::after{content:"";position:absolute;left:0;right:0;top:-10px;bottom:-10px}
   .pista:hover{background:color-mix(in srgb,var(--rule) 70%,var(--muted))}
 
+  /* El QR para seguir en el celular. */
+  header.portada > .wrap{position:relative}
+  .qr-portada{position:absolute;right:1.2rem;top:2.6rem;width:15rem;text-align:center;border:1px solid var(--rule);border-radius:16px;padding:1rem;background:var(--card)}
+  .qr-portada .qr{display:block;width:100%;height:auto;border-radius:8px}
+  .qr-portada b{display:block;margin:.7rem 0 .15rem;font-size:.95rem}
+  .qr-portada span{display:block;font:600 .72rem "JetBrains Mono",monospace;color:var(--accent);word-break:break-all}
+  .qr-portada small{display:block;color:var(--muted);font-size:.78rem;margin-top:.3rem;line-height:1.35}
+  header.portada .lead, header.portada h1{max-width:calc(100% - 17rem)}
+  @media (max-width:1100px){.qr-portada{position:static;width:auto;max-width:22rem;display:grid;grid-template-columns:7rem 1fr;gap:.9rem;align-items:center;text-align:left;margin-top:1.4rem}
+    .qr-portada b{margin-top:0} header.portada .lead, header.portada h1{max-width:none}}
+  @media (max-width:760px){.qr-portada{display:none}}
+  .qr-grande{position:fixed;inset:0;z-index:50;display:grid;place-items:center;align-content:center;gap:1rem;background:color-mix(in srgb,var(--bg) 94%,transparent);cursor:pointer;text-align:center;padding:1rem}
+  .qr-grande[hidden]{display:none}
+  .qr-grande .qr{width:min(70vh,80vw);height:auto;border-radius:14px}
+  .qr-grande b{font-size:clamp(1.2rem,2.6vw,2rem)}
+  .qr-grande span{font:600 clamp(1rem,2vw,1.5rem) "JetBrains Mono",monospace;color:var(--accent)}
+  .solo-part{display:none !important} body.es-participante .solo-part{display:inline-flex !important}
+  #seguir[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -236,6 +255,8 @@
       <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
       <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
     </div>
+    <button type="button" class="boton chico solo-profe" id="ver-qr" title="Mostrar el QR en grande">▦ QR</button>
+    <button type="button" class="boton chico solo-part" id="seguir" aria-pressed="true" title="Tu pantalla pasa sola a la sección que muestra quien presenta">● Siguiendo a quien presenta</button>
     <div class="reloj" aria-live="off">
       <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
       <div class="pista" id="r-pista"><div class="lleno" id="r-lleno"></div><div class="ahora" id="r-ahora"></div></div>
@@ -243,8 +264,9 @@
   </div>
 </div>
 
-<header class="portada">
+<header class="portada" id="portada">
   <div class="wrap">
+    <div class="qr-portada"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m4 0h2m3 0h2m1 0h2m1 0h7m-29 1h1m5 0h1m4 0h1m2 0h5m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h1m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h3m2 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h1m1 0h1m1 0h1m2 0h3m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m5 0h1m5 0h1m-21 1h1m1 0h5m2 0h1m2 0h4m1 0h1m1 0h1m2 0h5m-26 1h2m1 0h1m2 0h1m3 0h2m3 0h9m3 0h1m-29 1h2m2 0h1m1 0h2m3 0h1m3 0h3m2 0h2m2 0h1m-25 1h2m1 0h1m5 0h3m2 0h2m2 0h3m2 0h1m1 0h1m1 0h1m-26 1h2m1 0h5m1 0h3m3 0h1m1 0h1m5 0h2m-24 1h1m3 0h7m2 0h1m1 0h7m3 0h1m-29 1h1m1 0h5m1 0h2m1 0h1m2 0h2m2 0h1m1 0h2m3 0h2m-26 1h4m3 0h1m1 0h1m3 0h3m2 0h1m1 0h2m1 0h1m2 0h1m-27 1h2m3 0h1m4 0h1m1 0h1m1 0h3m7 0h2m-27 1h2m2 0h2m1 0h2m1 0h3m1 0h1m1 0h1m2 0h6m1 0h1m1 0h1m-29 1h1m1 0h1m2 0h4m1 0h3m2 0h1m1 0h2m4 0h2m1 0h1m-27 1h1m1 0h4m1 0h3m1 0h1m2 0h1m1 0h1m2 0h2m3 0h1m2 0h1m-28 1h1m1 0h1m3 0h2m1 0h2m1 0h1m4 0h8m1 0h3m-21 1h2m1 0h2m3 0h3m1 0h1m3 0h5m-29 1h7m5 0h1m2 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m1 0h3m4 0h2m3 0h1m3 0h1m-25 1h1m1 0h3m1 0h1m1 0h2m1 0h2m2 0h1m1 0h1m2 0h5m1 0h3m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h2m2 0h1m1 0h1m1 0h1m4 0h4m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h3m1 0h10m-28 1h1m5 0h1m3 0h3m1 0h1m1 0h1m3 0h2m3 0h1m1 0h1m-28 1h7m1 0h2m3 0h3m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><div><b>Síguela en tu celular</b><span>fablabean.com/zonas/agentic/dia-1</span><small>Escanéalo: verás la presentación en vivo y podrás votar en cada sección.</small></div></div>
     <div class="kicker">Sesión 01 · martes 24 de noviembre · 6:00 p. m.</div>
     <h1>Del chat a <span>trabajar con la IA</span>.</h1>
     <p class="lead">Hoy no vamos a programar mucho. Vamos a hacer lo que más ahorra tiempo después: entender bien el problema, ponerle un objetivo claro y llevarlo a tu editor, donde la IA ya no conversa contigo, sino que trabaja contigo sobre tus archivos.</p>
@@ -266,6 +288,8 @@
     </div>
   </div>
 </header>
+
+<div class="qr-grande" id="qr-grande" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m4 0h2m3 0h2m1 0h2m1 0h7m-29 1h1m5 0h1m4 0h1m2 0h5m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h1m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h3m2 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h1m1 0h1m1 0h1m2 0h3m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m5 0h1m5 0h1m-21 1h1m1 0h5m2 0h1m2 0h4m1 0h1m1 0h1m2 0h5m-26 1h2m1 0h1m2 0h1m3 0h2m3 0h9m3 0h1m-29 1h2m2 0h1m1 0h2m3 0h1m3 0h3m2 0h2m2 0h1m-25 1h2m1 0h1m5 0h3m2 0h2m2 0h3m2 0h1m1 0h1m1 0h1m-26 1h2m1 0h5m1 0h3m3 0h1m1 0h1m5 0h2m-24 1h1m3 0h7m2 0h1m1 0h7m3 0h1m-29 1h1m1 0h5m1 0h2m1 0h1m2 0h2m2 0h1m1 0h2m3 0h2m-26 1h4m3 0h1m1 0h1m3 0h3m2 0h1m1 0h2m1 0h1m2 0h1m-27 1h2m3 0h1m4 0h1m1 0h1m1 0h3m7 0h2m-27 1h2m2 0h2m1 0h2m1 0h3m1 0h1m1 0h1m2 0h6m1 0h1m1 0h1m-29 1h1m1 0h1m2 0h4m1 0h3m2 0h1m1 0h2m4 0h2m1 0h1m-27 1h1m1 0h4m1 0h3m1 0h1m2 0h1m1 0h1m2 0h2m3 0h1m2 0h1m-28 1h1m1 0h1m3 0h2m1 0h2m1 0h1m4 0h8m1 0h3m-21 1h2m1 0h2m3 0h3m1 0h1m3 0h5m-29 1h7m5 0h1m2 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m1 0h3m4 0h2m3 0h1m3 0h1m-25 1h1m1 0h3m1 0h1m1 0h2m1 0h2m2 0h1m1 0h1m2 0h5m1 0h3m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h2m2 0h1m1 0h1m1 0h1m4 0h4m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h3m1 0h10m-28 1h1m5 0h1m3 0h3m1 0h1m1 0h1m3 0h2m3 0h1m1 0h1m-28 1h7m1 0h2m3 0h3m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><b>Escanéalo para seguir en vivo y votar</b><span>fablabean.com/zonas/agentic/dia-1</span></div>
 
 <main class="wrap">
 
@@ -789,6 +813,7 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
     // El profesor recupera su agenda al volver a abrir; después manda él.
     if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
     pintarVotos(e);
+    seguirSeccion(e);
   }
   function sondear() {
     if (document.hidden) { return; }
@@ -796,6 +821,51 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
       $$('[data-vivos]').forEach(function (x) { x.textContent = document.body.classList.contains('en-vivo') ? 'Reconectando…' : 'Sin conexión con fabOS: la votación no está disponible'; });
     });
   }
+  // El QR en grande, para quien llega tarde. Se cierra con clic o Esc.
+  var qrGrande = $('#qr-grande');
+  $('#ver-qr').addEventListener('click', function () { qrGrande.hidden = false; });
+  qrGrande.addEventListener('click', function () { qrGrande.hidden = true; });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { qrGrande.hidden = true; } });
+
+  // Seguir a quien presenta: el profesor cuenta qué sección tiene en
+  // pantalla y los celulares pasan a ella cuando cambia.
+  var seguir = true, seccionVista = null, seccionEnviada = null, avisar = null;
+  function seccionActual() {
+    var h = barra.offsetHeight, mejor = null, area = 0;
+    $$('header.portada,section.agenda,section.bloque').forEach(function (s) {
+      var r = s.getBoundingClientRect(), vis = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, h);
+      if (vis > area) { area = vis; mejor = s; }
+    });
+    return mejor && mejor.id;
+  }
+  window.addEventListener('scroll', function () {
+    if (!soyProfe) { return; }
+    clearTimeout(avisar);
+    avisar = setTimeout(function () {
+      var id = seccionActual();
+      if (id && id !== seccionEnviada) {
+        seccionEnviada = id;
+        pedir('/control', { profe: profe, v: yo, accion: 'seccion', seccion: id }).catch(function () { seccionEnviada = null; });
+      }
+    }, 600);
+  }, { passive: true });
+  function irA(id) {
+    var s = id && document.getElementById(id);
+    if (s && seccionActual() !== id) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
+  var botonSeguir = $('#seguir');
+  botonSeguir.addEventListener('click', function () {
+    seguir = !seguir;
+    botonSeguir.setAttribute('aria-pressed', seguir ? 'true' : 'false');
+    botonSeguir.textContent = seguir ? '● Siguiendo a quien presenta' : '○ Seguir a quien presenta';
+    if (seguir) { irA(seccionVista); }
+  });
+  function seguirSeccion(e) {
+    if (soyProfe || !e.seccion || e.seccion === seccionVista) { return; }
+    seccionVista = e.seccion;
+    if (seguir) { irA(e.seccion); }
+  }
+
   sondear();
   setInterval(sondear, 3000);
   document.addEventListener('visibilitychange', sondear);

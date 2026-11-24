@@ -47,6 +47,7 @@ class EnVivoController extends Controller
 
         match ($request->input('accion')) {
             'agenda' => $this->envivo->guardarAgenda($sala, (array) json_decode((string) $request->input('agenda'), true)),
+            'seccion' => $this->envivo->guardarSeccion($sala, (string) $request->input('seccion')),
             'reiniciar-votos' => $this->envivo->reiniciarVotos($sala),
             'reiniciar-agenda' => $this->envivo->reiniciarAgenda($sala),
             default => abort(422),

@@ -85,6 +85,12 @@ class PresentacionesEnVivoTest extends TestCase
         $this->assertSame(['b-bienvenida' => 1764000600000], $a['listos']);
         $this->assertSame(['b-proyectos' => 30], $a['min']);
 
+        // La sección que muestra el profesor: la siguen los celulares.
+        $this->post('/api/envivo/' . self::SALA . '/control', ['accion' => 'seccion', 'seccion' => 'b-escalera'])->assertForbidden();
+        $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'seccion', 'seccion' => 'b-escalera'])->assertOk();
+        $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'seccion', 'seccion' => '<script>'])->assertOk();
+        $this->assertSame('b-escalera', $this->estado()['seccion']);
+
         $this->post('/api/envivo/' . self::SALA . '/votar', ['v' => 'ana12345', 'pregunta' => 'api', 'opcion' => 1]);
         $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'reiniciar-votos'])->assertOk();
         $e = $this->estado('ana12345');
