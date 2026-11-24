@@ -139,6 +139,11 @@
   .escalera.anima.ver .escalon:nth-child(3){animation-delay:1.4s}
   .escalera.anima.ver .escalon:nth-child(4){animation-delay:2.1s}
   @keyframes sube-escalon{to{opacity:1;transform:none}}
+  /* Ya armado, cada escalón tiembla a los lados cuando le pasa el mouse. */
+  .escalera .escalon.armado{opacity:1;transform:none;animation:none}
+  .escalera .escalon.armado:hover{animation:tiembla .5s ease-in-out;border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}
+  @keyframes tiembla{0%,100%{transform:none} 20%{transform:translateX(-5px) rotate(-.6deg)} 40%{transform:translateX(5px) rotate(.6deg)} 60%{transform:translateX(-3px) rotate(-.3deg)} 80%{transform:translateX(2px)}}
+  @media (prefers-reduced-motion:reduce){.escalera .escalon.armado:hover{animation:none}}
   @media (prefers-reduced-motion:reduce){.escalera.anima .escalon{opacity:1;transform:none;animation:none !important}}
   /* Ventanas de lectura (lo que es una API, para qué sirve): se abren cuando se quiere mostrar. */
   .info{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:1rem;background:color-mix(in srgb,var(--bg) 86%,transparent)}
@@ -980,7 +985,14 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
   var escalera = $('.escalera');
   if (escalera && window.IntersectionObserver) {
     escalera.classList.add('anima');
-    new IntersectionObserver(function (e) { escalera.classList.toggle('ver', e[0].isIntersecting); }, { threshold: 0.3 }).observe(escalera);
+    new IntersectionObserver(function (e) {
+      escalera.classList.toggle('ver', e[0].isIntersecting);
+      // Al salir se desarma, para volver a subir la próxima vez.
+      if (!e[0].isIntersecting) { $$('.escalon', escalera).forEach(function (x) { x.classList.toggle('armado', false); }); }
+    }, { threshold: 0.3 }).observe(escalera);
+    $$('.escalon', escalera).forEach(function (x) {
+      x.addEventListener('animationend', function (ev) { if (ev.animationName === 'sube-escalon') { x.classList.add('armado'); } });
+    });
   }
 
   // Las ventanas de lectura: botón para abrir; ×, Esc o clic fuera para cerrar.
