@@ -125,12 +125,21 @@
   .tarjeta .n{font:700 .72rem "JetBrains Mono",monospace;color:var(--accent);letter-spacing:.08em}
   .tarjeta.mal{border-color:color-mix(in srgb,var(--bad) 50%,var(--rule))} .tarjeta.mal .n{color:var(--bad)}
   .tarjeta.bien{border-color:color-mix(in srgb,var(--accent) 50%,var(--rule))}
-  .escalera{display:grid;gap:.5rem;margin:1.2rem 0}
+  .escalera{display:flex;flex-direction:column-reverse;gap:.5rem;margin:1.2rem 0}
   .escalon{display:grid;grid-template-columns:2.6rem 1fr;gap:.9rem;align-items:start;border:1px solid var(--rule);border-radius:12px;padding:.8rem 1rem;background:var(--bg2)}
   .escalon .e{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:10px;font:800 1rem "JetBrains Mono",monospace;background:var(--card);color:var(--accent);border:1px solid var(--rule)}
   .escalon h4{margin:0;font-size:1.02rem} .escalon p{margin:.15rem 0 0;font-size:.9rem;color:var(--soft)}
   .escalon .quien{font-size:.8rem;color:var(--muted);margin-top:.3rem}
-  .escalon:nth-child(1){margin-right:9%} .escalon:nth-child(2){margin-left:3%;margin-right:6%} .escalon:nth-child(3){margin-left:6%;margin-right:3%} .escalon:nth-child(4){margin-left:9%}
+  .escalon:nth-child(1){margin-right:24%} .escalon:nth-child(2){margin-left:8%;margin-right:16%} .escalon:nth-child(3){margin-left:16%;margin-right:8%} .escalon:nth-child(4){margin-left:24%}
+  .botones-api{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  /* Ventanas de lectura (lo que es una API, para qué sirve): se abren cuando se quiere mostrar. */
+  .info{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:1rem;background:color-mix(in srgb,var(--bg) 86%,transparent)}
+  .info[hidden]{display:none}
+  .info .caja-info{position:relative;width:min(58rem,94vw);max-height:88vh;overflow:auto;border:1px solid var(--rule);border-radius:16px;
+    background:var(--card);padding:1.4rem 1.7rem 1.6rem;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .info h3{margin:0 2.5rem .8rem 0;font-size:1.4rem}
+  .info .cerrar{position:absolute;top:.8rem;right:.8rem;width:2.2rem;height:2.2rem;border-radius:50%;border:1px solid var(--rule);background:var(--bg2);color:var(--soft);font-size:1.2rem;cursor:pointer}
+  .info .cerrar:hover{border-color:var(--accent);color:var(--ink)}
   .escalon.dia3 .e{color:var(--accent2)}
   @media (max-width:640px){.escalon{margin:0 !important}}
   .formula{font-size:1.15rem;line-height:1.55;border:1px solid var(--rule);border-radius:12px;padding:1rem 1.2rem;background:var(--card);margin:1rem 0}
@@ -435,10 +444,18 @@
       <div class="escalera">
         <div class="escalon"><div class="e">1</div><div><h4>El chat</h4><p>Le preguntas, te responde, y tú copias y pegas el resultado donde lo necesitas.</p><div class="quien">La IA habla · tú haces todo lo demás</div></div></div>
         <div class="escalon"><div class="e">2</div><div><h4>La IA en el editor <span class="hora">hoy y mañana</span></h4><p>Lee tus archivos, propone cambios sobre ellos y ejecuta órdenes, siempre pidiendo permiso. Ya no copias y pegas: revisas y apruebas.</p><div class="quien">La IA propone y ejecuta · tú decides y revisas</div></div></div>
-        <div class="escalon dia3"><div class="e">3</div><div><h4>La API <span class="hora">jueves</span></h4><p>Tu propio programa le habla al modelo, sin ti en medio. La IA queda <em>dentro</em> de tu solución: clasifica, resume o responde cada vez que llega algo.</p><div class="quien">Tu programa le pide · la IA responde · tú diseñaste el flujo</div></div></div>
+        <div class="escalon dia3"><div class="e">3</div><div><h4>La API <span class="hora">jueves</span></h4><p>Tu propio programa le habla al modelo, sin ti en medio. La IA queda <em>dentro</em> de tu solución: clasifica, resume o responde cada vez que llega algo.</p><div class="quien">Tu programa le pide · la IA responde · tú diseñaste el flujo</div><div class="botones-api"><button type="button" class="boton chico" data-abre="info-api">¿Qué es una API?</button><button type="button" class="boton chico" data-abre="info-para">¿Para qué sirve?</button></div></div></div>
         <div class="escalon dia3"><div class="e">4</div><div><h4>El agente <span class="hora">jueves</span></h4><p>Un modelo con herramientas y un objetivo: decide qué paso dar, lo da, mira el resultado y sigue hasta terminar.</p><div class="quien">El agente trabaja por pasos · tú pones el objetivo y los límites</div></div></div>
       </div>
 
+      <p class="nota ok"><b>Para pensar en tu proyecto:</b> ¿en qué escalón está hoy tu problema? Casi siempre empieza en el 1 (alguien chatea y copia). El bootcamp lo lleva al 2 y, si tiene sentido, al 3 o al 4.</p>
+      <div class="encuesta">
+        <div class="enc-cab"><b>Votemos</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
+        <div class="preguntas">
+          <div class="pregunta" data-pregunta="escalon" data-opciones="1 · El chat|2 · La IA en el editor|3 · La API|4 · Un agente"><h4>¿En qué escalón está hoy tu problema?</h4></div>
+        </div>
+      </div>
+      <div class="info" id="info-api" hidden><div class="caja-info"><button type="button" class="cerrar" aria-label="Cerrar">×</button>
       <h3>¿Qué es una API?</h3>
       <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una API es un enchufe. En vez de que tú escribas en el chat, un programa se «conecta» a la IA, le manda un texto y recibe la respuesta, todo automático. Como en un enchufe, se paga por lo que se consume (se mide en <em>tokens</em>, pedacitos de texto). Para eso sirve la llave de API que preparaste: es la que dice quién paga.</p>
       <div data-nivel="inter">
@@ -449,7 +466,8 @@
 
 → { "content": [{ "text": "urgente" }], "usage": { "input_tokens": 41, "output_tokens": 2 } }</pre></div>
       </div>
-
+      </div></div>
+      <div class="info" id="info-para" hidden><div class="caja-info"><button type="button" class="cerrar" aria-label="Cerrar">×</button>
       <h3>¿Para qué sirve conectarse por API?</h3>
       <div class="tarjetas">
         <div class="tarjeta"><h4>Clasificar</h4><p>Correos, solicitudes o tickets que llegan, cada uno a su bandeja, sin que nadie los lea primero.</p></div>
@@ -457,13 +475,7 @@
         <div class="tarjeta"><h4>Resumir</h4><p>El acta de cada reunión, o lo que pasó esta semana en un canal, en cinco líneas.</p></div>
         <div class="tarjeta"><h4>Responder</h4><p>Preguntas frecuentes con tus propios documentos, a cualquier hora.</p></div>
       </div>
-      <p class="nota ok"><b>Para pensar en tu proyecto:</b> ¿en qué escalón está hoy tu problema? Casi siempre empieza en el 1 (alguien chatea y copia). El bootcamp lo lleva al 2 y, si tiene sentido, al 3 o al 4.</p>
-      <div class="encuesta">
-        <div class="enc-cab"><b>Votemos</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
-        <div class="preguntas">
-          <div class="pregunta" data-pregunta="escalon" data-opciones="1 · El chat|2 · La IA en el editor|3 · La API|4 · Un agente"><h4>¿En qué escalón está hoy tu problema?</h4></div>
-        </div>
-      </div>
+      </div></div>
     </div>
   </section>
 
@@ -956,6 +968,13 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
       $$('[data-vivos]').forEach(function (x) { x.textContent = document.body.classList.contains('en-vivo') ? 'Reconectando…' : 'Sin conexión con fabOS: la votación no está disponible'; });
     });
   }
+  // Las ventanas de lectura: botón para abrir; ×, Esc o clic fuera para cerrar.
+  $$('[data-abre]').forEach(function (b) { b.addEventListener('click', function () { document.getElementById(b.dataset.abre).hidden = false; }); });
+  $$('.info').forEach(function (v) {
+    v.addEventListener('click', function (e) { if (e.target === v || e.target.classList.contains('cerrar')) { v.hidden = true; } });
+  });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { $$('.info').forEach(function (v) { v.hidden = true; }); } });
+
   // El QR en grande, para quien llega tarde. Se cierra con clic o Esc.
   var qrGrande = $('#qr-grande');
   $('#ver-qr').addEventListener('click', function () { qrGrande.hidden = false; });
