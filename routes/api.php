@@ -51,5 +51,6 @@ Route::prefix('iot/pantalla')->name('api.pantalla.')->middleware('throttle:30,1'
 Route::prefix('envivo/{sala}')->where(['sala' => '[a-z0-9-]+'])->middleware('throttle:envivo')->name('api.envivo.')->group(function () {
     Route::get('/estado', [\App\Http\Controllers\Api\EnVivoController::class, 'estado'])->name('estado');
     Route::post('/votar', [\App\Http\Controllers\Api\EnVivoController::class, 'votar'])->name('votar');
+    Route::post('/muro', [\App\Http\Controllers\Api\EnVivoController::class, 'aportar'])->name('muro');
     Route::post('/control', [\App\Http\Controllers\Api\EnVivoController::class, 'control'])->name('control');
 });

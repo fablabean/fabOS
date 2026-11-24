@@ -289,6 +289,8 @@ return [
                 'zona' => 'agentic',
                 'modulo' => 'dia-1',
                 'preguntas' => ['chat' => 3, 'editor' => 3, 'api' => 3, 'escalon' => 4],
+                // El bloque 2: cada quien publica su proyecto en un minuto.
+                'muro' => true,
             ],
         ],
     ],

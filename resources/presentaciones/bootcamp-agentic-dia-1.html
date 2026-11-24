@@ -232,6 +232,39 @@
   .solo-part{display:none !important} body.es-participante .solo-part{display:inline-flex !important}
   #seguir[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 
+  /* El muro de proyectos (bloque 2). */
+  .minuto{border:1px solid var(--rule);border-radius:14px;padding:1rem 1.2rem;background:var(--card);margin:1rem 0}
+  .minuto .frase{margin:.55rem 0;color:var(--soft);font-size:1.02rem;line-height:2.1}
+  .minuto input,.minuto textarea{font:inherit;font-size:.98rem;color:var(--ink);background:var(--code);border:1px solid var(--rule);border-radius:8px;padding:.25rem .55rem;min-width:12rem;vertical-align:middle;line-height:1.5}
+  .minuto input.corto{min-width:0;width:4.5rem}
+  .minuto textarea{display:block;width:100%;margin-top:.3rem;resize:vertical}
+  .minuto input:focus,.minuto textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 60%,transparent);border-color:transparent}
+  .minuto-pie{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-top:.7rem}
+  .aviso-muro{font-size:.82rem;color:var(--muted)} .aviso-muro.ok{color:var(--accent)} .aviso-muro.mal{color:var(--bad)}
+  body:not(.en-vivo) .minuto{opacity:.6}
+  @media (max-width:640px){.minuto input{min-width:0;width:100%}}
+  .muro-cab{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:1.4rem 0 .6rem} .muro-cab h3{margin:0}
+  #muro-n{color:var(--muted);font-weight:500;font-size:.95rem}
+  .muro{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));gap:.8rem}
+  .muro-vacio{color:var(--muted);font-size:.9rem;grid-column:1/-1;margin:0}
+  .tarjeta-m{position:relative;border:1px solid var(--rule);border-radius:12px;padding:.85rem 1rem;background:var(--bg2);font-size:.9rem}
+  .tarjeta-m .quien{font-size:.82rem;color:var(--muted);margin-bottom:.35rem;padding-right:2.2rem} .tarjeta-m .quien b{color:var(--ink)}
+  .tarjeta-m .prob{margin:0;color:var(--ink);font-weight:500}
+  .tarjeta-m .meta{margin:.35rem 0 0;font-size:.8rem;color:var(--muted)}
+  .tarjeta-m .desea{margin:.45rem 0 0;color:var(--accent);font-size:.88rem}
+  .tarjeta-m.mia{border-color:color-mix(in srgb,var(--accent) 55%,var(--rule))}
+  .tarjeta-m.mia .quien::after{content:" · la tuya";color:var(--accent)}
+  .tarjeta-m.destacada{grid-column:1/-1;order:-1;border-color:var(--warn);background:color-mix(in srgb,var(--warn) 8%,var(--bg2));font-size:1.2rem;padding:1.1rem 1.3rem}
+  .tarjeta-m.destacada::before{content:"Presentando ahora";display:block;font:700 .7rem "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:.45rem}
+  .tarjeta-m.destacada .quien{font-size:.95rem}
+  .tarjeta-m.nueva{animation:entra .7s ease-out}
+  @keyframes entra{from{opacity:0;transform:translateY(10px) scale(.97)}}
+  @media (prefers-reduced-motion:reduce){.tarjeta-m.nueva{animation:none}}
+  body.es-profe .tarjeta-m{cursor:pointer} body.es-profe .tarjeta-m:hover{border-color:var(--warn)}
+  .tarjeta-m .quitar{position:absolute;top:.45rem;right:.45rem;width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid var(--rule);background:var(--card);color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;align-items:center;justify-content:center}
+  .tarjeta-m .quitar:hover{color:var(--bad);border-color:var(--bad)}
+  body.es-profe .facilita.solo-profe{display:block !important}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -346,17 +379,24 @@
     <div class="cab"><div class="num">02</div><div><h2>Tu proyecto en un minuto <span class="hora"></span></h2><p class="para">Cada persona presenta el problema que quiere trabajar. No hace falta tener la solución.</p></div></div>
     <div class="cuerpo">
       <p>Cuéntalo así, en voz alta y en un minuto. Si no tienes un proyecto claro, cuenta algo que repites cada semana y te quita tiempo: eso ya es un proyecto.</p>
-      <div class="cmd"><div class="lbl">Tu minuto</div><pre>Me llamo <span class="hueco">___</span> y trabajo en <span class="hueco">___</span>.
-Algo que me quita tiempo (o que sale mal) es <span class="hueco">___</span>.
-Le pasa a <span class="hueco">___</span>, más o menos <span class="hueco">___</span> veces por semana.
-Me gustaría que <span class="hueco">___</span>.</pre></div>
+      <form class="minuto" id="minuto" autocomplete="off">
+        <div class="enc-cab"><b>Tu minuto · escríbelo y publícalo en el muro</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
+        <p class="frase">Me llamo <input name="nombre" maxlength="60" placeholder="tu nombre (opcional)"> y trabajo en <input name="trabajo" maxlength="80" placeholder="área o empresa">.</p>
+        <p class="frase">Algo que me quita tiempo (o que sale mal) es<textarea name="problema" maxlength="280" rows="2" required placeholder="lo que repites cada semana, o lo que siempre falla"></textarea></p>
+        <p class="frase">Le pasa a <input name="aquien" maxlength="80" placeholder="quién"> , más o menos <input name="cuanto" maxlength="40" class="corto" placeholder="¿?"> veces por semana.</p>
+        <p class="frase">Me gustaría que<textarea name="gustaria" maxlength="280" rows="2" placeholder="cómo sería mejor"></textarea></p>
+        <div class="minuto-pie"><button type="submit" class="boton pri" id="publicar">Publicar en el muro</button><span class="aviso-muro" id="aviso-muro">Lo verá toda la sala. Puedes corregirlo después.</span></div>
+      </form>
       <div class="crono" data-cuenta="60">
         <div class="cifra">1:00</div>
         <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
         <button type="button" class="boton chico" data-crono="parar">Parar</button>
         <span class="cuantos">Van <b data-crono="n">0</b> presentaciones</span>
       </div>
-      <p class="nota"><b>Mientras escuchas:</b> anota los problemas que se parecen al tuyo. Mañana, en los retos, pueden trabajar en paralelo y compararse.</p>
+      <div class="muro-cab"><h3>El muro <span id="muro-n"></span></h3><button type="button" class="boton chico solo-profe" id="vaciar-muro">Vaciar el muro</button></div>
+      <div class="muro" id="muro"><p class="muro-vacio">Aquí van apareciendo los proyectos de la sala.</p></div>
+      <p class="nota"><b>Mientras escuchas:</b> fíjate en las tarjetas que se parecen a la tuya. Mañana, en los retos, pueden trabajar en paralelo y compararse.</p>
+      <div class="facilita solo-profe"><b>Para quien facilita</b>Haz clic en una tarjeta para destacarla mientras esa persona presenta (otro clic la suelta). La × la quita del muro.</div>
     </div>
   </section>
 
@@ -767,7 +807,73 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
       $('.total', q).textContent = total ? total + (total === 1 ? ' voto' : ' votos') : 'Sin votos todavía';
     });
     $$('[data-vivos]').forEach(function (x) { x.textContent = e.vivos + (e.vivos === 1 ? ' persona conectada' : ' personas conectadas'); });
+    pintarMuro(e.muro);
   }
+
+  // ---- El muro: cada quien publica su minuto y aparece en todas las pantallas.
+  var versionMuro = null, vistas = null, formSucio = false, destacada = null;
+  var form = $('#minuto'), aviso = $('#aviso-muro'), botonPublicar = $('#publicar');
+  form.addEventListener('input', function () { formSucio = true; });
+  function avisar(t, clase) { aviso.textContent = t; aviso.className = 'aviso-muro ' + (clase || ''); }
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!document.body.classList.contains('en-vivo')) { avisar('Sin conexión con fabOS: no se puede publicar ahora.', 'mal'); return; }
+    var datos = { v: yo };
+    ['nombre', 'trabajo', 'problema', 'aquien', 'cuanto', 'gustaria'].forEach(function (k) { datos[k] = form.elements[k].value; });
+    if (!datos.problema.trim()) { avisar('Falta lo principal: qué te quita tiempo o qué sale mal.', 'mal'); form.elements.problema.focus(); return; }
+    botonPublicar.disabled = true;
+    pedir('/muro', datos).then(function (e) {
+      formSucio = false; avisar('Publicado ✓ Ya está en el muro.', 'ok'); pintarVotos(e);
+    }).catch(function () { avisar('No se pudo publicar. Intenta de nuevo.', 'mal'); })
+      .then(function () { botonPublicar.disabled = false; });
+  });
+  function pintarMuro(m) {
+    if (!m) { return; }
+    versionMuro = m.version; destacada = m.destacado || null;
+    var mia = m.mia && m.mia.id, cont = $('#muro'), nuevas = vistas !== null;
+    var ya = vistas || {}; vistas = {};
+    cont.innerHTML = '';
+    m.tarjetas.forEach(function (t) {
+      var a = document.createElement('article');
+      a.className = 'tarjeta-m' + (t.id === mia ? ' mia' : '') + (t.id === destacada ? ' destacada' : '') + (nuevas && !ya[t.id] ? ' nueva' : '');
+      a.dataset.id = t.id;
+      var q = document.createElement('div'); q.className = 'quien';
+      var b = document.createElement('b'); b.textContent = t.nombre || 'Sin nombre'; q.appendChild(b);
+      if (t.trabajo) { q.appendChild(document.createTextNode(' · ' + t.trabajo)); }
+      a.appendChild(q);
+      var pr = document.createElement('p'); pr.className = 'prob'; pr.textContent = t.problema; a.appendChild(pr);
+      if (t.aquien || t.cuanto) {
+        var me = document.createElement('p'); me.className = 'meta';
+        me.textContent = [t.aquien ? 'Le pasa a ' + t.aquien : '', t.cuanto ? t.cuanto + ' veces por semana' : ''].filter(Boolean).join(' · ');
+        a.appendChild(me);
+      }
+      if (t.gustaria) { var d = document.createElement('p'); d.className = 'desea'; d.textContent = '→ Me gustaría que ' + t.gustaria; a.appendChild(d); }
+      var x = document.createElement('button'); x.type = 'button'; x.className = 'quitar solo-profe'; x.title = 'Quitar del muro'; x.textContent = '×';
+      x.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (window.confirm('¿Quitar esta tarjeta del muro?')) { pedir('/control', { profe: profe, v: yo, accion: 'quitar', id: t.id }).then(pintarVotos).catch(function () {}); }
+      });
+      a.appendChild(x);
+      a.addEventListener('click', function () {
+        if (!soyProfe) { return; }
+        pedir('/control', { profe: profe, v: yo, accion: 'destacar', id: destacada === t.id ? '' : t.id }).then(pintarVotos).catch(function () {});
+      });
+      vistas[t.id] = true;
+      cont.appendChild(a);
+    });
+    if (!m.tarjetas.length) { cont.innerHTML = '<p class="muro-vacio">Aquí van apareciendo los proyectos de la sala.</p>'; }
+    $('#muro-n').textContent = m.tarjetas.length ? '· ' + m.tarjetas.length + (m.tarjetas.length === 1 ? ' proyecto' : ' proyectos') : '';
+    // La tarjeta propia vuelve al formulario para corregirla (si no se está escribiendo).
+    if (m.mia && !formSucio) {
+      ['nombre', 'trabajo', 'problema', 'aquien', 'cuanto', 'gustaria'].forEach(function (k) { form.elements[k].value = m.mia[k] || ''; });
+    }
+    botonPublicar.textContent = m.mia ? 'Actualizar mi tarjeta' : 'Publicar en el muro';
+  }
+  $('#vaciar-muro').addEventListener('click', function () {
+    if (soyProfe && window.confirm('¿Vaciar el muro? Se borran todas las tarjetas.')) {
+      pedir('/control', { profe: profe, v: yo, accion: 'vaciar-muro' }).then(pintarVotos).catch(function () {});
+    }
+  });
 
   // La agenda del profesor, en el reloj de cada quien.
   function tomarAgenda(a) {
@@ -818,7 +924,7 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
   }
   function sondear() {
     if (document.hidden) { return; }
-    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '')).then(aplicar).catch(function () {
+    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '') + (versionMuro !== null ? '&m=' + versionMuro : '')).then(aplicar).catch(function () {
       $$('[data-vivos]').forEach(function (x) { x.textContent = document.body.classList.contains('en-vivo') ? 'Reconectando…' : 'Sin conexión con fabOS: la votación no está disponible'; });
     });
   }

@@ -25,7 +25,24 @@ class EnVivoController extends Controller
     {
         abort_unless($this->envivo->existe($sala), 404);
 
-        return $this->json($this->envivo->estado($sala, $this->quien($request), $request->query('profe')));
+        return $this->json($this->envivo->estado($sala, $this->quien($request), $request->query('profe'), $this->versionMuro($request)));
+    }
+
+    /** La tarjeta de quien escribe en el muro (una por navegador; se puede corregir). */
+    public function aportar(Request $request, string $sala): JsonResponse
+    {
+        abort_unless($this->envivo->existe($sala) && $this->envivo->tieneMuro($sala), 404);
+        $quien = $this->quien($request);
+        abort_unless($quien && $this->envivo->aportar($sala, $quien, $request->only(array_keys(EnVivo::CAMPOS_MURO))), 422);
+
+        return $this->json($this->envivo->estado($sala, $quien, $request->input('profe')));
+    }
+
+    private function versionMuro(Request $request): ?int
+    {
+        $m = $request->input('m', $request->query('m'));
+
+        return is_numeric($m) ? (int) $m : null;
     }
 
     public function votar(Request $request, string $sala): JsonResponse
@@ -48,6 +65,9 @@ class EnVivoController extends Controller
         match ($request->input('accion')) {
             'agenda' => $this->envivo->guardarAgenda($sala, (array) json_decode((string) $request->input('agenda'), true)),
             'seccion' => $this->envivo->guardarSeccion($sala, (string) $request->input('seccion')),
+            'quitar' => $this->envivo->quitarDelMuro($sala, (string) $request->input('id')),
+            'destacar' => $this->envivo->destacar($sala, $request->input('id')),
+            'vaciar-muro' => $this->envivo->vaciarMuro($sala),
             'reiniciar-votos' => $this->envivo->reiniciarVotos($sala),
             'reiniciar-agenda' => $this->envivo->reiniciarAgenda($sala),
             default => abort(422),

@@ -98,6 +98,42 @@ class PresentacionesEnVivoTest extends TestCase
         $this->assertSame([], $e['mios']);
     }
 
+    public function test_el_muro_publica_corrige_y_solo_viaja_cuando_cambia(): void
+    {
+        $url = '/api/envivo/' . self::SALA . '/muro';
+        $this->post($url, ['v' => 'ana12345', 'problema' => ''])->assertStatus(422);
+
+        $r = $this->post($url, ['v' => 'ana12345', 'nombre' => 'Ana', 'problema' => 'Respondo   40 correos iguales', 'cuanto' => '40'])
+            ->assertOk()->assertHeader('Access-Control-Allow-Origin', '*')->json();
+        $this->assertCount(1, $r['muro']['tarjetas']);
+        $this->assertSame('Respondo 40 correos iguales', $r['muro']['tarjetas'][0]['problema']);
+        $this->assertArrayNotHasKey('quien', $r['muro']['tarjetas'][0]);
+        $this->assertSame('Ana', $r['muro']['mia']['nombre']);
+
+        // Corregir la propia no suma otra tarjeta.
+        $this->post($url, ['v' => 'ana12345', 'nombre' => 'Ana M.', 'problema' => 'Respondo 40 correos']);
+        $this->post($url, ['v' => 'juan1234', 'problema' => '<b>Las actas</b>']);
+        $e = $this->estado('juan1234');
+        $this->assertSame(['Ana M.', ''], array_column($e['muro']['tarjetas'], 'nombre'));
+        $this->assertSame('<b>Las actas</b>', $e['muro']['mia']['problema']);
+
+        // Con la versión al día, el muro no viaja.
+        $version = $e['muro']['version'];
+        $this->assertNull($this->getJson('/api/envivo/' . self::SALA . '/estado?v=juan1234&m=' . $version)->json('muro'));
+
+        // El profesor destaca, quita y vacía; un participante no.
+        $id = $e['muro']['tarjetas'][0]['id'];
+        $this->post('/api/envivo/' . self::SALA . '/control', ['accion' => 'vaciar-muro'])->assertForbidden();
+        $clave = app(EnVivo::class)->claveDeProfesor(self::SALA);
+        $d = $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'destacar', 'id' => $id])->json();
+        $this->assertSame($id, $d['muro']['destacado']);
+        $q = $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'quitar', 'id' => $id])->json();
+        $this->assertCount(1, $q['muro']['tarjetas']);
+        $v = $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'vaciar-muro'])->json();
+        $this->assertSame([], $v['muro']['tarjetas']);
+        $this->assertNull($v['muro']['destacado']);
+    }
+
     public function test_el_panel_da_el_enlace_de_profesor_y_reinicia(): void
     {
         $admin = User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);

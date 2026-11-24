@@ -192,15 +192,120 @@ class EnVivo
         return $this->c()->get("envivo:$sala:seccion");
     }
 
+    // ----------------------------------------------------------------- muro
+
+    /** Lo que se escribe en una tarjeta del muro, y cuánto cabe. */
+    public const CAMPOS_MURO = ['nombre' => 60, 'trabajo' => 80, 'problema' => 280, 'aquien' => 80, 'cuanto' => 40, 'gustaria' => 280];
+
+    public function tieneMuro(string $sala): bool
+    {
+        return (bool) config("fabos.envivo.salas.$sala.muro", false);
+    }
+
+    /**
+     * Publica (o reemplaza) la tarjeta de este navegador. Se escribe con
+     * candado: treinta personas publicando a la vez no se pisan.
+     */
+    public function aportar(string $sala, string $quien, array $campos): bool
+    {
+        $tarjeta = [];
+        foreach (self::CAMPOS_MURO as $campo => $max) {
+            $tarjeta[$campo] = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) ($campos[$campo] ?? ''))), 0, $max);
+        }
+        if ($tarjeta['problema'] === '') {
+            return false;
+        }
+
+        return $this->conCandado($sala, function (array $muro) use ($quien, $tarjeta) {
+            $id = substr(hash('sha256', $quien), 0, 12);
+            $muro[$id] = $tarjeta + ['id' => $id, 't' => $muro[$id]['t'] ?? (int) floor(microtime(true) * 1000), 'quien' => $quien];
+
+            return count($muro) > 80 ? null : $muro;
+        });
+    }
+
+    public function quitarDelMuro(string $sala, string $id): void
+    {
+        $this->conCandado($sala, function (array $muro) use ($id) {
+            unset($muro[$id]);
+
+            return $muro;
+        });
+    }
+
+    public function vaciarMuro(string $sala): void
+    {
+        $this->conCandado($sala, fn () => []);
+        $this->c()->forget("envivo:$sala:destacado");
+    }
+
+    public function destacar(string $sala, ?string $id): void
+    {
+        $id && preg_match('/^[a-f0-9]{12}$/', $id)
+            ? $this->c()->put("envivo:$sala:destacado", $id, self::DURA)
+            : $this->c()->forget("envivo:$sala:destacado");
+        $this->c()->add("envivo:$sala:muro:version", 0, self::DURA * 7);
+        $this->c()->increment("envivo:$sala:muro:version");
+    }
+
+    /** @return array{version:int, tarjetas:list<array>, destacado:?string} */
+    public function muro(string $sala): array
+    {
+        $tarjetas = collect($this->c()->get("envivo:$sala:muro", []))
+            ->sortBy('t')
+            ->map(fn ($t) => collect($t)->except('quien')->all())
+            ->values()->all();
+
+        return ['version' => $this->versionMuro($sala), 'tarjetas' => $tarjetas, 'destacado' => $this->c()->get("envivo:$sala:destacado")];
+    }
+
+    private function versionMuro(string $sala): int
+    {
+        return (int) $this->c()->get("envivo:$sala:muro:version", 0);
+    }
+
+    private function miTarjeta(string $sala, string $quien): ?array
+    {
+        $t = $this->c()->get("envivo:$sala:muro", [])[substr(hash('sha256', $quien), 0, 12)] ?? null;
+
+        return $t ? collect($t)->except('quien')->all() : null;
+    }
+
+    /** @param callable(array):?array $cambio  devuelve el muro nuevo, o null si no se acepta */
+    private function conCandado(string $sala, callable $cambio): bool
+    {
+        return (bool) $this->c()->lock("envivo:$sala:muro:candado", 5)->block(4, function () use ($sala, $cambio) {
+            $nuevo = $cambio($this->c()->get("envivo:$sala:muro", []));
+            if ($nuevo === null) {
+                return false;
+            }
+            $this->c()->put("envivo:$sala:muro", $nuevo, self::DURA);
+            $this->c()->add("envivo:$sala:muro:version", 0, self::DURA * 7);
+            $this->c()->increment("envivo:$sala:muro:version");
+
+            return true;
+        });
+    }
+
     // ---------------------------------------------------------------- estado
 
-    public function estado(string $sala, ?string $quien, ?string $clave = null): array
+    /**
+     * @param  ?int  $versionMuro  la que ya tiene el navegador: si es la misma,
+     *                             el muro no viaja (cada pocos segundos, treinta veces).
+     */
+    public function estado(string $sala, ?string $quien, ?string $clave = null, ?int $versionMuro = null): array
     {
         if ($quien) {
             $this->anotarVivo($sala, $quien);
         }
 
+        $muro = null;
+        if ($this->tieneMuro($sala) && $versionMuro !== $this->versionMuro($sala)) {
+            $muro = $this->muro($sala) + ['mia' => $quien ? $this->miTarjeta($sala, $quien) : null];
+        }
+
         return [
+            'muro' => $muro,
             'ronda' => $this->ronda($sala),
             'votos' => $this->votos($sala),
             'mios' => $quien ? $this->mios($sala, $quien) : [],
