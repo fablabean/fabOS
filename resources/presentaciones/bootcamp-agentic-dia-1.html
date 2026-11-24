@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Día 1 · Bootcamp AGENTIC</title>
+<meta name="description" content="Sesión 01 del Bootcamp AGENTIC: del chat a trabajar con la IA en el editor. Reconocer el problema y consolidar el objetivo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1513; --bg2:#141D1A; --card:#18231F; --rule:#2A3832; --ink:#ECF1EE; --soft:#B7C4BE; --muted:#83948C;
+    --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --bad:#FF6B6B; --code:#0A100E;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(var(--barra,3.3rem) + .5rem)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+  a{color:var(--accent)}
+  code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+  .wrap{max-width:62rem;margin:0 auto;padding:0 1.2rem}
+
+  /* IA y nivel, como en «Prepárate» */
+  [data-ia]{display:none}
+  body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
+  body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
+  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
+
+  /* barra */
+  .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .barra .wrap{display:flex;gap:.6rem 1rem;align-items:center;justify-content:space-between;padding-top:.55rem;padding-bottom:.55rem;flex-wrap:wrap}
+  .marca{font-weight:800;letter-spacing:.04em;font-size:.9rem;white-space:nowrap}
+  .marca b{color:var(--accent2)}
+  .so{display:inline-flex;border:1px solid var(--rule);border-radius:99px;overflow:hidden}
+  .so button{background:none;border:0;color:var(--soft);padding:.35rem .85rem;font:600 .82rem Inter,sans-serif;cursor:pointer}
+  .so button[aria-pressed=true]{background:var(--accent);color:#06231A}
+  .reloj{flex:1 1 16rem;max-width:26rem;min-width:13rem}
+  .reloj .txt{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between;gap:.6rem}
+  .reloj .txt b{color:var(--ink);font-weight:600}
+  .pista{position:relative;height:8px;background:var(--rule);border-radius:9px;margin-top:.25rem}
+  .pista .lleno{position:absolute;inset:0 auto 0 0;width:0;border-radius:9px;background:linear-gradient(90deg,var(--accent),var(--warn));transition:width .4s}
+  .pista .ahora{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--bg);transition:left .4s}
+  .pista .corte{position:absolute;top:0;bottom:0;width:2px;background:var(--bg)}
+  .ritmo{font-weight:700}
+  .ritmo.bien{color:var(--accent)} .ritmo.tarde{color:var(--bad)} .ritmo.antes{color:var(--warn)}
+
+  /* portada */
+  header.portada{padding:4rem 0 2.6rem;border-bottom:1px solid var(--rule);
+    background:radial-gradient(60rem 30rem at 85% -10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent),
+               radial-gradient(40rem 25rem at -10% 110%,color-mix(in srgb,var(--accent2) 14%,transparent),transparent)}
+  .kicker{font:600 .78rem "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2)}
+  h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.02;margin:.6rem 0 1rem;letter-spacing:-.03em;font-weight:800}
+  h1 span{color:var(--accent)}
+  .lead{font-size:1.15rem;color:var(--soft);max-width:46rem}
+  .datos{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem}
+  .dato{border:1px solid var(--rule);background:var(--card);border-radius:10px;padding:.55rem .9rem;font-size:.9rem}
+  .dato b{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  .nivel-tit{margin:2rem 0 .7rem;font-weight:600}
+  .nivel{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;max-width:46rem}
+  .nivel button{position:relative;text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:1rem 3rem 1rem 1.2rem;color:var(--ink);cursor:pointer;font:inherit}
+  .nivel button:hover{border-color:var(--accent)}
+  .nivel button::before{content:"";position:absolute;top:1.1rem;right:1.1rem;width:1.1rem;height:1.1rem;border-radius:50%;border:2px solid var(--muted)}
+  .nivel button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+  .nivel button[aria-pressed=true]::before{border:4px solid var(--accent);background:#06231A}
+  .nivel .t{display:block;font-weight:800;font-size:1.15rem}
+  .nivel .s{display:block;color:var(--soft);font-size:.9rem;margin-top:.25rem;line-height:1.45}
+
+  /* los tres días */
+  .dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1.6rem 0 0}
+  .dia{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2);color:var(--soft);font-size:.9rem}
+  .dia .n{font:600 .72rem "JetBrains Mono",monospace;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+  .dia .t{display:block;color:var(--ink);font-weight:700;font-size:1.05rem;margin:.15rem 0 .2rem}
+  .dia.hoy{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+  .dia.hoy .n{color:var(--accent)} .dia.hoy .n::after{content:" · hoy"}
+
+  /* agenda */
+  section.agenda{padding:3rem 0 2.5rem;border-bottom:1px solid var(--rule)}
+  .mando{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:1.2rem 0}
+  .boton{display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;border:1px solid var(--rule);border-radius:99px;padding:.5rem 1.05rem;
+    background:var(--bg2);color:var(--ink);font:600 .88rem Inter,sans-serif;text-decoration:none}
+  .boton:hover{border-color:var(--accent)}
+  .boton.pri{background:var(--accent);border-color:var(--accent);color:#06231A}
+  .boton.chico{padding:.3rem .75rem;font-size:.8rem}
+  .tabla{width:100%;border-collapse:collapse;font-size:.92rem}
+  .tabla th{font:600 .68rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:.5rem .5rem;border-bottom:1px solid var(--rule)}
+  .tabla td{padding:.55rem .5rem;border-bottom:1px solid color-mix(in srgb,var(--rule) 60%,transparent);vertical-align:middle}
+  .tabla td.h{font-family:"JetBrains Mono",monospace;color:var(--soft);white-space:nowrap}
+  .tabla td a{color:var(--ink);text-decoration:none;font-weight:600} .tabla td a:hover{color:var(--accent)}
+  .tabla input{width:3.6rem;background:var(--code);border:1px solid var(--rule);border-radius:6px;color:var(--ink);padding:.2rem .35rem;font:600 .85rem "JetBrains Mono",monospace;text-align:right}
+  .tabla tr.en-curso td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
+  .tabla tr.listo td{color:var(--muted)} .tabla tr.listo td a{color:var(--muted)}
+  .estado{font-size:.8rem;white-space:nowrap}
+  .tabla tfoot td{font-weight:700;border-bottom:0;padding-top:.8rem}
+  .aviso-plan{font-size:.85rem;margin-top:.6rem;color:var(--muted)}
+  .aviso-plan.mal{color:var(--bad)}
+  .resumen-ritmo{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.3rem 0 0}
+  .resumen-ritmo div{border:1px solid var(--rule);border-radius:10px;padding:.6rem .85rem;background:var(--card);font-size:1.05rem;font-weight:700}
+  .resumen-ritmo b{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  @media (max-width:640px){.tabla .opc{display:none}}
+
+  /* bloques */
+  section.bloque{padding:3.2rem 0;border-bottom:1px solid var(--rule)}
+  .cab{display:flex;gap:1rem;align-items:flex-start}
+  .num{flex:0 0 auto;width:3rem;height:3rem;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule);font:700 1.1rem "JetBrains Mono",monospace;color:var(--accent)}
+  section.bloque.listo .num{background:var(--accent);color:#06231A;border-color:var(--accent)}
+  section.bloque.en-curso .num{border-color:var(--warn);color:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent)}
+  h2{font-size:1.65rem;margin:0;letter-spacing:-.02em}
+  .para{color:var(--muted);font-size:.92rem;margin:.15rem 0 0}
+  .hora{display:inline-block;font:600 .72rem "JetBrains Mono",monospace;border:1px solid var(--rule);border-radius:99px;padding:.08rem .6rem;color:var(--muted);margin-left:.35rem;vertical-align:middle;white-space:nowrap}
+  section.bloque.en-curso .hora{border-color:var(--warn);color:var(--warn)}
+  .cuerpo{margin-left:4rem}
+  .cuerpo > p, .cuerpo li{color:var(--soft)}
+  .cuerpo h3{margin:1.6rem 0 .4rem;font-size:1.12rem}
+  .simple{border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));background:color-mix(in srgb,var(--accent) 5%,transparent);border-radius:10px;padding:.75rem 1rem;margin:1rem 0;color:var(--soft)}
+  .simple b{color:var(--accent)}
+  .nota{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0;color:var(--soft);font-size:.93rem}
+  .nota b{color:var(--warn)}
+  .nota.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)} .nota.ok b{color:var(--ok)}
+  .facilita{border:1px solid color-mix(in srgb,var(--accent2) 45%,var(--rule));border-radius:10px;padding:.6rem .9rem;margin:1rem 0;font-size:.88rem;color:var(--soft);background:color-mix(in srgb,var(--accent2) 6%,transparent)}
+  .facilita b{color:var(--accent2);font:600 .7rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;display:block}
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1rem 0}
+  .tarjeta{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2)}
+  .tarjeta h4{margin:0 0 .3rem;font-size:1rem}
+  .tarjeta p{margin:0;font-size:.88rem;color:var(--soft)}
+  .tarjeta .n{font:700 .72rem "JetBrains Mono",monospace;color:var(--accent);letter-spacing:.08em}
+  .tarjeta.mal{border-color:color-mix(in srgb,var(--bad) 50%,var(--rule))} .tarjeta.mal .n{color:var(--bad)}
+  .tarjeta.bien{border-color:color-mix(in srgb,var(--accent) 50%,var(--rule))}
+  .escalera{display:grid;gap:.5rem;margin:1.2rem 0}
+  .escalon{display:grid;grid-template-columns:2.6rem 1fr;gap:.9rem;align-items:start;border:1px solid var(--rule);border-radius:12px;padding:.8rem 1rem;background:var(--bg2)}
+  .escalon .e{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:10px;font:800 1rem "JetBrains Mono",monospace;background:var(--card);color:var(--accent);border:1px solid var(--rule)}
+  .escalon h4{margin:0;font-size:1.02rem} .escalon p{margin:.15rem 0 0;font-size:.9rem;color:var(--soft)}
+  .escalon .quien{font-size:.8rem;color:var(--muted);margin-top:.3rem}
+  .escalon:nth-child(1){margin-right:9%} .escalon:nth-child(2){margin-left:3%;margin-right:6%} .escalon:nth-child(3){margin-left:6%;margin-right:3%} .escalon:nth-child(4){margin-left:9%}
+  .escalon.dia3 .e{color:var(--accent2)}
+  @media (max-width:640px){.escalon{margin:0 !important}}
+  .formula{font-size:1.15rem;line-height:1.55;border:1px solid var(--rule);border-radius:12px;padding:1rem 1.2rem;background:var(--card);margin:1rem 0}
+  .formula em{font-style:normal;color:var(--warn);border-bottom:1px dashed var(--warn)}
+  .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  .tres > div{border-radius:12px;padding:.8rem 1rem;border:1px solid var(--rule);background:var(--bg2);font-size:.9rem;color:var(--soft)}
+  .tres h4{margin:0 0 .3rem;font-size:.95rem;color:var(--ink)}
+  .tres > div:nth-child(1){border-color:var(--accent)} .tres > div:nth-child(2){border-color:var(--warn)}
+  @media (max-width:640px){.tres{grid-template-columns:1fr}}
+  ol.pasitos{padding-left:1.2rem;color:var(--soft)} ol.pasitos li{margin:.35rem 0}
+
+  /* código y pedidos para copiar */
+  .cmd{position:relative;margin:.8rem 0}
+  .cmd .lbl{font:600 .68rem "JetBrains Mono",monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem}
+  .cmd pre{margin:0;background:var(--code);border:1px solid var(--rule);border-radius:10px;padding:.85rem 1rem 2.6rem;overflow-x:auto;font-size:.86rem;line-height:1.55;color:#D8F5EA;white-space:pre-wrap}
+  .cmd pre .c{color:var(--muted)}
+  .cmd pre .hueco{color:var(--warn)}
+  .copiar{position:absolute;right:.5rem;bottom:.5rem;background:var(--card);border:1px solid var(--rule);color:var(--soft);border-radius:7px;font:600 .75rem Inter,sans-serif;padding:.3rem .6rem;cursor:pointer}
+  .copiar:hover{border-color:var(--accent);color:var(--ink)}
+
+  /* el cronómetro de un minuto */
+  .crono{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;border:1px solid var(--rule);border-radius:14px;padding:.8rem 1.1rem;background:var(--card);margin:1rem 0;width:max-content;max-width:100%}
+  .crono .cifra{font:800 2.4rem "JetBrains Mono",monospace;letter-spacing:-.02em;min-width:6.5rem}
+  .crono.corre .cifra{color:var(--warn)}
+  .crono.fin .cifra{color:var(--bad);animation:late 1s steps(2) infinite}
+  @keyframes late{50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.crono.fin .cifra{animation:none}}
+  .crono .cuantos{font-size:.85rem;color:var(--muted)}
+
+  /* casillas del participante */
+  .check{display:flex;gap:.9rem;align-items:center;padding:.85rem 1.1rem;margin:1rem 0 .4rem;cursor:pointer;border:2px dashed color-mix(in srgb,var(--warn) 70%,transparent);border-radius:12px;background:color-mix(in srgb,var(--warn) 7%,var(--bg2))}
+  .check input{appearance:none;-webkit-appearance:none;margin:0;flex:0 0 auto;width:1.7rem;height:1.7rem;border-radius:7px;border:2.5px solid var(--warn);background:var(--code);display:grid;place-items:center;cursor:pointer}
+  .check input::after{content:"";width:.45rem;height:.85rem;border:solid #06231A;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px);opacity:0}
+  .check input:checked{background:var(--accent);border-color:var(--accent)} .check input:checked::after{opacity:1}
+  .check.ok{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+
+  /* cierre de bloque */
+  .fin-bloque{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin:2rem 0 0 4rem}
+  .fin-bloque .real{font-size:.85rem;color:var(--muted)}
+  section.bloque.listo .fin-bloque .boton{border-color:var(--accent);color:var(--accent)}
+  @media (max-width:640px){.cuerpo,.fin-bloque{margin-left:0} .cab{margin-bottom:.6rem}}
+  footer{padding:3rem 0 4rem;color:var(--muted);font-size:.88rem}
+  @media print{.barra,.copiar,.mando,.fin-bloque,.crono{display:none} body{background:#fff;color:#000} [data-ia]{display:block !important}}
+</style>
+</head>
+<body class="nivel-basico ia-claude">
+
+<div class="barra">
+  <div class="wrap">
+    <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 1 de 3</div>
+    <div class="so" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
+    </div>
+    <div class="reloj" aria-live="off">
+      <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
+      <div class="pista" id="r-pista"><div class="lleno" id="r-lleno"></div><div class="ahora" id="r-ahora"></div></div>
+    </div>
+  </div>
+</div>
+
+<header class="portada">
+  <div class="wrap">
+    <div class="kicker">Sesión 01 · martes 24 de noviembre · 6:00 p. m.</div>
+    <h1>Del chat a <span>trabajar con la IA</span>.</h1>
+    <p class="lead">Hoy no vamos a programar mucho. Vamos a hacer lo que más ahorra tiempo después: entender bien el problema, ponerle un objetivo claro y llevarlo a tu editor, donde la IA ya no conversa contigo, sino que trabaja contigo sobre tus archivos.</p>
+    <div class="datos">
+      <div class="dato"><b>Duración</b>2 h 30 min, con pausa</div>
+      <div class="dato"><b>Antes</b><a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a> (tu computador listo)</div>
+      <div class="dato"><b>Trae</b>Un problema real de tu trabajo o tu vida</div>
+      <div class="dato"><b>Sales con</b>Tu archivo <span class="mono">PROYECTO.md</span></div>
+    </div>
+    <div class="dias">
+      <div class="dia hoy"><span class="n">Día 1 · mar 24</span><span class="t">Entender</span>El problema, el objetivo y la IA en el editor. Qué es una API y para qué sirve.</div>
+      <div class="dia"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
+      <div class="dia"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Tu programa habla con la IA por API, y el concepto de agente.</div>
+    </div>
+    <p class="nivel-tit">¿Cómo quieres ver la sesión?</p>
+    <div class="nivel" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">He chateado con una IA, pero no la he usado para trabajar sobre archivos.</span></button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya uso la IA en el editor o he hecho scripts. Dame lo directo y un paso más.</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================================================== agenda -->
+  <section class="agenda" id="agenda">
+    <div class="kicker">La agenda de hoy</div>
+    <h2>Nueve bloques, ciento cincuenta minutos</h2>
+    <p class="para">Las horas se calculan solas desde el inicio. Si un bloque necesita más o menos tiempo, cambia sus minutos: lo demás se reacomoda. Al terminar cada bloque, márcalo y la barra de arriba dice si vamos a tiempo.</p>
+    <div class="mando">
+      <button type="button" class="boton pri" id="empezar">▶ Empezamos ahora</button>
+      <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
+      <button type="button" class="boton" id="reiniciar">Borrar lo marcado</button>
+    </div>
+    <table class="tabla">
+      <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
+      <tbody id="filas"></tbody>
+      <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr></tfoot>
+    </table>
+    <p class="aviso-plan" id="aviso-plan"></p>
+    <div class="resumen-ritmo">
+      <div><b>Llevamos</b><span id="m-llevamos">—</span></div>
+      <div><b>Bloque en curso</b><span id="m-bloque">—</span></div>
+      <div><b>Al ritmo de ahora, terminamos</b><span id="m-fin">—</span></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 1 -->
+  <section class="bloque" id="b-bienvenida" data-min="10" data-titulo="Bienvenida y mapa">
+    <div class="cab"><div class="num">01</div><div><h2>Bienvenida: tres sesiones, un proyecto tuyo <span class="hora"></span></h2><p class="para">Qué vamos a hacer y cómo vamos a trabajar.</p></div></div>
+    <div class="cuerpo">
+      <p>El bootcamp no es un curso de herramientas. Es una forma de trabajar: <strong>tú pones el problema y el criterio, la IA pone velocidad</strong>. Al final de las tres sesiones cada persona tiene algo funcionando sobre un problema suyo.</p>
+      <div class="tarjetas">
+        <div class="tarjeta"><div class="n">REGLA 1</div><h4>Tú decides, la IA propone</h4><p>Nada se aplica sin que lo leas. Si no entiendes un cambio, se lo preguntas antes de aceptarlo.</p></div>
+        <div class="tarjeta"><div class="n">REGLA 2</div><h4>Primero el problema</h4><p>Una IA resuelve muy bien el problema equivocado. Hoy invertimos en entender el correcto.</p></div>
+        <div class="tarjeta"><div class="n">REGLA 3</div><h4>Pasos pequeños</h4><p>Pedir, revisar, probar. Un paso que funciona vale más que diez que «casi».</p></div>
+      </div>
+      <div class="facilita"><b>Para quien facilita</b>Pregunta a mano alzada: ¿quién ha chateado con una IA? ¿Quién la ha usado dentro de un editor? ¿Quién ha llamado una API? Así se ve la mezcla del grupo y se arman parejas con niveles distintos.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 -->
+  <section class="bloque" id="b-proyectos" data-min="25" data-titulo="Proyectos personales">
+    <div class="cab"><div class="num">02</div><div><h2>Tu proyecto en un minuto <span class="hora"></span></h2><p class="para">Cada persona presenta el problema que quiere trabajar. No hace falta tener la solución.</p></div></div>
+    <div class="cuerpo">
+      <p>Cuéntalo así, en voz alta y en un minuto. Si no tienes un proyecto claro, cuenta algo que repites cada semana y te quita tiempo: eso ya es un proyecto.</p>
+      <div class="cmd"><div class="lbl">Tu minuto</div><pre>Me llamo <span class="hueco">___</span> y trabajo en <span class="hueco">___</span>.
+Algo que me quita tiempo (o que sale mal) es <span class="hueco">___</span>.
+Le pasa a <span class="hueco">___</span>, más o menos <span class="hueco">___</span> veces por semana.
+Me gustaría que <span class="hueco">___</span>.</pre></div>
+      <div class="crono" data-cuenta="60">
+        <div class="cifra">1:00</div>
+        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
+        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+        <span class="cuantos">Van <b data-crono="n">0</b> presentaciones</span>
+      </div>
+      <p class="nota"><b>Mientras escuchas:</b> anota los problemas que se parecen al tuyo. Mañana, en los retos, pueden trabajar en paralelo y compararse.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== 3 -->
+  <section class="bloque" id="b-escalera" data-min="20" data-titulo="Ya no es un chat">
+    <div class="cab"><div class="num">03</div><div><h2>Ya no es un simple chat <span class="hora"></span></h2><p class="para">Cuatro formas de usar la IA, de menos a más. En el bootcamp subimos la escalera.</p></div></div>
+    <div class="cuerpo">
+      <div class="escalera">
+        <div class="escalon"><div class="e">1</div><div><h4>El chat</h4><p>Le preguntas, te responde, y tú copias y pegas el resultado donde lo necesitas.</p><div class="quien">La IA habla · tú haces todo lo demás</div></div></div>
+        <div class="escalon"><div class="e">2</div><div><h4>La IA en el editor <span class="hora">hoy y mañana</span></h4><p>Lee tus archivos, propone cambios sobre ellos y ejecuta órdenes, siempre pidiendo permiso. Ya no copias y pegas: revisas y apruebas.</p><div class="quien">La IA propone y ejecuta · tú decides y revisas</div></div></div>
+        <div class="escalon dia3"><div class="e">3</div><div><h4>La API <span class="hora">jueves</span></h4><p>Tu propio programa le habla al modelo, sin ti en medio. La IA queda <em>dentro</em> de tu solución: clasifica, resume o responde cada vez que llega algo.</p><div class="quien">Tu programa le pide · la IA responde · tú diseñaste el flujo</div></div></div>
+        <div class="escalon dia3"><div class="e">4</div><div><h4>El agente <span class="hora">jueves</span></h4><p>Un modelo con herramientas y un objetivo: decide qué paso dar, lo da, mira el resultado y sigue hasta terminar.</p><div class="quien">El agente trabaja por pasos · tú pones el objetivo y los límites</div></div></div>
+      </div>
+
+      <h3>¿Qué es una API?</h3>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> una API es un enchufe. En vez de que tú escribas en el chat, un programa se «conecta» a la IA, le manda un texto y recibe la respuesta, todo automático. Como en un enchufe, se paga por lo que se consume (se mide en <em>tokens</em>, pedacitos de texto). Para eso sirve la llave de API que preparaste: es la que dice quién paga.</p>
+      <div data-nivel="inter">
+        <p>Una petición HTTP con tu llave en la cabecera y un JSON con el modelo y los mensajes. La respuesta es otro JSON. Lo que lo hace potente no es la llamada, es lo que la rodea: de dónde sale el texto y qué haces con la respuesta.</p>
+        <div class="cmd"><div class="lbl">Lo que viaja, en esencia</div><pre>POST /v1/messages
+{ "model": "…", "system": "Clasifica correos en: urgente, informativo, spam",
+  "messages": [{ "role": "user", "content": "Asunto: factura vencida…" }] }
+
+→ { "content": [{ "text": "urgente" }], "usage": { "input_tokens": 41, "output_tokens": 2 } }</pre></div>
+      </div>
+
+      <h3>¿Para qué sirve conectarse por API?</h3>
+      <div class="tarjetas">
+        <div class="tarjeta"><h4>Clasificar</h4><p>Correos, solicitudes o tickets que llegan, cada uno a su bandeja, sin que nadie los lea primero.</p></div>
+        <div class="tarjeta"><h4>Extraer</h4><p>Los datos de cien PDF o facturas a una hoja de cálculo, campo por campo.</p></div>
+        <div class="tarjeta"><h4>Resumir</h4><p>El acta de cada reunión, o lo que pasó esta semana en un canal, en cinco líneas.</p></div>
+        <div class="tarjeta"><h4>Responder</h4><p>Preguntas frecuentes con tus propios documentos, a cualquier hora.</p></div>
+      </div>
+      <p class="nota ok"><b>Para pensar en tu proyecto:</b> ¿en qué escalón está hoy tu problema? Casi siempre empieza en el 1 (alguien chatea y copia). El bootcamp lo lleva al 2 y, si tiene sentido, al 3 o al 4.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== 4 -->
+  <section class="bloque" id="b-preparate" data-min="15" data-titulo="Revisión de «Prepárate»">
+    <div class="cab"><div class="num">04</div><div><h2>¿Tu computador está listo? <span class="hora"></span></h2><p class="para">Revisamos la guía «Prepárate» entre todos. Quien ya terminó, ayuda a quien no.</p></div></div>
+    <div class="cuerpo">
+      <p>Abre <a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a> y revisa hasta dónde llegaste. Para hoy y mañana basta con los tres primeros puntos; la llave de API la necesitas el jueves.</p>
+      <label class="check"><input type="checkbox"><span>El editor abre y veo su terminal abajo</span></label>
+      <label class="check"><input type="checkbox"><span>La IA del editor me responde (<span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">Codex</span>)</span></label>
+      <label class="check"><input type="checkbox"><span>Tengo mi carpeta del bootcamp abierta en el editor</span></label>
+      <label class="check"><input type="checkbox"><span>Tengo mi llave de API (para el jueves) <small class="para">· si no, se hace en casa con «Prepárate», paso de las llaves</small></span></label>
+      <div class="facilita"><b>Para quien facilita</b>Mano arriba quien tenga los tres primeros. Se arman parejas: quien tiene todo se sienta con quien le falta. Lo que no se resuelva en 15 minutos, se deja para el trabajo autónomo del miércoles: no detiene la sesión.</div>
+      <p class="para">Tu IA: <span class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></span></p>
+    </div>
+  </section>
+
+  <!-- ===================================================== 5 -->
+  <section class="bloque" id="b-pausa" data-min="10" data-titulo="Pausa">
+    <div class="cab"><div class="num">☕</div><div><h2>Pausa <span class="hora"></span></h2><p class="para">Diez minutos. Al volver, el corazón de la sesión: el problema.</p></div></div>
+    <div class="cuerpo">
+      <div class="crono" data-cuenta="600"><div class="cifra">10:00</div><button type="button" class="boton pri" data-crono="ir">▶ Empezar la pausa</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 6 -->
+  <section class="bloque" id="b-problema" data-min="25" data-titulo="Reconocer el problema">
+    <div class="cab"><div class="num">05</div><div><h2>Reconocer muy bien el problema <span class="hora"></span></h2><p class="para">Es la parte que la IA no puede hacer por ti: el problema lo conoces tú.</p></div></div>
+    <div class="cuerpo">
+      <h3>Una solución no es un problema</h3>
+      <div class="tarjetas">
+        <div class="tarjeta mal"><div class="n">ASÍ NO</div><h4>«Quiero un chatbot»</h4><p>Es una solución. ¿Para quién? ¿Qué pasa hoy que está mal? Puede que no haga falta un chatbot.</p></div>
+        <div class="tarjeta bien"><div class="n">ASÍ SÍ</div><h4>«Respondo 40 correos iguales por semana»</h4><p>Es un problema: tiene quién, cuánto y qué cuesta. Ahora sí se puede pensar la solución.</p></div>
+      </div>
+      <h3>Cinco preguntas para tu problema</h3>
+      <ol class="pasitos">
+        <li><strong>¿Quién lo sufre?</strong> Una persona concreta, no «la gente».</li>
+        <li><strong>¿Cuándo pasa?</strong> Qué lo dispara y cada cuánto.</li>
+        <li><strong>¿Cuánto cuesta hoy?</strong> En horas, en dinero o en errores.</li>
+        <li><strong>¿Cómo se resuelve hoy?</strong> Aunque sea a mano o mal.</li>
+        <li><strong>¿Por qué pasa?</strong> Pregunta «¿por qué?» tres veces seguidas: la tercera respuesta suele ser el problema de verdad.</li>
+      </ol>
+      <h3>La IA como entrevistadora, no como solucionadora</h3>
+      <p>Abre la IA (en el chat o en el editor, da igual hoy) y pégale esto. Fíjate en lo que pasa: la IA pregunta y tú respondes. <strong>El conocimiento del problema es tuyo</strong>; ella te ayuda a ordenarlo.</p>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Actúa como un entrevistador que quiere entender un problema de mi trabajo.
+No me propongas soluciones todavía.
+Hazme una pregunta a la vez, máximo ocho, para entender:
+quién tiene el problema, cuándo ocurre, cuánto cuesta hoy y cómo se resuelve ahora.
+Al final, resume el problema en tres frases y dime qué parte no te quedó clara.
+
+Mi problema, en pocas palabras, es: <span class="hueco">___</span></pre></div>
+      <p class="nota" data-nivel="basico"><b>Si la IA se adelanta</b> y te propone una app o un sistema, dile: «todavía no, sigue preguntando». Es parte del ejercicio: tú llevas el timón.</p>
+      <p class="nota" data-nivel="inter"><b>Un paso más:</b> pídele al final que liste los supuestos que hizo y cuáles podrías verificar con datos reales esta semana.</p>
+      <label class="check"><input type="checkbox"><span>Tengo el resumen de mi problema en tres frases</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 7 -->
+  <section class="bloque" id="b-objetivo" data-min="20" data-titulo="Consolidar el objetivo">
+    <div class="cab"><div class="num">06</div><div><h2>Un objetivo principal, y solo uno <span class="hora"></span></h2><p class="para">Con el objetivo claro, empezar es fácil: sabes qué pedir y cuándo parar.</p></div></div>
+    <div class="cuerpo">
+      <div class="formula">Quiero que <em>quién</em> pueda <em>hacer qué</em> en <em>cuánto tiempo o con qué resultado</em>, en lugar de <em>cómo es hoy</em>.</div>
+      <div class="tarjetas">
+        <div class="tarjeta mal"><div class="n">MUY GRANDE</div><p>«Automatizar todo el proceso de admisiones con IA.»</p></div>
+        <div class="tarjeta bien"><div class="n">BIEN</div><p>«Que la coordinadora reciba cada mañana los correos de admisión ya clasificados en tres grupos, en lugar de leerlos uno por uno (hoy le toma una hora).»</p></div>
+      </div>
+      <h3>Corta el alcance: ¿qué cabe hasta el jueves?</h3>
+      <div class="tres">
+        <div><h4>Imprescindible</h4>Lo mínimo que tiene que funcionar el jueves para decir «sirve».</div>
+        <div><h4>Deseable</h4>Lo que agregas si sobra tiempo. Se escribe, pero no se promete.</div>
+        <div><h4>Después</h4>Lo bueno que no cabe ahora. Anotarlo libera la cabeza.</div>
+      </div>
+      <p class="simple" data-nivel="basico"><b>Una pista:</b> si tu imprescindible tiene más de tres cosas, todavía es muy grande. La versión del jueves cabe en una frase.</p>
+      <p class="nota" data-nivel="inter"><b>Define cómo vas a probarlo:</b> tres ejemplos reales de entrada y lo que esperas de salida. Ese será tu «examen» el jueves, con la IA o sin ella.</p>
+      <label class="check"><input type="checkbox"><span>Escribí mi objetivo con la fórmula y separé lo imprescindible</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 8 -->
+  <section class="bloque" id="b-editor" data-min="20" data-titulo="Tu proyecto en el editor">
+    <div class="cab"><div class="num">07</div><div><h2>Del chat al editor: tu <span class="mono">PROYECTO.md</span> <span class="hora"></span></h2><p class="para">La primera tarea de verdad para la IA del editor: dejar tu proyecto escrito en un archivo.</p></div></div>
+    <div class="cuerpo">
+      <ol class="pasitos">
+        <li>Abre tu carpeta del bootcamp en el editor<span data-nivel="basico"> (la de la prueba final de «Prepárate»)</span>.</li>
+        <li>Abre el chat de tu IA al lado (<span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">Codex</span>) y pégale el pedido de abajo, con tu resumen al final.</li>
+        <li>La IA te muestra el archivo que va a crear. <strong>Léelo antes de aceptar.</strong> Si inventó algo, díselo.</li>
+      </ol>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Crea un archivo PROYECTO.md en esta carpeta con estas secciones:
+Problema, Quién lo tiene, Cómo se resuelve hoy, Objetivo principal,
+Cómo sabré que funcionó, Imprescindible para el jueves, Deseable y Después.
+Llénalo solo con lo que te cuento abajo, sin inventar:
+si falta algo, escribe «POR DEFINIR».
+
+<span class="hueco">[pega aquí el resumen del problema y tu objetivo]</span></pre></div>
+      <p class="simple" data-nivel="basico"><b>La diferencia con el chat:</b> ahora quedó un archivo en tu carpeta. Mañana la IA parte de ahí, no de cero, y tú puedes corregirlo como cualquier documento.</p>
+      <div data-nivel="inter">
+        <h3>Un paso más: la memoria del proyecto</h3>
+        <p>Los asistentes leen un archivo de instrucciones cada vez que trabajan en la carpeta. Pídele a tu IA que cree el suyo a partir de <span class="mono">PROYECTO.md</span>: el objetivo, las reglas (pasos pequeños, preguntar antes de instalar, no tocar <span class="mono">.env</span>) y cómo probar.</p>
+        <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md y crea <span data-ia="claude">CLAUDE.md</span><span data-ia="gemini">GEMINI.md</span><span data-ia="gpt">AGENTS.md</span> con las instrucciones para trabajar en este proyecto:
+el objetivo en dos líneas, cómo probarlo, y estas reglas:
+trabaja en pasos pequeños, muéstrame el plan antes de cambiar archivos,
+pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</pre></div>
+      </div>
+      <label class="check"><input type="checkbox"><span>Tengo <span class="mono">PROYECTO.md</span> en mi carpeta, y lo leí</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 9 -->
+  <section class="bloque" id="b-cierre" data-min="5" data-titulo="Cierre">
+    <div class="cab"><div class="num">08</div><div><h2>Cierre y lo que viene <span class="hora"></span></h2><p class="para">Cinco minutos para mirar lo que hicimos.</p></div></div>
+    <div class="cuerpo">
+      <div class="tarjetas">
+        <div class="tarjeta"><div class="n">HOY</div><h4>Entendimos</h4><p>El problema en tres frases, un objetivo principal y tu proyecto escrito en el editor.</p></div>
+        <div class="tarjeta"><div class="n">MIÉRCOLES · 1 HORA</div><h4>Construimos</h4><p>Retos en paralelo y trabajo autónomo con el asistente de fabOS: verás qué hace la IA y qué sigues haciendo tú.</p></div>
+        <div class="tarjeta"><div class="n">JUEVES</div><h4>Conectamos</h4><p>Tu programa habla con la IA por API, y conocemos a los agentes. Trae tu llave de API lista.</p></div>
+      </div>
+      <p class="nota ok"><b>Para mañana:</b> llega con <span class="mono">PROYECTO.md</span> y, si te faltó algo de «Prepárate», termínalo en casa. Una pregunta para pensar: ¿qué parte de tu problema <em>no</em> debería hacerla una IA?</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">Bootcamp AGENTIC · eanX · Universidad Ean · FabLab EAN — sesión 01. Las horas y el avance se calculan en este navegador y se pierden al cerrar la pestaña.</footer>
+
+<script>
+(function () {
+  var $ = function (s, d) { return (d || document).querySelector(s); };
+  var $$ = function (s, d) { return Array.prototype.slice.call((d || document).querySelectorAll(s)); };
+  var guarda = function (k, v) { try { localStorage.setItem('agentic-d1-' + k, v); } catch (_) {} };
+  var lee = function (k) { try { return localStorage.getItem('agentic-d1-' + k); } catch (_) { return null; } };
+
+  // Nivel e IA (compartidos con «Prepárate» cuando el navegador lo permite).
+  function nivel(n) {
+    n = n === 'inter' ? 'inter' : 'basico';
+    document.body.classList.remove('nivel-basico', 'nivel-inter'); document.body.classList.add('nivel-' + n);
+    $$('[data-nivel-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.nivelElige === n ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-nivel', n); } catch (_) {}
+  }
+  function ia(x) {
+    x = ['claude', 'gemini', 'gpt'].indexOf(x) >= 0 ? x : 'claude';
+    document.body.classList.remove('ia-claude', 'ia-gemini', 'ia-gpt'); document.body.classList.add('ia-' + x);
+    $$('[data-ia-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.iaElige === x ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-ia', x); } catch (_) {}
+  }
+  var n0 = null, i0 = null;
+  try { n0 = localStorage.getItem('agentic-nivel'); i0 = localStorage.getItem('agentic-ia'); } catch (_) {}
+  nivel(n0); ia(i0);
+  $$('[data-nivel-elige]').forEach(function (b) { b.addEventListener('click', function () { nivel(b.dataset.nivelElige); }); });
+  $$('[data-ia-elige]').forEach(function (b) { b.addEventListener('click', function () { ia(b.dataset.iaElige); }); });
+
+  // La barra mide su alto para que los saltos queden justo debajo.
+  var barra = $('.barra');
+  function medir() { document.documentElement.style.setProperty('--barra', barra.offsetHeight + 'px'); }
+  medir(); window.addEventListener('resize', medir);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
+
+  // ---------------------------------------------------------------- el plan
+  var bloques = $$('section.bloque').map(function (s) {
+    return { el: s, id: s.id, titulo: s.dataset.titulo, min: +s.dataset.min, base: +s.dataset.min, listo: null };
+  });
+  var DISPONIBLE = 150;
+  var MIN = 60000;
+  // Arranca a las 6:00 p. m. de hoy; «Empezamos ahora» lo mueve.
+  var inicio = (function () { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })();
+  var guardado = +lee('inicio');
+  if (guardado && new Date(guardado).toDateString() === new Date().toDateString()) { inicio = guardado; }
+  bloques.forEach(function (b) {
+    var m = +lee('min-' + b.id); if (m > 0) { b.min = m; }
+    var l = +lee('listo-' + b.id); if (l && new Date(l).toDateString() === new Date().toDateString()) { b.listo = l; }
+  });
+
+  function hhmm(t) {
+    var d = new Date(t), h = d.getHours(), m = d.getMinutes();
+    var p = h >= 12 ? 'p. m.' : 'a. m.'; h = h % 12 || 12;
+    return h + ':' + (m < 10 ? '0' : '') + m + ' ' + p;
+  }
+  function dur(min) {
+    min = Math.round(Math.abs(min));
+    return min >= 60 ? Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '') : min + ' min';
+  }
+  function total() { return bloques.reduce(function (s, b) { return s + b.min; }, 0); }
+  function desde(i) { return bloques.slice(0, i).reduce(function (s, b) { return s + b.min; }, 0); }
+  function enCurso() { for (var i = 0; i < bloques.length; i++) { if (!bloques[i].listo) { return i; } } return -1; }
+
+  // La tabla de la agenda, con los minutos editables.
+  var filas = $('#filas');
+  bloques.forEach(function (b, i) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="h"></td><td><a href="#' + b.id + '"></a></td><td><input type="number" min="1" max="120" step="1" aria-label="Minutos"></td><td class="opc estado"></td>';
+    tr.querySelector('a').textContent = b.titulo;
+    var inp = tr.querySelector('input'); inp.value = b.min;
+    inp.addEventListener('change', function () {
+      var v = Math.max(1, Math.min(120, Math.round(+inp.value || b.base)));
+      inp.value = v; b.min = v; guarda('min-' + b.id, v); pintar();
+    });
+    b.fila = tr; filas.appendChild(tr);
+    // El botón para cerrar el bloque.
+    var pie = document.createElement('div'); pie.className = 'fin-bloque';
+    pie.innerHTML = '<button type="button" class="boton"></button><span class="real"></span>';
+    pie.querySelector('button').addEventListener('click', function () {
+      if (b.listo) { b.listo = null; guarda('listo-' + b.id, ''); }
+      else {
+        // Cerrar uno cierra también los anteriores que quedaron abiertos.
+        bloques.slice(0, i + 1).forEach(function (x) { if (!x.listo) { x.listo = Date.now(); guarda('listo-' + x.id, x.listo); } });
+        var sig = bloques[i + 1]; if (sig) { sig.el.scrollIntoView({ behavior: 'smooth' }); }
+      }
+      pintar();
+    });
+    b.pie = pie; b.el.appendChild(pie);
+  });
+
+  $('#empezar').addEventListener('click', function () {
+    inicio = Date.now(); guarda('inicio', inicio);
+    bloques.forEach(function (b) { b.listo = null; guarda('listo-' + b.id, ''); });
+    pintar();
+  });
+  $('#a-las-6').addEventListener('click', function () {
+    var d = new Date(); d.setHours(18, 0, 0, 0); inicio = d.getTime(); guarda('inicio', inicio); pintar();
+  });
+  $('#reiniciar').addEventListener('click', function () {
+    bloques.forEach(function (b) { b.listo = null; b.min = b.base; b.fila.querySelector('input').value = b.base; guarda('listo-' + b.id, ''); guarda('min-' + b.id, ''); });
+    pintar();
+  });
+
+  // Cortes de la barra: dónde empieza cada bloque.
+  var pista = $('#r-pista');
+  function cortes() {
+    $$('.corte', pista).forEach(function (c) { c.remove(); });
+    var t = total();
+    bloques.slice(1).forEach(function (b, i) {
+      var c = document.createElement('div'); c.className = 'corte'; c.style.left = (100 * desde(i + 1) / t) + '%'; pista.appendChild(c);
+    });
+  }
+
+  function pintar() {
+    var ahora = Date.now(), t = total();
+    var transcurrido = (ahora - inicio) / MIN;
+    var actual = enCurso();
+    // Las horas planeadas, desde el inicio.
+    bloques.forEach(function (b, i) {
+      var h = inicio + desde(i) * MIN;
+      b.fila.querySelector('.h').textContent = hhmm(h);
+      b.el.querySelector('.cab .hora').textContent = hhmm(h) + ' · ' + b.min + ' min';
+      b.el.classList.toggle('listo', !!b.listo);
+      b.el.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      b.fila.classList.toggle('listo', !!b.listo);
+      b.fila.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      var est = b.fila.querySelector('.estado');
+      var boton = b.pie.querySelector('button'), real = b.pie.querySelector('.real');
+      if (b.listo) {
+        var antes = i === 0 ? inicio : (bloques[i - 1].listo || inicio + desde(i) * MIN);
+        var tomo = Math.max(0, Math.round((b.listo - antes) / MIN));
+        est.textContent = '✓ ' + tomo + ' de ' + b.min + ' min';
+        boton.textContent = '✓ Bloque terminado · deshacer';
+        real.textContent = 'Tomó ' + tomo + ' min de ' + b.min + ' planeados.';
+      } else {
+        est.textContent = i === actual ? (transcurrido >= 0 ? '▶ en curso' : 'primero') : '';
+        boton.textContent = 'Terminamos este bloque ✓';
+        real.textContent = i === actual && transcurrido >= 0 ? 'Planeado hasta las ' + hhmm(inicio + desde(i + 1) * MIN) + '.' : '';
+      }
+    });
+    $('#total').textContent = t + ' min';
+    var aviso = $('#aviso-plan');
+    aviso.classList.toggle('mal', t > DISPONIBLE);
+    aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en los 150 minutos de hoy (6:00 a 8:30 p. m.).'
+      : t > DISPONIBLE ? 'El plan se pasa ' + (t - DISPONIBLE) + ' min de los 150 de hoy: recorta algún bloque.'
+      : 'Sobran ' + (DISPONIBLE - t) + ' min de los 150 de hoy.';
+
+    // El ritmo: dónde deberíamos ir y dónde vamos.
+    var hechos = actual < 0 ? t : desde(actual);
+    $('#r-lleno').style.width = (100 * hechos / t) + '%';
+    $('#r-ahora').style.left = Math.max(0, Math.min(100, 100 * transcurrido / t)) + '%';
+    $('#r-ahora').hidden = transcurrido < 0 || transcurrido > t + 60;
+    var ritmo = $('#r-ritmo'), txtBloque = $('#r-bloque');
+    ritmo.className = 'ritmo';
+    if (transcurrido < 0) {
+      $('#r-hora').textContent = hhmm(ahora);
+      txtBloque.textContent = 'Empieza a las ' + hhmm(inicio);
+      ritmo.textContent = 'en ' + dur(-transcurrido);
+      $('#m-llevamos').textContent = 'Aún no empieza';
+    } else {
+      $('#r-hora').innerHTML = '<b>' + hhmm(ahora) + '</b> · min ' + Math.floor(transcurrido) + ' de ' + t;
+      $('#m-llevamos').textContent = dur(transcurrido) + ' de ' + dur(t);
+      if (actual < 0) {
+        txtBloque.textContent = 'Sesión terminada';
+        ritmo.textContent = '✓'; ritmo.classList.add('bien');
+      } else {
+        txtBloque.textContent = 'Bloque ' + (actual + 1) + ' de ' + bloques.length;
+        // Retraso: lo que llevamos frente a dónde debería ir el bloque en curso.
+        var debioEmpezar = desde(actual), debioTerminar = desde(actual + 1);
+        var retraso = transcurrido > debioTerminar ? transcurrido - debioTerminar : (transcurrido < debioEmpezar ? transcurrido - debioEmpezar : 0);
+        if (Math.abs(retraso) < 1) { ritmo.textContent = 'a tiempo'; ritmo.classList.add('bien'); }
+        else if (retraso > 0) { ritmo.textContent = dur(retraso) + ' tarde'; ritmo.classList.add('tarde'); }
+        else { ritmo.textContent = dur(retraso) + ' adelantados'; ritmo.classList.add('antes'); }
+      }
+    }
+    $('#m-bloque').textContent = actual < 0 ? 'Ninguno: terminamos' : bloques[actual].titulo;
+    // Fin estimado: lo que falta del bloque en curso más lo que viene.
+    if (actual < 0) { $('#m-fin').textContent = hhmm(bloques[bloques.length - 1].listo); }
+    else {
+      var empezoActual = actual === 0 ? inicio : (bloques[actual - 1].listo || inicio + desde(actual) * MIN);
+      var base = Math.max(ahora, inicio);
+      var restaActual = Math.max(0, bloques[actual].min * MIN - Math.max(0, base - empezoActual));
+      var resto = bloques.slice(actual + 1).reduce(function (s, b) { return s + b.min; }, 0) * MIN;
+      var fin = base + restaActual + resto;
+      var planeado = inicio + t * MIN;
+      var dif = Math.round((fin - planeado) / MIN);
+      $('#m-fin').textContent = hhmm(fin) + (dif > 0 ? ' (+' + dif + ' min)' : '');
+    }
+    cortes();
+  }
+  pintar();
+  setInterval(pintar, 15000);
+
+  // ---------------------------------------------------------- cronómetros
+  $$('.crono').forEach(function (c) {
+    var seg = +c.dataset.cuenta, cifra = $('.cifra', c), quedan = seg, reloj = null, cuantas = 0;
+    function mm(s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+    function parar() { clearInterval(reloj); reloj = null; c.classList.remove('corre'); }
+    function ir() {
+      parar(); quedan = seg; cifra.textContent = mm(quedan); c.classList.remove('fin'); c.classList.add('corre');
+      var n = $('[data-crono=n]', c); if (n) { n.textContent = ++cuantas; }
+      var fin = Date.now() + seg * 1000;
+      reloj = setInterval(function () {
+        quedan = Math.max(0, Math.round((fin - Date.now()) / 1000));
+        cifra.textContent = mm(quedan);
+        if (!quedan) { parar(); c.classList.add('fin'); }
+      }, 250);
+    }
+    $('[data-crono=ir]', c).addEventListener('click', ir);
+    $('[data-crono=parar]', c).addEventListener('click', function () { parar(); c.classList.remove('fin'); quedan = seg; cifra.textContent = mm(seg); });
+  });
+
+  // ------------------------------------------------------------- casillas
+  $$('.check input').forEach(function (inp) {
+    inp.addEventListener('change', function () { inp.closest('.check').classList.toggle('ok', inp.checked); });
+  });
+
+  // ------------------------------------------------------- copiar pedidos
+  $$('.cmd pre').forEach(function (pre) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copiar'; b.textContent = 'Copiar';
+    b.addEventListener('click', function () {
+      var copia = pre.cloneNode(true);
+      $$('.c', copia).forEach(function (c) { c.remove(); });
+      // Lo de otra IA no se copia.
+      $$('[data-ia]', copia).forEach(function (s) { if (!s.matches('[data-ia~=' + document.body.className.match(/ia-(\w+)/)[1] + ']')) { s.remove(); } });
+      var texto = copia.textContent.replace(/[ \t]+$/gm, '').trim();
+      var listo = function () { b.textContent = 'Copiado ✓'; setTimeout(function () { b.textContent = 'Copiar'; }, 1600); };
+      var aMano = function () {
+        var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+        b.textContent = ok ? 'Copiado ✓' : 'Selecciona y copia'; t.remove();
+        setTimeout(function () { b.textContent = 'Copiar'; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
+    });
+    pre.parentNode.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>
