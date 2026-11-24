@@ -85,6 +85,9 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Cache\RateLimiting\Limit::perMinutes(10, 30)->by('persona:' . ($r->hasSession() ? $r->session()->getId() : $r->ip())),
             \Illuminate\Cache\RateLimiting\Limit::perMinute(90)->by('todos'),
         ]);
+        // Las presentaciones en vivo preguntan cada pocos segundos, por navegador.
+        \Illuminate\Support\Facades\RateLimiter::for('envivo', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(120)
+            ->by('envivo:' . ($r->input('v') ?: $r->input('profe') ?: $r->ip())));
 
         /*
          * El menú del panel con lo decidido en Configuración → Menú. En boot

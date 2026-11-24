@@ -42,3 +42,14 @@ Route::prefix('iot/pantalla')->name('api.pantalla.')->middleware('throttle:30,1'
     Route::get('/estado', [\App\Http\Controllers\Api\PantallaController::class, 'estado'])->name('estado');
     Route::get('/imagen', [\App\Http\Controllers\Api\PantallaController::class, 'imagen'])->name('imagen');
 });
+
+/*
+ * Presentaciones en vivo (módulos de las zonas): el estado, los votos y el
+ * control del profesor. El límite va por navegador, no por IP: en el salón
+ * todos salen por la misma IP de la universidad.
+ */
+Route::prefix('envivo/{sala}')->where(['sala' => '[a-z0-9-]+'])->middleware('throttle:envivo')->name('api.envivo.')->group(function () {
+    Route::get('/estado', [\App\Http\Controllers\Api\EnVivoController::class, 'estado'])->name('estado');
+    Route::post('/votar', [\App\Http\Controllers\Api\EnVivoController::class, 'votar'])->name('votar');
+    Route::post('/control', [\App\Http\Controllers\Api\EnVivoController::class, 'control'])->name('control');
+});

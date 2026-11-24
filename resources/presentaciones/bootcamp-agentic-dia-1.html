@@ -174,6 +174,35 @@
   @media (max-width:640px){.cuerpo,.fin-bloque{margin-left:0} .cab{margin-bottom:.6rem}}
   footer{padding:3rem 0 4rem;color:var(--muted);font-size:.88rem}
   @media print{.barra,.copiar,.mando,.fin-bloque,.crono{display:none} body{background:#fff;color:#000} [data-ia]{display:block !important}}
+  /* En vivo: votaciones y quién lleva la agenda. */
+  .encuesta{border:1px solid var(--rule);border-radius:14px;padding:1rem 1.1rem;background:var(--card);margin:1.1rem 0}
+  .enc-cab{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:.7rem}
+  .enc-cab b{font:700 .72rem "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .enc-cab .vivos-txt{font-size:.82rem;color:var(--muted)}
+  .enc-cab .vivos-txt::before{content:"";display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:var(--accent);margin-right:.4rem;vertical-align:middle;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+  body:not(.en-vivo) .enc-cab .vivos-txt::before{background:var(--muted);box-shadow:none}
+  .enc-cab .solo-profe{margin-left:auto}
+  .preguntas{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem}
+  .pregunta h4{margin:0 0 .45rem;font-size:.98rem}
+  .pregunta .op{position:relative;display:flex;justify-content:space-between;align-items:center;gap:.6rem;width:100%;margin:.3rem 0;padding:.5rem .75rem;
+    border:1px solid var(--rule);border-radius:9px;background:var(--bg2);color:var(--ink);font:500 .92rem Inter,sans-serif;cursor:pointer;overflow:hidden;text-align:left}
+  .pregunta .op::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--pct,0%);background:color-mix(in srgb,var(--accent) 20%,transparent);transition:width .6s}
+  .pregunta .op:hover{border-color:var(--accent)}
+  .pregunta .op > span{position:relative}
+  .pregunta .op .cuenta{color:var(--soft);font:600 .78rem "JetBrains Mono",monospace;white-space:nowrap}
+  .pregunta .op.mio{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .pregunta .op.mio .txt::after{content:" ✓";color:var(--accent);font-weight:700}
+  .pregunta .total{font-size:.78rem;color:var(--muted)}
+  body:not(.en-vivo) .encuesta .op{cursor:default;opacity:.55}
+  .enc-pie{font-size:.8rem;color:var(--muted);margin:.7rem 0 0}
+  .solo-profe{display:none !important} body.es-profe .solo-profe{display:inline-flex !important}
+  body.es-profe .marca::after{content:" · profesor";color:var(--accent2)}
+  body.es-participante .mando, body.es-participante .fin-bloque .boton{display:none}
+  .modo{font-size:.86rem;border:1px dashed var(--rule);border-radius:10px;padding:.5rem .8rem;color:var(--soft);margin:.9rem 0 0}
+  body.es-profe .modo{border-color:var(--accent2);color:var(--ink)}
+  body.es-profe .modo b{color:var(--accent2)}
+  body:not(.en-vivo) .modo{display:none}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -241,6 +270,7 @@
       <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
       <button type="button" class="boton" id="reiniciar">Borrar lo marcado</button>
     </div>
+    <p class="modo" id="modo"></p>
     <table class="tabla">
       <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
       <tbody id="filas"></tbody>
@@ -264,7 +294,16 @@
         <div class="tarjeta"><div class="n">REGLA 2</div><h4>Primero el problema</h4><p>Una IA resuelve muy bien el problema equivocado. Hoy invertimos en entender el correcto.</p></div>
         <div class="tarjeta"><div class="n">REGLA 3</div><h4>Pasos pequeños</h4><p>Pedir, revisar, probar. Un paso que funciona vale más que diez que «casi».</p></div>
       </div>
-      <div class="facilita"><b>Para quien facilita</b>Pregunta a mano alzada: ¿quién ha chateado con una IA? ¿Quién la ha usado dentro de un editor? ¿Quién ha llamado una API? Así se ve la mezcla del grupo y se arman parejas con niveles distintos.</div>
+      <div class="encuesta">
+        <div class="enc-cab"><b>Votemos · desde tu celular o tu computador</b><span class="vivos-txt" data-vivos>Conectando…</span><button type="button" class="boton chico solo-profe" data-reiniciar-votos>Reiniciar votos</button></div>
+        <div class="preguntas">
+          <div class="pregunta" data-pregunta="chat" data-opciones="Sí, seguido|Alguna vez|Nunca"><h4>¿Has chateado con una IA?</h4></div>
+          <div class="pregunta" data-pregunta="editor" data-opciones="Sí|Lo intenté|No"><h4>¿La has usado dentro de un editor de código?</h4></div>
+          <div class="pregunta" data-pregunta="api" data-opciones="Sí|Sé qué es, no lo he hecho|No sé qué es"><h4>¿Has conectado un programa a una IA por API?</h4></div>
+        </div>
+        <p class="enc-pie">Tu voto es anónimo y puedes cambiarlo. Los resultados se ven en vivo.</p>
+      </div>
+      <div class="facilita"><b>Para quien facilita</b>Con los resultados se ve la mezcla del grupo: arma parejas con niveles distintos (quien ya usó el editor con quien nunca lo ha hecho).</div>
     </div>
   </section>
 
@@ -317,6 +356,12 @@ Me gustaría que <span class="hueco">___</span>.</pre></div>
         <div class="tarjeta"><h4>Responder</h4><p>Preguntas frecuentes con tus propios documentos, a cualquier hora.</p></div>
       </div>
       <p class="nota ok"><b>Para pensar en tu proyecto:</b> ¿en qué escalón está hoy tu problema? Casi siempre empieza en el 1 (alguien chatea y copia). El bootcamp lo lleva al 2 y, si tiene sentido, al 3 o al 4.</p>
+      <div class="encuesta">
+        <div class="enc-cab"><b>Votemos</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
+        <div class="preguntas">
+          <div class="pregunta" data-pregunta="escalon" data-opciones="1 · El chat|2 · La IA en el editor|3 · La API|4 · Un agente"><h4>¿En qué escalón está hoy tu problema?</h4></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -630,6 +675,112 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
   }
   pintar();
   setInterval(pintar, 15000);
+
+  // ------------------------------------------------------------- en vivo
+  // Todos ven la misma agenda (la lleva el profesor) y votan. El profesor
+  // entra con el enlace que le da fabOS (#profe=…): el módulo corre aislado
+  // y no ve la sesión. Sin conexión con fabOS, la página funciona sola.
+  var SALA = 'agentic-dia-1';
+  var API = (/(^|\.)fablabean\.com$/.test(location.hostname) ? 'https://fablabean.com' : location.protocol + '//' + location.host) + '/api/envivo/' + SALA;
+  var yo = lee('yo');
+  if (!/^[a-z0-9]{8,40}$/.test(yo || '')) {
+    yo = (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, '').slice(0, 32);
+    guarda('yo', yo);
+  }
+  var profe = (location.hash.match(/profe=([A-Za-z0-9]{32})/) || [])[1] || '';
+  var soyProfe = false, desfase = 0, agendaCargada = false;
+  function seis() { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); }
+  function pedir(ruta, datos) {
+    var op = datos ? { method: 'POST', body: new URLSearchParams(datos) } : { cache: 'no-store' };
+    return fetch(API + ruta, op).then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.json(); });
+  }
+
+  // Las preguntas: cada opción es un botón que también es su barra.
+  $$('[data-pregunta]').forEach(function (q) {
+    q.dataset.opciones.split('|').forEach(function (t, i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'op'; b.dataset.op = i;
+      b.innerHTML = '<span class="txt"></span><span class="cuenta"></span>'; b.querySelector('.txt').textContent = t;
+      b.addEventListener('click', function () { votar(q.dataset.pregunta, i, b); });
+      q.appendChild(b);
+    });
+    var t = document.createElement('div'); t.className = 'total'; q.appendChild(t);
+  });
+  function votar(p, i, b) {
+    if (!document.body.classList.contains('en-vivo')) { return; }
+    $$('.op', b.parentNode).forEach(function (x) { x.classList.toggle('mio', x === b); });
+    pedir('/votar', { v: yo, pregunta: p, opcion: i }).then(pintarVotos).catch(function () {});
+  }
+  function pintarVotos(e) {
+    $$('[data-pregunta]').forEach(function (q) {
+      var p = q.dataset.pregunta, cuentas = (e.votos && e.votos[p]) || [];
+      var total = cuentas.reduce(function (s, n) { return s + n; }, 0);
+      var mio = e.mios && p in e.mios ? e.mios[p] : -1;
+      $$('.op', q).forEach(function (b) {
+        var n = cuentas[+b.dataset.op] || 0, pct = total ? Math.round(100 * n / total) : 0;
+        b.style.setProperty('--pct', pct + '%');
+        b.querySelector('.cuenta').textContent = total ? pct + '% · ' + n : '';
+        b.classList.toggle('mio', mio === +b.dataset.op);
+      });
+      $('.total', q).textContent = total ? total + (total === 1 ? ' voto' : ' votos') : 'Sin votos todavía';
+    });
+    $$('[data-vivos]').forEach(function (x) { x.textContent = e.vivos + (e.vivos === 1 ? ' persona conectada' : ' personas conectadas'); });
+  }
+
+  // La agenda del profesor, en el reloj de cada quien.
+  function tomarAgenda(a) {
+    a = a || {};
+    inicio = a.inicio ? a.inicio - desfase : seis();
+    bloques.forEach(function (b) {
+      b.listo = a.listos && a.listos[b.id] ? a.listos[b.id] - desfase : null;
+      b.min = (a.min && a.min[b.id]) || b.base;
+      b.fila.querySelector('input').value = b.min;
+    });
+    pintar();
+  }
+  function subir() {
+    if (!soyProfe) { return; }
+    var a = { inicio: Math.round(inicio + desfase), listos: {}, min: {} };
+    bloques.forEach(function (b) {
+      if (b.listo) { a.listos[b.id] = Math.round(b.listo + desfase); }
+      if (b.min !== b.base) { a.min[b.id] = b.min; }
+    });
+    pedir('/control', { profe: profe, v: yo, accion: 'agenda', agenda: JSON.stringify(a) }).then(pintarVotos).catch(function () {});
+  }
+  ['#empezar', '#a-las-6', '#reiniciar'].forEach(function (s) { $(s).addEventListener('click', function () { setTimeout(subir, 0); }); });
+  bloques.forEach(function (b) {
+    b.pie.querySelector('button').addEventListener('click', function () { setTimeout(subir, 0); });
+    b.fila.querySelector('input').addEventListener('change', function () { setTimeout(subir, 0); });
+  });
+  $$('[data-reiniciar-votos]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!soyProfe || !window.confirm('¿Poner todos los votos en cero?')) { return; }
+      pedir('/control', { profe: profe, v: yo, accion: 'reiniciar-votos' }).then(pintarVotos).catch(function () {});
+    });
+  });
+
+  function aplicar(e) {
+    desfase = e.ahora - Date.now();
+    soyProfe = !!e.profe;
+    document.body.classList.add('en-vivo');
+    document.body.classList.toggle('es-profe', soyProfe);
+    document.body.classList.toggle('es-participante', !soyProfe);
+    $$('.tabla input').forEach(function (inp) { inp.disabled = !soyProfe; });
+    $('#modo').innerHTML = soyProfe
+      ? '<b>Eres quien presenta.</b> Lo que marques aquí (inicio, bloques terminados, minutos) lo ven todos al instante.'
+      : 'Quien presenta lleva la agenda: las horas y el avance se actualizan solos.';
+    // El profesor recupera su agenda al volver a abrir; después manda él.
+    if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
+    pintarVotos(e);
+  }
+  function sondear() {
+    if (document.hidden) { return; }
+    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '')).then(aplicar).catch(function () {
+      $$('[data-vivos]').forEach(function (x) { x.textContent = document.body.classList.contains('en-vivo') ? 'Reconectando…' : 'Sin conexión con fabOS: la votación no está disponible'; });
+    });
+  }
+  sondear();
+  setInterval(sondear, 3000);
+  document.addEventListener('visibilitychange', sondear);
 
   // ---------------------------------------------------------- cronómetros
   $$('.crono').forEach(function (c) {

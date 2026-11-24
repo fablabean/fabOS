@@ -276,6 +276,23 @@ return [
         'correo_novedades' => env('PANTALLAS_CORREO_NOVEDADES'),
     ],
 
+    /*
+     * Presentaciones en vivo: módulos que siguen al profesor (la agenda) y
+     * dejan votar a quien los tiene abiertos. Cada sala dice qué preguntas
+     * tiene y cuántas opciones lleva cada una; los textos van en el HTML.
+     */
+    'envivo' => [
+        'almacen' => env('ENVIVO_CACHE', 'redis'),
+        'salas' => [
+            'agentic-dia-1' => [
+                'titulo' => 'Bootcamp AGENTIC · Día 1',
+                'zona' => 'agentic',
+                'modulo' => 'dia-1',
+                'preguntas' => ['chat' => 3, 'editor' => 3, 'api' => 3, 'escalon' => 4],
+            ],
+        ],
+    ],
+
     'servidor_fablab' => [
         'activo' => (bool) env('FABLAB_IA_ACTIVO', true),
         'url' => rtrim((string) env('FABLAB_IA_URL', 'http://spark-885a.local:11434'), '/'),
