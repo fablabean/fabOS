@@ -193,6 +193,10 @@
   @media (max-width:640px){.anatomia{grid-template-columns:repeat(2,minmax(0,1fr))}}
   .anatomia div{border:1px solid var(--rule);border-radius:10px;padding:.6rem .8rem;background:var(--bg2);font-size:.86rem;color:var(--soft)}
   .anatomia b{display:block;font:700 .72rem "JetBrains Mono",monospace;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin-bottom:.15rem}
+  /* En pantallas anchas el contenido aprovecha el espacio; en las muy grandes, el texto crece un poco. */
+  @media (min-width:1300px){.wrap{max-width:min(90vw,86rem)}}
+  @media (min-width:1800px){body{font-size:17px}}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}

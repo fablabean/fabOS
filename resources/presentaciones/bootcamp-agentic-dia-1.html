@@ -203,6 +203,10 @@
   body.es-profe .modo b{color:var(--accent2)}
   body:not(.en-vivo) .modo{display:none}
 
+  /* En pantallas anchas el contenido aprovecha el espacio; en las muy grandes, el texto crece un poco. */
+  @media (min-width:1300px){.wrap{max-width:min(90vw,86rem)}}
+  @media (min-width:1800px){body{font-size:17px}}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
