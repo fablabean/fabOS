@@ -207,6 +207,11 @@
   @media (min-width:1300px){.wrap{max-width:min(90vw,86rem)}}
   @media (min-width:1800px){body{font-size:17px}}
 
+  /* La barra de avance lleva a cada bloque: clic en su tramo. */
+  .pista{cursor:pointer}
+  .pista::after{content:"";position:absolute;left:0;right:0;top:-10px;bottom:-10px}
+  .pista:hover{background:color-mix(in srgb,var(--rule) 70%,var(--muted))}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -679,6 +684,15 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
   }
   pintar();
   setInterval(pintar, 15000);
+
+  // Clic en la barra de avance: a la sección del tramo que se tocó.
+  function bloqueEn(e) {
+    var r = pista.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * total();
+    for (var i = 0; i < bloques.length; i++) { if (x < desde(i + 1)) { return bloques[i]; } }
+    return bloques[bloques.length - 1];
+  }
+  pista.addEventListener('click', function (e) { bloqueEn(e).el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  pista.addEventListener('mousemove', function (e) { var b = bloqueEn(e); pista.title = b.titulo + ' · ' + b.min + ' min'; });
 
   // ------------------------------------------------------------- en vivo
   // Todos ven la misma agenda (la lleva el profesor) y votan. El profesor
