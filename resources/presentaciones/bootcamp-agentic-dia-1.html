@@ -264,6 +264,18 @@
   .tarjeta-m .quitar{position:absolute;top:.45rem;right:.45rem;width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid var(--rule);background:var(--card);color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;align-items:center;justify-content:center}
   .tarjeta-m .quitar:hover{color:var(--bad);border-color:var(--bad)}
   body.es-profe .facilita.solo-profe{display:block !important}
+  /* El bloque 2 en dos columnas: escribir a la izquierda, el muro a la derecha. */
+  .muro-zona{display:grid;grid-template-columns:minmax(18rem,27rem) minmax(0,1fr);gap:1.6rem;align-items:start;margin-top:1rem}
+  .muro-izq .minuto{margin-top:0}
+  .campos{display:grid;grid-template-columns:1fr 1fr;gap:.7rem .7rem;margin-top:.4rem}
+  .campos label{display:flex;flex-direction:column;gap:.3rem;font-size:.86rem;color:var(--soft)}
+  .campos .ancho{grid-column:1/-1}
+  .campos input,.campos textarea{display:block;width:100%;min-width:0;margin:0}
+  .muro-izq .minuto .enc-cab{margin-bottom:.2rem}
+  .muro-der .muro-cab{margin-top:0}
+  .muro-der .muro{grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+  .muro-der .muro-vacio{border:1px dashed var(--rule);border-radius:12px;padding:2.5rem 1rem;text-align:center}
+  @media (max-width:900px){.muro-zona{grid-template-columns:1fr}}
 
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
@@ -379,24 +391,28 @@
     <div class="cab"><div class="num">02</div><div><h2>Tu proyecto en un minuto <span class="hora"></span></h2><p class="para">Cada persona presenta el problema que quiere trabajar. No hace falta tener la solución.</p></div></div>
     <div class="cuerpo">
       <p>Cuéntalo así, en voz alta y en un minuto. Si no tienes un proyecto claro, cuenta algo que repites cada semana y te quita tiempo: eso ya es un proyecto.</p>
+      <div class="muro-zona">
+      <div class="muro-izq">
       <form class="minuto" id="minuto" autocomplete="off">
-        <div class="enc-cab"><b>Tu minuto · escríbelo y publícalo en el muro</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
-        <p class="frase">Me llamo <input name="nombre" maxlength="60" placeholder="tu nombre (opcional)"> y trabajo en <input name="trabajo" maxlength="80" placeholder="área o empresa">.</p>
-        <p class="frase">Algo que me quita tiempo (o que sale mal) es<textarea name="problema" maxlength="280" rows="2" required placeholder="lo que repites cada semana, o lo que siempre falla"></textarea></p>
-        <p class="frase">Le pasa a <input name="aquien" maxlength="80" placeholder="quién"> , más o menos <input name="cuanto" maxlength="40" class="corto" placeholder="¿?"> veces por semana.</p>
-        <p class="frase">Me gustaría que<textarea name="gustaria" maxlength="280" rows="2" placeholder="cómo sería mejor"></textarea></p>
+        <div class="enc-cab"><b>Tu minuto</b><span class="vivos-txt" data-vivos>Conectando…</span></div>
+        <div class="campos">
+          <label>Me llamo<input name="nombre" maxlength="60" placeholder="opcional"></label>
+          <label>Trabajo en<input name="trabajo" maxlength="80" placeholder="área o empresa"></label>
+          <label class="ancho">Algo que me quita tiempo (o que sale mal) es<textarea name="problema" maxlength="280" rows="3" required placeholder="lo que repites cada semana, o lo que siempre falla"></textarea></label>
+          <label>Le pasa a<input name="aquien" maxlength="80" placeholder="quién"></label>
+          <label>Veces por semana<input name="cuanto" maxlength="40" placeholder="¿cuántas?"></label>
+          <label class="ancho">Me gustaría que<textarea name="gustaria" maxlength="280" rows="2" placeholder="cómo sería mejor"></textarea></label>
+        </div>
         <div class="minuto-pie"><button type="submit" class="boton pri" id="publicar">Publicar en el muro</button><span class="aviso-muro" id="aviso-muro">Lo verá toda la sala. Puedes corregirlo después.</span></div>
       </form>
-      <div class="crono" data-cuenta="60">
-        <div class="cifra">1:00</div>
-        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
-        <button type="button" class="boton chico" data-crono="parar">Parar</button>
-        <span class="cuantos">Van <b data-crono="n">0</b> presentaciones</span>
-      </div>
-      <div class="muro-cab"><h3>El muro <span id="muro-n"></span></h3><button type="button" class="boton chico solo-profe" id="vaciar-muro">Vaciar el muro</button></div>
-      <div class="muro" id="muro"><p class="muro-vacio">Aquí van apareciendo los proyectos de la sala.</p></div>
       <p class="nota"><b>Mientras escuchas:</b> fíjate en las tarjetas que se parecen a la tuya. Mañana, en los retos, pueden trabajar en paralelo y compararse.</p>
       <div class="facilita solo-profe"><b>Para quien facilita</b>Haz clic en una tarjeta para destacarla mientras esa persona presenta (otro clic la suelta). La × la quita del muro.</div>
+      </div>
+      <div class="muro-der">
+      <div class="muro-cab"><h3>El muro <span id="muro-n"></span></h3><button type="button" class="boton chico solo-profe" id="vaciar-muro">Vaciar el muro</button></div>
+      <div class="muro" id="muro"><p class="muro-vacio">Aquí van apareciendo los proyectos de la sala.</p></div>
+      </div>
+      </div>
     </div>
   </section>
 
