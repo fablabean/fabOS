@@ -207,10 +207,11 @@
     var resp = burbuja('ia pensando', ''), acumulado = '';
     fetch('{{ route('asistente.agentic.mensaje') }}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream', 'X-CSRF-TOKEN': token },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream','X-CSRF-TOKEN': token },
       body: JSON.stringify({ mensajes: mensajes, nivel: nivel })
     }).then(function (r) {
       if (r.status === 429) { throw new Error('Vas muy rápido: espera unos minutos y vuelve a intentar.'); }
+      if (r.status === 422) { throw new Error('El mensaje es demasiado largo o la conversación creció mucho: empieza una nueva.'); }
       if (r.status === 419) { throw new Error('La página caducó. Recárgala y vuelve a escribir.'); }
       if (!r.ok || !r.body) { throw new Error('No se pudo hablar con el asistente (' + r.status + ').'); }
       var lector = r.body.getReader(), dec = new TextDecoder(), resto = '';
