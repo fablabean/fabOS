@@ -814,17 +814,17 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
   var versionMuro = null, vistas = null, formSucio = false, destacada = null;
   var form = $('#minuto'), aviso = $('#aviso-muro'), botonPublicar = $('#publicar');
   form.addEventListener('input', function () { formSucio = true; });
-  function avisar(t, clase) { aviso.textContent = t; aviso.className = 'aviso-muro ' + (clase || ''); }
+  function avisoMuro(t, clase) { aviso.textContent = t; aviso.className = 'aviso-muro ' + (clase || ''); }
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
-    if (!document.body.classList.contains('en-vivo')) { avisar('Sin conexión con fabOS: no se puede publicar ahora.', 'mal'); return; }
+    if (!document.body.classList.contains('en-vivo')) { avisoMuro('Sin conexión con fabOS: no se puede publicar ahora.', 'mal'); return; }
     var datos = { v: yo };
     ['nombre', 'trabajo', 'problema', 'aquien', 'cuanto', 'gustaria'].forEach(function (k) { datos[k] = form.elements[k].value; });
-    if (!datos.problema.trim()) { avisar('Falta lo principal: qué te quita tiempo o qué sale mal.', 'mal'); form.elements.problema.focus(); return; }
+    if (!datos.problema.trim()) { avisoMuro('Falta lo principal: qué te quita tiempo o qué sale mal.', 'mal'); form.elements.problema.focus(); return; }
     botonPublicar.disabled = true;
     pedir('/muro', datos).then(function (e) {
-      formSucio = false; avisar('Publicado ✓ Ya está en el muro.', 'ok'); pintarVotos(e);
-    }).catch(function () { avisar('No se pudo publicar. Intenta de nuevo.', 'mal'); })
+      formSucio = false; avisoMuro('Publicado ✓ Ya está en el muro.', 'ok'); pintarVotos(e);
+    }).catch(function () { avisoMuro('No se pudo publicar. Intenta de nuevo.', 'mal'); })
       .then(function () { botonPublicar.disabled = false; });
   });
   function pintarMuro(m) {
