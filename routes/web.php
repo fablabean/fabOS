@@ -105,6 +105,11 @@ Route::get('/p/{slug}/animacion/{archivo}', [PaginaPublicaController::class, 'an
     ->where(['slug' => '[a-z0-9-]+', 'archivo' => '[A-Za-z0-9_-]+\.html'])
     ->name('publico.pagina.animacion');
 
+// La carpeta multimedia: lo que las animaciones cargan por su dirección.
+Route::get('/multimedia/{codigo}/{nombre?}', \App\Http\Controllers\MultimediaController::class)
+    ->where(['codigo' => '[a-z0-9]{10}', 'nombre' => '[A-Za-z0-9._-]+'])
+    ->name('publico.multimedia');
+
 /*
  * Reservas: la direccion dice lo que es.
  *

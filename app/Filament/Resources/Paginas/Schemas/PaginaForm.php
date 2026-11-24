@@ -563,7 +563,7 @@ class PaginaForm
                         ->directory(Pagina::CARPETA_ANIMACIONES)
                         ->acceptedFileTypes(['text/html'])
                         ->maxSize(10240)
-                        ->helperText('Un solo archivo .html con todo adentro (estilos, código e imágenes en base64), hasta 10 MB. Mientras no lo subas, el bloque no aparece en la página.')
+                        ->helperText('Un archivo .html, hasta 10 MB. Lo que cargue (STL, fotos, video) súbelo en Comunicaciones → Multimedia de páginas y usa su dirección. Mientras no lo subas, el bloque no aparece en la página.')
                         ->columnSpanFull(),
 
                     ToggleButtons::make('proporcion')
