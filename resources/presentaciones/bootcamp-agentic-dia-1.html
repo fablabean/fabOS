@@ -174,6 +174,19 @@
   @media (max-width:640px){.cuerpo,.fin-bloque{margin-left:0} .cab{margin-bottom:.6rem}}
   footer{padding:3rem 0 4rem;color:var(--muted);font-size:.88rem}
   @media print{.barra,.copiar,.mando,.fin-bloque,.crono{display:none} body{background:#fff;color:#000} [data-ia]{display:block !important}}
+  /* Una sección por pantalla: la portada, la agenda y cada bloque. */
+  html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
+  header.portada{padding:2.2rem 0 2rem !important}
+  section.agenda,section.bloque,section.autonomo{padding-top:2rem !important;padding-bottom:2rem !important}
+  .fin-bloque{margin-top:1.4rem !important}
+  header.portada,section.agenda,section.bloque,section.autonomo{min-height:calc(100vh - var(--barra,3.3rem));min-height:calc(100svh - var(--barra,3.3rem));
+    display:flex;flex-direction:column;justify-content:center;scroll-snap-align:start}
+  header.portada > .wrap{width:100%}
+  /* Lo que no cabe en la pantalla se lee entero y se ajusta también a su final. */
+  .largo{justify-content:flex-start !important}
+  .largo > :last-child{scroll-snap-align:end}
+  footer{scroll-snap-align:end}
+  @media print{html{scroll-snap-type:none} header.portada,section.agenda,section.bloque,section.autonomo{min-height:0}}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -661,6 +674,37 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
     });
     pre.parentNode.appendChild(b);
+  });
+})();
+</script>
+<script>
+(function () {
+  // Mide la barra y marca las secciones más altas que la pantalla.
+  var barra = document.querySelector('.barra');
+  function medir() {
+    var h = barra.offsetHeight;
+    document.documentElement.style.setProperty('--barra', h + 'px');
+    document.querySelectorAll('header.portada,section.agenda,section.bloque,section.autonomo').forEach(function (s) {
+      s.classList.toggle('largo', s.scrollHeight > window.innerHeight - h + 40);
+    });
+  }
+  medir();
+  window.addEventListener('resize', medir);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
+  if (window.ResizeObserver) { new ResizeObserver(function () { window.requestAnimationFrame(medir); }).observe(document.querySelector('main')); }
+
+  // Para presentar: → o AvPág, a la sección siguiente; ← o RePág, a la anterior.
+  function secciones() { return Array.prototype.slice.call(document.querySelectorAll('header.portada,section.agenda,section.bloque,section.autonomo')); }
+  window.addEventListener('keydown', function (e) {
+    if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.altKey || e.ctrlKey || e.metaKey) { return; }
+    var adelante = e.key === 'ArrowRight' || e.key === 'PageDown', atras = e.key === 'ArrowLeft' || e.key === 'PageUp';
+    if (!adelante && !atras) { return; }
+    e.preventDefault();
+    var h = barra.offsetHeight, ss = secciones(), i;
+    // La sección actual: la última cuyo inicio ya pasó bajo la barra.
+    for (i = ss.length - 1; i > 0 && ss[i].getBoundingClientRect().top > h + 4; i--) {}
+    var destino = adelante ? ss[Math.min(i + 1, ss.length - 1)] : (ss[i].getBoundingClientRect().top < h - 4 ? ss[i] : ss[Math.max(i - 1, 0)]);
+    destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 })();
 </script>
