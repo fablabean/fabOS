@@ -199,7 +199,7 @@
   body.es-profe .marca::after{content:" · profesor";color:var(--accent2)}
   body.es-participante .mando, body.es-participante .fin-bloque .boton{display:none}
   .modo{font-size:.86rem;border:1px dashed var(--rule);border-radius:10px;padding:.5rem .8rem;color:var(--soft);margin:.9rem 0 0}
-  body.es-profe .modo{border-color:var(--accent2);color:var(--ink)}
+  body.es-profe .modo{border:0;padding:0;margin:.3rem 0 0}
   body.es-profe .modo b{color:var(--accent2)}
   body:not(.en-vivo) .modo{display:none}
 
@@ -943,7 +943,7 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
     document.body.classList.toggle('es-participante', !soyProfe);
     $$('.tabla input').forEach(function (inp) { inp.disabled = !soyProfe; });
     $('#modo').innerHTML = soyProfe
-      ? '<b>Eres quien presenta.</b> Lo que marques aquí (inicio, bloques terminados, minutos) lo ven todos al instante.'
+      ? '<span class="facilita"><button type="button" class="ico-f" aria-label="Nota para quien presenta">?</button><span class="facilita-txt"><b>Eres quien presenta</b>Lo que marques aquí (inicio, bloques terminados, minutos) lo ven todos al instante.</span></span>'
       : 'Quien presenta lleva la agenda: las horas y el avance se actualizan solos.';
     // El profesor recupera su agenda al volver a abrir; después manda él.
     if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
