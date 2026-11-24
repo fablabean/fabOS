@@ -65,6 +65,7 @@ class EnVivoController extends Controller
         match ($request->input('accion')) {
             'agenda' => $this->envivo->guardarAgenda($sala, (array) json_decode((string) $request->input('agenda'), true)),
             'seccion' => $this->envivo->guardarSeccion($sala, (string) $request->input('seccion')),
+            'revelar' => $this->envivo->revelar($sala, (string) $request->input('id')),
             'quitar' => $this->envivo->quitarDelMuro($sala, (string) $request->input('id')),
             'destacar' => $this->envivo->destacar($sala, $request->input('id')),
             'vaciar-muro' => $this->envivo->vaciarMuro($sala),

@@ -137,6 +137,16 @@
   .cuerpo.dos-col > .col > h3:first-child{margin-top:.4rem}
   .cuerpo.dos-col > .col + .col{border-left:1px solid var(--rule);padding-left:2.2rem}
   .cuerpo.dos-col .tarjetas{grid-template-columns:1fr 1fr}
+  /* Lo que empieza tapado hasta que quien presenta lo muestra. */
+  .revelable:not(.revelado) > :not(.tapa){display:none !important}
+  .revelable.revelado > .tapa{display:none}
+  .revelable.revelado > :not(.tapa){animation:aparece .6s ease-out}
+  @keyframes aparece{from{opacity:0;transform:translateY(10px)}}
+  .tapa{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;min-height:18rem;margin-top:.4rem;
+    border:1px dashed var(--rule);border-radius:16px;text-align:center;color:var(--muted);padding:1.5rem}
+  .tapa .espera{display:none;font-size:.92rem}
+  body.es-participante .tapa .boton{display:none} body.es-participante .tapa .espera{display:block}
+  @media (prefers-reduced-motion:reduce){.revelable.revelado > :not(.tapa){animation:none}}
   @media (max-width:980px){.cuerpo.dos-col{grid-template-columns:1fr;gap:.5rem} .cuerpo.dos-col > .col + .col{border-left:0;padding-left:0}}
   /* Los escalones aparecen uno por uno al llegar a la sección: primero el 1, al final el 4. */
   .escalera.anima .escalon{opacity:0;transform:translateY(18px)}
@@ -539,7 +549,7 @@
         <li><strong>¿Por qué pasa?</strong> Pregunta «¿por qué?» tres veces seguidas: la tercera respuesta suele ser el problema de verdad.</li>
       </ol>
       </div>
-      <div class="col">
+      <div class="col revelable" data-revela="entrevista" data-rotulo="La IA como entrevistadora">
       <h3>La IA como entrevistadora, no como solucionadora</h3>
       <p>Abre la IA (en el chat o en el editor, da igual hoy) y pégale esto. Fíjate en lo que pasa: la IA pregunta y tú respondes. <strong>El conocimiento del problema es tuyo</strong>; ella te ayuda a ordenarlo.</p>
       <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Actúa como un entrevistador que quiere entender un problema de mi trabajo.
@@ -984,6 +994,7 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
     if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
     pintarVotos(e);
     seguirSeccion(e);
+    aplicarRevelados(e);
   }
   function sondear() {
     if (document.hidden) { return; }
@@ -1002,6 +1013,34 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
     }, { threshold: 0.3 }).observe(escalera);
     $$('.escalon', escalera).forEach(function (x) {
       x.addEventListener('animationend', function (ev) { if (ev.animationName === 'sube-escalon') { x.classList.add('armado'); } });
+    });
+  }
+
+  // Lo revelable: empieza tapado. Quien presenta lo muestra y se muestra a todos;
+  // sin conexión con fabOS, cualquiera puede mostrarlo en su pantalla.
+  var revelados = {};
+  function mostrar(id) {
+    revelados[id] = true;
+    $$('[data-revela="' + id + '"]').forEach(function (el) { el.classList.add('revelado'); });
+  }
+  $$('.revelable').forEach(function (el) {
+    var tapa = document.createElement('div'); tapa.className = 'tapa';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'boton pri';
+    b.textContent = 'Mostrar: ' + (el.dataset.rotulo || 'lo que sigue') + ' ▸';
+    var espera = document.createElement('span'); espera.className = 'espera'; espera.textContent = 'Quien presenta lo mostrará en un momento.';
+    b.addEventListener('click', function () {
+      mostrar(el.dataset.revela);
+      if (soyProfe) { pedir('/control', { profe: profe, v: yo, accion: 'revelar', id: el.dataset.revela }).catch(function () {}); }
+    });
+    tapa.appendChild(b); tapa.appendChild(espera); el.insertBefore(tapa, el.firstChild);
+  });
+  function aplicarRevelados(e) {
+    var lista = e.revelados || [];
+    $$('.revelable').forEach(function (el) {
+      var id = el.dataset.revela, ya = lista.indexOf(id) >= 0;
+      // El profesor no vuelve a taparlo mientras su aviso llega al servidor.
+      if (ya || (soyProfe && revelados[id])) { mostrar(id); }
+      else if (!soyProfe) { el.classList.remove('revelado'); delete revelados[id]; }
     });
   }
 

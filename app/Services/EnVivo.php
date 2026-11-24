@@ -174,6 +174,7 @@ class EnVivo
     {
         $this->c()->forget("envivo:$sala:agenda");
         $this->c()->forget("envivo:$sala:seccion");
+        $this->c()->forget("envivo:$sala:revelados");
     }
 
     /**
@@ -185,6 +186,22 @@ class EnVivo
         if ($seccion !== null && preg_match('/^[a-z0-9-]{1,40}$/', $seccion)) {
             $this->c()->put("envivo:$sala:seccion", $seccion, self::DURA);
         }
+    }
+
+    /** Lo que el profesor ya mostró (partes que empiezan tapadas). */
+    public function revelar(string $sala, string $id): void
+    {
+        if (preg_match('/^[a-z0-9-]{1,40}$/', $id)) {
+            $ya = $this->revelados($sala);
+            $ya[] = $id;
+            $this->c()->put("envivo:$sala:revelados", array_values(array_unique(array_slice($ya, -40))), self::DURA);
+        }
+    }
+
+    /** @return list<string> */
+    public function revelados(string $sala): array
+    {
+        return (array) $this->c()->get("envivo:$sala:revelados", []);
     }
 
     public function seccion(string $sala): ?string
@@ -312,6 +329,7 @@ class EnVivo
             'vivos' => $this->vivos($sala),
             'agenda' => $this->agenda($sala),
             'seccion' => $this->seccion($sala),
+            'revelados' => $this->revelados($sala),
             'profe' => $this->esProfe($sala, $clave),
             'ahora' => (int) floor(microtime(true) * 1000),
         ];

@@ -91,6 +91,12 @@ class PresentacionesEnVivoTest extends TestCase
         $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'seccion', 'seccion' => '<script>'])->assertOk();
         $this->assertSame('b-escalera', $this->estado()['seccion']);
 
+        // Lo que empieza tapado lo revela el profesor, para todos.
+        $this->post('/api/envivo/' . self::SALA . '/control', ['accion' => 'revelar', 'id' => 'entrevista'])->assertForbidden();
+        $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'revelar', 'id' => 'entrevista'])->assertOk();
+        $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'revelar', 'id' => 'entrevista'])->assertOk();
+        $this->assertSame(['entrevista'], $this->estado()['revelados']);
+
         $this->post('/api/envivo/' . self::SALA . '/votar', ['v' => 'ana12345', 'pregunta' => 'api', 'opcion' => 1]);
         $this->post('/api/envivo/' . self::SALA . '/control', ['profe' => $clave, 'accion' => 'reiniciar-votos'])->assertOk();
         $e = $this->estado('ana12345');
