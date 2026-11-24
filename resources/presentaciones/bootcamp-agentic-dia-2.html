@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Día 2 · Bootcamp AGENTIC</title>
+<meta name="description" content="Sesión 02 del Bootcamp AGENTIC: retos en paralelo y trabajo autónomo con el asistente de fabOS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1513; --bg2:#141D1A; --card:#18231F; --rule:#2A3832; --ink:#ECF1EE; --soft:#B7C4BE; --muted:#83948C;
+    --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --bad:#FF6B6B; --code:#0A100E;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(var(--barra,3.3rem) + .5rem)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+  a{color:var(--accent)}
+  code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+  .wrap{max-width:62rem;margin:0 auto;padding:0 1.2rem}
+
+  /* IA y nivel, como en «Prepárate» */
+  [data-ia]{display:none}
+  body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
+  body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
+  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
+
+  /* barra */
+  .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .barra .wrap{display:flex;gap:.6rem 1rem;align-items:center;justify-content:space-between;padding-top:.55rem;padding-bottom:.55rem;flex-wrap:wrap}
+  .marca{font-weight:800;letter-spacing:.04em;font-size:.9rem;white-space:nowrap}
+  .marca b{color:var(--accent2)}
+  .so{display:inline-flex;border:1px solid var(--rule);border-radius:99px;overflow:hidden}
+  .so button{background:none;border:0;color:var(--soft);padding:.35rem .85rem;font:600 .82rem Inter,sans-serif;cursor:pointer}
+  .so button[aria-pressed=true]{background:var(--accent);color:#06231A}
+  .reloj{flex:1 1 16rem;max-width:26rem;min-width:13rem}
+  .reloj .txt{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between;gap:.6rem}
+  .reloj .txt b{color:var(--ink);font-weight:600}
+  .pista{position:relative;height:8px;background:var(--rule);border-radius:9px;margin-top:.25rem}
+  .pista .lleno{position:absolute;inset:0 auto 0 0;width:0;border-radius:9px;background:linear-gradient(90deg,var(--accent),var(--warn));transition:width .4s}
+  .pista .ahora{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--bg);transition:left .4s}
+  .pista .corte{position:absolute;top:0;bottom:0;width:2px;background:var(--bg)}
+  .ritmo{font-weight:700}
+  .ritmo.bien{color:var(--accent)} .ritmo.tarde{color:var(--bad)} .ritmo.antes{color:var(--warn)}
+
+  /* portada */
+  header.portada{padding:4rem 0 2.6rem;border-bottom:1px solid var(--rule);
+    background:radial-gradient(60rem 30rem at 85% -10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent),
+               radial-gradient(40rem 25rem at -10% 110%,color-mix(in srgb,var(--accent2) 14%,transparent),transparent)}
+  .kicker{font:600 .78rem "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2)}
+  h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.02;margin:.6rem 0 1rem;letter-spacing:-.03em;font-weight:800}
+  h1 span{color:var(--accent)}
+  .lead{font-size:1.15rem;color:var(--soft);max-width:46rem}
+  .datos{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem}
+  .dato{border:1px solid var(--rule);background:var(--card);border-radius:10px;padding:.55rem .9rem;font-size:.9rem}
+  .dato b{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  .nivel-tit{margin:2rem 0 .7rem;font-weight:600}
+  .nivel{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;max-width:46rem}
+  .nivel button{position:relative;text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:1rem 3rem 1rem 1.2rem;color:var(--ink);cursor:pointer;font:inherit}
+  .nivel button:hover{border-color:var(--accent)}
+  .nivel button::before{content:"";position:absolute;top:1.1rem;right:1.1rem;width:1.1rem;height:1.1rem;border-radius:50%;border:2px solid var(--muted)}
+  .nivel button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+  .nivel button[aria-pressed=true]::before{border:4px solid var(--accent);background:#06231A}
+  .nivel .t{display:block;font-weight:800;font-size:1.15rem}
+  .nivel .s{display:block;color:var(--soft);font-size:.9rem;margin-top:.25rem;line-height:1.45}
+
+  /* los tres días */
+  .dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1.6rem 0 0}
+  .dia{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2);color:var(--soft);font-size:.9rem}
+  .dia .n{font:600 .72rem "JetBrains Mono",monospace;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+  .dia .t{display:block;color:var(--ink);font-weight:700;font-size:1.05rem;margin:.15rem 0 .2rem}
+  .dia.hoy{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+  .dia.hoy .n{color:var(--accent)} .dia.hoy .n::after{content:" · hoy"}
+
+  /* agenda */
+  section.agenda{padding:3rem 0 2.5rem;border-bottom:1px solid var(--rule)}
+  .mando{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:1.2rem 0}
+  .boton{display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;border:1px solid var(--rule);border-radius:99px;padding:.5rem 1.05rem;
+    background:var(--bg2);color:var(--ink);font:600 .88rem Inter,sans-serif;text-decoration:none}
+  .boton:hover{border-color:var(--accent)}
+  .boton.pri{background:var(--accent);border-color:var(--accent);color:#06231A}
+  .boton.chico{padding:.3rem .75rem;font-size:.8rem}
+  .tabla{width:100%;border-collapse:collapse;font-size:.92rem}
+  .tabla th{font:600 .68rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:.5rem .5rem;border-bottom:1px solid var(--rule)}
+  .tabla td{padding:.55rem .5rem;border-bottom:1px solid color-mix(in srgb,var(--rule) 60%,transparent);vertical-align:middle}
+  .tabla td.h{font-family:"JetBrains Mono",monospace;color:var(--soft);white-space:nowrap}
+  .tabla td a{color:var(--ink);text-decoration:none;font-weight:600} .tabla td a:hover{color:var(--accent)}
+  .tabla input{width:3.6rem;background:var(--code);border:1px solid var(--rule);border-radius:6px;color:var(--ink);padding:.2rem .35rem;font:600 .85rem "JetBrains Mono",monospace;text-align:right}
+  .tabla tr.en-curso td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
+  .tabla tr.listo td{color:var(--muted)} .tabla tr.listo td a{color:var(--muted)}
+  .estado{font-size:.8rem;white-space:nowrap}
+  .tabla tfoot td{font-weight:700;border-bottom:0;padding-top:.8rem}
+  .aviso-plan{font-size:.85rem;margin-top:.6rem;color:var(--muted)}
+  .aviso-plan.mal{color:var(--bad)}
+  .resumen-ritmo{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.3rem 0 0}
+  .resumen-ritmo div{border:1px solid var(--rule);border-radius:10px;padding:.6rem .85rem;background:var(--card);font-size:1.05rem;font-weight:700}
+  .resumen-ritmo b{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  @media (max-width:640px){.tabla .opc{display:none}}
+
+  /* bloques */
+  section.bloque{padding:3.2rem 0;border-bottom:1px solid var(--rule)}
+  .cab{display:flex;gap:1rem;align-items:flex-start}
+  .num{flex:0 0 auto;width:3rem;height:3rem;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule);font:700 1.1rem "JetBrains Mono",monospace;color:var(--accent)}
+  section.bloque.listo .num{background:var(--accent);color:#06231A;border-color:var(--accent)}
+  section.bloque.en-curso .num{border-color:var(--warn);color:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent)}
+  h2{font-size:1.65rem;margin:0;letter-spacing:-.02em}
+  .para{color:var(--muted);font-size:.92rem;margin:.15rem 0 0}
+  .hora{display:inline-block;font:600 .72rem "JetBrains Mono",monospace;border:1px solid var(--rule);border-radius:99px;padding:.08rem .6rem;color:var(--muted);margin-left:.35rem;vertical-align:middle;white-space:nowrap}
+  section.bloque.en-curso .hora{border-color:var(--warn);color:var(--warn)}
+  .cuerpo{margin-left:4rem}
+  .cuerpo > p, .cuerpo li{color:var(--soft)}
+  .cuerpo h3{margin:1.6rem 0 .4rem;font-size:1.12rem}
+  .simple{border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));background:color-mix(in srgb,var(--accent) 5%,transparent);border-radius:10px;padding:.75rem 1rem;margin:1rem 0;color:var(--soft)}
+  .simple b{color:var(--accent)}
+  .nota{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0;color:var(--soft);font-size:.93rem}
+  .nota b{color:var(--warn)}
+  .nota.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)} .nota.ok b{color:var(--ok)}
+  .facilita{border:1px solid color-mix(in srgb,var(--accent2) 45%,var(--rule));border-radius:10px;padding:.6rem .9rem;margin:1rem 0;font-size:.88rem;color:var(--soft);background:color-mix(in srgb,var(--accent2) 6%,transparent)}
+  .facilita b{color:var(--accent2);font:600 .7rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;display:block}
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1rem 0}
+  .tarjeta{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2)}
+  .tarjeta h4{margin:0 0 .3rem;font-size:1rem}
+  .tarjeta p{margin:0;font-size:.88rem;color:var(--soft)}
+  .tarjeta .n{font:700 .72rem "JetBrains Mono",monospace;color:var(--accent);letter-spacing:.08em}
+  .tarjeta.mal{border-color:color-mix(in srgb,var(--bad) 50%,var(--rule))} .tarjeta.mal .n{color:var(--bad)}
+  .tarjeta.bien{border-color:color-mix(in srgb,var(--accent) 50%,var(--rule))}
+  .escalera{display:grid;gap:.5rem;margin:1.2rem 0}
+  .escalon{display:grid;grid-template-columns:2.6rem 1fr;gap:.9rem;align-items:start;border:1px solid var(--rule);border-radius:12px;padding:.8rem 1rem;background:var(--bg2)}
+  .escalon .e{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:10px;font:800 1rem "JetBrains Mono",monospace;background:var(--card);color:var(--accent);border:1px solid var(--rule)}
+  .escalon h4{margin:0;font-size:1.02rem} .escalon p{margin:.15rem 0 0;font-size:.9rem;color:var(--soft)}
+  .escalon .quien{font-size:.8rem;color:var(--muted);margin-top:.3rem}
+  .escalon:nth-child(1){margin-right:9%} .escalon:nth-child(2){margin-left:3%;margin-right:6%} .escalon:nth-child(3){margin-left:6%;margin-right:3%} .escalon:nth-child(4){margin-left:9%}
+  .escalon.dia3 .e{color:var(--accent2)}
+  @media (max-width:640px){.escalon{margin:0 !important}}
+  .formula{font-size:1.15rem;line-height:1.55;border:1px solid var(--rule);border-radius:12px;padding:1rem 1.2rem;background:var(--card);margin:1rem 0}
+  .formula em{font-style:normal;color:var(--warn);border-bottom:1px dashed var(--warn)}
+  .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  .tres > div{border-radius:12px;padding:.8rem 1rem;border:1px solid var(--rule);background:var(--bg2);font-size:.9rem;color:var(--soft)}
+  .tres h4{margin:0 0 .3rem;font-size:.95rem;color:var(--ink)}
+  .tres > div:nth-child(1){border-color:var(--accent)} .tres > div:nth-child(2){border-color:var(--warn)}
+  @media (max-width:640px){.tres{grid-template-columns:1fr}}
+  ol.pasitos{padding-left:1.2rem;color:var(--soft)} ol.pasitos li{margin:.35rem 0}
+
+  /* código y pedidos para copiar */
+  .cmd{position:relative;margin:.8rem 0}
+  .cmd .lbl{font:600 .68rem "JetBrains Mono",monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem}
+  .cmd pre{margin:0;background:var(--code);border:1px solid var(--rule);border-radius:10px;padding:.85rem 1rem 2.6rem;overflow-x:auto;font-size:.86rem;line-height:1.55;color:#D8F5EA;white-space:pre-wrap}
+  .cmd pre .c{color:var(--muted)}
+  .cmd pre .hueco{color:var(--warn)}
+  .copiar{position:absolute;right:.5rem;bottom:.5rem;background:var(--card);border:1px solid var(--rule);color:var(--soft);border-radius:7px;font:600 .75rem Inter,sans-serif;padding:.3rem .6rem;cursor:pointer}
+  .copiar:hover{border-color:var(--accent);color:var(--ink)}
+
+  /* el cronómetro de un minuto */
+  .crono{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;border:1px solid var(--rule);border-radius:14px;padding:.8rem 1.1rem;background:var(--card);margin:1rem 0;width:max-content;max-width:100%}
+  .crono .cifra{font:800 2.4rem "JetBrains Mono",monospace;letter-spacing:-.02em;min-width:6.5rem}
+  .crono.corre .cifra{color:var(--warn)}
+  .crono.fin .cifra{color:var(--bad);animation:late 1s steps(2) infinite}
+  @keyframes late{50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.crono.fin .cifra{animation:none}}
+  .crono .cuantos{font-size:.85rem;color:var(--muted)}
+
+  /* casillas del participante */
+  .check{display:flex;gap:.9rem;align-items:center;padding:.85rem 1.1rem;margin:1rem 0 .4rem;cursor:pointer;border:2px dashed color-mix(in srgb,var(--warn) 70%,transparent);border-radius:12px;background:color-mix(in srgb,var(--warn) 7%,var(--bg2))}
+  .check input{appearance:none;-webkit-appearance:none;margin:0;flex:0 0 auto;width:1.7rem;height:1.7rem;border-radius:7px;border:2.5px solid var(--warn);background:var(--code);display:grid;place-items:center;cursor:pointer}
+  .check input::after{content:"";width:.45rem;height:.85rem;border:solid #06231A;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px);opacity:0}
+  .check input:checked{background:var(--accent);border-color:var(--accent)} .check input:checked::after{opacity:1}
+  .check.ok{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+
+  /* cierre de bloque */
+  .fin-bloque{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin:2rem 0 0 4rem}
+  .fin-bloque .real{font-size:.85rem;color:var(--muted)}
+  section.bloque.listo .fin-bloque .boton{border-color:var(--accent);color:var(--accent)}
+  @media (max-width:640px){.cuerpo,.fin-bloque{margin-left:0} .cab{margin-bottom:.6rem}}
+  /* trabajo autónomo: fuera de la agenda */
+  section.autonomo{padding:3.2rem 0;border-bottom:1px solid var(--rule)}
+  section.autonomo .num{color:var(--accent2);border-color:color-mix(in srgb,var(--accent2) 55%,var(--rule))}
+  section.autonomo > .cab .hora{border-color:color-mix(in srgb,var(--accent2) 55%,var(--rule));color:var(--accent2)}
+  .asistente{display:flex;gap:1.2rem 2rem;align-items:center;flex-wrap:wrap;border:1px solid var(--accent);border-radius:16px;padding:1.3rem 1.5rem;margin:1.8rem 0;
+    background:radial-gradient(30rem 14rem at 100% 0%,color-mix(in srgb,var(--accent) 14%,transparent),transparent),var(--bg2)}
+  .asistente > div{flex:1 1 22rem}
+  .asistente h3{margin:.3rem 0 .4rem}
+  .asistente p{color:var(--soft)}
+  .boton.grande{padding:.9rem 1.6rem;font-size:1.05rem}
+  .tres.dos{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tres.dos > div:nth-child(2){border-color:var(--warn)} .tres.dos > div:nth-child(1){border-color:var(--accent)}
+  .tres.dos ul{padding-left:1.1rem;margin:.4rem 0 0} .tres.dos li{margin:.35rem 0}
+  @media (max-width:640px){.tres.dos{grid-template-columns:1fr}}
+  footer{padding:3rem 0 4rem;color:var(--muted);font-size:.88rem}
+  @media print{.barra,.copiar,.mando,.fin-bloque,.crono{display:none} body{background:#fff;color:#000} [data-ia]{display:block !important}}
+</style>
+</head>
+<body class="nivel-basico ia-claude">
+
+<div class="barra">
+  <div class="wrap">
+    <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 2 de 3</div>
+    <div class="so" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
+    </div>
+    <div class="reloj" aria-live="off">
+      <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
+      <div class="pista" id="r-pista"><div class="lleno" id="r-lleno"></div><div class="ahora" id="r-ahora"></div></div>
+    </div>
+  </div>
+</div>
+
+<header class="portada">
+  <div class="wrap">
+    <div class="kicker">Sesión 02 · miércoles 25 de noviembre · 6:00 p. m.</div>
+    <h1>Construir en paralelo, <span>con la IA de tu lado</span>.</h1>
+    <p class="lead">Hoy es de hacer. Una hora corta para pasar de tu <span class="mono">PROYECTO.md</span> a una primera versión que funcione, cada quien en su reto y todos comparando caminos. Después sigue el trabajo autónomo con el asistente de fabOS: ahí vas a ver qué hace la IA y qué sigues haciendo tú.</p>
+    <div class="datos">
+      <div class="dato"><b>Duración</b>1 hora + trabajo autónomo</div>
+      <div class="dato"><b>Antes</b><a href="https://fablabean.com/zonas/agentic/dia-1" target="_blank" rel="noopener">Día 1 ↗</a> (tu PROYECTO.md)</div>
+      <div class="dato"><b>Trae</b>Un ejemplo real de tu problema</div>
+      <div class="dato"><b>Sales con</b>Una primera versión que funciona</div>
+    </div>
+    <div class="dias">
+      <div class="dia"><span class="n">Día 1 · mar 24</span><span class="t">Entender</span>El problema, el objetivo y la IA en el editor. Qué es una API y para qué sirve.</div>
+      <div class="dia hoy"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
+      <div class="dia"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Tu programa habla con la IA por API, y el concepto de agente.</div>
+    </div>
+    <p class="nivel-tit">¿Cómo quieres ver la sesión?</p>
+    <div class="nivel" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">He chateado con una IA, pero no la he usado para trabajar sobre archivos.</span></button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya uso la IA en el editor o he hecho scripts. Dame lo directo y un paso más.</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================================================== agenda -->
+  <section class="agenda" id="agenda">
+    <div class="kicker">La agenda de hoy</div>
+    <h2>Cuatro bloques, sesenta minutos</h2>
+    <p class="para">Hoy la sesión es corta y es de hacer. Las horas se calculan solas desde el inicio; si un bloque necesita más o menos, cambia sus minutos y lo demás se reacomoda. Después de la sesión sigue el trabajo autónomo, al final de esta página.</p>
+    <div class="mando">
+      <button type="button" class="boton pri" id="empezar">▶ Empezamos ahora</button>
+      <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
+      <button type="button" class="boton" id="reiniciar">Borrar lo marcado</button>
+    </div>
+    <table class="tabla">
+      <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
+      <tbody id="filas"></tbody>
+      <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr></tfoot>
+    </table>
+    <p class="aviso-plan" id="aviso-plan"></p>
+    <div class="resumen-ritmo">
+      <div><b>Llevamos</b><span id="m-llevamos">—</span></div>
+      <div><b>Bloque en curso</b><span id="m-bloque">—</span></div>
+      <div><b>Al ritmo de ahora, terminamos</b><span id="m-fin">—</span></div>
+    </div>
+    <div class="mando"><a class="boton" href="#autonomo">Ir al trabajo autónomo ↓</a></div>
+  </section>
+
+  <!-- ===================================================== 1 -->
+  <section class="bloque" id="b-encuadre" data-min="5" data-titulo="Encuadre: varias vías">
+    <div class="cab"><div class="num">01</div><div><h2>De <span class="mono">PROYECTO.md</span> a algo que funciona <span class="hora"></span></h2><p class="para">Cada quien construye lo suyo; entre todos, comparamos caminos.</p></div></div>
+    <div class="cuerpo">
+      <p>Ayer dejaste escrito el problema y el objetivo. Hoy lo conviertes en una primera versión que funcione con un ejemplo real. Mientras cada persona avanza en su proyecto, el grupo arma una <strong>solución común</strong>: el mismo tipo de problema resuelto por tres vías distintas, para comparar al final cuál conviene y cuándo.</p>
+      <div class="tarjetas">
+        <div class="tarjeta"><div class="n">VÍA A</div><h4>Un pedido bien escrito</h4><p>Sin programar: un pedido reutilizable que, con el ejemplo pegado, da siempre el resultado que necesitas.</p></div>
+        <div class="tarjeta"><div class="n">VÍA B</div><h4>Un script hecho por la IA</h4><p>La IA del editor escribe un programa pequeño que toma un archivo y entrega el resultado, sin copiar y pegar.</p></div>
+        <div class="tarjeta"><div class="n">VÍA C</div><h4>Una automatización</h4><p>Una hoja de cálculo o un formulario que ordena, cuenta o avisa: a veces la mejor solución no necesita IA en cada paso.</p></div>
+      </div>
+      <div class="facilita"><b>Para quien facilita</b>Tablero rápido (en el tablero o en una hoja compartida): nombre, proyecto en cinco palabras y vía A, B o C. Que haya gente en las tres vías; quien no sepa cuál elegir, empieza por la A.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 -->
+  <section class="bloque" id="b-ciclo" data-min="10" data-titulo="El ciclo de trabajo con IA">
+    <div class="cab"><div class="num">02</div><div><h2>El ciclo de trabajo con IA <span class="hora"></span></h2><p class="para">Pasos que se repiten. Es lo que separa «la IA hizo algo» de «yo construí algo con la IA».</p></div></div>
+    <div class="cuerpo">
+      <div class="escalera">
+        <div class="escalon"><div class="e">1</div><div><h4>Planear</h4><p>Antes de tocar archivos, la IA propone un plan de pasos pequeños y tú lo ajustas.</p><div class="quien">Tú decides el orden y qué queda por fuera</div></div></div>
+        <div class="escalon"><div class="e">2</div><div><h4>Pedir</h4><p>Un paso a la vez, con el contexto que la IA no tiene: tu ejemplo real y qué esperas de salida.</p><div class="quien">La IA no sabe lo que no le cuentas</div></div></div>
+        <div class="escalon"><div class="e">3</div><div><h4>Revisar</h4><p>Lees lo que propone antes de aceptar. Si no lo entiendes, pregúntale qué hace cada parte.</p><div class="quien">Nada se aplica sin que lo leas</div></div></div>
+        <div class="escalon"><div class="e">4</div><div><h4>Probar y guardar</h4><p>Lo corres con un ejemplo real. Si funciona, guardas ese punto para poder volver a él.</p><div class="quien">Un paso que funciona vale más que diez que «casi»</div></div></div>
+      </div>
+      <p class="simple" data-nivel="basico"><b>Guardar, en palabras simples:</b> Git es como los puntos de guardado de un videojuego. Cuando algo funciona, le pides a tu IA: «guarda este avance con Git y ponle un mensaje que diga qué funciona». Si después algo se daña, le pides volver a ese punto.</p>
+      <div data-nivel="inter">
+        <p>Un commit por paso que funciona, con un mensaje que diga qué quedó funcionando. Si la IA se enreda, <span class="mono">git diff</span> muestra qué cambió y <span class="mono">git restore .</span> vuelve al último punto bueno.</p>
+        <div class="cmd"><div class="lbl">En la terminal</div><pre>git init <span class="c"># solo la primera vez</span>
+git add -A
+git commit -m "Lee el ejemplo y muestra el resultado en pantalla"</pre></div>
+      </div>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md. No cambies ningún archivo todavía.
+Propón un plan de 3 a 5 pasos pequeños para lograr lo «Imprescindible»,
+donde cada paso se pueda probar con un ejemplo real.
+Para cada paso dime: qué vas a hacer, qué archivo tocarías y cómo lo pruebo.
+Al final pregúntame qué ejemplo real vamos a usar.</pre></div>
+      <label class="check"><input type="checkbox"><span>Tengo el plan de pasos pequeños y lo ajusté a mi gusto</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 3 -->
+  <section class="bloque" id="b-retos" data-min="35" data-titulo="Retos en paralelo">
+    <div class="cab"><div class="num">03</div><div><h2>Retos en paralelo <span class="hora"></span></h2><p class="para">Treinta y cinco minutos para construir. Elige el reto que va con tu nivel y con tu proyecto.</p></div></div>
+    <div class="cuerpo">
+      <div class="crono" data-cuenta="2100">
+        <div class="cifra">35:00</div>
+        <button type="button" class="boton pri" data-crono="ir">▶ Empezar los retos</button>
+        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+      </div>
+      <div class="tarjetas">
+        <div class="tarjeta bien"><div class="n">RETO 1 · BÁSICO</div><h4>La versión más simple</h4><p>Que la IA del editor construya lo mínimo que procese <strong>un</strong> ejemplo real tuyo: un script o una página que lo reciba y muestre el resultado.</p></div>
+        <div class="tarjeta"><div class="n">RETO 2 · INTERMEDIO</div><h4>Que aguante la realidad</h4><p>Que lea la entrada real (un archivo, una carpeta, una hoja), que avise claro cuando algo viene mal, y una prueba que lo demuestre.</p></div>
+        <div class="tarjeta"><div class="n" style="color:var(--accent2)">RETO 3 · AVANZADO</div><h4>Dos vías, una comparación</h4><p>Resuelve tu problema por dos de las vías (A, B o C) y compáralas: tiempo, costo, errores y quién lo puede mantener.</p></div>
+      </div>
+      <h3>Reto 1: la versión más simple</h3>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Vamos con el paso 1 del plan.
+Construye la versión más simple posible que tome este ejemplo real
+y muestre el resultado esperado. Usa un solo archivo.
+Antes de crearlo, explícame en tres líneas qué vas a hacer.
+Después dime exactamente cómo lo ejecuto para probarlo.
+
+Ejemplo real: <span class="hueco">[pega aquí tu ejemplo]</span>
+Resultado esperado: <span class="hueco">[cómo debería verse]</span></pre></div>
+      <h3>Reto 2: que aguante la realidad</h3>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Ahora haz que funcione con la entrada real: <span class="hueco">[archivo, carpeta u hoja]</span>.
+Si algo viene vacío o con un formato raro, que lo diga en un mensaje claro
+en lugar de fallar. Agrega una prueba con tres ejemplos reales y su resultado esperado.
+Muéstrame los cambios antes de aplicarlos.</pre></div>
+      <h3>Reto 3: dos vías, una comparación</h3>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Ya resolví mi problema por la vía <span class="hueco">[A, B o C]</span>.
+Ayúdame a resolverlo también por la vía <span class="hueco">[otra]</span>, con los mismos tres ejemplos.
+Luego arma una tabla que compare las dos: tiempo de uso, costo,
+errores que encontramos y quién podría mantenerla sin mí.
+No decidas por mí cuál es mejor: dame los criterios.</pre></div>
+      <p class="nota"><b>Si la IA se enreda</b> o lleva tres intentos sin funcionar: para, vuelve a tu último punto guardado y pide un paso más pequeño. Insistir con el mismo pedido rara vez funciona.</p>
+      <div class="facilita"><b>Para quien facilita</b>Rondas por las mesas cada diez minutos: ¿en qué paso vas?, ¿qué probaste? Junta en parejas a quienes estén en la misma vía o con problemas parecidos (los que se anotaron ayer). Que nadie se quede más de cinco minutos bloqueado sin pedir ayuda.</div>
+      <label class="check"><input type="checkbox"><span>Mi primera versión funciona con un ejemplo real</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 4 -->
+  <section class="bloque" id="b-muestra" data-min="10" data-titulo="Muestra relámpago">
+    <div class="cab"><div class="num">04</div><div><h2>Muestra relámpago <span class="hora"></span></h2><p class="para">Tres o cuatro personas, dos minutos cada una. Lo que funciona, lo que no y por qué.</p></div></div>
+    <div class="cuerpo">
+      <div class="cmd"><div class="lbl">Tus dos minutos</div><pre>Mi problema es <span class="hueco">___</span> y elegí la vía <span class="hueco">___</span>.
+Esto ya funciona: <span class="hueco">___</span> (lo muestro con un ejemplo real).
+Donde la IA me ayudó más fue <span class="hueco">___</span>.
+Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre></div>
+      <div class="crono" data-cuenta="120">
+        <div class="cifra">2:00</div>
+        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
+        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+        <span class="cuantos">Van <b data-crono="n">0</b> muestras</span>
+      </div>
+      <p class="nota ok"><b>Para cerrar entre todos:</b> ¿qué vía funcionó mejor para qué tipo de problema? Un pedido bien escrito gana en rapidez; un script, en repetirse sin ti; una automatización, en que otros la usen. Esa comparación es la solución común del grupo.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== autónomo (fuera de la agenda) -->
+  <section class="autonomo" id="autonomo">
+    <div class="cab"><div class="num">⌂</div><div><h2>Trabajo autónomo <span class="hora">antes del jueves · 60 a 90 min</span></h2><p class="para">Fuera de la sesión, a tu ritmo. Es donde se ve de verdad qué hace la IA y qué sigues haciendo tú.</p></div></div>
+    <div class="cuerpo">
+      <h3>Lo que tiene que estar listo el jueves</h3>
+      <label class="check"><input type="checkbox"><span>Avancé lo «Imprescindible» de <span class="mono">PROYECTO.md</span>, paso a paso y guardando cada avance</span></label>
+      <label class="check"><input type="checkbox"><span>Dejé una prueba con tres ejemplos reales y su resultado esperado</span></label>
+      <label class="check"><input type="checkbox"><span>Tengo lista mi llave de API (paso de las llaves en <a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a>)</span></label>
+      <label class="check"><input type="checkbox"><span>Llené mi bitácora: qué hizo la IA y qué decidí yo</span></label>
+
+      <h3>Tu bitácora</h3>
+      <p>Cópiala al final de <span class="mono">PROYECTO.md</span> y anota cada vez que trabajes con la IA. El jueves la usamos para hablar de qué parte del trabajo fue tuya.</p>
+      <div class="cmd"><div class="lbl">Para copiar en PROYECTO.md</div><pre>## Bitácora
+| Qué le pedí | Qué hizo la IA | Qué decidí yo | Qué corregí |
+|-------------|----------------|---------------|-------------|
+|             |                |               |             |</pre></div>
+
+      <div class="asistente">
+        <div>
+          <div class="kicker">Tu apoyo para el trabajo autónomo</div>
+          <h3>El asistente del bootcamp, en fabOS</h3>
+          <p>Es un tutor del FabLab que corre en el servidor de IA del propio laboratorio. <strong>No te hace el trabajo</strong>: te pregunta hasta que el problema esté claro, te ayuda a pensar el siguiente paso, revisa lo que hiciste y te explica los errores. Úsalo cuando estés bloqueado, antes de pedirle a la IA del editor que escriba más código.</p>
+          <ol class="pasitos">
+            <li>Cuéntale tu proyecto y en qué paso vas.</li>
+            <li>Pégale el error completo o lo que no entiendes.</li>
+            <li>Si te da la respuesta muy rápido, pídele que te lleve con preguntas.</li>
+          </ol>
+        </div>
+        <a class="boton pri grande" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">Abrir el asistente ↗</a>
+      </div>
+
+      <h3>Por qué la IA no te reemplaza</h3>
+      <div class="tres dos">
+        <div><h4>Lo que sigues haciendo tú</h4>
+          <ul>
+            <li><strong>Conoces el problema y a las personas.</strong> La IA no estuvo en la reunión ni sabe por qué ese correo es urgente.</li>
+            <li><strong>Decides qué es correcto.</strong> Ella propone; tú sabes si el resultado sirve.</li>
+            <li><strong>Respondes por el resultado.</strong> Si sale mal, no se puede culpar a la IA.</li>
+            <li><strong>Le das el contexto.</strong> No sabe lo que no le cuentas.</li>
+            <li><strong>Detectas cuando se equivoca.</strong> Se equivoca con total seguridad.</li>
+          </ul>
+        </div>
+        <div><h4>Lo que la IA sí hace</h4>
+          <ul>
+            <li><strong>Velocidad:</strong> escribe en segundos lo que te tomaría una tarde.</li>
+            <li><strong>Borradores:</strong> te da un primer intento para corregir, no una hoja en blanco.</li>
+            <li><strong>Explica:</strong> qué hace un código, qué significa un error.</li>
+            <li><strong>Revisa:</strong> encuentra casos que no habías pensado, si se lo pides.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="nota ok"><b>En una frase:</b> la IA asiste, tú diriges. Lo que vale de tu proyecto —entender el problema, decidir y responder por él— sigue siendo tuyo.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">Bootcamp AGENTIC · eanX · Universidad Ean · FabLab EAN — sesión 02. Las horas y el avance se calculan en este navegador y se pierden al cerrar la pestaña.</footer>
+
+<script>
+(function () {
+  var $ = function (s, d) { return (d || document).querySelector(s); };
+  var $$ = function (s, d) { return Array.prototype.slice.call((d || document).querySelectorAll(s)); };
+  var guarda = function (k, v) { try { localStorage.setItem('agentic-d2-' + k, v); } catch (_) {} };
+  var lee = function (k) { try { return localStorage.getItem('agentic-d2-' + k); } catch (_) { return null; } };
+
+  // Nivel e IA (compartidos con «Prepárate» cuando el navegador lo permite).
+  function nivel(n) {
+    n = n === 'inter' ? 'inter' : 'basico';
+    document.body.classList.remove('nivel-basico', 'nivel-inter'); document.body.classList.add('nivel-' + n);
+    $$('[data-nivel-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.nivelElige === n ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-nivel', n); } catch (_) {}
+  }
+  function ia(x) {
+    x = ['claude', 'gemini', 'gpt'].indexOf(x) >= 0 ? x : 'claude';
+    document.body.classList.remove('ia-claude', 'ia-gemini', 'ia-gpt'); document.body.classList.add('ia-' + x);
+    $$('[data-ia-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.iaElige === x ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-ia', x); } catch (_) {}
+  }
+  var n0 = null, i0 = null;
+  try { n0 = localStorage.getItem('agentic-nivel'); i0 = localStorage.getItem('agentic-ia'); } catch (_) {}
+  nivel(n0); ia(i0);
+  $$('[data-nivel-elige]').forEach(function (b) { b.addEventListener('click', function () { nivel(b.dataset.nivelElige); }); });
+  $$('[data-ia-elige]').forEach(function (b) { b.addEventListener('click', function () { ia(b.dataset.iaElige); }); });
+
+  // La barra mide su alto para que los saltos queden justo debajo.
+  var barra = $('.barra');
+  function medir() { document.documentElement.style.setProperty('--barra', barra.offsetHeight + 'px'); }
+  medir(); window.addEventListener('resize', medir);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
+
+  // ---------------------------------------------------------------- el plan
+  var bloques = $$('section.bloque').map(function (s) {
+    return { el: s, id: s.id, titulo: s.dataset.titulo, min: +s.dataset.min, base: +s.dataset.min, listo: null };
+  });
+  var DISPONIBLE = 60;
+  var MIN = 60000;
+  // Arranca a las 6:00 p. m. de hoy; «Empezamos ahora» lo mueve.
+  var inicio = (function () { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })();
+  var guardado = +lee('inicio');
+  if (guardado && new Date(guardado).toDateString() === new Date().toDateString()) { inicio = guardado; }
+  bloques.forEach(function (b) {
+    var m = +lee('min-' + b.id); if (m > 0) { b.min = m; }
+    var l = +lee('listo-' + b.id); if (l && new Date(l).toDateString() === new Date().toDateString()) { b.listo = l; }
+  });
+
+  function hhmm(t) {
+    var d = new Date(t), h = d.getHours(), m = d.getMinutes();
+    var p = h >= 12 ? 'p. m.' : 'a. m.'; h = h % 12 || 12;
+    return h + ':' + (m < 10 ? '0' : '') + m + ' ' + p;
+  }
+  function dur(min) {
+    min = Math.round(Math.abs(min));
+    return min >= 60 ? Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '') : min + ' min';
+  }
+  function total() { return bloques.reduce(function (s, b) { return s + b.min; }, 0); }
+  function desde(i) { return bloques.slice(0, i).reduce(function (s, b) { return s + b.min; }, 0); }
+  function enCurso() { for (var i = 0; i < bloques.length; i++) { if (!bloques[i].listo) { return i; } } return -1; }
+
+  // La tabla de la agenda, con los minutos editables.
+  var filas = $('#filas');
+  bloques.forEach(function (b, i) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="h"></td><td><a href="#' + b.id + '"></a></td><td><input type="number" min="1" max="120" step="1" aria-label="Minutos"></td><td class="opc estado"></td>';
+    tr.querySelector('a').textContent = b.titulo;
+    var inp = tr.querySelector('input'); inp.value = b.min;
+    inp.addEventListener('change', function () {
+      var v = Math.max(1, Math.min(120, Math.round(+inp.value || b.base)));
+      inp.value = v; b.min = v; guarda('min-' + b.id, v); pintar();
+    });
+    b.fila = tr; filas.appendChild(tr);
+    // El botón para cerrar el bloque.
+    var pie = document.createElement('div'); pie.className = 'fin-bloque';
+    pie.innerHTML = '<button type="button" class="boton"></button><span class="real"></span>';
+    pie.querySelector('button').addEventListener('click', function () {
+      if (b.listo) { b.listo = null; guarda('listo-' + b.id, ''); }
+      else {
+        // Cerrar uno cierra también los anteriores que quedaron abiertos.
+        bloques.slice(0, i + 1).forEach(function (x) { if (!x.listo) { x.listo = Date.now(); guarda('listo-' + x.id, x.listo); } });
+        var sig = bloques[i + 1]; if (sig) { sig.el.scrollIntoView({ behavior: 'smooth' }); }
+      }
+      pintar();
+    });
+    b.pie = pie; b.el.appendChild(pie);
+  });
+
+  $('#empezar').addEventListener('click', function () {
+    inicio = Date.now(); guarda('inicio', inicio);
+    bloques.forEach(function (b) { b.listo = null; guarda('listo-' + b.id, ''); });
+    pintar();
+  });
+  $('#a-las-6').addEventListener('click', function () {
+    var d = new Date(); d.setHours(18, 0, 0, 0); inicio = d.getTime(); guarda('inicio', inicio); pintar();
+  });
+  $('#reiniciar').addEventListener('click', function () {
+    bloques.forEach(function (b) { b.listo = null; b.min = b.base; b.fila.querySelector('input').value = b.base; guarda('listo-' + b.id, ''); guarda('min-' + b.id, ''); });
+    pintar();
+  });
+
+  // Cortes de la barra: dónde empieza cada bloque.
+  var pista = $('#r-pista');
+  function cortes() {
+    $$('.corte', pista).forEach(function (c) { c.remove(); });
+    var t = total();
+    bloques.slice(1).forEach(function (b, i) {
+      var c = document.createElement('div'); c.className = 'corte'; c.style.left = (100 * desde(i + 1) / t) + '%'; pista.appendChild(c);
+    });
+  }
+
+  function pintar() {
+    var ahora = Date.now(), t = total();
+    var transcurrido = (ahora - inicio) / MIN;
+    var actual = enCurso();
+    // Las horas planeadas, desde el inicio.
+    bloques.forEach(function (b, i) {
+      var h = inicio + desde(i) * MIN;
+      b.fila.querySelector('.h').textContent = hhmm(h);
+      b.el.querySelector('.cab .hora').textContent = hhmm(h) + ' · ' + b.min + ' min';
+      b.el.classList.toggle('listo', !!b.listo);
+      b.el.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      b.fila.classList.toggle('listo', !!b.listo);
+      b.fila.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      var est = b.fila.querySelector('.estado');
+      var boton = b.pie.querySelector('button'), real = b.pie.querySelector('.real');
+      if (b.listo) {
+        var antes = i === 0 ? inicio : (bloques[i - 1].listo || inicio + desde(i) * MIN);
+        var tomo = Math.max(0, Math.round((b.listo - antes) / MIN));
+        est.textContent = '✓ ' + tomo + ' de ' + b.min + ' min';
+        boton.textContent = '✓ Bloque terminado · deshacer';
+        real.textContent = 'Tomó ' + tomo + ' min de ' + b.min + ' planeados.';
+      } else {
+        est.textContent = i === actual ? (transcurrido >= 0 ? '▶ en curso' : 'primero') : '';
+        boton.textContent = 'Terminamos este bloque ✓';
+        real.textContent = i === actual && transcurrido >= 0 ? 'Planeado hasta las ' + hhmm(inicio + desde(i + 1) * MIN) + '.' : '';
+      }
+    });
+    $('#total').textContent = t + ' min';
+    var aviso = $('#aviso-plan');
+    aviso.classList.toggle('mal', t > DISPONIBLE);
+    aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en los 60 minutos de hoy (6:00 a 7:00 p. m.).'
+      : t > DISPONIBLE ? 'El plan se pasa ' + (t - DISPONIBLE) + ' min de los 60 de hoy: recorta algún bloque.'
+      : 'Sobran ' + (DISPONIBLE - t) + ' min de los 60 de hoy.';
+
+    // El ritmo: dónde deberíamos ir y dónde vamos.
+    var hechos = actual < 0 ? t : desde(actual);
+    $('#r-lleno').style.width = (100 * hechos / t) + '%';
+    $('#r-ahora').style.left = Math.max(0, Math.min(100, 100 * transcurrido / t)) + '%';
+    $('#r-ahora').hidden = transcurrido < 0 || transcurrido > t + 60;
+    var ritmo = $('#r-ritmo'), txtBloque = $('#r-bloque');
+    ritmo.className = 'ritmo';
+    if (transcurrido < 0) {
+      $('#r-hora').textContent = hhmm(ahora);
+      txtBloque.textContent = 'Empieza a las ' + hhmm(inicio);
+      ritmo.textContent = 'en ' + dur(-transcurrido);
+      $('#m-llevamos').textContent = 'Aún no empieza';
+    } else {
+      $('#r-hora').innerHTML = '<b>' + hhmm(ahora) + '</b> · min ' + Math.floor(transcurrido) + ' de ' + t;
+      $('#m-llevamos').textContent = dur(transcurrido) + ' de ' + dur(t);
+      if (actual < 0) {
+        txtBloque.textContent = 'Sesión terminada';
+        ritmo.textContent = '✓'; ritmo.classList.add('bien');
+      } else {
+        txtBloque.textContent = 'Bloque ' + (actual + 1) + ' de ' + bloques.length;
+        // Retraso: lo que llevamos frente a dónde debería ir el bloque en curso.
+        var debioEmpezar = desde(actual), debioTerminar = desde(actual + 1);
+        var retraso = transcurrido > debioTerminar ? transcurrido - debioTerminar : (transcurrido < debioEmpezar ? transcurrido - debioEmpezar : 0);
+        if (Math.abs(retraso) < 1) { ritmo.textContent = 'a tiempo'; ritmo.classList.add('bien'); }
+        else if (retraso > 0) { ritmo.textContent = dur(retraso) + ' tarde'; ritmo.classList.add('tarde'); }
+        else { ritmo.textContent = dur(retraso) + ' adelantados'; ritmo.classList.add('antes'); }
+      }
+    }
+    $('#m-bloque').textContent = actual < 0 ? 'Ninguno: terminamos' : bloques[actual].titulo;
+    // Fin estimado: lo que falta del bloque en curso más lo que viene.
+    if (actual < 0) { $('#m-fin').textContent = hhmm(bloques[bloques.length - 1].listo); }
+    else {
+      var empezoActual = actual === 0 ? inicio : (bloques[actual - 1].listo || inicio + desde(actual) * MIN);
+      var base = Math.max(ahora, inicio);
+      var restaActual = Math.max(0, bloques[actual].min * MIN - Math.max(0, base - empezoActual));
+      var resto = bloques.slice(actual + 1).reduce(function (s, b) { return s + b.min; }, 0) * MIN;
+      var fin = base + restaActual + resto;
+      var planeado = inicio + t * MIN;
+      var dif = Math.round((fin - planeado) / MIN);
+      $('#m-fin').textContent = hhmm(fin) + (dif > 0 ? ' (+' + dif + ' min)' : '');
+    }
+    cortes();
+  }
+  pintar();
+  setInterval(pintar, 15000);
+
+  // ---------------------------------------------------------- cronómetros
+  $$('.crono').forEach(function (c) {
+    var seg = +c.dataset.cuenta, cifra = $('.cifra', c), quedan = seg, reloj = null, cuantas = 0;
+    function mm(s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+    function parar() { clearInterval(reloj); reloj = null; c.classList.remove('corre'); }
+    function ir() {
+      parar(); quedan = seg; cifra.textContent = mm(quedan); c.classList.remove('fin'); c.classList.add('corre');
+      var n = $('[data-crono=n]', c); if (n) { n.textContent = ++cuantas; }
+      var fin = Date.now() + seg * 1000;
+      reloj = setInterval(function () {
+        quedan = Math.max(0, Math.round((fin - Date.now()) / 1000));
+        cifra.textContent = mm(quedan);
+        if (!quedan) { parar(); c.classList.add('fin'); }
+      }, 250);
+    }
+    $('[data-crono=ir]', c).addEventListener('click', ir);
+    $('[data-crono=parar]', c).addEventListener('click', function () { parar(); c.classList.remove('fin'); quedan = seg; cifra.textContent = mm(seg); });
+  });
+
+  // ------------------------------------------------------------- casillas
+  $$('.check input').forEach(function (inp) {
+    inp.addEventListener('change', function () { inp.closest('.check').classList.toggle('ok', inp.checked); });
+  });
+
+  // ------------------------------------------------------- copiar pedidos
+  $$('.cmd pre').forEach(function (pre) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copiar'; b.textContent = 'Copiar';
+    b.addEventListener('click', function () {
+      var copia = pre.cloneNode(true);
+      $$('.c', copia).forEach(function (c) { c.remove(); });
+      // Lo de otra IA no se copia.
+      $$('[data-ia]', copia).forEach(function (s) { if (!s.matches('[data-ia~=' + document.body.className.match(/ia-(\w+)/)[1] + ']')) { s.remove(); } });
+      var texto = copia.textContent.replace(/[ \t]+$/gm, '').trim();
+      var listo = function () { b.textContent = 'Copiado ✓'; setTimeout(function () { b.textContent = 'Copiar'; }, 1600); };
+      var aMano = function () {
+        var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+        b.textContent = ok ? 'Copiado ✓' : 'Selecciona y copia'; t.remove();
+        setTimeout(function () { b.textContent = 'Copiar'; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
+    });
+    pre.parentNode.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

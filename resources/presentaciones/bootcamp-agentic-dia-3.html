@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Día 3 · Bootcamp AGENTIC</title>
+<meta name="description" content="Sesión 03 del Bootcamp AGENTIC: tu programa habla con la IA por API, otras conexiones y el concepto de agente.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1513; --bg2:#141D1A; --card:#18231F; --rule:#2A3832; --ink:#ECF1EE; --soft:#B7C4BE; --muted:#83948C;
+    --accent:#5CE0B8; --accent2:#FF7A3D; --warn:#F4C14B; --ok:#5CE0B8; --bad:#FF6B6B; --code:#0A100E;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:calc(var(--barra,3.3rem) + .5rem)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+  a{color:var(--accent)}
+  code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+  .wrap{max-width:62rem;margin:0 auto;padding:0 1.2rem}
+
+  /* IA y nivel, como en «Prepárate» */
+  [data-ia]{display:none}
+  body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
+  body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
+  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
+
+  /* barra */
+  .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .barra .wrap{display:flex;gap:.6rem 1rem;align-items:center;justify-content:space-between;padding-top:.55rem;padding-bottom:.55rem;flex-wrap:wrap}
+  .marca{font-weight:800;letter-spacing:.04em;font-size:.9rem;white-space:nowrap}
+  .marca b{color:var(--accent2)}
+  .so{display:inline-flex;border:1px solid var(--rule);border-radius:99px;overflow:hidden}
+  .so button{background:none;border:0;color:var(--soft);padding:.35rem .85rem;font:600 .82rem Inter,sans-serif;cursor:pointer}
+  .so button[aria-pressed=true]{background:var(--accent);color:#06231A}
+  .reloj{flex:1 1 16rem;max-width:26rem;min-width:13rem}
+  .reloj .txt{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between;gap:.6rem}
+  .reloj .txt b{color:var(--ink);font-weight:600}
+  .pista{position:relative;height:8px;background:var(--rule);border-radius:9px;margin-top:.25rem}
+  .pista .lleno{position:absolute;inset:0 auto 0 0;width:0;border-radius:9px;background:linear-gradient(90deg,var(--accent),var(--warn));transition:width .4s}
+  .pista .ahora{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--bg);transition:left .4s}
+  .pista .corte{position:absolute;top:0;bottom:0;width:2px;background:var(--bg)}
+  .ritmo{font-weight:700}
+  .ritmo.bien{color:var(--accent)} .ritmo.tarde{color:var(--bad)} .ritmo.antes{color:var(--warn)}
+
+  /* portada */
+  header.portada{padding:4rem 0 2.6rem;border-bottom:1px solid var(--rule);
+    background:radial-gradient(60rem 30rem at 85% -10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent),
+               radial-gradient(40rem 25rem at -10% 110%,color-mix(in srgb,var(--accent2) 14%,transparent),transparent)}
+  .kicker{font:600 .78rem "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2)}
+  h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.02;margin:.6rem 0 1rem;letter-spacing:-.03em;font-weight:800}
+  h1 span{color:var(--accent)}
+  .lead{font-size:1.15rem;color:var(--soft);max-width:46rem}
+  .datos{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem}
+  .dato{border:1px solid var(--rule);background:var(--card);border-radius:10px;padding:.55rem .9rem;font-size:.9rem}
+  .dato b{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  .nivel-tit{margin:2rem 0 .7rem;font-weight:600}
+  .nivel{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;max-width:46rem}
+  .nivel button{position:relative;text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:1rem 3rem 1rem 1.2rem;color:var(--ink);cursor:pointer;font:inherit}
+  .nivel button:hover{border-color:var(--accent)}
+  .nivel button::before{content:"";position:absolute;top:1.1rem;right:1.1rem;width:1.1rem;height:1.1rem;border-radius:50%;border:2px solid var(--muted)}
+  .nivel button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+  .nivel button[aria-pressed=true]::before{border:4px solid var(--accent);background:#06231A}
+  .nivel .t{display:block;font-weight:800;font-size:1.15rem}
+  .nivel .s{display:block;color:var(--soft);font-size:.9rem;margin-top:.25rem;line-height:1.45}
+
+  /* los tres días */
+  .dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1.6rem 0 0}
+  .dia{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2);color:var(--soft);font-size:.9rem}
+  .dia .n{font:600 .72rem "JetBrains Mono",monospace;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+  .dia .t{display:block;color:var(--ink);font-weight:700;font-size:1.05rem;margin:.15rem 0 .2rem}
+  .dia.hoy{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+  .dia.hoy .n{color:var(--accent)} .dia.hoy .n::after{content:" · hoy"}
+
+  /* agenda */
+  section.agenda{padding:3rem 0 2.5rem;border-bottom:1px solid var(--rule)}
+  .mando{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:1.2rem 0}
+  .boton{display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;border:1px solid var(--rule);border-radius:99px;padding:.5rem 1.05rem;
+    background:var(--bg2);color:var(--ink);font:600 .88rem Inter,sans-serif;text-decoration:none}
+  .boton:hover{border-color:var(--accent)}
+  .boton.pri{background:var(--accent);border-color:var(--accent);color:#06231A}
+  .boton.chico{padding:.3rem .75rem;font-size:.8rem}
+  .tabla{width:100%;border-collapse:collapse;font-size:.92rem}
+  .tabla th{font:600 .68rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:.5rem .5rem;border-bottom:1px solid var(--rule)}
+  .tabla td{padding:.55rem .5rem;border-bottom:1px solid color-mix(in srgb,var(--rule) 60%,transparent);vertical-align:middle}
+  .tabla td.h{font-family:"JetBrains Mono",monospace;color:var(--soft);white-space:nowrap}
+  .tabla td a{color:var(--ink);text-decoration:none;font-weight:600} .tabla td a:hover{color:var(--accent)}
+  .tabla input{width:3.6rem;background:var(--code);border:1px solid var(--rule);border-radius:6px;color:var(--ink);padding:.2rem .35rem;font:600 .85rem "JetBrains Mono",monospace;text-align:right}
+  .tabla tr.en-curso td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
+  .tabla tr.listo td{color:var(--muted)} .tabla tr.listo td a{color:var(--muted)}
+  .estado{font-size:.8rem;white-space:nowrap}
+  .tabla tfoot td{font-weight:700;border-bottom:0;padding-top:.8rem}
+  .aviso-plan{font-size:.85rem;margin-top:.6rem;color:var(--muted)}
+  .aviso-plan.mal{color:var(--bad)}
+  .resumen-ritmo{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.3rem 0 0}
+  .resumen-ritmo div{border:1px solid var(--rule);border-radius:10px;padding:.6rem .85rem;background:var(--card);font-size:1.05rem;font-weight:700}
+  .resumen-ritmo b{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  @media (max-width:640px){.tabla .opc{display:none}}
+
+  /* bloques */
+  section.bloque{padding:3.2rem 0;border-bottom:1px solid var(--rule)}
+  .cab{display:flex;gap:1rem;align-items:flex-start}
+  .num{flex:0 0 auto;width:3rem;height:3rem;border-radius:12px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule);font:700 1.1rem "JetBrains Mono",monospace;color:var(--accent)}
+  section.bloque.listo .num{background:var(--accent);color:#06231A;border-color:var(--accent)}
+  section.bloque.en-curso .num{border-color:var(--warn);color:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 25%,transparent)}
+  h2{font-size:1.65rem;margin:0;letter-spacing:-.02em}
+  .para{color:var(--muted);font-size:.92rem;margin:.15rem 0 0}
+  .hora{display:inline-block;font:600 .72rem "JetBrains Mono",monospace;border:1px solid var(--rule);border-radius:99px;padding:.08rem .6rem;color:var(--muted);margin-left:.35rem;vertical-align:middle;white-space:nowrap}
+  section.bloque.en-curso .hora{border-color:var(--warn);color:var(--warn)}
+  .cuerpo{margin-left:4rem}
+  .cuerpo > p, .cuerpo li{color:var(--soft)}
+  .cuerpo h3{margin:1.6rem 0 .4rem;font-size:1.12rem}
+  .simple{border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--rule));background:color-mix(in srgb,var(--accent) 5%,transparent);border-radius:10px;padding:.75rem 1rem;margin:1rem 0;color:var(--soft)}
+  .simple b{color:var(--accent)}
+  .nota{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0;color:var(--soft);font-size:.93rem}
+  .nota b{color:var(--warn)}
+  .nota.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)} .nota.ok b{color:var(--ok)}
+  .facilita{border:1px solid color-mix(in srgb,var(--accent2) 45%,var(--rule));border-radius:10px;padding:.6rem .9rem;margin:1rem 0;font-size:.88rem;color:var(--soft);background:color-mix(in srgb,var(--accent2) 6%,transparent)}
+  .facilita b{color:var(--accent2);font:600 .7rem "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;display:block}
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem;margin:1rem 0}
+  .tarjeta{border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;background:var(--bg2)}
+  .tarjeta h4{margin:0 0 .3rem;font-size:1rem}
+  .tarjeta p{margin:0;font-size:.88rem;color:var(--soft)}
+  .tarjeta .n{font:700 .72rem "JetBrains Mono",monospace;color:var(--accent);letter-spacing:.08em}
+  .tarjeta.mal{border-color:color-mix(in srgb,var(--bad) 50%,var(--rule))} .tarjeta.mal .n{color:var(--bad)}
+  .tarjeta.bien{border-color:color-mix(in srgb,var(--accent) 50%,var(--rule))}
+  .escalera{display:grid;gap:.5rem;margin:1.2rem 0}
+  .escalon{display:grid;grid-template-columns:2.6rem 1fr;gap:.9rem;align-items:start;border:1px solid var(--rule);border-radius:12px;padding:.8rem 1rem;background:var(--bg2)}
+  .escalon .e{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:10px;font:800 1rem "JetBrains Mono",monospace;background:var(--card);color:var(--accent);border:1px solid var(--rule)}
+  .escalon h4{margin:0;font-size:1.02rem} .escalon p{margin:.15rem 0 0;font-size:.9rem;color:var(--soft)}
+  .escalon .quien{font-size:.8rem;color:var(--muted);margin-top:.3rem}
+  .escalon:nth-child(1){margin-right:9%} .escalon:nth-child(2){margin-left:3%;margin-right:6%} .escalon:nth-child(3){margin-left:6%;margin-right:3%} .escalon:nth-child(4){margin-left:9%}
+  .escalon.dia3 .e{color:var(--accent2)}
+  @media (max-width:640px){.escalon{margin:0 !important}}
+  .formula{font-size:1.15rem;line-height:1.55;border:1px solid var(--rule);border-radius:12px;padding:1rem 1.2rem;background:var(--card);margin:1rem 0}
+  .formula em{font-style:normal;color:var(--warn);border-bottom:1px dashed var(--warn)}
+  .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  .tres > div{border-radius:12px;padding:.8rem 1rem;border:1px solid var(--rule);background:var(--bg2);font-size:.9rem;color:var(--soft)}
+  .tres h4{margin:0 0 .3rem;font-size:.95rem;color:var(--ink)}
+  .tres > div:nth-child(1){border-color:var(--accent)} .tres > div:nth-child(2){border-color:var(--warn)}
+  @media (max-width:640px){.tres{grid-template-columns:1fr}}
+  ol.pasitos{padding-left:1.2rem;color:var(--soft)} ol.pasitos li{margin:.35rem 0}
+
+  /* código y pedidos para copiar */
+  .cmd{position:relative;margin:.8rem 0}
+  .cmd .lbl{font:600 .68rem "JetBrains Mono",monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem}
+  .cmd pre{margin:0;background:var(--code);border:1px solid var(--rule);border-radius:10px;padding:.85rem 1rem 2.6rem;overflow-x:auto;font-size:.86rem;line-height:1.55;color:#D8F5EA;white-space:pre-wrap}
+  .cmd pre .c{color:var(--muted)}
+  .cmd pre .hueco{color:var(--warn)}
+  .copiar{position:absolute;right:.5rem;bottom:.5rem;background:var(--card);border:1px solid var(--rule);color:var(--soft);border-radius:7px;font:600 .75rem Inter,sans-serif;padding:.3rem .6rem;cursor:pointer}
+  .copiar:hover{border-color:var(--accent);color:var(--ink)}
+
+  /* el cronómetro de un minuto */
+  .crono{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;border:1px solid var(--rule);border-radius:14px;padding:.8rem 1.1rem;background:var(--card);margin:1rem 0;width:max-content;max-width:100%}
+  .crono .cifra{font:800 2.4rem "JetBrains Mono",monospace;letter-spacing:-.02em;min-width:6.5rem}
+  .crono.corre .cifra{color:var(--warn)}
+  .crono.fin .cifra{color:var(--bad);animation:late 1s steps(2) infinite}
+  @keyframes late{50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.crono.fin .cifra{animation:none}}
+  .crono .cuantos{font-size:.85rem;color:var(--muted)}
+
+  /* casillas del participante */
+  .check{display:flex;gap:.9rem;align-items:center;padding:.85rem 1.1rem;margin:1rem 0 .4rem;cursor:pointer;border:2px dashed color-mix(in srgb,var(--warn) 70%,transparent);border-radius:12px;background:color-mix(in srgb,var(--warn) 7%,var(--bg2))}
+  .check input{appearance:none;-webkit-appearance:none;margin:0;flex:0 0 auto;width:1.7rem;height:1.7rem;border-radius:7px;border:2.5px solid var(--warn);background:var(--code);display:grid;place-items:center;cursor:pointer}
+  .check input::after{content:"";width:.45rem;height:.85rem;border:solid #06231A;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-2px);opacity:0}
+  .check input:checked{background:var(--accent);border-color:var(--accent)} .check input:checked::after{opacity:1}
+  .check.ok{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg2))}
+
+  /* cierre de bloque */
+  .fin-bloque{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin:2rem 0 0 4rem}
+  .fin-bloque .real{font-size:.85rem;color:var(--muted)}
+  section.bloque.listo .fin-bloque .boton{border-color:var(--accent);color:var(--accent)}
+  @media (max-width:640px){.cuerpo,.fin-bloque{margin-left:0} .cab{margin-bottom:.6rem}}
+  footer{padding:3rem 0 4rem;color:var(--muted);font-size:.88rem}
+  @media print{.barra,.copiar,.mando,.fin-bloque,.crono{display:none} body{background:#fff;color:#000} [data-ia]{display:block !important}}
+
+  /* día 3: el bucle del agente */
+  .bucle{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4rem;align-items:center;margin:1.2rem 0}
+  .bucle svg{width:100%;max-width:22rem;height:auto;justify-self:center}
+  .bucle svg .nodo{fill:var(--card);stroke:var(--rule);stroke-width:1.5}
+  .bucle svg .nodo.c1{stroke:var(--accent)} .bucle svg .nodo.c2{stroke:var(--warn)} .bucle svg .nodo.c3{stroke:var(--accent2)}
+  .bucle svg text{fill:var(--ink);font:600 12px Inter,sans-serif}
+  .bucle svg text.s{fill:var(--muted);font:500 10px Inter,sans-serif}
+  .bucle svg .flecha{fill:none;stroke:var(--muted);stroke-width:1.6;marker-end:url(#punta)}
+  .bucle svg .centro{fill:color-mix(in srgb,var(--accent) 10%,var(--bg2));stroke:var(--accent);stroke-width:1.5}
+  .bucle svg .salida{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:4 4;marker-end:url(#punta2)}
+  .piezas{list-style:none;padding:0;margin:0;display:grid;gap:.5rem}
+  .piezas li{border:1px solid var(--rule);border-radius:10px;padding:.55rem .8rem;background:var(--bg2);font-size:.9rem;color:var(--soft)}
+  .piezas b{color:var(--ink)}
+  @media (max-width:760px){.bucle{grid-template-columns:1fr}}
+  .anatomia{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:1rem 0}
+  @media (max-width:640px){.anatomia{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .anatomia div{border:1px solid var(--rule);border-radius:10px;padding:.6rem .8rem;background:var(--bg2);font-size:.86rem;color:var(--soft)}
+  .anatomia b{display:block;font:700 .72rem "JetBrains Mono",monospace;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin-bottom:.15rem}
+</style>
+</head>
+<body class="nivel-basico ia-claude">
+
+<div class="barra">
+  <div class="wrap">
+    <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 3 de 3</div>
+    <div class="so" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
+    </div>
+    <div class="reloj" aria-live="off">
+      <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
+      <div class="pista" id="r-pista"><div class="lleno" id="r-lleno"></div><div class="ahora" id="r-ahora"></div></div>
+    </div>
+  </div>
+</div>
+
+<header class="portada">
+  <div class="wrap">
+    <div class="kicker">Sesión 03 · jueves 26 de noviembre · 6:00 p. m.</div>
+    <h1>Tu programa habla con la IA, <span>y aparece el agente</span>.</h1>
+    <p class="lead">Hoy la IA deja de ser algo que usas y pasa a ser una pieza de tu solución. Primero tu propio código le habla al modelo por API; después le damos herramientas y un objetivo, y eso es un agente. Al final, cada quien muestra lo que construyó.</p>
+    <div class="datos">
+      <div class="dato"><b>Duración</b>2 h 30 min, con pausa</div>
+      <div class="dato"><b>Trae</b>Tu llave de API en el <span class="mono">.env</span> (<a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a>)</div>
+      <div class="dato"><b>Y también</b><span class="mono">PROYECTO.md</span> y tus 3 ejemplos reales</div>
+      <div class="dato"><b>Sales con</b>Tu proyecto usando la IA por API</div>
+    </div>
+    <div class="dias">
+      <div class="dia"><span class="n">Día 1 · mar 24</span><span class="t">Entender</span>El problema, el objetivo y la IA en el editor. Qué es una API y para qué sirve.</div>
+      <div class="dia"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
+      <div class="dia hoy"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Tu programa habla con la IA por API, y el concepto de agente.</div>
+    </div>
+    <p class="nivel-tit">¿Cómo quieres ver la sesión?</p>
+    <div class="nivel" role="group" aria-label="Nivel">
+      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">Hice la prueba final de «Prepárate», pero no sé bien qué pasa por dentro.</span></button>
+      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya leo código y he llamado una API. Dame el detalle y un reto más grande.</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================================================== agenda -->
+  <section class="agenda" id="agenda">
+    <div class="kicker">La agenda de hoy</div>
+    <h2>Ocho bloques, ciento cincuenta minutos</h2>
+    <p class="para">Las horas se calculan solas desde el inicio. Si un bloque necesita más o menos tiempo, cambia sus minutos: lo demás se reacomoda. Al terminar cada bloque, márcalo y la barra de arriba dice si vamos a tiempo.</p>
+    <div class="mando">
+      <button type="button" class="boton pri" id="empezar">▶ Empezamos ahora</button>
+      <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
+      <button type="button" class="boton" id="reiniciar">Borrar lo marcado</button>
+    </div>
+    <table class="tabla">
+      <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
+      <tbody id="filas"></tbody>
+      <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr></tfoot>
+    </table>
+    <p class="aviso-plan" id="aviso-plan"></p>
+    <div class="resumen-ritmo">
+      <div><b>Llevamos</b><span id="m-llevamos">—</span></div>
+      <div><b>Bloque en curso</b><span id="m-bloque">—</span></div>
+      <div><b>Al ritmo de ahora, terminamos</b><span id="m-fin">—</span></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 1 -->
+  <section class="bloque" id="b-autonomo" data-min="15" data-titulo="Qué pasó en el trabajo autónomo">
+    <div class="cab"><div class="num">01</div><div><h2>Qué pasó en el trabajo autónomo <span class="hora"></span></h2><p class="para">Ronda rápida: lo que hizo la IA y lo que decidiste tú.</p></div></div>
+    <div class="cuerpo">
+      <p>Abre tu bitácora del miércoles. En treinta segundos por persona, cuenta tres cosas. No importa si funcionó todo: importa qué aprendiste de trabajar con la IA.</p>
+      <div class="cmd"><div class="lbl">Tus treinta segundos</div><pre>Lo que la IA hizo bien: <span class="hueco">___</span>
+Lo que tuve que decidir o corregir yo: <span class="hueco">___</span>
+Dónde quedé (y qué me falta para el objetivo): <span class="hueco">___</span></pre></div>
+      <div class="crono" data-cuenta="30">
+        <div class="cifra">0:30</div>
+        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
+        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+        <span class="cuantos">Van <b data-crono="n">0</b> personas</span>
+      </div>
+      <p class="nota ok"><b>Fíjate en la segunda línea:</b> casi siempre es la más larga. La IA escribió rápido, pero alguien tuvo que saber si eso servía. Ese alguien eres tú, y hoy lo vamos a ver otra vez.</p>
+      <div class="facilita"><b>Para quien facilita</b>Anota en el tablero las cosas que se repiten en «tuve que decidir yo». Sirven para el cierre: son las razones por las que la IA asiste y no reemplaza.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 -->
+  <section class="bloque" id="b-llamada" data-min="20" data-titulo="De la llave al programa">
+    <div class="cab"><div class="num">02</div><div><h2>De la llave al programa <span class="hora"></span></h2><p class="para">Volvemos a la prueba final de «Prepárate» para ver qué pasa por dentro.</p></div></div>
+    <div class="cuerpo">
+      <p>En <a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a> tu <span class="mono">prueba.py</span> le pidió un saludo al modelo. Ese programa corto tiene todo lo que hace falta para integrar IA: una llave, un modelo, un pedido y una respuesta.</p>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> llamar a la API es como mandar un mensaje por mensajería con remitente pagado. La <em>llave</em> dice quién paga; el <em>modelo</em> es a quién le escribes; el <em>system</em> es el oficio que le pides que cumpla («eres un clasificador de correos»); los <em>mensajes</em> son la carta; y la <em>respuesta</em> llega con la cuenta: cuántos tokens leyó y cuántos escribió.</p>
+      <div class="anatomia">
+        <div><b>Llave</b>Va en el <span class="mono">.env</span>, nunca en el código.</div>
+        <div><b>Modelo</b>Más grande, más capaz y más caro; más pequeño, más rápido.</div>
+        <div><b>System</b>Las instrucciones fijas: el oficio y las reglas.</div>
+        <div><b>Mensajes</b>Lo que cambia en cada llamada: el correo, el texto, la pregunta.</div>
+        <div><b>Respuesta</b>Texto (o JSON) que tu programa usa después.</div>
+        <div><b>Tokens</b>Lo que se cobra: lo que entra más lo que sale.</div>
+      </div>
+      <div data-nivel="inter">
+        <p>El mismo <span class="mono">prueba.py</span>, ahora con un <em>system</em> que le da un oficio y un texto que cambia. Es el esqueleto de casi cualquier integración.</p>
+        <div class="cmd" data-ia="claude"><div class="lbl">oficio.py · Claude</div><pre>from dotenv import load_dotenv
+import anthropic
+
+load_dotenv()                      <span class="c"># lee ANTHROPIC_API_KEY del .env</span>
+cliente = anthropic.Anthropic()
+
+def clasificar(texto):
+    mensaje = cliente.messages.create(
+        model="claude-haiku-5-5",
+        max_tokens=50,
+        system="Clasifica el correo en una sola palabra: urgente, informativo o spam.",
+        messages=[{"role": "user", "content": texto}],
+    )
+    print("tokens:", mensaje.usage.input_tokens, "+", mensaje.usage.output_tokens)
+    return mensaje.content[0].text
+
+print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre></div>
+        <div class="cmd" data-ia="gemini"><div class="lbl">oficio.py · Gemini</div><pre>from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+
+load_dotenv()                      <span class="c"># lee GEMINI_API_KEY del .env</span>
+cliente = genai.Client()
+
+def clasificar(texto):
+    respuesta = cliente.models.generate_content(
+        model="gemini-flash-latest",
+        config=types.GenerateContentConfig(
+            system_instruction="Clasifica el correo en una sola palabra: urgente, informativo o spam."),
+        contents=texto,
+    )
+    print("tokens:", respuesta.usage_metadata.total_token_count)
+    return respuesta.text
+
+print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre></div>
+        <div class="cmd" data-ia="gpt"><div class="lbl">oficio.py · GPT</div><pre>from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()                      <span class="c"># lee OPENAI_API_KEY del .env</span>
+cliente = OpenAI()
+
+def clasificar(texto):
+    respuesta = cliente.responses.create(
+        model="gpt-5-mini",
+        instructions="Clasifica el correo en una sola palabra: urgente, informativo o spam.",
+        input=texto,
+    )
+    print("tokens:", respuesta.usage.input_tokens, "+", respuesta.usage.output_tokens)
+    return respuesta.output_text
+
+print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre></div>
+      </div>
+      <p class="nota" data-nivel="basico"><b>No tienes que escribir este código.</b> En el bloque siguiente se lo pides a la IA del editor. Lo que sí tienes que saber es qué pieza es cuál, para revisar lo que te proponga.</p>
+      <p class="para">Tu IA: <span class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></span></p>
+      <label class="check"><input type="checkbox"><span>Mi <span class="mono">prueba.py</span> responde, y sé qué es la llave, el modelo, el system y los mensajes</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 3 -->
+  <section class="bloque" id="b-integrar" data-min="30" data-titulo="La IA dentro de mi proyecto">
+    <div class="cab"><div class="num">03</div><div><h2>La IA dentro de mi proyecto <span class="hora"></span></h2><p class="para">Le agregas a tu proyecto una función que llama a la IA, y la pruebas con tus tres ejemplos reales.</p></div></div>
+    <div class="cuerpo">
+      <p>Elige el oficio que más se parece a tu objetivo de <span class="mono">PROYECTO.md</span>. Casi todos los proyectos del bootcamp caben en uno de estos tres:</p>
+      <div class="tarjetas">
+        <div class="tarjeta"><div class="n">CLASIFICAR</div><h4>¿A qué grupo va?</h4><p>Correos, solicitudes o comentarios, cada uno a su categoría.</p></div>
+        <div class="tarjeta"><div class="n">RESUMIR</div><h4>¿Qué es lo importante?</h4><p>Un acta, un informe o un hilo largo, en pocas líneas y con el formato que necesitas.</p></div>
+        <div class="tarjeta"><div class="n">EXTRAER</div><h4>¿Qué datos trae?</h4><p>De un texto libre o una factura, los campos que van a una hoja de cálculo, en JSON.</p></div>
+      </div>
+      <ol class="pasitos">
+        <li>Abre tu carpeta del bootcamp en el editor, con <span class="mono">PROYECTO.md</span> y tu <span class="mono">.env</span> con la llave.</li>
+        <li>Pega en la IA del editor el pedido de abajo, completando lo que está en amarillo.</li>
+        <li><strong>Pídele el plan primero</strong> y léelo. Luego deja que cree el archivo y revísalo antes de aceptar.</li>
+        <li>Pruébalo con tus tres ejemplos reales. Si una respuesta no sirve, el ajuste casi siempre va en las instrucciones, no en el código.</li>
+      </ol>
+      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md. Quiero agregar al proyecto una función que use la API de
+<span data-ia="claude">Anthropic (modelo claude-haiku-5-5, llave ANTHROPIC_API_KEY)</span><span data-ia="gemini">Gemini (modelo gemini-flash-latest, llave GEMINI_API_KEY)</span><span data-ia="gpt">OpenAI (modelo gpt-5-mini, llave OPENAI_API_KEY)</span> desde el .env
+para <span class="hueco">[clasificar / resumir / extraer]</span> <span class="hueco">[qué cosa]</span>.
+Las instrucciones para el modelo son: <span class="hueco">[cómo debe responder]</span>.
+Primero muéstrame el plan en pocos pasos, sin escribir código.
+Cuando lo apruebe, crea ia.py con esa función y un probar.py que la ejecute
+con estos tres ejemplos y muestre cada resultado:
+1. <span class="hueco">___</span>
+2. <span class="hueco">___</span>
+3. <span class="hueco">___</span>
+No muestres ni copies el contenido del .env.</pre></div>
+      <p class="simple" data-nivel="basico"><b>Lo que estás viendo:</b> la IA del editor escribe un programa que usa otra IA por API. Tú no programas: diseñas el pedido, revisas el plan y juzgas si las respuestas sirven para tu problema.</p>
+      <p class="nota" data-nivel="inter"><b>Un paso más:</b> pide que la función reciba los ejemplos desde un archivo (<span class="mono">ejemplos.csv</span> o una carpeta de .txt) y que guarde los resultados en otro archivo. Ya es un proceso por lotes: lo que hacías a mano, para cien casos.</p>
+      <div class="crono" data-cuenta="1500"><div class="cifra">25:00</div><button type="button" class="boton pri" data-crono="ir">▶ A construir</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
+      <label class="check"><input type="checkbox"><span>Mi función con IA respondió bien a mis tres ejemplos (o sé qué ajustar)</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 4 -->
+  <section class="bloque" id="b-pausa" data-min="10" data-titulo="Pausa">
+    <div class="cab"><div class="num">☕</div><div><h2>Pausa <span class="hora"></span></h2><p class="para">Diez minutos. Al volver: lo que se conecta alrededor, y el agente.</p></div></div>
+    <div class="cuerpo">
+      <div class="crono" data-cuenta="600"><div class="cifra">10:00</div><button type="button" class="boton pri" data-crono="ir">▶ Empezar la pausa</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 5 -->
+  <section class="bloque" id="b-conectar" data-min="15" data-titulo="Otras cosas que se conectan">
+    <div class="cab"><div class="num">04</div><div><h2>Otras cosas que se conectan <span class="hora"></span></h2><p class="para">La llamada a la IA casi nunca está sola: algo la dispara y su respuesta va a alguna parte.</p></div></div>
+    <div class="cuerpo">
+      <h3>Pídele JSON, no párrafos</h3>
+      <p>Si la respuesta la va a leer otro programa (una hoja de cálculo, una base de datos), pídele un formato fijo. Así no hay que «interpretar» lo que escribió.</p>
+      <div class="cmd"><div class="lbl">Instrucción para el modelo</div><pre>Responde solo con JSON válido, sin texto antes ni después, con esta forma:
+{"categoria": "urgente | informativo | spam", "motivo": "una frase", "responsable": "nombre o null"}</pre></div>
+      <p class="nota" data-nivel="inter"><b>Mejor aún:</b> los tres proveedores tienen salida estructurada con esquema (<span data-ia="claude">en Claude, con herramientas o salidas estructuradas</span><span data-ia="gemini">en Gemini, <span class="mono">response_schema</span> con <span class="mono">response_mime_type="application/json"</span></span><span data-ia="gpt">en OpenAI, <span class="mono">text.format</span> con un esquema JSON</span>). El modelo queda obligado a respetar los campos.</p>
+      <h3>Lo que dispara y lo que recibe</h3>
+      <div class="tarjetas">
+        <div class="tarjeta"><h4>Hojas de cálculo</h4><p>Leer filas de un CSV o de Google Sheets, llenar una columna con la respuesta.</p></div>
+        <div class="tarjeta"><h4>Correo</h4><p>Revisar la bandeja cada hora, clasificar y responder o reenviar.</p></div>
+        <div class="tarjeta"><h4>Formularios</h4><p>Cada respuesta nueva de un formulario pasa por la IA antes de llegar a alguien.</p></div>
+        <div class="tarjeta"><h4>Webhooks</h4><p>Otro sistema avisa «llegó algo» a una dirección tuya, y tu programa actúa.</p></div>
+      </div>
+      <h3>La llave es dinero: cuídala</h3>
+      <div class="tres">
+        <div><h4>En el .env</h4>Siempre. El código la lee de ahí; nunca va escrita en el programa.</div>
+        <div><h4>Fuera de Git</h4><span class="mono">.env</span> en el <span class="mono">.gitignore</span>. Una llave subida a GitHub la encuentran bots en minutos.</div>
+        <div><h4>Fuera del chat</h4>No la pegues en una conversación ni en una captura. Si se escapa, bórrala y crea otra.</div>
+      </div>
+      <p class="simple" data-nivel="basico"><b>Costos y límites:</b> cada llamada cuesta fracciones de centavo con modelos pequeños, pero un programa en bucle puede hacer miles. Pon un tope de gasto en la consola de tu proveedor. Si ves el error <span class="mono">429</span>, hiciste demasiadas llamadas seguidas: espera un minuto.</p>
+      <p class="nota" data-nivel="inter"><b>Costos y límites:</b> calcula el costo por caso (tokens de entrada + salida × precio) antes de procesar lotes; registra <span class="mono">usage</span> en cada llamada; y ante un <span class="mono">429</span> reintenta con espera creciente. Fija un tope de gasto mensual en la consola.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== 6 -->
+  <section class="bloque" id="b-agente" data-min="20" data-titulo="El concepto de agente">
+    <div class="cab"><div class="num">05</div><div><h2>El concepto de agente <span class="hora"></span></h2><p class="para">Hasta ahora tu programa hacía una llamada y listo. Un agente decide qué hacer, lo hace, mira el resultado y sigue.</p></div></div>
+    <div class="cuerpo">
+      <div class="bucle">
+        <svg viewBox="0 0 360 256" role="img" aria-label="El bucle del agente: pensar, usar una herramienta, mirar el resultado y repetir hasta cumplir el objetivo">
+          <defs>
+            <marker id="punta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#83948C"/></marker>
+            <marker id="punta2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#5CE0B8"/></marker>
+          </defs>
+          <circle class="centro" cx="160" cy="150" r="44"/>
+          <text x="160" y="146" text-anchor="middle">Objetivo</text>
+          <text class="s" x="160" y="162" text-anchor="middle">y límites</text>
+          <rect class="nodo c1" x="105" y="12" width="110" height="46" rx="12"/>
+          <text x="160" y="33" text-anchor="middle">1 · Pensar</text>
+          <text class="s" x="160" y="48" text-anchor="middle">¿qué paso sigue?</text>
+          <rect class="nodo c2" x="205" y="196" width="110" height="46" rx="12"/>
+          <text x="260" y="217" text-anchor="middle">2 · Actuar</text>
+          <text class="s" x="260" y="232" text-anchor="middle">usa una herramienta</text>
+          <rect class="nodo c3" x="5" y="196" width="110" height="46" rx="12"/>
+          <text x="60" y="217" text-anchor="middle">3 · Mirar</text>
+          <text class="s" x="60" y="232" text-anchor="middle">lee el resultado</text>
+          <path class="flecha" d="M220 46 C 270 70, 285 140, 268 190"/>
+          <path class="flecha" d="M200 236 C 170 256, 150 256, 122 236"/>
+          <path class="flecha" d="M52 190 C 35 140, 50 70, 100 46"/>
+          <path class="salida" d="M216 26 L346 26"/>
+          <text class="s" x="232" y="18">listo: entrega</text>
+        </svg>
+        <ul class="piezas">
+          <li><b>Modelo:</b> el que piensa y decide el siguiente paso.</li>
+          <li><b>Herramientas:</b> lo que puede hacer además de escribir: leer un archivo, buscar, consultar una hoja, enviar un correo.</li>
+          <li><b>Bucle:</b> pensar → actuar → mirar, una y otra vez.</li>
+          <li><b>Objetivo:</b> cuándo terminó. Sin objetivo claro, no sabe parar.</li>
+          <li><b>Límites:</b> cuántos pasos, qué puede tocar y qué necesita tu permiso.</li>
+        </ul>
+      </div>
+      <p class="simple" data-nivel="basico"><b>En palabras simples:</b> la API sola es preguntarle algo a un experto por teléfono. Un agente es contratar a alguien con acceso a tus herramientas: le das un objetivo («deja listas las respuestas de los correos urgentes»), y él va abriendo, leyendo y escribiendo hasta terminar. Por eso importan tanto los límites: qué puede tocar y qué tiene que preguntarte.</p>
+      <p class="nota ok"><b>Ya usaste uno:</b> la IA de tu editor (<span data-ia="claude">Claude Code</span><span data-ia="gemini">Gemini</span><span data-ia="gpt">Codex</span>) es un agente. Lee archivos, ejecuta comandos, mira el resultado y sigue, y te pide permiso antes de lo delicado. Hoy entiendes cómo funciona por dentro.</p>
+      <div data-nivel="inter">
+        <h3>El bucle, en código</h3>
+        <p>Así se ve en cualquier proveedor: le pasas al modelo la lista de herramientas; si responde pidiendo una, tu programa la ejecuta y le devuelve el resultado; si responde con texto, terminó.</p>
+        <div class="cmd"><div class="lbl">agente.py · el esqueleto</div><pre>herramientas = {"leer_archivo": leer_archivo, "buscar_en_hoja": buscar_en_hoja}
+mensajes = [{"role": "user", "content": objetivo}]
+
+for paso in range(8):                         <span class="c"># límite: nunca un bucle infinito</span>
+    respuesta = modelo(mensajes, herramientas=descripciones)
+    if not respuesta.pide_herramienta:        <span class="c"># respondió con texto: terminó</span>
+        print(respuesta.texto); break
+    nombre, args = respuesta.herramienta, respuesta.argumentos
+    resultado = herramientas[nombre](**args)  <span class="c"># tu código actúa, no el modelo</span>
+    mensajes += [respuesta.como_mensaje, resultado_como_mensaje(resultado)]</pre></div>
+        <p class="para">El modelo nunca ejecuta nada: solo pide. Quien ejecuta es tu programa, y ahí pones los límites. En la API real se llama <em>tool use</em> o <em>function calling</em>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 7 -->
+  <section class="bloque" id="b-reto" data-min="25" data-titulo="Mi mini agente o mi integración">
+    <div class="cab"><div class="num">06</div><div><h2>Mi mini agente, o mi integración terminada <span class="hora"></span></h2><p class="para">Elige: convertir tu función en un agente pequeño, o dejar redonda la integración del bloque 03.</p></div></div>
+    <div class="cuerpo">
+      <p>Las dos son buenas salidas. Si tu función del bloque 03 todavía no responde bien a tus tres ejemplos, termina eso primero: un agente sobre algo que falla, falla más rápido.</p>
+      <div data-nivel="basico">
+        <h3>Reto básico: un agente con una herramienta</h3>
+        <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md e ia.py. Convierte mi función en un agente pequeño
+que use la API de <span data-ia="claude">Anthropic con claude-haiku-5-5</span><span data-ia="gemini">Gemini con gemini-flash-latest</span><span data-ia="gpt">OpenAI con gpt-5-mini</span> y tenga UNA sola herramienta:
+<span class="hueco">[por ejemplo: leer los archivos .txt de la carpeta «entrada»]</span>.
+El objetivo del agente es: <span class="hueco">___</span>.
+Que haga como máximo 5 pasos y que imprima cada paso que da.
+Primero explícame el plan con palabras sencillas; después crea agente.py.</pre></div>
+      </div>
+      <div data-nivel="inter">
+        <h3>Reto intermedio: dos herramientas y límites</h3>
+        <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md e ia.py. Crea agente.py con el bucle de tool use de
+<span data-ia="claude">Anthropic (claude-haiku-5-5)</span><span data-ia="gemini">Gemini (gemini-flash-latest)</span><span data-ia="gpt">OpenAI (gpt-5-mini)</span> y dos herramientas:
+1. <span class="hueco">[una que lee: archivos, una hoja, una lista]</span>
+2. <span class="hueco">[una que escribe: un resumen, una fila, un borrador de correo]</span>
+Objetivo: <span class="hueco">___</span>.
+Límites: máximo 8 pasos; la herramienta que escribe pide confirmación
+por consola antes de ejecutarse; registra tokens y costo estimado al final.
+Muéstrame el plan antes de escribir código.</pre></div>
+      </div>
+      <div class="crono" data-cuenta="1200"><div class="cifra">20:00</div><button type="button" class="boton pri" data-crono="ir">▶ A construir</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
+      <p class="nota"><b>Mira cada paso que imprime.</b> Si el agente da vueltas, el problema suele estar en el objetivo («cuándo terminé») o en la descripción de la herramienta. Corrígelo tú: es el mismo trabajo del día 1, ahora para una máquina.</p>
+      <label class="check"><input type="checkbox"><span>Tengo algo que mostrar: mi agente o mi integración funcionando</span></label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 8 -->
+  <section class="bloque" id="b-cierre" data-min="15" data-titulo="Muestra final y cierre">
+    <div class="cab"><div class="num">07</div><div><h2>Muestra final y cierre del bootcamp <span class="hora"></span></h2><p class="para">Dos minutos por persona. Mostrar algo a medias también vale.</p></div></div>
+    <div class="cuerpo">
+      <div class="cmd"><div class="lbl">Tus dos minutos</div><pre>El problema era: <span class="hueco">___</span>
+Lo que construí: <span class="hueco">___</span> (y lo muestro funcionando)
+Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span>
+Lo siguiente que le haría: <span class="hueco">___</span></pre></div>
+      <div class="crono" data-cuenta="120">
+        <div class="cifra">2:00</div>
+        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
+        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+        <span class="cuantos">Van <b data-crono="n">0</b> muestras</span>
+      </div>
+      <h3>Por qué la IA no te reemplaza</h3>
+      <div class="tres">
+        <div><h4>El problema</h4>Lo conoces tú. La IA lo resolvió el día 1 solo cuando tú se lo explicaste bien.</div>
+        <div><h4>El criterio</h4>Saber si una respuesta sirve, qué recortar y cuándo parar fue trabajo tuyo, los tres días.</div>
+        <div><h4>La responsabilidad</h4>Lo que se envía, se cobra o se decide con tu solución sigue teniendo tu nombre.</div>
+      </div>
+      <div class="tarjetas">
+        <div class="tarjeta"><div class="n">ESTA SEMANA</div><h4>Úsalo de verdad</h4><p>Pon tu solución a trabajar en un caso real y anota dónde falla.</p></div>
+        <div class="tarjeta"><div class="n">EL MES QUE VIENE</div><h4>Sube un escalón</h4><p>Del editor a la API, o de la API a un agente, solo donde ahorre tiempo de verdad.</p></div>
+        <div class="tarjeta"><div class="n">SIEMPRE</div><h4>Primero el problema</h4><p>Antes de pedirle algo a la IA, las cinco preguntas del día 1.</p></div>
+      </div>
+      <p class="nota ok"><b>Gracias por estos tres días.</b> El material sigue en la zona del Bootcamp AGENTIC en fabOS, y el FabLab EAN tiene las puertas abiertas para seguir construyendo.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">Bootcamp AGENTIC · eanX · Universidad Ean · FabLab EAN — sesión 03. Las horas y el avance se calculan en este navegador y se pierden al cerrar la pestaña.</footer>
+
+<script>
+(function () {
+  var $ = function (s, d) { return (d || document).querySelector(s); };
+  var $$ = function (s, d) { return Array.prototype.slice.call((d || document).querySelectorAll(s)); };
+  var guarda = function (k, v) { try { localStorage.setItem('agentic-d3-' + k, v); } catch (_) {} };
+  var lee = function (k) { try { return localStorage.getItem('agentic-d3-' + k); } catch (_) { return null; } };
+
+  // Nivel e IA (compartidos con «Prepárate» cuando el navegador lo permite).
+  function nivel(n) {
+    n = n === 'inter' ? 'inter' : 'basico';
+    document.body.classList.remove('nivel-basico', 'nivel-inter'); document.body.classList.add('nivel-' + n);
+    $$('[data-nivel-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.nivelElige === n ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-nivel', n); } catch (_) {}
+  }
+  function ia(x) {
+    x = ['claude', 'gemini', 'gpt'].indexOf(x) >= 0 ? x : 'claude';
+    document.body.classList.remove('ia-claude', 'ia-gemini', 'ia-gpt'); document.body.classList.add('ia-' + x);
+    $$('[data-ia-elige]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.iaElige === x ? 'true' : 'false'); });
+    try { localStorage.setItem('agentic-ia', x); } catch (_) {}
+  }
+  var n0 = null, i0 = null;
+  try { n0 = localStorage.getItem('agentic-nivel'); i0 = localStorage.getItem('agentic-ia'); } catch (_) {}
+  nivel(n0); ia(i0);
+  $$('[data-nivel-elige]').forEach(function (b) { b.addEventListener('click', function () { nivel(b.dataset.nivelElige); }); });
+  $$('[data-ia-elige]').forEach(function (b) { b.addEventListener('click', function () { ia(b.dataset.iaElige); }); });
+
+  // La barra mide su alto para que los saltos queden justo debajo.
+  var barra = $('.barra');
+  function medir() { document.documentElement.style.setProperty('--barra', barra.offsetHeight + 'px'); }
+  medir(); window.addEventListener('resize', medir);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(medir); }
+
+  // ---------------------------------------------------------------- el plan
+  var bloques = $$('section.bloque').map(function (s) {
+    return { el: s, id: s.id, titulo: s.dataset.titulo, min: +s.dataset.min, base: +s.dataset.min, listo: null };
+  });
+  var DISPONIBLE = 150;
+  var MIN = 60000;
+  // Arranca a las 6:00 p. m. de hoy; «Empezamos ahora» lo mueve.
+  var inicio = (function () { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })();
+  var guardado = +lee('inicio');
+  if (guardado && new Date(guardado).toDateString() === new Date().toDateString()) { inicio = guardado; }
+  bloques.forEach(function (b) {
+    var m = +lee('min-' + b.id); if (m > 0) { b.min = m; }
+    var l = +lee('listo-' + b.id); if (l && new Date(l).toDateString() === new Date().toDateString()) { b.listo = l; }
+  });
+
+  function hhmm(t) {
+    var d = new Date(t), h = d.getHours(), m = d.getMinutes();
+    var p = h >= 12 ? 'p. m.' : 'a. m.'; h = h % 12 || 12;
+    return h + ':' + (m < 10 ? '0' : '') + m + ' ' + p;
+  }
+  function dur(min) {
+    min = Math.round(Math.abs(min));
+    return min >= 60 ? Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '') : min + ' min';
+  }
+  function total() { return bloques.reduce(function (s, b) { return s + b.min; }, 0); }
+  function desde(i) { return bloques.slice(0, i).reduce(function (s, b) { return s + b.min; }, 0); }
+  function enCurso() { for (var i = 0; i < bloques.length; i++) { if (!bloques[i].listo) { return i; } } return -1; }
+
+  // La tabla de la agenda, con los minutos editables.
+  var filas = $('#filas');
+  bloques.forEach(function (b, i) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="h"></td><td><a href="#' + b.id + '"></a></td><td><input type="number" min="1" max="120" step="1" aria-label="Minutos"></td><td class="opc estado"></td>';
+    tr.querySelector('a').textContent = b.titulo;
+    var inp = tr.querySelector('input'); inp.value = b.min;
+    inp.addEventListener('change', function () {
+      var v = Math.max(1, Math.min(120, Math.round(+inp.value || b.base)));
+      inp.value = v; b.min = v; guarda('min-' + b.id, v); pintar();
+    });
+    b.fila = tr; filas.appendChild(tr);
+    // El botón para cerrar el bloque.
+    var pie = document.createElement('div'); pie.className = 'fin-bloque';
+    pie.innerHTML = '<button type="button" class="boton"></button><span class="real"></span>';
+    pie.querySelector('button').addEventListener('click', function () {
+      if (b.listo) { b.listo = null; guarda('listo-' + b.id, ''); }
+      else {
+        // Cerrar uno cierra también los anteriores que quedaron abiertos.
+        bloques.slice(0, i + 1).forEach(function (x) { if (!x.listo) { x.listo = Date.now(); guarda('listo-' + x.id, x.listo); } });
+        var sig = bloques[i + 1]; if (sig) { sig.el.scrollIntoView({ behavior: 'smooth' }); }
+      }
+      pintar();
+    });
+    b.pie = pie; b.el.appendChild(pie);
+  });
+
+  $('#empezar').addEventListener('click', function () {
+    inicio = Date.now(); guarda('inicio', inicio);
+    bloques.forEach(function (b) { b.listo = null; guarda('listo-' + b.id, ''); });
+    pintar();
+  });
+  $('#a-las-6').addEventListener('click', function () {
+    var d = new Date(); d.setHours(18, 0, 0, 0); inicio = d.getTime(); guarda('inicio', inicio); pintar();
+  });
+  $('#reiniciar').addEventListener('click', function () {
+    bloques.forEach(function (b) { b.listo = null; b.min = b.base; b.fila.querySelector('input').value = b.base; guarda('listo-' + b.id, ''); guarda('min-' + b.id, ''); });
+    pintar();
+  });
+
+  // Cortes de la barra: dónde empieza cada bloque.
+  var pista = $('#r-pista');
+  function cortes() {
+    $$('.corte', pista).forEach(function (c) { c.remove(); });
+    var t = total();
+    bloques.slice(1).forEach(function (b, i) {
+      var c = document.createElement('div'); c.className = 'corte'; c.style.left = (100 * desde(i + 1) / t) + '%'; pista.appendChild(c);
+    });
+  }
+
+  function pintar() {
+    var ahora = Date.now(), t = total();
+    var transcurrido = (ahora - inicio) / MIN;
+    var actual = enCurso();
+    // Las horas planeadas, desde el inicio.
+    bloques.forEach(function (b, i) {
+      var h = inicio + desde(i) * MIN;
+      b.fila.querySelector('.h').textContent = hhmm(h);
+      b.el.querySelector('.cab .hora').textContent = hhmm(h) + ' · ' + b.min + ' min';
+      b.el.classList.toggle('listo', !!b.listo);
+      b.el.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      b.fila.classList.toggle('listo', !!b.listo);
+      b.fila.classList.toggle('en-curso', i === actual && transcurrido >= 0);
+      var est = b.fila.querySelector('.estado');
+      var boton = b.pie.querySelector('button'), real = b.pie.querySelector('.real');
+      if (b.listo) {
+        var antes = i === 0 ? inicio : (bloques[i - 1].listo || inicio + desde(i) * MIN);
+        var tomo = Math.max(0, Math.round((b.listo - antes) / MIN));
+        est.textContent = '✓ ' + tomo + ' de ' + b.min + ' min';
+        boton.textContent = '✓ Bloque terminado · deshacer';
+        real.textContent = 'Tomó ' + tomo + ' min de ' + b.min + ' planeados.';
+      } else {
+        est.textContent = i === actual ? (transcurrido >= 0 ? '▶ en curso' : 'primero') : '';
+        boton.textContent = 'Terminamos este bloque ✓';
+        real.textContent = i === actual && transcurrido >= 0 ? 'Planeado hasta las ' + hhmm(inicio + desde(i + 1) * MIN) + '.' : '';
+      }
+    });
+    $('#total').textContent = t + ' min';
+    var aviso = $('#aviso-plan');
+    aviso.classList.toggle('mal', t > DISPONIBLE);
+    aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en los 150 minutos de hoy (6:00 a 8:30 p. m.).'
+      : t > DISPONIBLE ? 'El plan se pasa ' + (t - DISPONIBLE) + ' min de los 150 de hoy: recorta algún bloque.'
+      : 'Sobran ' + (DISPONIBLE - t) + ' min de los 150 de hoy.';
+
+    // El ritmo: dónde deberíamos ir y dónde vamos.
+    var hechos = actual < 0 ? t : desde(actual);
+    $('#r-lleno').style.width = (100 * hechos / t) + '%';
+    $('#r-ahora').style.left = Math.max(0, Math.min(100, 100 * transcurrido / t)) + '%';
+    $('#r-ahora').hidden = transcurrido < 0 || transcurrido > t + 60;
+    var ritmo = $('#r-ritmo'), txtBloque = $('#r-bloque');
+    ritmo.className = 'ritmo';
+    if (transcurrido < 0) {
+      $('#r-hora').textContent = hhmm(ahora);
+      txtBloque.textContent = 'Empieza a las ' + hhmm(inicio);
+      ritmo.textContent = 'en ' + dur(-transcurrido);
+      $('#m-llevamos').textContent = 'Aún no empieza';
+    } else {
+      $('#r-hora').innerHTML = '<b>' + hhmm(ahora) + '</b> · min ' + Math.floor(transcurrido) + ' de ' + t;
+      $('#m-llevamos').textContent = dur(transcurrido) + ' de ' + dur(t);
+      if (actual < 0) {
+        txtBloque.textContent = 'Sesión terminada';
+        ritmo.textContent = '✓'; ritmo.classList.add('bien');
+      } else {
+        txtBloque.textContent = 'Bloque ' + (actual + 1) + ' de ' + bloques.length;
+        // Retraso: lo que llevamos frente a dónde debería ir el bloque en curso.
+        var debioEmpezar = desde(actual), debioTerminar = desde(actual + 1);
+        var retraso = transcurrido > debioTerminar ? transcurrido - debioTerminar : (transcurrido < debioEmpezar ? transcurrido - debioEmpezar : 0);
+        if (Math.abs(retraso) < 1) { ritmo.textContent = 'a tiempo'; ritmo.classList.add('bien'); }
+        else if (retraso > 0) { ritmo.textContent = dur(retraso) + ' tarde'; ritmo.classList.add('tarde'); }
+        else { ritmo.textContent = dur(retraso) + ' adelantados'; ritmo.classList.add('antes'); }
+      }
+    }
+    $('#m-bloque').textContent = actual < 0 ? 'Ninguno: terminamos' : bloques[actual].titulo;
+    // Fin estimado: lo que falta del bloque en curso más lo que viene.
+    if (actual < 0) { $('#m-fin').textContent = hhmm(bloques[bloques.length - 1].listo); }
+    else {
+      var empezoActual = actual === 0 ? inicio : (bloques[actual - 1].listo || inicio + desde(actual) * MIN);
+      var base = Math.max(ahora, inicio);
+      var restaActual = Math.max(0, bloques[actual].min * MIN - Math.max(0, base - empezoActual));
+      var resto = bloques.slice(actual + 1).reduce(function (s, b) { return s + b.min; }, 0) * MIN;
+      var fin = base + restaActual + resto;
+      var planeado = inicio + t * MIN;
+      var dif = Math.round((fin - planeado) / MIN);
+      $('#m-fin').textContent = hhmm(fin) + (dif > 0 ? ' (+' + dif + ' min)' : '');
+    }
+    cortes();
+  }
+  pintar();
+  setInterval(pintar, 15000);
+
+  // ---------------------------------------------------------- cronómetros
+  $$('.crono').forEach(function (c) {
+    var seg = +c.dataset.cuenta, cifra = $('.cifra', c), quedan = seg, reloj = null, cuantas = 0;
+    function mm(s) { return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+    function parar() { clearInterval(reloj); reloj = null; c.classList.remove('corre'); }
+    function ir() {
+      parar(); quedan = seg; cifra.textContent = mm(quedan); c.classList.remove('fin'); c.classList.add('corre');
+      var n = $('[data-crono=n]', c); if (n) { n.textContent = ++cuantas; }
+      var fin = Date.now() + seg * 1000;
+      reloj = setInterval(function () {
+        quedan = Math.max(0, Math.round((fin - Date.now()) / 1000));
+        cifra.textContent = mm(quedan);
+        if (!quedan) { parar(); c.classList.add('fin'); }
+      }, 250);
+    }
+    $('[data-crono=ir]', c).addEventListener('click', ir);
+    $('[data-crono=parar]', c).addEventListener('click', function () { parar(); c.classList.remove('fin'); quedan = seg; cifra.textContent = mm(seg); });
+  });
+
+  // ------------------------------------------------------------- casillas
+  $$('.check input').forEach(function (inp) {
+    inp.addEventListener('change', function () { inp.closest('.check').classList.toggle('ok', inp.checked); });
+  });
+
+  // ------------------------------------------------------- copiar pedidos
+  $$('.cmd pre').forEach(function (pre) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copiar'; b.textContent = 'Copiar';
+    b.addEventListener('click', function () {
+      var copia = pre.cloneNode(true);
+      $$('.c', copia).forEach(function (c) { c.remove(); });
+      // Lo de otra IA no se copia.
+      $$('[data-ia]', copia).forEach(function (s) { if (!s.matches('[data-ia~=' + document.body.className.match(/ia-(\w+)/)[1] + ']')) { s.remove(); } });
+      var texto = copia.textContent.replace(/[ \t]+$/gm, '').trim();
+      var listo = function () { b.textContent = 'Copiado ✓'; setTimeout(function () { b.textContent = 'Copiar'; }, 1600); };
+      var aMano = function () {
+        var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+        b.textContent = ok ? 'Copiado ✓' : 'Selecciona y copia'; t.remove();
+        setTimeout(function () { b.textContent = 'Copiar'; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
+    });
+    pre.parentNode.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

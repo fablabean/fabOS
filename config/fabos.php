@@ -286,6 +286,8 @@ return [
         // qwen3.5 y no qwen3-vl: el segundo piensa aunque se le pida que no, y con
         // una foto llena de cosas se gastaba la respuesta pensando.
         'modelo_vision' => env('FABLAB_IA_MODELO_VISION', 'qwen3.5:9b'),
+        // El asistente del Bootcamp AGENTIC: rápido (unos 40 tokens/s) y buen español.
+        'modelo_asistente' => env('FABLAB_IA_MODELO_ASISTENTE', 'qwen3.5:9b'),
         'separar_objetos' => (bool) env('FABLAB_IA_SEPARAR_OBJETOS', true),
         // Primero se revisa qué es de verdad un objeto; después, el inventario.
         'filtro_de_objetos' => (bool) env('FABLAB_IA_FILTRO_DE_OBJETOS', true),
