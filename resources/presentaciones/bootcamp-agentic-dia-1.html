@@ -132,6 +132,14 @@
   .escalon .quien{font-size:.8rem;color:var(--muted);margin-top:.3rem}
   .escalon:nth-child(1){margin-right:24%} .escalon:nth-child(2){margin-left:8%;margin-right:16%} .escalon:nth-child(3){margin-left:16%;margin-right:8%} .escalon:nth-child(4){margin-left:24%}
   .botones-api{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  /* Los escalones aparecen uno por uno al llegar a la sección: primero el 1, al final el 4. */
+  .escalera.anima .escalon{opacity:0;transform:translateY(18px)}
+  .escalera.anima.ver .escalon{animation:sube-escalon .55s ease-out forwards}
+  .escalera.anima.ver .escalon:nth-child(2){animation-delay:.7s}
+  .escalera.anima.ver .escalon:nth-child(3){animation-delay:1.4s}
+  .escalera.anima.ver .escalon:nth-child(4){animation-delay:2.1s}
+  @keyframes sube-escalon{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.escalera.anima .escalon{opacity:1;transform:none;animation:none !important}}
   /* Ventanas de lectura (lo que es una API, para qué sirve): se abren cuando se quiere mostrar. */
   .info{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:1rem;background:color-mix(in srgb,var(--bg) 86%,transparent)}
   .info[hidden]{display:none}
@@ -968,6 +976,13 @@ pregunta antes de instalar paquetes y nunca leas ni muestres el archivo .env.</p
       $$('[data-vivos]').forEach(function (x) { x.textContent = document.body.classList.contains('en-vivo') ? 'Reconectando…' : 'Sin conexión con fabOS: la votación no está disponible'; });
     });
   }
+  // La escalera se arma al llegar a su sección (y se vuelve a armar al regresar).
+  var escalera = $('.escalera');
+  if (escalera && window.IntersectionObserver) {
+    escalera.classList.add('anima');
+    new IntersectionObserver(function (e) { escalera.classList.toggle('ver', e[0].isIntersecting); }, { threshold: 0.3 }).observe(escalera);
+  }
+
   // Las ventanas de lectura: botón para abrir; ×, Esc o clic fuera para cerrar.
   $$('[data-abre]').forEach(function (b) { b.addEventListener('click', function () { document.getElementById(b.dataset.abre).hidden = false; }); });
   $$('.info').forEach(function (v) {
