@@ -93,6 +93,9 @@ class Reservation extends Model
     /** Estados en los que la reserva ocupa el recurso de verdad. */
     public const BLOQUEANTES = ['confirmada', 'en_curso'];
 
+    /** Las que ya no van a pasar: no cuentan como «lo que hay hoy». */
+    public const NO_OCURREN = ['cancelada', 'rechazada'];
+
     public const MODO_RECORRIDO = 'recorrido';
 
     /**

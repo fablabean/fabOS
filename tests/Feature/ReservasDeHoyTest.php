@@ -241,4 +241,32 @@ class ReservasDeHoyTest extends TestCase
         // El número delante, para no tener que entrar a contarlo.
         $this->get('/admin/reservations')->assertOk()->assertSee('Reservas de hoy (2)');
     }
+
+    public function test_el_numero_no_cuenta_canceladas_ni_los_equipos_de_una_sala(): void
+    {
+        // Lo que pasó en producción: una reserva viva y una sala cancelada con
+        // tres equipos dentro decían «(5)»; en el calendario se veía una.
+        $viva = $this->reserva($this->persona('Ana'), '2026-08-25 09:00', '2026-08-25 10:00');
+        $sala = $this->reserva($this->persona('Juan'), '2026-08-25 15:00', '2026-08-25 17:00');
+        $sala->update(['status' => 'cancelada']);
+        foreach (range(1, 3) as $i) {
+            $this->reserva($this->persona('Juan'), '2026-08-25 15:00', '2026-08-25 17:00')
+                ->update(['status' => 'cancelada', 'parent_reservation_id' => $sala->id]);
+        }
+        // Una sala viva con un equipo dentro cuenta como una actividad.
+        $otra = $this->reserva($this->persona('Sara'), '2026-08-25 11:00', '2026-08-25 12:00');
+        $this->reserva($this->persona('Sara'), '2026-08-25 12:00', '2026-08-25 12:30')
+            ->update(['parent_reservation_id' => $otra->id]);
+
+        $this->entraComoAdmin();
+
+        $this->get('/admin/reservations')->assertOk()->assertSee('Reservas de hoy (2)');
+
+        $visibles = Livewire::test(ListReservations::class)
+            ->callAction(TestAction::make('hoy'))
+            ->instance()->getTableRecords()->pluck('id')->all();
+
+        $this->assertContains($viva->id, $visibles);
+        $this->assertNotContains($sala->id, $visibles);
+    }
 }

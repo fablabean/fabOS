@@ -31,6 +31,16 @@ class ListReservations extends ListRecords
         ];
     }
 
+    private ?int $actividadesDeHoy = null;
+
+    private function actividadesDeHoy(): int
+    {
+        return $this->actividadesDeHoy ??= Reservation::deHoy()
+            ->whereNotIn('status', Reservation::NO_OCURREN)
+            ->whereNull('parent_reservation_id')
+            ->count();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -48,12 +58,23 @@ class ListReservations extends ListRecords
              * respuesta incompleta sin notarlo.
              */
             Action::make('hoy')
-                ->label(fn () => 'Reservas de hoy' . (($n = Reservation::deHoy()->count()) ? ' (' . $n . ')' : ''))
+                /*
+                 * El número cuenta actividades que siguen en pie, como el
+                 * calendario de la semana: sin canceladas ni rechazadas, y una
+                 * sala con sus equipos es una sola. Contar filas daba 5 un día
+                 * con una sola reserva viva y una sala cancelada con 3 equipos.
+                 */
+                ->label(fn () => 'Reservas de hoy' . (($n = $this->actividadesDeHoy()) ? ' (' . $n . ')' : ''))
                 ->icon('heroicon-o-calendar-days')
-                ->color(fn () => Reservation::deHoy()->exists() ? 'primary' : 'gray')
+                ->color(fn () => $this->actividadesDeHoy() ? 'primary' : 'gray')
                 ->action(function () {
                     $this->resetTableFiltersForm();
                     $this->tableFilters['hoy']['isActive'] = true;
+                    // Lo que va a pasar: las canceladas y rechazadas se ven
+                    // quitando el filtro de estado.
+                    $this->tableFilters['status']['values'] = array_values(array_diff(
+                        array_keys(Reservation::ESTADOS), Reservation::NO_OCURREN,
+                    ));
                     // Limpiar devuelve «Las mías», que viene por defecto; la
                     // pregunta es qué hay hoy en el laboratorio, de todos.
                     $this->tableFilters['mias']['isActive'] = false;
