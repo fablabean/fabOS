@@ -24,7 +24,6 @@
   [data-ia]{display:none}
   body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
   body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
-  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
 
   /* barra */
   .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
@@ -347,10 +346,6 @@
 <div class="barra">
   <div class="wrap">
     <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 1 de 3</div>
-    <div class="so" role="group" aria-label="Nivel">
-      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
-      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
-    </div>
     <button type="button" class="boton chico solo-profe" id="ver-qr" title="Mostrar el QR en grande">▦ QR</button>
     <button type="button" class="boton chico solo-part" id="seguir" aria-pressed="true" title="Tu pantalla pasa sola a la sección que muestra quien presenta">● Siguiendo a quien presenta</button>
     <div class="reloj" aria-live="off">
@@ -376,11 +371,6 @@
       <div class="dia hoy"><span class="n">Día 1 · mar 24</span><span class="t">Entender</span>El problema, el objetivo y la IA en el editor. Qué es una API y para qué sirve.</div>
       <div class="dia"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
       <div class="dia"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Tu programa habla con la IA por API, y el concepto de agente.</div>
-    </div>
-    <p class="nivel-tit">¿Cómo quieres ver la sesión?</p>
-    <div class="nivel" role="group" aria-label="Nivel">
-      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">He chateado con una IA, pero no la he usado para trabajar sobre archivos.</span></button>
-      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya uso la IA en el editor o he hecho scripts. Dame lo directo y un paso más.</span></button>
     </div>
   </div>
 </header>
