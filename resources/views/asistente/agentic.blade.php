@@ -62,21 +62,69 @@
   details summary{cursor:pointer;font-weight:600;color:var(--ink)}
   details pre{white-space:pre-wrap;font-size:.76rem;line-height:1.5;color:var(--soft);background:var(--code);border:1px solid var(--rule);border-radius:8px;padding:.6rem;max-height:22rem;overflow:auto}
   .pie{font-size:.78rem;color:var(--muted)}
+  /* Entrar con el ID */
+  .puerta{flex:1;display:grid;place-items:center;padding:2rem 1.2rem}
+  .puerta .tarjeta{width:min(30rem,100%);border:1px solid var(--rule);border-radius:18px;background:var(--bg2);padding:1.6rem 1.6rem 1.4rem}
+  .puerta h1{font-size:1.6rem;line-height:1.15;margin:.3rem 0 .6rem;letter-spacing:-.02em} .puerta h1 span{color:var(--accent)}
+  .puerta p{color:var(--soft);margin:.5rem 0}
+  .puerta form{display:flex;gap:.6rem;margin:1.1rem 0 .4rem;flex-wrap:wrap}
+  .puerta input{flex:0 1 10rem;min-width:0;padding:.7rem .9rem;border-radius:12px;border:1px solid var(--rule);background:var(--code);color:var(--ink);
+    font:700 1.3rem "JetBrains Mono",monospace;letter-spacing:.3em;text-transform:uppercase}
+  .puerta input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .puerta .error{color:var(--bad);font-size:.88rem}
+  .puerta .reloj{display:flex;gap:.7rem;align-items:center;border:1px dashed var(--rule);border-radius:12px;padding:.6rem .8rem;margin-top:1rem;font-size:.88rem;color:var(--soft)}
+  .puerta .reloj svg{flex:0 0 auto;width:1.4rem;height:1.4rem;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round}
+  .apagado{border-color:color-mix(in srgb,var(--warn) 55%,var(--rule)) !important;color:var(--warn) !important}
+  .quien{display:flex;align-items:center;gap:.7rem;font-size:.85rem;color:var(--soft);flex-wrap:wrap}
+  .quien b{color:var(--ink)} .quien .id{font:700 .85rem "JetBrains Mono",monospace;letter-spacing:.12em;color:var(--accent)}
+  .tiempo{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--rule);border-radius:99px;padding:.25rem .7rem;font-size:.8rem}
+  .tiempo.poco{border-color:var(--warn);color:var(--warn)} .tiempo.nada{border-color:var(--bad);color:var(--bad)}
+  .salir{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:.8rem;padding:0}
 </style>
 </head>
 <body class="nivel-basico">
 
 <div class="barra"><div class="in">
   <div class="marca">BOOTCAMP <b>AGENTIC</b> · asistente</div>
+  @if ($participante)
+  <div class="quien">
+    <span>{{ $participante->nombre }} · <span class="id">{{ $participante->codigo }}</span></span>
+    <span class="tiempo {{ $hoy['agotado'] ? 'nada' : ($hoy['empezo'] && $hoy['quedan'] <= 10 ? 'poco' : '') }}" id="tiempo"
+      data-quedan="{{ $hoy['quedan'] }}" data-empezo="{{ $hoy['empezo'] ? 1 : 0 }}">
+      {{ $hoy['agotado'] ? 'Se acabó tu hora de hoy' : ($hoy['empezo'] ? 'Te quedan ' . $hoy['quedan'] . ' min hoy' : 'Tienes ' . $minutos . ' min hoy') }}
+    </span>
+    <form method="post" action="{{ route('asistente.agentic.salir') }}">@csrf<button class="salir" type="submit">No soy yo</button></form>
+  </div>
+  @endif
   <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
     <div class="so" role="group" aria-label="Nivel">
       <button type="button" data-nivel="basico" aria-pressed="true">Básico</button>
       <button type="button" data-nivel="inter" aria-pressed="false">Intermedio</button>
     </div>
-    <button type="button" class="boton" id="nueva">Nueva conversación</button>
+    @if ($participante)<button type="button" class="boton" id="nueva">Nueva conversación</button>@endif
   </div>
 </div></div>
 
+@if (! $participante)
+<div class="puerta">
+  <div class="tarjeta">
+    <div class="kicker">Asistente del bootcamp</div>
+    <h1>Entra con tu <span>ID del bootcamp</span></h1>
+    <p>Son 4 letras o números. Los recibiste al escribir tu nombre en la presentación del día 2 (también están en la barra de arriba de esa página).</p>
+    @if (! $activo)
+      <p class="reloj apagado">El asistente está apagado por ahora. Quien dicta el bootcamp lo vuelve a prender.</p>
+    @endif
+    <form method="post" action="{{ route('asistente.agentic.entrar') }}">
+      @csrf
+      <input name="codigo" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7Q2" aria-label="Tu ID" value="{{ old('codigo') }}" autofocus required>
+      <button class="enviar" type="submit">Entrar</button>
+    </form>
+    @if (session('error_id'))<p class="error">{{ session('error_id') }}</p>@endif
+    <div class="reloj"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>Cada ID tiene <b>{{ $minutos }} minutos de trabajo al día</b> con el asistente. Empiezan a contar con tu primer mensaje.</span></div>
+  </div>
+</div>
+@else
 <div class="lienzo">
   <section class="chat" aria-label="Conversación">
     <div class="hilo" id="hilo" aria-live="polite">
@@ -130,7 +178,9 @@
     <p class="pie">Corre en el servidor de IA del FabLab EAN (modelo <span class="mono">{{ $modelo }}</span>), dentro del laboratorio: no es un servicio de afuera. Bootcamp AGENTIC · eanX · Universidad Ean.</p>
   </aside>
 </div>
+@endif
 
+@if ($participante)
 <script>
 (function () {
   var hilo = document.getElementById('hilo');
@@ -142,6 +192,13 @@
   var mensajes = [];
   var nivel = 'basico';
   var ocupado = false;
+  var tiempo = document.getElementById('tiempo');
+  function pintarTiempo(quedan) {
+    tiempo.textContent = quedan > 0 ? 'Te quedan ' + quedan + ' min hoy' : 'Se acabó tu hora de hoy';
+    tiempo.className = 'tiempo' + (quedan <= 0 ? ' nada' : quedan <= 10 ? ' poco' : '');
+  }
+  function cerrar(msj) { texto.disabled = true; enviar.disabled = true; texto.placeholder = msj; }
+  if (tiempo.classList.contains('nada')) { cerrar('Se acabó tu hora de hoy. Mañana vuelves a tener tu tiempo.'); }
   var LLAVE = /\b(sk-ant-[A-Za-z0-9_\-]{10,}|sk-(proj-)?[A-Za-z0-9_\-]{20,}|AIza[0-9A-Za-z_\-]{30,})\b/;
 
   try { nivel = localStorage.getItem('agentic-nivel') === 'inter' ? 'inter' : 'basico'; } catch (_) {}
@@ -210,6 +267,13 @@
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream','X-CSRF-TOKEN': token },
       body: JSON.stringify({ mensajes: mensajes, nivel: nivel })
     }).then(function (r) {
+      if (r.status === 403) {
+        return r.json().then(function (j) {
+          if (j.agotado) { pintarTiempo(0); cerrar('Se acabó tu hora de hoy. Mañana vuelves a tener tu tiempo.'); }
+          if (j.sin_id) { setTimeout(function () { location.reload(); }, 2500); }
+          throw new Error(j.error || 'No puedes usar el asistente ahora.');
+        });
+      }
       if (r.status === 429) { throw new Error('Vas muy rápido: espera unos minutos y vuelve a intentar.'); }
       if (r.status === 422) { throw new Error('El mensaje es demasiado largo o la conversación creció mucho: empieza una nueva.'); }
       if (r.status === 419) { throw new Error('La página caducó. Recárgala y vuelve a escribir.'); }
@@ -224,6 +288,7 @@
             var linea = ev.replace(/^data:\s*/, ''); if (!linea) { return; }
             var d; try { d = JSON.parse(linea); } catch (_) { return; }
             if (d.error) { throw new Error(d.error); }
+            if (typeof d.quedan === 'number') { pintarTiempo(d.quedan); }
             if (d.texto) { resp.classList.remove('pensando'); acumulado += d.texto; resp.innerHTML = md(acumulado); hilo.scrollTop = hilo.scrollHeight; }
           });
           return leer();
@@ -236,9 +301,10 @@
     }).catch(function (e) {
       resp.classList.remove('pensando'); resp.classList.add('error'); resp.textContent = e.message;
       mensajes.pop();
-    }).then(function () { ocupado = false; enviar.disabled = false; texto.focus(); });
+    }).then(function () { ocupado = false; if (!texto.disabled) { enviar.disabled = false; texto.focus(); } });
   }
 })();
 </script>
+@endif
 </body>
 </html>

@@ -108,6 +108,11 @@ Route::get('/p/{slug}/animacion/{archivo}', [PaginaPublicaController::class, 'an
 // El asistente del Bootcamp AGENTIC (trabajo autónomo), en el servidor de IA del FabLab.
 Route::get('/asistente/agentic', [\App\Http\Controllers\AsistenteAgenticController::class, 'pagina'])
     ->name('asistente.agentic');
+Route::post('/asistente/agentic/entrar', [\App\Http\Controllers\AsistenteAgenticController::class, 'entrar'])
+    ->middleware('throttle:90,1') // toda la sala entra por la misma IP de la U
+    ->name('asistente.agentic.entrar');
+Route::post('/asistente/agentic/salir', [\App\Http\Controllers\AsistenteAgenticController::class, 'salir'])
+    ->name('asistente.agentic.salir');
 Route::post('/asistente/agentic/mensaje', [\App\Http\Controllers\AsistenteAgenticController::class, 'mensaje'])
     ->middleware('throttle:asistente-agentic')
     ->name('asistente.agentic.mensaje');

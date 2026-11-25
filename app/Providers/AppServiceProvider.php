@@ -82,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
          * tope general cuida al servidor de IA del FabLab.
          */
         \Illuminate\Support\Facades\RateLimiter::for('asistente-agentic', fn (\Illuminate\Http\Request $r) => [
-            \Illuminate\Cache\RateLimiting\Limit::perMinutes(10, 30)->by('persona:' . ($r->hasSession() ? $r->session()->getId() : $r->ip())),
+            \Illuminate\Cache\RateLimiting\Limit::perMinutes(10, 30)->by('persona:' . ($r->hasSession() ? ($r->session()->get(\App\Http\Controllers\AsistenteAgenticController::SESION) ?: $r->session()->getId()) : $r->ip())),
             \Illuminate\Cache\RateLimiting\Limit::perMinute(90)->by('todos'),
         ]);
         // Las presentaciones en vivo preguntan cada pocos segundos, por navegador.

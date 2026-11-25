@@ -49,6 +49,34 @@
         @endforeach
 
         <x-filament::section>
+            <x-slot name="heading">Asistente del bootcamp</x-slot>
+            <x-slot name="description">
+                Solo entra quien tenga su ID. Cada ID tiene su tiempo al día, desde su primer mensaje; al otro día vuelve a tenerlo.
+            </x-slot>
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex items-center gap-3">
+                    <x-filament::badge :color="$asistenteActivo ? 'success' : 'gray'">{{ $asistenteActivo ? 'Prendido' : 'Apagado' }}</x-filament::badge>
+                    <x-filament::button size="sm" :color="$asistenteActivo ? 'danger' : 'success'" wire:click="alternarAsistente"
+                        :icon="$asistenteActivo ? 'heroicon-o-pause' : 'heroicon-o-play'">
+                        {{ $asistenteActivo ? 'Apagar el asistente' : 'Prender el asistente' }}
+                    </x-filament::button>
+                </div>
+                <form wire:submit="guardarMinutos" class="flex items-end gap-2">
+                    <label class="grid gap-1 text-sm">
+                        <span class="font-medium">Minutos por ID al día</span>
+                        <x-filament::input.wrapper class="w-28">
+                            <x-filament::input type="number" min="5" max="600" wire:model="minutosAsistente" />
+                        </x-filament::input.wrapper>
+                    </label>
+                    <x-filament::button type="submit" size="sm" color="gray">Guardar</x-filament::button>
+                </form>
+                <x-filament::button tag="a" href="{{ route('asistente.agentic') }}" target="_blank" size="sm" color="gray" icon="heroicon-o-arrow-top-right-on-square">
+                    Abrir el asistente
+                </x-filament::button>
+            </div>
+        </x-filament::section>
+
+        <x-filament::section>
             <x-slot name="heading">Participantes con ID ({{ $totalParticipantes }})</x-slot>
             <x-slot name="description">
                 Quien entra a una presentación que pide nombre recibe un ID de 4 caracteres que sirve en todo el curso.
@@ -77,7 +105,7 @@
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="text-left text-gray-500 border-b border-gray-200 dark:border-white/10">
-                                    <th class="py-2 pr-4">ID</th><th class="py-2 pr-4">Nombre</th><th class="py-2 pr-4">Curso</th><th class="py-2 pr-4">Desde</th><th></th>
+                                    <th class="py-2 pr-4">ID</th><th class="py-2 pr-4">Nombre</th><th class="py-2 pr-4">Curso</th><th class="py-2 pr-4">Desde</th><th class="py-2 pr-4">Asistente hoy</th><th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -87,6 +115,15 @@
                                         <td class="py-2 pr-4">{{ $p->nombre }}</td>
                                         <td class="py-2 pr-4 text-gray-500">{{ $p->grupo }} · {{ $p->sala }}</td>
                                         <td class="py-2 pr-4 text-gray-500">{{ $p->created_at->setTimezone(config('fabos.lab.timezone'))->format('d/m/Y g:i a') }}</td>
+                                        @php($uso = $acceso->hoy($p->codigo))
+                                        <td class="py-2 pr-4 text-gray-500 whitespace-nowrap">
+                                            @if ($uso['empezo'])
+                                                <span @class(['text-danger-600 font-semibold' => $uso['agotado']])>{{ $uso['usados'] }} de {{ $minutosAsistente }} min</span> · {{ $uso['mensajes'] }} mensajes
+                                                <button type="button" class="ml-1 underline text-xs" wire:click="devolverHora('{{ $p->codigo }}')">devolver</button>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td class="py-2 text-right">
                                             <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm" label="Quitar"
                                                 wire:click="quitarParticipante({{ $p->id }})"

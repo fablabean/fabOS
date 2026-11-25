@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\AsistenteAgenticController;
+use App\Models\ParticipanteEnVivo;
+use App\Models\Setting;
+use App\Services\Ia\AccesoAlAsistente;
 use App\Services\Ia\AsistenteDelBootcamp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -11,6 +15,7 @@ use Tests\TestCase;
 /**
  * El asistente del Bootcamp AGENTIC: habla con el servidor de IA del FabLab,
  * entrega la respuesta por partes y no deja viajar una llave de API.
+ * Solo entra quien tenga su ID del bootcamp, con su tiempo al día.
  */
 class AsistenteAgenticTest extends TestCase
 {
@@ -21,7 +26,11 @@ class AsistenteAgenticTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
         config(['fabos.servidor_fablab.activo' => true, 'fabos.servidor_fablab.url' => 'http://pgx.test:11434']);
+        $this->ana = ParticipanteEnVivo::nuevo('agentic', 'agentic-dia-2', 'Ana Ruiz');
+        $this->withSession([AsistenteAgenticController::SESION => $this->ana->codigo]);
     }
+
+    private ParticipanteEnVivo $ana;
 
     private function ollamaResponde(): void
     {
@@ -32,12 +41,51 @@ class AsistenteAgenticTest extends TestCase
         )]);
     }
 
-    public function test_la_pagina_abre_sin_cuenta_y_muestra_sus_instrucciones(): void
+    public function test_la_pagina_abre_con_el_id_y_muestra_sus_instrucciones(): void
     {
         $this->get('/asistente/agentic')
             ->assertOk()
             ->assertSee('te ayuda a pensar', false)
-            ->assertSee('No haces el trabajo por la persona');
+            ->assertSee('No haces el trabajo por la persona')
+            ->assertSee($this->ana->codigo)
+            ->assertSee('Tienes 60 min hoy');
+    }
+
+    public function test_sin_id_no_hay_chat_y_se_entra_con_uno_valido(): void
+    {
+        $this->flushSession();
+        $this->get('/asistente/agentic')->assertOk()->assertSee('Entra con tu')->assertDontSee('te ayuda a pensar', false);
+        $this->postJson('/asistente/agentic/mensaje', ['mensajes' => [['role' => 'user', 'content' => 'hola']]])
+            ->assertStatus(403)->assertJson(['sin_id' => true]);
+
+        // Un ID inventado, o de otro curso, no entra.
+        ParticipanteEnVivo::create(['codigo' => 'ZZZZ', 'grupo' => 'otro', 'sala' => 'x', 'nombre' => 'Otro']);
+        $this->post('/asistente/agentic/entrar', ['codigo' => 'ZZZZ'])->assertSessionHas('error_id');
+        $this->post('/asistente/agentic/entrar', ['codigo' => strtolower($this->ana->codigo)])
+            ->assertRedirect('/asistente/agentic')
+            ->assertSessionHas(AsistenteAgenticController::SESION, $this->ana->codigo);
+    }
+
+    public function test_cada_id_tiene_su_hora_al_dia_y_el_profesor_lo_apaga(): void
+    {
+        $this->ollamaResponde();
+        $hola = ['mensajes' => [['role' => 'user', 'content' => 'hola']]];
+
+        $this->postJson('/asistente/agentic/mensaje', $hola)->assertOk()->streamedContent();
+        $acceso = app(AccesoAlAsistente::class);
+        $this->assertSame(1, $acceso->hoy($this->ana->codigo)['mensajes']);
+        $this->assertSame(60, $acceso->hoy($this->ana->codigo)['quedan']);
+
+        // Pasó la hora: ese ID no sigue hoy; mañana sí.
+        $this->travel(61)->minutes();
+        $this->postJson('/asistente/agentic/mensaje', $hola)->assertStatus(403)->assertJson(['agotado' => true]);
+        $this->get('/asistente/agentic')->assertSee('Se acabó tu hora de hoy');
+        $acceso->reiniciarHoy($this->ana->codigo);
+        $this->postJson('/asistente/agentic/mensaje', $hola)->assertOk();
+
+        // Apagado, nadie lo usa.
+        Setting::put(AccesoAlAsistente::ACTIVO, false, 'envivo');
+        $this->postJson('/asistente/agentic/mensaje', $hola)->assertStatus(403)->assertJsonFragment(['error' => 'El asistente está apagado por ahora. Quien dicta el bootcamp lo vuelve a prender.']);
     }
 
     public function test_responde_por_partes_con_las_instrucciones_y_el_nivel(): void

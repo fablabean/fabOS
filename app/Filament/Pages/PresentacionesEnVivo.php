@@ -7,6 +7,7 @@ use App\Models\Modulo;
 use App\Models\ParticipanteEnVivo;
 use App\Models\Setting;
 use App\Services\EnVivo;
+use App\Services\Ia\AccesoAlAsistente;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -67,6 +68,29 @@ class PresentacionesEnVivo extends Page
         Notification::make()->title($url ? 'LinkedIn guardado' : 'LinkedIn quitado')->success()->send();
     }
 
+    /** Minutos de asistente por ID al día. */
+    public int $minutosAsistente = AccesoAlAsistente::MINUTOS_POR_DEFECTO;
+
+    public function alternarAsistente(AccesoAlAsistente $acceso): void
+    {
+        Setting::put(AccesoAlAsistente::ACTIVO, ! $acceso->activo(), 'envivo');
+        Notification::make()->title($acceso->activo() ? 'Asistente prendido' : 'Asistente apagado')->success()->send();
+    }
+
+    public function guardarMinutos(): void
+    {
+        $m = max(5, min(600, $this->minutosAsistente));
+        Setting::put(AccesoAlAsistente::MINUTOS, $m, 'envivo');
+        $this->minutosAsistente = $m;
+        Notification::make()->title("Cada ID tiene $m minutos al día")->success()->send();
+    }
+
+    public function devolverHora(string $codigo, AccesoAlAsistente $acceso): void
+    {
+        $acceso->reiniciarHoy($codigo);
+        Notification::make()->title("$codigo tiene de nuevo su tiempo de hoy")->success()->send();
+    }
+
     public function quitarParticipante(int $id): void
     {
         ParticipanteEnVivo::whereKey($id)->delete();
@@ -76,6 +100,7 @@ class PresentacionesEnVivo extends Page
     public function mount(EnVivo $envivo): void
     {
         $this->linkedin = (string) Setting::get(EnVivo::LINKEDIN, '');
+        $this->minutosAsistente = app(AccesoAlAsistente::class)->minutosPorDia();
         foreach ($this->salas() as $sala => $s) {
             $modulo = $this->modulo($s);
             if ($modulo) {
@@ -129,6 +154,8 @@ class PresentacionesEnVivo extends Page
                     ->orWhere('nombre', 'ilike', '%' . trim($this->buscar) . '%')))
                 ->latest()->limit(300)->get(),
             'totalParticipantes' => ParticipanteEnVivo::count(),
+            'asistenteActivo' => app(AccesoAlAsistente::class)->activo(),
+            'acceso' => app(AccesoAlAsistente::class),
         ];
     }
 }
