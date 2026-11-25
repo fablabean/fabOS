@@ -444,6 +444,38 @@
   .vista-cuerpo .pest span{font:600 .75rem "JetBrains Mono",monospace;padding:.2rem .6rem;border-radius:6px;border:1px solid var(--rule);color:var(--muted)}
   .vista-cuerpo .pest span:first-child{border-color:var(--accent);color:var(--accent)}
 
+  /* ------------------------------------------------ 02 · el ciclo */
+  .ciclo{position:relative;width:min(46rem,100%);aspect-ratio:46/30;margin:1rem auto 0;
+    display:grid;grid-template-columns:1fr 1.1fr 1fr;grid-template-rows:1fr 1.15fr 1fr;
+    grid-template-areas:". a ." "d c b" ". e .";align-items:center;justify-items:center}
+  .ciclo-aro{position:absolute;left:50%;top:50%;width:62%;height:auto;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
+  .ciclo-aro > path{fill:none;stroke:color-mix(in srgb,var(--muted) 55%,var(--rule));stroke-width:1.6;stroke-linecap:round}
+  .ce{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.25rem;max-width:13rem;
+    background:var(--bg);padding:.4rem .6rem;border-radius:14px}
+  .ce-arriba{grid-area:a} .ce-der{grid-area:b} .ce-abajo{grid-area:e} .ce-izq{grid-area:d}
+  .ce-i{position:relative;width:3.6rem;height:3.6rem;border-radius:16px;display:grid;place-items:center;border:1px solid var(--rule);background:var(--card);color:var(--accent)}
+  .ce-i .ic{width:1.6rem;height:1.6rem}
+  .ce-i span{position:absolute;top:-.5rem;left:-.5rem;width:1.35rem;height:1.35rem;border-radius:50%;display:grid;place-items:center;
+    background:var(--accent);color:#06231A;font:800 .72rem "JetBrains Mono",monospace}
+  .ce b{font-size:1.08rem;margin-top:.25rem} .ce small{color:var(--soft);font-size:.86rem;line-height:1.35}
+  .ce-centro{grid-area:c;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.3rem;width:min(12rem,100%);
+    padding:.9rem .8rem;border-radius:50%;aspect-ratio:1;justify-content:center;text-decoration:none;color:var(--ink);
+    border:1.5px dashed color-mix(in srgb,#9C8CFF 70%,var(--rule));background:color-mix(in srgb,#9C8CFF 9%,var(--bg))}
+  .ce-centro .ce-i{width:3rem;height:3rem;border-radius:50%;color:#9C8CFF;border-color:color-mix(in srgb,#9C8CFF 55%,var(--rule))}
+  .ce-centro b{font-size:.98rem;line-height:1.2} .ce-centro small{font-size:.76rem;color:var(--soft);line-height:1.3}
+  .ce-centro:hover{border-style:solid;border-color:#9C8CFF}
+  .ciclo-pie{text-align:center;color:var(--muted);margin:.8rem 0 0} .ciclo-pie b{color:var(--ink)}
+  /* Las etapas aparecen en orden, como se recorren. */
+  .ciclo.anima .ce,.ciclo.anima .ce-centro,.ciclo.anima .ciclo-aro{opacity:0}
+  .ciclo.anima.ver .ce,.ciclo.anima.ver .ce-centro,.ciclo.anima.ver .ciclo-aro{opacity:1;transition:opacity .5s ease-out}
+  .ciclo.anima.ver .ce-arriba{transition-delay:.15s} .ciclo.anima.ver .ce-der{transition-delay:.45s}
+  .ciclo.anima.ver .ce-abajo{transition-delay:.75s} .ciclo.anima.ver .ce-izq{transition-delay:1.05s}
+  .ciclo.anima.ver .ciclo-aro{transition-delay:1.3s} .ciclo.anima.ver .ce-centro{transition-delay:1.6s}
+  @media (prefers-reduced-motion:reduce){.ciclo.anima .ce,.ciclo.anima .ce-centro,.ciclo.anima .ciclo-aro{opacity:1;transition:none}}
+  @media (max-width:700px){
+    .ciclo{aspect-ratio:auto;grid-template-columns:1fr;grid-template-rows:none;grid-template-areas:"a" "b" "e" "d" "c";gap:.8rem}
+    .ciclo-aro{display:none} .ce{max-width:none} .ce-centro{border-radius:16px;aspect-ratio:auto;width:100%}}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -665,25 +697,15 @@
   <section class="bloque" id="b-ciclo" data-min="10" data-titulo="El ciclo de trabajo con IA">
     <div class="cab"><div class="num">02</div><div><h2>El ciclo de trabajo con IA <span class="hora"></span></h2><p class="para">Pasos que se repiten. Es lo que separa «la IA hizo algo» de «yo construí algo con la IA».</p></div></div>
     <div class="cuerpo">
-      <div class="escalera">
-        <div class="escalon"><div class="e">1</div><div><h4>Planear</h4><p>Antes de tocar archivos, la IA propone un plan de pasos pequeños y tú lo ajustas.</p><div class="quien">Tú decides el orden y qué queda por fuera</div></div></div>
-        <div class="escalon"><div class="e">2</div><div><h4>Pedir</h4><p>Un paso a la vez, con el contexto que la IA no tiene: tu ejemplo real y qué esperas de salida.</p><div class="quien">La IA no sabe lo que no le cuentas</div></div></div>
-        <div class="escalon"><div class="e">3</div><div><h4>Revisar</h4><p>Lees lo que propone antes de aceptar. Si no lo entiendes, pregúntale qué hace cada parte.</p><div class="quien">Nada se aplica sin que lo leas</div></div></div>
-        <div class="escalon"><div class="e">4</div><div><h4>Probar y guardar</h4><p>Lo corres con un ejemplo real. Si funciona, guardas ese punto para poder volver a él.</p><div class="quien">Un paso que funciona vale más que diez que «casi»</div></div></div>
+      <div class="ciclo">
+        <svg class="ciclo-aro" viewBox="0 0 200 200" aria-hidden="true"><defs><marker id="punta" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#83948C"/></marker></defs><path d="M128 22A82 82 0 0 1 178 72" marker-end="url(#punta)"/><path d="M178 128A82 82 0 0 1 128 178" marker-end="url(#punta)"/><path d="M72 178A82 82 0 0 1 22 128" marker-end="url(#punta)"/><path d="M22 72A82 82 0 0 1 72 22" marker-end="url(#punta)"/></svg>
+        <div class="ce ce-arriba"><div class="ce-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></svg><span>1</span></div><b>Planear</b><small>Pasos pequeños. Tú decides el orden.</small></div>
+        <div class="ce ce-der"><div class="ce-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.8 7L3 21l2-5.6A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg><span>2</span></div><b>Pedir</b><small>Un paso a la vez, con tu ejemplo.</small></div>
+        <div class="ce ce-abajo"><div class="ce-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span>3</span></div><b>Revisar</b><small>Nada se aplica sin que lo leas.</small></div>
+        <div class="ce ce-izq"><div class="ce-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M7 3v5h8V3"/><rect x="7" y="13" width="10" height="6" rx="1"/></svg><span>4</span></div><b>Probar y guardar</b><small>Si funciona, guárdalo y sigue.</small></div>
+        <a class="ce-centro" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener"><span class="ce-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>Asistente del bootcamp</b><small>Te acompaña en cada vuelta, también después de la sesión</small></a>
       </div>
-      <p class="simple" data-nivel="basico"><b>Guardar, en palabras simples:</b> Git es como los puntos de guardado de un videojuego. Cuando algo funciona, le pides a tu IA: «guarda este avance con Git y ponle un mensaje que diga qué funciona». Si después algo se daña, le pides volver a ese punto.</p>
-      <div data-nivel="inter">
-        <p>Un commit por paso que funciona, con un mensaje que diga qué quedó funcionando. Si la IA se enreda, <span class="mono">git diff</span> muestra qué cambió y <span class="mono">git restore .</span> vuelve al último punto bueno.</p>
-        <div class="cmd"><div class="lbl">En la terminal</div><pre>git init <span class="c"># solo la primera vez</span>
-git add -A
-git commit -m "Lee el ejemplo y muestra el resultado en pantalla"</pre></div>
-      </div>
-      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Lee PROYECTO.md. No cambies ningún archivo todavía.
-Propón un plan de 3 a 5 pasos pequeños para lograr lo «Imprescindible»,
-donde cada paso se pueda probar con un ejemplo real.
-Para cada paso dime: qué vas a hacer, qué archivo tocarías y cómo lo pruebo.
-Al final pregúntame qué ejemplo real vamos a usar.</pre></div>
-      <label class="check"><input type="checkbox"><span>Tengo el plan de pasos pequeños y lo ajusté a mi gusto</span></label>
+      <p class="ciclo-pie">Cada vuelta deja algo que funciona. La IA propone; <b>tú decides, revisas y guardas</b>.</p>
     </div>
   </section>
 
@@ -1315,6 +1337,13 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   $('#vista-bajar').addEventListener('click', function () { if (vistaNombre) { bajarEjemplo(vistaNombre); } });
   vista.addEventListener('click', function (e) { if (e.target === vista || e.target.hasAttribute('data-cerrar-vista')) { vista.hidden = true; } });
   window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { vista.hidden = true; } });
+
+  // El ciclo se dibuja etapa por etapa al llegar.
+  var ciclo = $('.ciclo');
+  if (ciclo && window.IntersectionObserver) {
+    ciclo.classList.add('anima');
+    new IntersectionObserver(function (e) { ciclo.classList.toggle('ver', e[0].isIntersecting); }, { threshold: 0.25 }).observe(ciclo);
+  }
 
   // Las tres vías se arman al llegar a su sección.
   var vias = $('.vias-zona');
