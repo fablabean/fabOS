@@ -356,6 +356,29 @@
   @media (max-width:1000px){.rp{grid-template-columns:1fr 1fr} .rp-col.co{grid-column:1/-1}}
   @media (max-width:680px){.rp{grid-template-columns:1fr} section.repaso .cuerpo{margin-left:0}}
 
+  /* Íconos de línea: toman el color del texto. */
+  .ic{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:0 0 auto}
+  .num .ic{width:1.35rem;height:1.35rem}
+
+  .rp-tit .ico{color:var(--c)} .rp-tit .ico .ic{width:1.2rem;height:1.2rem}
+  .rp-arbol .ic{color:var(--muted);margin-right:.25rem} .rp-arbol li.nuevo .ic{color:var(--accent)}
+  .rp-chips .ic{color:var(--c);margin-right:.2rem}
+  .rp-5 div b{display:grid;place-items:center;color:var(--soft)} .rp-5 div b .ic{width:1.2rem;height:1.2rem}
+  .rp-5 div:last-child b{color:var(--c)}
+  .fila-auto .ic{width:1.15em;height:1.15em}
+
+  /* El QR pequeño, fijo en la esquina (para quien presenta). */
+  .qr-fijo{position:fixed;right:1rem;top:calc(var(--barra,3.3rem) + .8rem);z-index:40;width:7.6rem;padding:.45rem .45rem .35rem;border-radius:12px;
+    background:var(--card);border:1px solid var(--rule);box-shadow:0 10px 26px rgba(0,0,0,.45);text-align:center;cursor:zoom-in}
+  .qr-fijo[hidden],body:not(.es-profe) .qr-fijo{display:none}
+  .qr-fijo .qr{display:block;width:100%;height:auto;border-radius:6px}
+  .qr-fijo span{display:block;font:600 .56rem "JetBrains Mono",monospace;color:var(--accent);margin-top:.25rem;word-break:break-all;line-height:1.25}
+  .qr-fijo button{position:absolute;top:-.55rem;right:-.55rem;width:1.4rem;height:1.4rem;border-radius:50%;border:1px solid var(--rule);background:var(--bg2);color:var(--muted);
+    cursor:pointer;font:700 .8rem Inter,sans-serif;line-height:1;padding:0;opacity:0;transition:opacity .2s}
+  .qr-fijo:hover button,.qr-fijo button:focus{opacity:1}
+  .qr-grande .fijar{font:600 .95rem Inter,sans-serif}
+  #ver-qr[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -406,7 +429,8 @@
   </div>
 </header>
 
-<div class="qr-grande" id="qr-grande" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><b>Escanéalo para seguir en vivo</b><span>fablabean.com/zonas/agentic/dia-2</span></div>
+<div class="qr-grande" id="qr-grande" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><b>Escanéalo para seguir en vivo</b><span>fablabean.com/zonas/agentic/dia-2</span><button type="button" class="boton fijar" id="fijar-qr">Dejarlo pequeño en la esquina</button></div>
+<div class="qr-fijo" id="qr-fijo" hidden title="Clic para verlo en grande"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><span>fablabean.com/zonas/agentic/dia-2</span><button type="button" id="soltar-qr" aria-label="Quitar el QR de la esquina">×</button></div>
 
 <div class="bienv" id="bienv" hidden data-en="nombre" role="dialog" aria-modal="true" aria-labelledby="bienv-t">
   <div class="caja">
@@ -456,7 +480,7 @@
       <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
       <tbody id="filas"></tbody>
       <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr>
-        <tr class="fila-auto"><td class="h" id="auto-h">7:00 p. m.</td><td><a href="#autonomo">Bonus: trabajo autónomo<small>Tú, tu proyecto y el asistente de fabOS. Sin profe mirando 👀</small></a></td><td class="mono">60 + lo que dures 🙂</td><td class="opc">hasta las <span id="auto-fin">8:00 p. m.</span> (o más)</td></tr></tfoot>
+        <tr class="fila-auto"><td class="h" id="auto-h">7:00 p. m.</td><td><a href="#autonomo">Bonus: trabajo autónomo<small>Tú, tu proyecto y el asistente de fabOS. Sin profe mirando <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></small></a></td><td class="mono">60 + lo que dures <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01"/></svg></td><td class="opc">hasta las <span id="auto-fin">8:00 p. m.</span> (o más)</td></tr></tfoot>
     </table>
     <p class="aviso-plan" id="aviso-plan"></p>
     <div class="resumen-ritmo" style="display:none">
@@ -474,11 +498,11 @@
       <div class="rp">
 
         <div class="rp-col ed">
-          <div class="rp-tit"><div class="ico">⌨️</div><div><span>1 · El editor</span><b>Donde la IA trabaja</b></div></div>
+          <div class="rp-tit"><div class="ico"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div><div><span>1 · El editor</span><b>Donde la IA trabaja</b></div></div>
           <div class="rp-ed" aria-hidden="true">
             <div class="rp-ed-barra"><i></i><i></i><i></i><span>bootcamp</span></div>
             <div class="rp-ed-cuerpo">
-              <ul class="rp-arbol"><li>📁 bootcamp</li><li class="nuevo">📄 PROYECTO.md</li><li class="nuevo">📄 CLAUDE.md</li><li>📄 .env 🔒</li></ul>
+              <ul class="rp-arbol"><li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>bootcamp</li><li class="nuevo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>PROYECTO.md</li><li class="nuevo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>CLAUDE.md</li><li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>.env</li></ul>
               <div class="rp-chat">
                 <div class="rp-b yo">Crea PROYECTO.md con mi problema</div>
                 <div class="rp-b ia">Este es el archivo. ¿Lo creo?</div>
@@ -487,12 +511,12 @@
             </div>
             <div class="rp-term"><b>$</b> claude ▍</div>
           </div>
-          <div class="rp-chips"><span>👀 lee tus archivos</span><span>✏️ propone cambios</span><span>✋ pide permiso</span></div>
+          <div class="rp-chips"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>lee tus archivos</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>propone cambios</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10V4.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10.5V6a1.5 1.5 0 0 1 3 0v7.5a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 15.4a1.5 1.5 0 0 1 2.4-1.8L8 16"/></svg>pide permiso</span></div>
           <p class="rp-lema">Ya no copias y pegas: <em>queda un archivo</em>.</p>
         </div>
 
         <div class="rp-col ia">
-          <div class="rp-tit"><div class="ico">🤖</div><div><span>2 · La IA</span><b>Ya no es un chat</b></div></div>
+          <div class="rp-tit"><div class="ico"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></div><div><span>2 · La IA</span><b>Ya no es un chat</b></div></div>
           <div class="rp-esc" aria-label="La escalera: chat, editor, API, agente">
             <div><small>✓</small><b>Chat</b></div>
             <div class="aqui"><small>hoy</small><b>Editor</b></div>
@@ -509,13 +533,13 @@
         </div>
 
         <div class="rp-col co">
-          <div class="rp-tit"><div class="ico">🎯</div><div><span>3 · El concepto</span><b>Primero el problema</b></div></div>
+          <div class="rp-tit"><div class="ico"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg></div><div><span>3 · El concepto</span><b>Primero el problema</b></div></div>
           <div class="rp-vs">
             <div class="no"><small>SOLUCIÓN</small>Quiero un chatbot</div><i>→</i>
             <div class="si"><small>PROBLEMA</small>Respondo 40 correos iguales por semana</div>
           </div>
           <div class="rp-5" aria-label="Cinco preguntas">
-            <div><b>👤</b>Quién</div><div><b>⏰</b>Cuándo</div><div><b>💸</b>Cuánto</div><div><b>🛠️</b>Cómo hoy</div><div><b>❓</b>Por qué ×3</div>
+            <div><b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></b>Quién</div><div><b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></b>Cuándo</div><div><b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></b>Cuánto</div><div><b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4.5 4.5 0 0 0 5.9 5.9l-8.9 8.9a2.1 2.1 0 0 1-3-3Z" transform="rotate(0)"/><path d="M14.7 6.3l2.5-2.5a4.5 4.5 0 0 1 3 3l-2.5 2.5"/></svg></b>Cómo hoy</div><div><b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg></b>Por qué ×3</div>
           </div>
           <p class="rp-mini">Un objetivo, y solo uno</p>
           <div class="rp-formula">Que <span>quién</span> pueda <span>qué</span> en <span>cuánto</span> en lugar de <span>hoy</span></div>
@@ -1042,6 +1066,16 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   // El QR en grande, para quien llega tarde. Se cierra con clic o Esc.
   var qrGrande = $('#qr-grande');
   $('#ver-qr').addEventListener('click', function () { qrGrande.hidden = false; });
+  // O pequeño y siempre visible en la esquina (se recuerda si el navegador deja).
+  var qrFijo = $('#qr-fijo');
+  function fijarQr(si) {
+    qrFijo.hidden = !si; guarda('qr-fijo', si ? '1' : '');
+    $('#ver-qr').setAttribute('aria-pressed', si ? 'true' : 'false');
+  }
+  fijarQr(lee('qr-fijo') === '1');
+  $('#fijar-qr').addEventListener('click', function () { fijarQr(true); });
+  $('#soltar-qr').addEventListener('click', function (e) { e.stopPropagation(); fijarQr(false); });
+  qrFijo.addEventListener('click', function () { qrGrande.hidden = false; });
   qrGrande.addEventListener('click', function () { qrGrande.hidden = true; });
   window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { qrGrande.hidden = true; } });
 
