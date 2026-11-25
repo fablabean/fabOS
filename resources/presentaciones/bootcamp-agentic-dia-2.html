@@ -24,7 +24,6 @@
   [data-ia]{display:none}
   body.ia-claude [data-ia~=claude], body.ia-gemini [data-ia~=gemini], body.ia-gpt [data-ia~=gpt]{display:block}
   body.ia-claude span[data-ia~=claude], body.ia-gemini span[data-ia~=gemini], body.ia-gpt span[data-ia~=gpt]{display:inline}
-  body.nivel-basico [data-nivel=inter], body.nivel-inter [data-nivel=basico]{display:none !important}
 
   /* barra */
   .barra{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
@@ -209,6 +208,36 @@
   .facilita:hover > .facilita-txt,.facilita:focus-within > .facilita-txt{display:block}
   body.es-participante .facilita{display:none !important}
 
+  /* En vivo: quien presenta lleva la agenda y los demás la siguen. */
+  .solo-profe{display:none !important} body.es-profe .solo-profe{display:inline-flex !important}
+  body.es-profe .facilita.solo-profe{display:inline-block !important}
+  body.es-profe .marca::after{content:" · profesor";color:var(--accent2)}
+  body.es-participante .mando:not(.siempre), body.es-participante .fin-bloque .boton{display:none}
+  .modo{font-size:.86rem;border:1px dashed var(--rule);border-radius:10px;padding:.5rem .8rem;color:var(--soft);margin:.9rem 0 0}
+  body.es-profe .modo{border:0;padding:0;margin:.3rem 0 0}
+  body.es-profe .modo b{color:var(--accent2)}
+  body:not(.en-vivo) .modo{display:none}
+
+  /* El QR para seguir en el celular. */
+  header.portada > .wrap{position:relative}
+  .qr-portada{position:absolute;right:1.2rem;top:2.6rem;width:15rem;text-align:center;border:1px solid var(--rule);border-radius:16px;padding:1rem;background:var(--card)}
+  .qr-portada .qr{display:block;width:100%;height:auto;border-radius:8px}
+  .qr-portada b{display:block;margin:.7rem 0 .15rem;font-size:.95rem}
+  .qr-portada span{display:block;font:600 .72rem "JetBrains Mono",monospace;color:var(--accent);word-break:break-all}
+  .qr-portada small{display:block;color:var(--muted);font-size:.78rem;margin-top:.3rem;line-height:1.35}
+  @media (min-width:1101px){header.portada > .wrap{padding-right:calc(1.2rem + 17rem)}}
+  @media (max-width:1100px){.qr-portada{position:static;width:auto;max-width:22rem;display:grid;grid-template-columns:7rem 1fr;gap:.9rem;align-items:center;text-align:left;margin-top:1.4rem}
+    .qr-portada b{margin-top:0}
+    header.portada > .wrap{display:flex;flex-direction:column} .qr-portada{order:1} header.portada .dias{order:2}}
+  @media (max-width:760px){.qr-portada{display:none}}
+  .qr-grande{position:fixed;inset:0;z-index:50;display:grid;place-items:center;align-content:center;gap:1rem;background:color-mix(in srgb,var(--bg) 94%,transparent);cursor:pointer;text-align:center;padding:1rem}
+  .qr-grande[hidden]{display:none}
+  .qr-grande .qr{width:min(70vh,80vw);height:auto;border-radius:14px}
+  .qr-grande b{font-size:clamp(1.2rem,2.6vw,2rem)}
+  .qr-grande span{font:600 clamp(1rem,2vw,1.5rem) "JetBrains Mono",monospace;color:var(--accent)}
+  .solo-part{display:none !important} body.es-participante .solo-part{display:inline-flex !important}
+  #seguir[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -229,10 +258,8 @@
 <div class="barra">
   <div class="wrap">
     <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 2 de 3</div>
-    <div class="so" role="group" aria-label="Nivel">
-      <button type="button" data-nivel-elige="basico" aria-pressed="true">Básico</button>
-      <button type="button" data-nivel-elige="inter" aria-pressed="false">Intermedio</button>
-    </div>
+    <button type="button" class="boton chico solo-profe" id="ver-qr" title="Mostrar el QR en grande">▦ QR</button>
+    <button type="button" class="boton chico solo-part" id="seguir" aria-pressed="true" title="Tu pantalla pasa sola a la sección que muestra quien presenta">● Siguiendo a quien presenta</button>
     <div class="reloj" aria-live="off">
       <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
       <div class="pista" id="r-pista"><div class="lleno" id="r-lleno"></div><div class="ahora" id="r-ahora"></div></div>
@@ -240,8 +267,9 @@
   </div>
 </div>
 
-<header class="portada">
+<header class="portada" id="portada">
   <div class="wrap">
+    <div class="qr-portada"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><div><b>Síguela en tu celular</b><span>fablabean.com/zonas/agentic/dia-2</span><small>Escanéalo: verás la presentación en vivo, al ritmo de quien presenta.</small></div></div>
     <div class="kicker">Sesión 02 · miércoles 25 de noviembre · 6:00 p. m.</div>
     <h1>Construir en paralelo, <span>con la IA de tu lado</span>.</h1>
     <p class="lead">Hoy es de hacer. Una hora corta para pasar de tu <span class="mono">PROYECTO.md</span> a una primera versión que funcione, cada quien en su reto y todos comparando caminos. Después sigue el trabajo autónomo con el asistente de fabOS: ahí vas a ver qué hace la IA y qué sigues haciendo tú.</p>
@@ -256,13 +284,10 @@
       <div class="dia hoy"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
       <div class="dia"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Tu programa habla con la IA por API, y el concepto de agente.</div>
     </div>
-    <p class="nivel-tit">¿Cómo quieres ver la sesión?</p>
-    <div class="nivel" role="group" aria-label="Nivel">
-      <button type="button" data-nivel-elige="basico" aria-pressed="true"><span class="t">Básico</span><span class="s">He chateado con una IA, pero no la he usado para trabajar sobre archivos.</span></button>
-      <button type="button" data-nivel-elige="inter" aria-pressed="false"><span class="t">Intermedio</span><span class="s">Ya uso la IA en el editor o he hecho scripts. Dame lo directo y un paso más.</span></button>
-    </div>
   </div>
 </header>
+
+<div class="qr-grande" id="qr-grande" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><b>Escanéalo para seguir en vivo</b><span>fablabean.com/zonas/agentic/dia-2</span></div>
 
 <main class="wrap">
 
@@ -276,6 +301,7 @@
       <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
       <button type="button" class="boton" id="reiniciar">Borrar lo marcado</button>
     </div>
+    <p class="modo" id="modo"></p>
     <table class="tabla">
       <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
       <tbody id="filas"></tbody>
@@ -287,7 +313,7 @@
       <div><b>Bloque en curso</b><span id="m-bloque">—</span></div>
       <div><b>Al ritmo de ahora, terminamos</b><span id="m-fin">—</span></div>
     </div>
-    <div class="mando"><a class="boton" href="#autonomo">Ir al trabajo autónomo ↓</a></div>
+    <div class="mando siempre"><a class="boton" href="#autonomo">Ir al trabajo autónomo ↓</a></div>
   </section>
 
   <!-- ===================================================== 1 -->
@@ -470,6 +496,7 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   var n0 = null, i0 = null;
   try { n0 = localStorage.getItem('agentic-nivel'); i0 = localStorage.getItem('agentic-ia'); } catch (_) {}
   nivel(n0); ia(i0);
+  document.body.classList.remove('nivel-basico', 'nivel-inter');
   $$('[data-nivel-elige]').forEach(function (b) { b.addEventListener('click', function () { nivel(b.dataset.nivelElige); }); });
   $$('[data-ia-elige]').forEach(function (b) { b.addEventListener('click', function () { ia(b.dataset.iaElige); }); });
 
@@ -645,6 +672,119 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   }
   pista.addEventListener('click', function (e) { bloqueEn(e).el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   pista.addEventListener('mousemove', function (e) { var b = bloqueEn(e); pista.title = b.titulo + ' · ' + b.min + ' min'; });
+
+  // ------------------------------------------------------------- en vivo
+  // Todos ven la misma agenda (la lleva el profesor) y siguen su pantalla.
+  // El profesor entra con el enlace que le da fabOS (#profe=…). Sin conexión
+  // con fabOS, la página funciona sola.
+  var SALA = 'agentic-dia-2';
+  var API = (/(^|\.)fablabean\.com$/.test(location.hostname) ? 'https://fablabean.com' : location.protocol + '//' + location.host) + '/api/envivo/' + SALA;
+  var yo = lee('yo');
+  if (!/^[a-z0-9]{8,40}$/.test(yo || '')) {
+    yo = (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, '').slice(0, 32);
+    guarda('yo', yo);
+  }
+  var profe = (location.hash.match(/profe=([A-Za-z0-9]{32})/) || [])[1] || '';
+  var soyProfe = false, desfase = 0, agendaCargada = false;
+  function seis() { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); }
+  function pedir(ruta, datos) {
+    var op = datos ? { method: 'POST', body: new URLSearchParams(datos) } : { cache: 'no-store' };
+    return fetch(API + ruta, op).then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.json(); });
+  }
+
+  // La agenda del profesor, en el reloj de cada quien.
+  function tomarAgenda(a) {
+    a = a || {};
+    inicio = a.inicio ? a.inicio - desfase : seis();
+    bloques.forEach(function (b) {
+      b.listo = a.listos && a.listos[b.id] ? a.listos[b.id] - desfase : null;
+      b.min = (a.min && a.min[b.id]) || b.base;
+      b.fila.querySelector('input').value = b.min;
+    });
+    pintar();
+  }
+  function subir() {
+    if (!soyProfe) { return; }
+    var a = { inicio: Math.round(inicio + desfase), listos: {}, min: {} };
+    bloques.forEach(function (b) {
+      if (b.listo) { a.listos[b.id] = Math.round(b.listo + desfase); }
+      if (b.min !== b.base) { a.min[b.id] = b.min; }
+    });
+    pedir('/control', { profe: profe, v: yo, accion: 'agenda', agenda: JSON.stringify(a) }).catch(function () {});
+  }
+  ['#empezar', '#a-las-6', '#reiniciar'].forEach(function (s) { $(s).addEventListener('click', function () { setTimeout(subir, 0); }); });
+  bloques.forEach(function (b) {
+    b.pie.querySelector('button').addEventListener('click', function () { setTimeout(subir, 0); });
+    b.fila.querySelector('input').addEventListener('change', function () { setTimeout(subir, 0); });
+  });
+
+  function aplicar(e) {
+    desfase = e.ahora - Date.now();
+    soyProfe = !!e.profe;
+    document.body.classList.add('en-vivo');
+    document.body.classList.toggle('es-profe', soyProfe);
+    document.body.classList.toggle('es-participante', !soyProfe);
+    $$('.tabla input').forEach(function (inp) { inp.disabled = !soyProfe; });
+    $('#modo').innerHTML = soyProfe
+      ? '<span class="facilita"><button type="button" class="ico-f" aria-label="Nota para quien presenta">?</button><span class="facilita-txt"><b>Eres quien presenta</b>Lo que marques aquí (inicio, bloques terminados, minutos) lo ven todos al instante. ' + e.vivos + (e.vivos === 1 ? ' persona conectada.' : ' personas conectadas.') + '</span></span>'
+      : 'Quien presenta lleva la agenda: las horas y el avance se actualizan solos.';
+    // El profesor recupera su agenda al volver a abrir; después manda él.
+    if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
+    seguirSeccion(e);
+  }
+  function sondear() {
+    if (document.hidden) { return; }
+    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '')).then(aplicar).catch(function () {});
+  }
+
+  // El QR en grande, para quien llega tarde. Se cierra con clic o Esc.
+  var qrGrande = $('#qr-grande');
+  $('#ver-qr').addEventListener('click', function () { qrGrande.hidden = false; });
+  qrGrande.addEventListener('click', function () { qrGrande.hidden = true; });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { qrGrande.hidden = true; } });
+
+  // Seguir a quien presenta: el profesor cuenta qué sección tiene en
+  // pantalla y los celulares pasan a ella cuando cambia.
+  var seguir = true, seccionVista = null, seccionEnviada = null, avisar = null;
+  function seccionActual() {
+    var h = barra.offsetHeight, mejor = null, area = 0;
+    $$('header.portada,section.agenda,section.bloque,section.autonomo').forEach(function (s) {
+      var r = s.getBoundingClientRect(), vis = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, h);
+      if (vis > area) { area = vis; mejor = s; }
+    });
+    return mejor && mejor.id;
+  }
+  window.addEventListener('scroll', function () {
+    if (!soyProfe) { return; }
+    clearTimeout(avisar);
+    avisar = setTimeout(function () {
+      var id = seccionActual();
+      if (id && id !== seccionEnviada) {
+        seccionEnviada = id;
+        pedir('/control', { profe: profe, v: yo, accion: 'seccion', seccion: id }).catch(function () { seccionEnviada = null; });
+      }
+    }, 600);
+  }, { passive: true });
+  function irA(id) {
+    var s = id && document.getElementById(id);
+    if (s && seccionActual() !== id) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
+  var botonSeguir = $('#seguir');
+  botonSeguir.addEventListener('click', function () {
+    seguir = !seguir;
+    botonSeguir.setAttribute('aria-pressed', seguir ? 'true' : 'false');
+    botonSeguir.textContent = seguir ? '● Siguiendo a quien presenta' : '○ Seguir a quien presenta';
+    if (seguir) { irA(seccionVista); }
+  });
+  function seguirSeccion(e) {
+    if (soyProfe || !e.seccion || e.seccion === seccionVista) { return; }
+    seccionVista = e.seccion;
+    if (seguir) { irA(e.seccion); }
+  }
+
+  sondear();
+  setInterval(sondear, 3000);
+  document.addEventListener('visibilitychange', sondear);
 
   // ---------------------------------------------------------- cronómetros
   $$('.crono').forEach(function (c) {

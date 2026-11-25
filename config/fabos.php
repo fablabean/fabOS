@@ -292,6 +292,13 @@ return [
                 // El bloque 2: cada quien publica su proyecto en un minuto.
                 'muro' => true,
             ],
+            // Sin votos ni muro: la agenda y seguir a quien presenta.
+            'agentic-dia-2' => [
+                'titulo' => 'Bootcamp AGENTIC · Día 2',
+                'zona' => 'agentic',
+                'modulo' => 'dia-2',
+                'preguntas' => [],
+            ],
         ],
     ],
 
