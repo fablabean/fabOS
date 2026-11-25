@@ -88,13 +88,12 @@ class AsistenteAgenticTest extends TestCase
         $this->postJson('/asistente/agentic/mensaje', $hola)->assertStatus(403)->assertJsonFragment(['error' => 'El asistente está apagado por ahora. Quien dicta el bootcamp lo vuelve a prender.']);
     }
 
-    public function test_responde_por_partes_con_las_instrucciones_y_el_nivel(): void
+    public function test_responde_por_partes_con_las_instrucciones(): void
     {
         $this->ollamaResponde();
 
         $r = $this->postJson('/asistente/agentic/mensaje', [
             'mensajes' => [['role' => 'user', 'content' => 'Hazme el programa completo']],
-            'nivel' => 'inter',
         ]);
 
         $r->assertOk();
@@ -109,7 +108,7 @@ class AsistenteAgenticTest extends TestCase
             return $q['stream'] === true
                 && $m[0]['role'] === 'system'
                 && str_contains($m[0]['content'], 'No haces el trabajo por la persona')
-                && str_contains($m[0]['content'], 'intermedio')
+                && str_contains($m[0]['content'], 'Adapta el nivel a la persona')
                 && $m[1]['content'] === 'Hazme el programa completo';
         });
     }

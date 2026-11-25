@@ -82,7 +82,7 @@
   .salir{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:.8rem;padding:0}
 </style>
 </head>
-<body class="nivel-basico">
+<body>
 
 <div class="barra"><div class="in">
   <div class="marca">BOOTCAMP <b>AGENTIC</b> · asistente</div>
@@ -97,10 +97,6 @@
   </div>
   @endif
   <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
-    <div class="so" role="group" aria-label="Nivel">
-      <button type="button" data-nivel="basico" aria-pressed="true">Básico</button>
-      <button type="button" data-nivel="inter" aria-pressed="false">Intermedio</button>
-    </div>
     @if ($participante)<button type="button" class="boton" id="nueva">Nueva conversación</button>@endif
   </div>
 </div></div>
@@ -190,7 +186,6 @@
   var avisoBase = aviso.textContent;
   var token = document.querySelector('meta[name=csrf-token]').content;
   var mensajes = [];
-  var nivel = 'basico';
   var ocupado = false;
   var tiempo = document.getElementById('tiempo');
   function pintarTiempo(quedan) {
@@ -201,14 +196,6 @@
   if (tiempo.classList.contains('nada')) { cerrar('Se acabó tu hora de hoy. Mañana vuelves a tener tu tiempo.'); }
   var LLAVE = /\b(sk-ant-[A-Za-z0-9_\-]{10,}|sk-(proj-)?[A-Za-z0-9_\-]{20,}|AIza[0-9A-Za-z_\-]{30,})\b/;
 
-  try { nivel = localStorage.getItem('agentic-nivel') === 'inter' ? 'inter' : 'basico'; } catch (_) {}
-  function elegirNivel(n) {
-    nivel = n;
-    document.querySelectorAll('[data-nivel]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.nivel === n ? 'true' : 'false'); });
-    try { localStorage.setItem('agentic-nivel', n); } catch (_) {}
-  }
-  elegirNivel(nivel);
-  document.querySelectorAll('[data-nivel]').forEach(function (b) { b.addEventListener('click', function () { elegirNivel(b.dataset.nivel); }); });
 
   // Un markdown pequeño: negritas, código, listas y párrafos. Todo escapado primero.
   function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -265,7 +252,7 @@
     fetch('{{ route('asistente.agentic.mensaje') }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream','X-CSRF-TOKEN': token },
-      body: JSON.stringify({ mensajes: mensajes, nivel: nivel })
+      body: JSON.stringify({ mensajes: mensajes })
     }).then(function (r) {
       if (r.status === 403) {
         return r.json().then(function (j) {

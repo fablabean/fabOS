@@ -74,7 +74,6 @@ class AsistenteAgenticController extends Controller
             'mensajes' => ['required', 'array', 'min:1', 'max:40'],
             'mensajes.*.role' => ['required', 'in:user,assistant'],
             'mensajes.*.content' => ['required', 'string', 'max:8000'],
-            'nivel' => ['nullable', 'in:basico,inter'],
         ]);
 
         // Lo más viejo se suelta primero: el modelo trabaja con unas 8 mil
@@ -89,7 +88,7 @@ class AsistenteAgenticController extends Controller
         $acceso->anotar($p->codigo);
         $quedan = $acceso->hoy($p->codigo)['quedan'];
 
-        return new StreamedResponse(function () use ($asistente, $mensajes, $datos, $quedan) {
+        return new StreamedResponse(function () use ($asistente, $mensajes, $quedan) {
             $enviar = function (array $evento) {
                 echo 'data: ' . json_encode($evento, JSON_UNESCAPED_UNICODE) . "\n\n";
                 if (ob_get_level() > 0) {
@@ -108,7 +107,7 @@ class AsistenteAgenticController extends Controller
             $enviar(['estado' => 'pensando', 'quedan' => $quedan]);
 
             try {
-                $asistente->conversar($mensajes->all(), $datos['nivel'] ?? 'basico', fn (string $t) => $enviar(['texto' => $t]));
+                $asistente->conversar($mensajes->all(), fn (string $t) => $enviar(['texto' => $t]));
                 $enviar(['fin' => true]);
             } catch (\Throwable $e) {
                 Log::warning('Asistente AGENTIC: ' . $e->getMessage());

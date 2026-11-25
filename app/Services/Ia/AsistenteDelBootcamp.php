@@ -56,10 +56,11 @@ TXT;
      * @param  list<array{role:string,content:string}>  $mensajes
      * @param  callable(string):void  $alRecibir
      */
-    public function conversar(array $mensajes, string $nivel, callable $alRecibir): void
+    public function conversar(array $mensajes, callable $alRecibir): void
     {
-        $sistema = self::INSTRUCCIONES . "\n\nNivel que eligió la persona: "
-            . ($nivel === 'inter' ? 'intermedio (ya programa un poco: puedes ser más directo y técnico).' : 'básico (explica todo con palabras simples y pasos clic a clic).');
+        // Sin niveles que elegir: el modelo se adapta a cómo escribe cada quien.
+        $sistema = self::INSTRUCCIONES . "\n\nAdapta el nivel a la persona: si por cómo escribe se nota que ya programa, "
+            . 'sé más directo y técnico; si no, explica con palabras simples y pasos clic a clic.';
 
         $cliente = Http::baseUrl((string) config('fabos.servidor_fablab.url'))
             ->timeout((int) config('fabos.servidor_fablab.timeout', 120))

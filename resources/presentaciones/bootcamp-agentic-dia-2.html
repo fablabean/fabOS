@@ -476,6 +476,21 @@
     .ciclo{aspect-ratio:auto;grid-template-columns:1fr;grid-template-rows:none;grid-template-areas:"a" "b" "e" "d" "c";gap:.8rem}
     .ciclo-aro{display:none} .ce{max-width:none} .ce-centro{border-radius:16px;aspect-ratio:auto;width:100%}}
 
+  /* ------------------------------------------------ 03 · los retos */
+  .retos .reto{position:relative;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:.15rem;padding-top:1rem;transition:border-color .15s,transform .15s}
+  .retos .reto:hover,.retos .reto:focus-visible{border-color:var(--accent);transform:translateY(-2px);outline:none}
+  .reto-i{width:2.6rem;height:2.6rem;border-radius:12px;display:grid;place-items:center;border:1px solid var(--rule);background:var(--card);color:var(--accent);margin-bottom:.5rem}
+  .reto-i .ic{width:1.35rem;height:1.35rem}
+  .reto[data-reto="3"] .reto-i{color:var(--accent2)}
+  .reto-ver{margin-top:auto;padding-top:.7rem;display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:600;color:var(--muted)}
+  .reto:hover .reto-ver{color:var(--accent)}
+  .reto-caja{width:min(48rem,100%)}
+  .reto-pest{display:flex;gap:.4rem;margin-bottom:.8rem}
+  .reto-pest button{border:1px solid var(--rule);background:none;color:var(--soft);border-radius:99px;padding:.35rem .9rem;font:600 .85rem Inter,sans-serif;cursor:pointer}
+  .reto-pest button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#06231A}
+  #reto-pre .rdato{color:var(--warn)}
+  .reto-pie{color:var(--muted);font-size:.86rem;margin:.6rem 0 0}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -568,6 +583,57 @@
     <div class="vista-cuerpo" id="vista-cuerpo"></div>
   </div>
 </div>
+
+<div class="vista" id="reto-v" hidden role="dialog" aria-modal="true" aria-labelledby="reto-t">
+  <div class="vista-caja reto-caja">
+    <div class="vista-cab"><b id="reto-t"></b><span id="reto-nivel"></span><button type="button" class="vista-x" data-cerrar-reto aria-label="Cerrar">×</button></div>
+    <div class="vista-cuerpo">
+      <div class="reto-pest" role="tablist"><button type="button" role="tab" data-pest="vacio" aria-selected="true">Para copiar</button><button type="button" role="tab" data-pest="lleno" aria-selected="false">Con datos de ejemplo</button></div>
+      <div class="cmd"><div class="lbl" id="reto-lbl">Pedido para copiar</div><pre id="reto-pre"></pre></div>
+      <p class="reto-pie" id="reto-pie"></p>
+    </div>
+  </div>
+</div>
+<template id="reto-1-vacio">Vamos con el paso 1 del plan.
+Construye la versión más simple posible que tome este ejemplo real
+y muestre el resultado esperado. Usa un solo archivo.
+Antes de crearlo, explícame en tres líneas qué vas a hacer.
+Después dime exactamente cómo lo ejecuto para probarlo.
+
+Ejemplo real: <span class="hueco">[pega aquí tu ejemplo]</span>
+Resultado esperado: <span class="hueco">[cómo debería verse]</span></template>
+<template id="reto-1-lleno">Vamos con el paso 1 del plan.
+Construye la versión más simple posible que tome este ejemplo real
+y muestre el resultado esperado. Usa un solo archivo.
+Antes de crearlo, explícame en tres líneas qué vas a hacer.
+Después dime exactamente cómo lo ejecuto para probarlo.
+
+Ejemplo real: <span class="rdato">«¿Puedo usar la cortadora láser mañana en la tarde?
+Es para la maqueta de Arquitectura.» (Laura Gómez)</span>
+Resultado esperado: <span class="rdato">Grupo: RESERVA · Urgente: SÍ</span></template>
+<template id="reto-2-vacio">Ahora haz que funcione con la entrada real: <span class="hueco">[archivo, carpeta u hoja]</span>.
+Si algo viene vacío o con un formato raro, que lo diga en un mensaje claro
+en lugar de fallar. Agrega una prueba con tres ejemplos reales y su resultado esperado.
+Muéstrame los cambios antes de aplicarlos.</template>
+<template id="reto-2-lleno">Ahora haz que funcione con la entrada real: <span class="rdato">correos.csv (10 correos del FabLab)</span>.
+Si algo viene vacío o con un formato raro, que lo diga en un mensaje claro
+en lugar de fallar. Agrega una prueba con tres ejemplos reales y su resultado esperado.
+Muéstrame los cambios antes de aplicarlos.
+
+Los tres ejemplos de la prueba:
+<span class="rdato">1. «Quisiera reservar la impresora de resina para el viernes» → RESERVA · SÍ
+2. «¿Qué precio tiene grabar 50 llaveros de madera?» → COTIZACIÓN · NO
+3. «Solo quería agradecerles por la ayuda» → REVISAR · NO</span></template>
+<template id="reto-3-vacio">Ya resolví mi problema por la vía <span class="hueco">[A, B o C]</span>.
+Ayúdame a resolverlo también por la vía <span class="hueco">[otra]</span>, con los mismos tres ejemplos.
+Luego arma una tabla que compare las dos: tiempo de uso, costo,
+errores que encontramos y quién podría mantenerla sin mí.
+No decidas por mí cuál es mejor: dame los criterios.</template>
+<template id="reto-3-lleno">Ya resolví mi problema por la vía <span class="rdato">A (un pedido bien escrito)</span>.
+Ayúdame a resolverlo también por la vía <span class="rdato">B (un script en Python que lee correos.csv)</span>, con los mismos tres ejemplos.
+Luego arma una tabla que compare las dos: tiempo de uso, costo,
+errores que encontramos y quién podría mantenerla sin mí.
+No decidas por mí cuál es mejor: dame los criterios.</template>
 
 <main class="wrap">
 
@@ -711,39 +777,14 @@
 
   <!-- ===================================================== 3 -->
   <section class="bloque" id="b-retos" data-min="35" data-titulo="Retos en paralelo">
-    <div class="cab"><div class="num">03</div><div><h2>Retos en paralelo <span class="hora"></span></h2><p class="para">Treinta y cinco minutos para construir. Elige el reto que va con tu nivel y con tu proyecto.</p></div></div>
+    <div class="cab"><div class="num">03</div><div><h2>Retos en paralelo <span class="hora"></span></h2><p class="para">Elige el reto que va con tu proyecto. Toca uno para ver su pedido.</p></div></div>
     <div class="cuerpo">
-      <div class="crono" data-cuenta="2100">
-        <div class="cifra">35:00</div>
-        <button type="button" class="boton pri" data-crono="ir">▶ Empezar los retos</button>
-        <button type="button" class="boton chico" data-crono="parar">Parar</button>
+      <div class="tarjetas retos">
+        <button type="button" class="tarjeta reto bien" data-reto="1"><span class="reto-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-8"/><path d="M12 13c0-4 3-6 7-6 0 4-3 6-7 6Z"/><path d="M12 15c0-3-2.5-5-6-5 0 3 2.5 5 6 5Z"/></svg></span><div class="n">RETO 1 · BÁSICO</div><h4>La versión más simple</h4><p>Que la IA del editor construya lo mínimo que procese <strong>un</strong> ejemplo real tuyo: un script o una página que lo reciba y muestre el resultado.</p><span class="reto-ver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>Ver el pedido</span></button>
+        <button type="button" class="tarjeta reto" data-reto="2"><span class="reto-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg></span><div class="n">RETO 2 · INTERMEDIO</div><h4>Que aguante la realidad</h4><p>Que lea la entrada real (un archivo, una carpeta, una hoja), que avise claro cuando algo viene mal, y una prueba que lo demuestre.</p><span class="reto-ver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>Ver el pedido</span></button>
+        <button type="button" class="tarjeta reto" data-reto="3"><span class="reto-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 21h10M5 7h14"/><path d="M5 7 2 13a3 3 0 0 0 6 0Z"/><path d="m19 7-3 6a3 3 0 0 0 6 0Z"/></svg></span><div class="n" style="color:var(--accent2)">RETO 3 · AVANZADO</div><h4>Dos vías, una comparación</h4><p>Resuelve tu problema por dos de las vías (A, B o C) y compáralas: tiempo, costo, errores y quién lo puede mantener.</p><span class="reto-ver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>Ver el pedido</span></button>
       </div>
-      <div class="tarjetas">
-        <div class="tarjeta bien"><div class="n">RETO 1 · BÁSICO</div><h4>La versión más simple</h4><p>Que la IA del editor construya lo mínimo que procese <strong>un</strong> ejemplo real tuyo: un script o una página que lo reciba y muestre el resultado.</p></div>
-        <div class="tarjeta"><div class="n">RETO 2 · INTERMEDIO</div><h4>Que aguante la realidad</h4><p>Que lea la entrada real (un archivo, una carpeta, una hoja), que avise claro cuando algo viene mal, y una prueba que lo demuestre.</p></div>
-        <div class="tarjeta"><div class="n" style="color:var(--accent2)">RETO 3 · AVANZADO</div><h4>Dos vías, una comparación</h4><p>Resuelve tu problema por dos de las vías (A, B o C) y compáralas: tiempo, costo, errores y quién lo puede mantener.</p></div>
-      </div>
-      <h3>Reto 1: la versión más simple</h3>
-      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Vamos con el paso 1 del plan.
-Construye la versión más simple posible que tome este ejemplo real
-y muestre el resultado esperado. Usa un solo archivo.
-Antes de crearlo, explícame en tres líneas qué vas a hacer.
-Después dime exactamente cómo lo ejecuto para probarlo.
-
-Ejemplo real: <span class="hueco">[pega aquí tu ejemplo]</span>
-Resultado esperado: <span class="hueco">[cómo debería verse]</span></pre></div>
-      <h3>Reto 2: que aguante la realidad</h3>
-      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Ahora haz que funcione con la entrada real: <span class="hueco">[archivo, carpeta u hoja]</span>.
-Si algo viene vacío o con un formato raro, que lo diga en un mensaje claro
-en lugar de fallar. Agrega una prueba con tres ejemplos reales y su resultado esperado.
-Muéstrame los cambios antes de aplicarlos.</pre></div>
-      <h3>Reto 3: dos vías, una comparación</h3>
-      <div class="cmd"><div class="lbl">Pedido para copiar</div><pre>Ya resolví mi problema por la vía <span class="hueco">[A, B o C]</span>.
-Ayúdame a resolverlo también por la vía <span class="hueco">[otra]</span>, con los mismos tres ejemplos.
-Luego arma una tabla que compare las dos: tiempo de uso, costo,
-errores que encontramos y quién podría mantenerla sin mí.
-No decidas por mí cuál es mejor: dame los criterios.</pre></div>
-      <p class="nota"><b>Si la IA se enreda</b> o lleva tres intentos sin funcionar: para, vuelve a tu último punto guardado y pide un paso más pequeño. Insistir con el mismo pedido rara vez funciona.</p>
+      <p class="nota"><b>Si la IA se enreda</b> o lleva tres intentos sin funcionar: para, vuelve a tu último punto guardado y pide un paso más pequeño.</p>
       <div class="facilita"><b>Para quien facilita</b>Rondas por las mesas cada diez minutos: ¿en qué paso vas?, ¿qué probaste? Junta en parejas a quienes estén en la misma vía o con problemas parecidos (los que se anotaron ayer). Que nadie se quede más de cinco minutos bloqueado sin pedir ayuda.</div>
       <label class="check"><input type="checkbox"><span>Mi primera versión funciona con un ejemplo real</span></label>
     </div>
@@ -1377,8 +1418,32 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
     inp.addEventListener('change', function () { inp.closest('.check').classList.toggle('ok', inp.checked); });
   });
 
+  // ---- Los retos: cada tarjeta abre su pedido, vacío o con datos de ejemplo.
+  var retoV = $('#reto-v'), retoN = null;
+  function pestaña(k) {
+    $$('[data-pest]', retoV).forEach(function (b) { b.setAttribute('aria-selected', b.dataset.pest === k ? 'true' : 'false'); });
+    var pre = $('#reto-pre');
+    pre.innerHTML = document.getElementById('reto-' + retoN + '-' + k).innerHTML;
+    $('#reto-lbl').textContent = k === 'vacio' ? 'Pedido para copiar' : 'Ejemplo: los correos del FabLab';
+    $('#reto-pie').textContent = k === 'vacio' ? 'Llena lo que está entre corchetes con lo de tu proyecto.' : 'Así queda con el ejemplo del bloque 1. En amarillo, lo que cambiaste.';
+    // El botón de copiar se arma una vez.
+    if (!$('.copiar', pre.parentNode)) { agregarCopiar(pre); }
+  }
+  $$('.reto[data-reto]').forEach(function (t) {
+    t.addEventListener('click', function () {
+      retoN = t.dataset.reto;
+      $('#reto-t').textContent = 'Reto ' + retoN + ' · ' + $('h4', t).textContent;
+      $('#reto-nivel').textContent = $('.n', t).textContent.split('·')[1] || '';
+      pestaña('vacio');
+      retoV.hidden = false;
+    });
+  });
+  $$('[data-pest]', retoV).forEach(function (b) { b.addEventListener('click', function () { pestaña(b.dataset.pest); }); });
+  retoV.addEventListener('click', function (e) { if (e.target === retoV || e.target.hasAttribute('data-cerrar-reto')) { retoV.hidden = true; } });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { retoV.hidden = true; } });
+
   // ------------------------------------------------------- copiar pedidos
-  $$('.cmd pre').forEach(function (pre) {
+  function agregarCopiar(pre) {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'copiar'; b.textContent = 'Copiar';
     b.addEventListener('click', function () {
       var copia = pre.cloneNode(true);
@@ -1396,7 +1461,8 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
       if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
     });
     pre.parentNode.appendChild(b);
-  });
+  }
+  $$('.cmd pre').forEach(function (pre) { if (pre.id !== 'reto-pre') { agregarCopiar(pre); } });
 })();
 </script>
 <script>
