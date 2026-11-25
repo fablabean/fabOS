@@ -169,6 +169,50 @@ class PresentacionesEnVivoTest extends TestCase
         $this->assertFalse($this->estado()['registro']);
     }
 
+    public function test_los_tweets_los_lee_la_ia_del_fablab_y_salen_en_el_muro(): void
+    {
+        config(['fabos.servidor_fablab.activo' => true, 'fabos.servidor_fablab.url' => 'http://pgx.test:11434']);
+        \Illuminate\Support\Facades\Http::fake(['pgx.test:11434/api/chat' => \Illuminate\Support\Facades\Http::response([
+            'message' => ['content' => json_encode(['tono' => 'Humor', 'hashtag' => '#Café Y Código!', 'respuesta' => 'El café también compila. <b>Sigue así</b>'])],
+        ])]);
+        $sala = 'agentic-dia-2';
+        $url = "/api/envivo/$sala/tuit";
+
+        // Sin ID no se publica.
+        $this->post($url, ['v' => 'ana12345', 'texto' => 'Hola muro'])->assertStatus(422)->assertJsonFragment(['error' => 'Primero recibe tu ID: escribe tu nombre arriba.']);
+
+        $this->post("/api/envivo/$sala/registro", ['v' => 'ana12345', 'nombre' => 'Ana Ruiz'])->assertOk();
+        $this->post($url, ['v' => 'ana12345', 'texto' => 'Sin café no hay código'])->assertOk();
+
+        // La cola corre enseguida en las pruebas: el tweet ya viene leído y limpio.
+        $t = $this->getJson("/api/envivo/$sala/estado?v=ana12345")->json('tweets');
+        $this->assertCount(1, $t['lista']);
+        $this->assertSame('listo', $t['lista'][0]['estado']);
+        $this->assertSame('humor', $t['lista'][0]['tono']);
+        $this->assertSame('#CaféYCódigo', $t['lista'][0]['hashtag']);
+        $this->assertSame('El café también compila. Sigue así', $t['lista'][0]['respuesta']);
+        $this->assertSame('Ana', $t['lista'][0]['nombre']);
+        $this->assertTrue($t['lista'][0]['mio']);
+        $this->assertArrayNotHasKey('codigo', $t['lista'][0]);
+
+        // Con la versión al día, no viajan.
+        $this->assertNull($this->getJson("/api/envivo/$sala/estado?v=ana12345&t=" . $t['version'])->json('tweets'));
+
+        // Tres por persona.
+        $this->post($url, ['v' => 'ana12345', 'texto' => 'dos']);
+        $this->post($url, ['v' => 'ana12345', 'texto' => 'tres']);
+        $this->post($url, ['v' => 'ana12345', 'texto' => 'cuatro'])->assertStatus(422);
+
+        // Un tono que no está en la lista queda en «otro».
+        $this->assertSame('otro', \App\Services\Ia\ClasificadorDeTweets::limpiar(['tono' => 'furia'])['tono']);
+
+        // El profesor vacía el muro; el día 1 no tiene tweets.
+        $clave = app(EnVivo::class)->claveDeProfesor($sala);
+        $this->post("/api/envivo/$sala/control", ['profe' => $clave, 'accion' => 'vaciar-tweets'])->assertOk();
+        $this->assertSame([], $this->getJson("/api/envivo/$sala/estado?v=ana12345")->json('tweets.lista'));
+        $this->post('/api/envivo/' . self::SALA . '/tuit', ['v' => 'ana12345', 'texto' => 'hola'])->assertNotFound();
+    }
+
     public function test_el_panel_da_el_enlace_de_profesor_y_reinicia(): void
     {
         $admin = User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);

@@ -377,7 +377,7 @@ class EnVivo
      * @param  ?int  $versionMuro  la que ya tiene el navegador: si es la misma,
      *                             el muro no viaja (cada pocos segundos, treinta veces).
      */
-    public function estado(string $sala, ?string $quien, ?string $clave = null, ?int $versionMuro = null): array
+    public function estado(string $sala, ?string $quien, ?string $clave = null, ?int $versionMuro = null, ?int $versionTweets = null): array
     {
         if ($quien) {
             $this->anotarVivo($sala, $quien);
@@ -388,8 +388,16 @@ class EnVivo
             $muro = $this->muro($sala) + ['mia' => $quien ? $this->miTarjeta($sala, $quien) : null];
         }
 
+        // Los tweets, como el muro: solo viajan cuando cambian.
+        $tweets = null;
+        $muroTweets = app(TweetsEnVivo::class);
+        if ($muroTweets->activo($sala) && $versionTweets !== $muroTweets->version($sala)) {
+            $tweets = $muroTweets->muro($sala, $quien);
+        }
+
         return [
             'muro' => $muro,
+            'tweets' => $tweets,
             'ronda' => $this->ronda($sala),
             'votos' => $this->votos($sala),
             'mios' => $quien ? $this->mios($sala, $quien) : [],

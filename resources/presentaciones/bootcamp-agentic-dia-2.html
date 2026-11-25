@@ -491,6 +491,52 @@
   #reto-pre .rdato{color:var(--warn)}
   .reto-pie{color:var(--muted);font-size:.86rem;margin:.6rem 0 0}
 
+  /* ------------------------------------------------ 04 · la IA adentro */
+  .tw-flujo{display:flex;align-items:flex-start;justify-content:center;gap:.5rem;flex-wrap:wrap;margin:1rem 0 1.2rem}
+  .tw-flujo > i{font-style:normal;color:var(--muted);margin-top:.9rem}
+  .tw-p{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.2rem;min-width:8.5rem}
+  .tw-pi{width:2.9rem;height:2.9rem;border-radius:13px;display:grid;place-items:center;border:1px solid var(--rule);background:var(--card);color:var(--soft)}
+  .tw-pi .ic{width:1.35rem;height:1.35rem}
+  .tw-p.ia .tw-pi{border-color:#9C8CFF;color:#9C8CFF;box-shadow:0 0 0 3px color-mix(in srgb,#9C8CFF 18%,transparent)}
+  .tw-p b{font-size:.92rem} .tw-p small{font-size:.76rem;color:var(--muted)}
+  .tw-zona{display:grid;grid-template-columns:minmax(16rem,22rem) minmax(0,1fr);gap:1.4rem;align-items:start}
+  .tw-form{border:1px solid var(--rule);border-radius:14px;background:var(--card);padding:.9rem 1rem}
+  .tw-form textarea{width:100%;resize:none;margin-top:.2rem;padding:.6rem .7rem;border-radius:10px;border:1px solid var(--rule);background:var(--bg2);color:var(--ink);font:500 .98rem/1.45 Inter,sans-serif}
+  .tw-form textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .tw-pie{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+  .tw-pie span{font-size:.75rem;color:var(--muted)} .tw-pie span.casi{color:var(--warn)}
+  .tw-aviso{font-size:.8rem;color:var(--muted);margin:.5rem 0 0} .tw-aviso.ok{color:var(--accent)} .tw-aviso.mal{color:var(--bad)}
+  .tw-quedan{font-size:.78rem;color:var(--muted);margin-left:auto}
+  body.es-profe .tw-form textarea,body.es-profe #tw-publicar{opacity:.45;pointer-events:none}
+  .tw-tonos{margin-top:1rem;display:grid;gap:.4rem}
+  .tw-t{display:grid;grid-template-columns:1.2rem 6.6rem 1fr 1.6rem;align-items:center;gap:.45rem;font-size:.82rem;color:var(--soft)}
+  .tw-t .ic{width:1rem;height:1rem;color:var(--muted)}
+  .tw-t .barra-t{height:.55rem;border-radius:99px;background:var(--bg2);overflow:hidden}
+  .tw-t .barra-t i{display:block;height:100%;width:var(--w,0%);border-radius:99px;background:var(--accent);transition:width .6s ease-out}
+  .tw-t b{font:600 .78rem "JetBrains Mono",monospace;color:var(--ink);text-align:right}
+  .tw-cab{display:flex;align-items:center;gap:.7rem;margin-bottom:.6rem} .tw-cab b{font-size:1.05rem} .tw-cab span{color:var(--muted);font-size:.88rem;margin-right:auto}
+  .tw-muro{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.7rem;max-height:calc(100vh - var(--barra,3.3rem) - 17rem);overflow-y:auto;padding-right:.2rem}
+  .tw-vacio{grid-column:1/-1;border:1px dashed var(--rule);border-radius:12px;padding:2.4rem 1rem;text-align:center;color:var(--muted);margin:0}
+  .tw-c{position:relative;border:1px solid var(--rule);border-radius:14px;background:var(--bg2);padding:.75rem .85rem .65rem;display:flex;flex-direction:column;gap:.4rem}
+  .tw-c.mio{border-color:color-mix(in srgb,var(--accent) 55%,var(--rule))}
+  .tw-c.nuevo{animation:tw-llega .6s ease-out}
+  @keyframes tw-llega{from{opacity:0;transform:translateY(8px) scale(.98)}}
+  .tw-c .quien{font-size:.78rem;color:var(--muted)} .tw-c .quien b{color:var(--soft)}
+  .tw-c .texto{margin:0;font-size:.95rem;line-height:1.4;color:var(--ink)}
+  .tw-c .ia{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem}
+  .tw-c .tono{display:inline-flex;align-items:center;gap:.3rem;font-size:.76rem;font-weight:700;padding:.12rem .55rem;border-radius:99px;border:1px solid color-mix(in srgb,#9C8CFF 55%,var(--rule));color:#C9C1FF}
+  .tw-c .tono .ic{width:.9rem;height:.9rem}
+  .tw-c .hash{font:600 .76rem "JetBrains Mono",monospace;color:var(--accent)}
+  .tw-c .resp{margin:0;font-size:.84rem;color:var(--soft);font-style:italic;line-height:1.35}
+  .tw-c .regla{font:500 .68rem "JetBrains Mono",monospace;color:var(--muted);border-top:1px dashed var(--rule);padding-top:.35rem}
+  .tw-c .leyendo{font-size:.8rem;color:#C9C1FF;animation:tw-late 1.2s ease-in-out infinite}
+  @keyframes tw-late{50%{opacity:.4}}
+  .tw-c .x{position:absolute;top:.3rem;right:.35rem;width:1.4rem;height:1.4rem;border-radius:50%;border:1px solid var(--rule);background:var(--bg);color:var(--muted);cursor:pointer;font:700 .8rem Inter,sans-serif;line-height:1;padding:0}
+  .tw-nota{display:flex;gap:.6rem;align-items:flex-start;margin:1rem 0 0;font-size:.9rem;color:var(--soft)}
+  .tw-nota > .ic{width:1.2rem;height:1.2rem;color:var(--warn);margin-top:.15rem}
+  .tw-nota b{color:var(--ink)} .tw-nota em{font-style:normal;color:#C9C1FF}
+  @media (max-width:900px){.tw-zona{grid-template-columns:1fr} .tw-muro{max-height:none}}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -791,20 +837,27 @@ No decidas por mí cuál es mejor: dame los criterios.</template>
   </section>
 
   <!-- ===================================================== 4 -->
-  <section class="bloque" id="b-muestra" data-min="10" data-titulo="Muestra relámpago">
-    <div class="cab"><div class="num">04</div><div><h2>Muestra relámpago <span class="hora"></span></h2><p class="para">Tres o cuatro personas, dos minutos cada una. Lo que funciona, lo que no y por qué.</p></div></div>
+  <section class="bloque" id="b-muestra" data-min="10" data-titulo="La IA, adentro">
+    <div class="cab"><div class="num">04</div><div><h2>La IA, adentro del programa <span class="hora"></span></h2><p class="para">Hasta ahora la IA te ayudó a programar. Ahora vive dentro de lo que construiste.</p></div></div>
     <div class="cuerpo">
-      <div class="cmd"><div class="lbl">Tus dos minutos</div><pre>Mi problema es <span class="hueco">___</span> y elegí la vía <span class="hueco">___</span>.
-Esto ya funciona: <span class="hueco">___</span> (lo muestro con un ejemplo real).
-Donde la IA me ayudó más fue <span class="hueco">___</span>.
-Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre></div>
-      <div class="crono" data-cuenta="120">
-        <div class="cifra">2:00</div>
-        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
-        <button type="button" class="boton chico" data-crono="parar">Parar</button>
-        <span class="cuantos">Van <b data-crono="n">0</b> muestras</span>
+      <div class="tw-flujo"><div class="tw-p"><span class="tw-pi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.8 7L3 21l2-5.6A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><b>Tu tweet</b><small>desde tu celular</small></div><i>→</i><div class="tw-p"><span class="tw-pi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><b>El programa</b><small>fabOS lo recibe</small></div><i>→</i><div class="tw-p ia"><span class="tw-pi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/><path d="M10 10h4v4h-4z"/></svg></span><b>La IA del FabLab</b><small>lo lee y entiende</small></div><i>→</i><div class="tw-p"><span class="tw-pi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9Z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg></span><b>El resultado</b><small>tono · #hashtag · respuesta</small></div></div>
+      <div class="tw-zona">
+        <div class="tw-izq">
+          <form class="tw-form" id="tw-form" autocomplete="off">
+            <div class="enc-cab"><b>Tu tweet</b><span class="tw-quedan" id="tw-quedan"></span></div>
+            <textarea name="texto" maxlength="140" rows="3" placeholder="Lo que quieras: cómo te sientes con la IA, tu proyecto, el tráfico de hoy…" aria-label="Tu tweet"></textarea>
+            <div class="tw-pie"><span id="tw-cuenta" class="mono">0/140</span><button type="submit" class="boton pri" id="tw-publicar">Publicar</button></div>
+            <p class="tw-aviso" id="tw-aviso">Hasta 3 por persona, con tu ID.</p>
+          </form>
+          <div class="tw-tonos" id="tw-tonos" aria-label="Tonos de la sala"></div>
+        </div>
+        <div class="tw-der">
+          <div class="tw-cab"><b>El muro</b><span id="tw-n"></span><button type="button" class="boton chico solo-profe" id="tw-vaciar">Vaciar</button></div>
+          <div class="tw-muro" id="tw-muro"><p class="tw-vacio">Aquí aparecen los tweets, y lo que la IA entendió de cada uno.</p></div>
+        </div>
       </div>
-      <p class="nota ok"><b>Para cerrar entre todos:</b> ¿qué vía funcionó mejor para qué tipo de problema? Un pedido bien escrito gana en rapidez; un script, en repetirse sin ti; una automatización, en que otros la usen. Esa comparación es la solución común del grupo.</p>
+      <p class="tw-nota"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h6"/></svg><span><b>Antes de meter IA, pregúntate si alcanza una regla.</b> Una regla es gratis, instantánea y siempre responde igual: debajo de cada tweet ves lo que diría. La IA entra cuando hace falta <em>entender</em>.</span></p>
+      <div class="facilita">Pide que publiquen desde el celular. Mientras llegan, lee dos o tres en voz alta y compara la regla con la IA: ¿dónde acierta la regla?, ¿dónde solo la IA entiende el tono? Con la × quitas un tweet; «Vaciar» borra el muro.</div>
     </div>
   </section>
 
@@ -1129,11 +1182,94 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
     // El profesor recupera su agenda al volver a abrir; después manda él.
     if (!soyProfe || !agendaCargada) { tomarAgenda(e.agenda); agendaCargada = true; }
     seguirSeccion(e);
+    pintarTweets(e.tweets);
   }
   function sondear() {
     if (document.hidden) { return; }
-    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '')).then(aplicar).catch(function () {});
+    pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '') + (versionTw !== null ? '&t=' + versionTw : '')).then(aplicar).catch(function () {});
   }
+
+  // ---- La IA adentro: los tweets de la sala, leídos por la IA del FabLab.
+  var TONOS = {"entusiasmo": "<path d=\"M13 2 4 14h7l-1 8 9-12h-7Z\"/>", "curiosidad": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-4-4\"/>", "duda": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.2-2.4 3.6\"/><path d=\"M12 17h.01\"/>", "preocupación": "<path d=\"M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "humor": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8.5 14.5s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8\"/><path d=\"M9 9.5h.01M15 9.5h.01\"/>", "otro": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12h.01M12 12h.01M16 12h.01\"/>"};
+  var versionTw = null, twVistos = null;
+  function icTono(t) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (TONOS[t] || TONOS.otro) + '</svg>'; }
+  // Lo que diría una regla, sin IA: mira los signos, no entiende el tono.
+  function regla(t) { return /\?/.test(t) ? 'pregunta' : /!/.test(t) ? 'exclamación' : 'afirmación'; }
+  var twForm = $('#tw-form'), twTexto = twForm.elements.texto, twAviso = $('#tw-aviso');
+  function avisoTw(t, c) { twAviso.textContent = t; twAviso.className = 'tw-aviso ' + (c || ''); }
+  twTexto.addEventListener('input', function () {
+    var n = twTexto.value.length, c = $('#tw-cuenta');
+    c.textContent = n + '/140'; c.classList.toggle('casi', n > 120);
+  });
+  twTexto.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); twForm.requestSubmit(); } });
+  twForm.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!document.body.classList.contains('en-vivo')) { avisoTw('Sin conexión con fabOS.', 'mal'); return; }
+    if (soyProfe) { avisoTw('Publica desde tu celular: escanea el QR.', 'mal'); return; }
+    if (!miId) { abrir('nombre'); avisoTw('Primero recibe tu ID.', 'mal'); return; }
+    var t = twTexto.value.trim();
+    if (t.length < 3) { avisoTw('Escribe algo (hasta 140 caracteres).', 'mal'); return; }
+    var b = $('#tw-publicar'); b.disabled = true;
+    fetch(API + '/tuit', { method: 'POST', body: new URLSearchParams({ v: yo, texto: t }) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.error || 'No se pudo publicar.'); } return j; }); })
+      .then(function (e) { twTexto.value = ''; $('#tw-cuenta').textContent = '0/140'; avisoTw('Publicado ✓ La IA lo está leyendo.', 'ok'); pintarTweets(e.tweets); })
+      .catch(function (x) { avisoTw(x.message && x.message.length < 90 ? x.message : 'No se pudo publicar.', 'mal'); })
+      .then(function () { b.disabled = false; });
+  });
+  $('#tw-vaciar').addEventListener('click', function () {
+    if (soyProfe && window.confirm('¿Vaciar el muro de tweets?')) {
+      pedir('/control', { profe: profe, v: yo, accion: 'vaciar-tweets' }).then(function (e) { pintarTweets(e.tweets); }).catch(function () {});
+    }
+  });
+  function pintarTonos(lista) {
+    var cuenta = {}, max = 0, listos = lista.filter(function (t) { return t.estado === 'listo'; });
+    listos.forEach(function (t) { cuenta[t.tono] = (cuenta[t.tono] || 0) + 1; });
+    Object.keys(TONOS).forEach(function (k) { max = Math.max(max, cuenta[k] || 0); });
+    var cont = $('#tw-tonos'); cont.innerHTML = '';
+    Object.keys(TONOS).forEach(function (k) {
+      var n = cuenta[k] || 0, f = document.createElement('div'); f.className = 'tw-t';
+      f.innerHTML = icTono(k) + '<span></span><span class="barra-t"><i></i></span><b></b>';
+      f.children[1].textContent = k; f.querySelector('b').textContent = n;
+      f.querySelector('i').style.setProperty('--w', max ? (100 * n / max) + '%' : '0%');
+      cont.appendChild(f);
+    });
+  }
+  function pintarTweets(tw) {
+    if (!tw) { return; }
+    versionTw = tw.version;
+    var nuevos = twVistos !== null, ya = twVistos || {}; twVistos = {};
+    var cont = $('#tw-muro'); cont.innerHTML = '';
+    tw.lista.forEach(function (t) {
+      var c = document.createElement('article');
+      c.className = 'tw-c' + (t.mio ? ' mio' : '') + (nuevos && !ya[t.id + t.estado] ? ' nuevo' : '');
+      var q = document.createElement('div'); q.className = 'quien'; q.innerHTML = '<b></b>'; q.firstChild.textContent = t.nombre; c.appendChild(q);
+      var p = document.createElement('p'); p.className = 'texto'; p.textContent = t.texto; c.appendChild(p);
+      if (t.estado === 'pensando') {
+        var l = document.createElement('div'); l.className = 'leyendo'; l.textContent = 'La IA lo está leyendo…'; c.appendChild(l);
+      } else if (t.estado === 'listo') {
+        var ia = document.createElement('div'); ia.className = 'ia';
+        ia.innerHTML = '<span class="tono">' + icTono(t.tono) + '<span></span></span><span class="hash"></span>';
+        ia.querySelector('.tono span').textContent = t.tono; ia.querySelector('.hash').textContent = t.hashtag || '';
+        c.appendChild(ia);
+        if (t.respuesta) { var r = document.createElement('p'); r.className = 'resp'; r.textContent = '«' + t.respuesta + '»'; c.appendChild(r); }
+      } else {
+        var e = document.createElement('div'); e.className = 'leyendo'; e.textContent = 'La IA no respondió esta vez.'; c.appendChild(e);
+      }
+      var rg = document.createElement('div'); rg.className = 'regla'; rg.textContent = 'Regla sin IA: ' + regla(t.texto); c.appendChild(rg);
+      if (soyProfe) {
+        var x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.title = 'Quitar'; x.textContent = '×';
+        x.addEventListener('click', function () { pedir('/control', { profe: profe, v: yo, accion: 'quitar-tweet', id: t.id }).then(function (e) { pintarTweets(e.tweets); }).catch(function () {}); });
+        c.appendChild(x);
+      }
+      twVistos[t.id + t.estado] = true;
+      cont.appendChild(c);
+    });
+    if (!tw.lista.length) { cont.innerHTML = '<p class="tw-vacio">Aquí aparecen los tweets, y lo que la IA entendió de cada uno.</p>'; }
+    $('#tw-n').textContent = tw.lista.length ? '· ' + tw.lista.length + (tw.lista.length === 1 ? ' tweet' : ' tweets') : '';
+    $('#tw-quedan').textContent = soyProfe ? '' : (3 - tw.mios) + ' de 3 disponibles';
+    pintarTonos(tw.lista);
+  }
+  pintarTonos([]);
 
   // ---- Tu ID del bootcamp: quien entra escribe su nombre y recibe un ID
   // corto, para escribirle después a quien presenta (LinkedIn) y que lo

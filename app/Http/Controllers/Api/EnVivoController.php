@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\EnVivo;
+use App\Services\TweetsEnVivo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,7 +26,29 @@ class EnVivoController extends Controller
     {
         abort_unless($this->envivo->existe($sala), 404);
 
-        return $this->json($this->envivo->estado($sala, $this->quien($request), $request->query('profe'), $this->versionMuro($request)));
+        return $this->json($this->envivo->estado($sala, $this->quien($request), $request->query('profe'), $this->versionMuro($request), $this->versionTweets($request)));
+    }
+
+    /** Un tweet para el muro: la IA del FabLab lo lee en la cola. */
+    public function tuit(Request $request, string $sala, TweetsEnVivo $tweets): JsonResponse
+    {
+        abort_unless($this->envivo->existe($sala) && $tweets->activo($sala), 404);
+        $quien = $this->quien($request);
+        abort_unless($quien, 422);
+
+        $error = $tweets->publicar($sala, $quien, (string) $request->input('texto'));
+        if ($error) {
+            return response()->json(['error' => $error], 422, ['Access-Control-Allow-Origin' => '*']);
+        }
+
+        return $this->json($this->envivo->estado($sala, $quien, $request->input('profe')));
+    }
+
+    private function versionTweets(Request $request): ?int
+    {
+        $t = $request->query('t');
+
+        return is_numeric($t) ? (int) $t : null;
     }
 
     /** La tarjeta de quien escribe en el muro (una por navegador; se puede corregir). */
@@ -91,6 +114,8 @@ class EnVivoController extends Controller
             'vaciar-muro' => $this->envivo->vaciarMuro($sala),
             'reiniciar-votos' => $this->envivo->reiniciarVotos($sala),
             'reiniciar-agenda' => $this->envivo->reiniciarAgenda($sala),
+            'quitar-tweet' => app(TweetsEnVivo::class)->quitar($sala, (string) $request->input('id')),
+            'vaciar-tweets' => app(TweetsEnVivo::class)->vaciar($sala),
             default => abort(422),
         };
 

@@ -300,6 +300,8 @@ return [
                 'preguntas' => [],
                 // Quien entra escribe su nombre y recibe un ID que sirve en todo el curso.
                 'registro' => 'agentic',
+                // El bloque 4: mensajes cortos que lee la IA del FabLab (la IA adentro del programa).
+                'tweets' => true,
             ],
         ],
     ],
