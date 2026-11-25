@@ -84,13 +84,19 @@ class CalidadController extends Controller
         $areas = Area::pluck('id', 'slug');
         $deArea = fn (array $slugs) => Asset::whereIn('area_id', $areas->only($slugs)->values())->pluck('id');
 
-        $prototipado = $deArea(['impresion-3d', 'corte-laser']);
+        $prototipado = $deArea(['impresion-3d', 'corte-grabado', 'corte-laser']);
         $vr = $deArea(['vr']);
         $herramientas = Asset::whereIn('kind', Asset::DE_PRESTAMO)->pluck('id');
 
         $reservas = fn () => Reservation::query()->where('is_demo', false);
         $deEquipos = fn ($ids) => $reservas()->where('reservable_type', (new Asset)->getMorphClass())->whereIn('reservable_id', $ids);
-        $hechas = ['completada', 'en_curso'];
+        /*
+         * Realizada: cerrada o en curso, y también la confirmada que ya pasó.
+         * Muchas impresiones se dejan corriendo y nadie las cierra; si no
+         * hubiera ocurrido, estaría como inasistencia o cancelada.
+         */
+        $realizadas = fn ($q) => $q->whereIn('status', ['completada', 'en_curso'])
+            ->orWhere(fn ($w) => $w->where('status', 'confirmada')->where('ends_at', '<', now()));
 
         $fijos = Asset::where('kind', 'fijo')->whereNot('status', 'baja');
 
@@ -106,14 +112,14 @@ class CalidadController extends Controller
             'reservas_desde' => $reservas()->min('starts_at'),
 
             // INV-115 · espacios y herramientas
-            'reservas_espacios'      => $reservas()->where('reservable_type', (new Space)->getMorphClass())->whereIn('status', $hechas)->count(),
-            'reservas_herramientas'  => $deEquipos($herramientas)->whereIn('status', $hechas)->count(),
+            'reservas_espacios'      => $reservas()->where('reservable_type', (new Space)->getMorphClass())->where($realizadas)->count(),
+            'reservas_herramientas'  => $deEquipos($herramientas)->where($realizadas)->count(),
             'herramientas'           => $herramientas->count(),
             'actas_prestamo'         => Acta::whereIn('tipo', ['prestamo_dentro', 'prestamo_fuera'])->whereNot('status', 'anulada')->count(),
 
             // INV-116 · prototipado rápido
-            'reservas_prototipado'   => $deEquipos($prototipado)->whereIn('status', $hechas)->count(),
-            'asesorias'              => $reservas()->where('mode', 'asesoria')->whereIn('status', $hechas)->count(),
+            'reservas_prototipado'   => $deEquipos($prototipado)->where($realizadas)->count(),
+            'asesorias'              => $reservas()->where('mode', 'asesoria')->where($realizadas)->count(),
 
             // INV-114 · impresión a terceros
             'proyectos_externos'     => $proyectos()->where('client_kind', 'externo')->count(),
@@ -124,7 +130,7 @@ class CalidadController extends Controller
 
             // INV-113 · realidad virtual
             'proyectos_vr'           => $proyectos()->where('area_id', $areas['vr'] ?? 0)->count(),
-            'reservas_vr'            => $deEquipos($vr)->whereIn('status', $hechas)->count(),
+            'reservas_vr'            => $deEquipos($vr)->where($realizadas)->count(),
 
             // INV-118 · mantenimiento
             'fijos'                  => (clone $fijos)->count(),

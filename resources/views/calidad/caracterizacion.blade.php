@@ -5,7 +5,6 @@
     $n = fn ($v) => number_format((int) $v, 0, ',', '.');
     $desde = $c['reservas_desde'] ? \Illuminate\Support\Carbon::parse($c['reservas_desde'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
     $primeraOrden = $c['primera_orden'] ? \Illuminate\Support\Carbon::parse($c['primera_orden'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
-    $sinColor = max(0, $c['fijos'] - $c['con_color']);
 
     /*
      * Los cinco procedimientos del FabLab dentro de la caracterización. Cada
@@ -20,8 +19,6 @@
             'evidencias' => [
                 ['Proyectos con cliente externo', $c['proyectos_externos'], $e['proyectos']],
                 ['Externos finalizados', $c['proyectos_externos_fin'], $e['proyectos']],
-                ['Propuestas enviadas (todos los clientes)', $c['proyectos_con_propuesta'], $e['proyectos']],
-                ['Propuestas aceptadas por el cliente', $c['proyectos_aceptados'], $e['proyectos']],
                 ['Formulario de solicitud', null, $e['solicitar']],
             ],
             'ajustes' => [],
@@ -58,7 +55,6 @@
             'hoy' => 'Cada activo tiene ficha y QR para reportar una falla. La pauta preventiva (mensual, bimestral, semestral = A, B, C) abre las órdenes sola el día que toca, con la lista de chequeo de su color. La orden correctiva con paro bloquea la agenda hasta cerrarse con el trabajo hecho y sus fotos. La hoja de vida se genera desde la ficha y enlaza el historial completo.',
             'evidencias' => [
                 ['Activos fijos en inventario', $c['fijos'], $e['activos']],
-                ['Con esquema de color asignado', $c['con_color'] . ' de ' . $c['fijos'], $sinColor ? $e['activos_color'] : $e['activos']],
                 ['Equipos de apoyo (Anexo 2)', $c['de_apoyo'], $e['activos_apoyo']],
                 ['Equipos en la pauta preventiva', $c['con_plan'], $e['pauta']],
                 ['Mantenimientos preventivos cerrados', $c['preventivas'], $e['preventivas']],
@@ -66,8 +62,6 @@
                 ['Actas de baja (ADF-207-f3)', $c['actas_baja'], $e['actas_baja']],
             ],
             'ajustes' => [
-                'Esquema de color del Anexo 1 en cada activo, con su lista de revisión en las órdenes preventivas.',
-                'Marca de equipo de apoyo (Anexo 2): sin hoja de vida.',
                 'Hoja de vida INV-113-f1 generada por FabOS: el historial de mantenimientos es un enlace (y un QR) a las órdenes de esa máquina, no una tabla copiada a mano.',
                 'Acta de baja ADF-207-f3, generada desde el acta de movimiento de tipo baja.',
             ],
@@ -337,7 +331,7 @@
                 </div>
                 @if ($p['ajustes'])
                     <div class="ajustes">
-                        <b>Ajustado para esta auditoría</b>
+                        <b>Ajustado</b>
                         <ul>@foreach ($p['ajustes'] as $a)<li>{{ $a }}</li>@endforeach</ul>
                     </div>
                 @endif
@@ -361,7 +355,7 @@
             <br><a href="{{ $e['actas_baja'] }}" target="_blank">Ver actas de baja →</a>
         </div>
         <div class="formato">
-            <span class="tag" style="background:var(--na-cl);color:var(--na)">Reemplazado</span>
+            <span class="tag" style="background:var(--na-cl);color:var(--na)">Acoplado</span>
             <b>INV-115-f1</b> · Préstamo de equipos<br>
             Ya no se usa: los préstamos de activos clave se documentan con el formato FRF-207-f7 de Planta Física, firmado en pantalla y con su devolución.
             <br><a href="{{ $e['actas'] }}" target="_blank">Ver actas de movimiento →</a>
@@ -392,27 +386,6 @@
             @endforeach
         </table>
     @endif
-
-    <h2 class="sec">Lo que sigue</h2>
-    <div class="pend">
-        <div>
-            <b>Siguiente iteración</b>
-            <ul>
-                <li>Cargar en FabOS la evidencia de los mantenimientos anteriores a la plataforma.</li>
-                @if ($sinColor)
-                    <li><a href="{{ $e['activos_color'] }}" target="_blank">{{ $n($sinColor) }} activos fijos</a> por asignarles esquema de color.</li>
-                @endif
-            </ul>
-        </div>
-        <div>
-            <b>Actualizar los documentos en Isolución</b>
-            <ul>
-                <li>Los procedimientos v0 nombran el QR a un formulario, el correo y el calendario de Outlook: hoy esas funciones las cumple FabOS.</li>
-                <li>INV-115: reemplazar el INV-115-f1 por el FRF-207-f7 de Planta Física.</li>
-                <li>INV-113: incluir la recepción de proyectos externos, no solo la convocatoria interna.</li>
-            </ul>
-        </div>
-    </div>
 
     <footer>FabOS · FabLab {{ config('fabos.lab.institution') }} · documento de trabajo para la auditoría de calidad (ISO 9001:2015). Los enlaces abren el panel y piden sesión.</footer>
 </div>
