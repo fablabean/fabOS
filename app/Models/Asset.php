@@ -104,6 +104,18 @@ class Asset extends Model
         return collect(self::ESQUEMAS)->map(fn ($e) => $e['nombre'])->all();
     }
 
+    /**
+     * Los esquemas con su semáforo al lado, para selectores que admiten HTML.
+     *
+     * @return array<string, string>
+     */
+    public static function esquemasConColor(): array
+    {
+        return collect(self::ESQUEMAS)->map(fn ($e) => '<span style="display:inline-flex;align-items:center;gap:.5rem">'
+            . '<span style="width:.8rem;height:.8rem;border-radius:50%;background:' . $e['color'] . ';box-shadow:0 0 0 2px ' . $e['color'] . '33"></span>'
+            . e($e['nombre']) . '</span>')->all();
+    }
+
     /** Lo que se revisa según su esquema de color; vacío si no tiene. */
     public function puntosDeRevision(): array
     {

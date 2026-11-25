@@ -210,7 +210,10 @@ class AssetForm
                     ->schema([
                         Select::make('esquema_color')
                             ->label('Esquema de color')
-                            ->options(Asset::nombresDeEsquema())
+                            // No nativo: el desplegable del navegador no pinta el semáforo.
+                            ->options(Asset::esquemasConColor())
+                            ->native(false)
+                            ->allowHtml()
                             ->placeholder('Sin asignar')
                             ->live()
                             ->helperText(fn ($get) => filled($get('esquema_color'))

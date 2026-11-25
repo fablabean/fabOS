@@ -91,6 +91,9 @@
         'ajustado'  => ['Cumple · ajustado', 'ajuste'],
         'sin_casos' => ['Listo · sin casos', 'nada'],
     ];
+
+    // La auditoría que viene (o la última), para el antetítulo de la portada.
+    $proxima = $auditorias->where('resultado', 'pendiente')->sortBy('realizada_at')->first() ?? $auditorias->first();
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -163,6 +166,53 @@
         .pend{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.8rem}
         .pend div{background:var(--papel);border:1px solid var(--borde);border-radius:6px;padding:.8rem .9rem;font-size:.87rem}
         .pend ul{margin:.3rem 0 0;padding-left:1.1rem}
+        /* ------------------------------------------------ la portada */
+        html{scroll-behavior:smooth}
+        .intro{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;color:#eafaf6;overflow:hidden;
+            background:
+                radial-gradient(1200px 600px at 85% -10%, rgba(94,234,212,.28), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(11,90,122,.55), transparent 60%),
+                linear-gradient(160deg,#00473b 0%,#006b59 48%,#00806b 100%)}
+        /* Los puntos del logo de la Universidad, como trama de fondo. */
+        .intro::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;
+            background-image:radial-gradient(circle,#fff 1.6px,transparent 2px);background-size:26px 26px;
+            -webkit-mask-image:linear-gradient(115deg,transparent 35%,#000 75%);mask-image:linear-gradient(115deg,transparent 35%,#000 75%)}
+        .intro-in{position:relative;width:100%;max-width:76rem;margin:0 auto;padding:3rem 1rem 4.5rem}
+        .marca{display:flex;align-items:center;gap:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.85rem;color:#bdf3e7}
+        .puntos{display:grid;grid-template-columns:repeat(3,6px);gap:4px}
+        .puntos i{width:6px;height:6px;border-radius:50%;background:#7fe3cf}
+        .puntos i:nth-child(2),.puntos i:nth-child(6){opacity:.45}
+        .antetitulo{margin:3.2rem 0 .6rem;font-size:.95rem;letter-spacing:.04em;color:#a7e8da;text-transform:uppercase}
+        .intro h1{margin:0;font-size:clamp(2.3rem,6vw,4.6rem);line-height:1.02;letter-spacing:-.025em;font-weight:800;color:#fff}
+        .intro h1 em{font-style:normal;background:linear-gradient(90deg,#7fe3cf,#c8f7ec);-webkit-background-clip:text;background-clip:text;color:transparent}
+        .bajada{max-width:44rem;margin:1.3rem 0 0;font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.55;color:#cdeee6}
+        .semaforo{display:grid;grid-template-columns:repeat(5,1fr);gap:.7rem;margin-top:2.6rem}
+        .luz{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:.65rem;row-gap:.35rem;align-items:start;
+            text-decoration:none;color:#eafaf6;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+            border-radius:12px;padding:.8rem .85rem;backdrop-filter:blur(6px);transition:transform .15s,background .15s}
+        .luz:hover{transform:translateY(-2px);background:rgba(255,255,255,.12)}
+        .luz .foco{grid-row:1/3;width:.85rem;height:.85rem;border-radius:50%;margin-top:.25rem}
+        .luz.ok .foco{background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.18),0 0 14px #4ade80}
+        .luz.ajuste .foco{background:#facc15;box-shadow:0 0 0 4px rgba(250,204,21,.18),0 0 14px #facc15}
+        .luz.nada .foco{background:#cbd5e1;box-shadow:0 0 0 4px rgba(203,213,225,.15)}
+        .luz span:not(.foco){font-size:.8rem;line-height:1.3;color:#cdeee6}
+        .luz b{display:block;font-size:1rem;color:#fff;letter-spacing:.02em}
+        .luz small{grid-column:2;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a7e8da}
+        .cifras{display:grid;grid-template-columns:repeat(4,1fr);margin-top:2.2rem;border-top:1px solid rgba(255,255,255,.18)}
+        .cifras a{padding:1.1rem 1rem 0 0;text-decoration:none;color:inherit}
+        .cifras a+a{padding-left:1.2rem;border-left:1px solid rgba(255,255,255,.12)}
+        .cifras b{display:block;font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+        .cifras span{display:block;margin-top:.35rem;font-size:.85rem;color:#bfe9df}
+        .cifras a:hover b{color:#7fe3cf}
+        .pie-intro{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:2.4rem;font-size:.78rem;color:#94d6c8;letter-spacing:.03em}
+        .bajar{position:absolute;left:50%;bottom:1.2rem;transform:translateX(-50%);color:#bdf3e7;width:2.6rem;height:2.6rem;display:grid;place-items:center;
+            border:1px solid rgba(255,255,255,.25);border-radius:50%;animation:flota 2.2s ease-in-out infinite}
+        @keyframes flota{50%{transform:translate(-50%,6px)}}
+        @media (prefers-reduced-motion:reduce){.bajar{animation:none}html{scroll-behavior:auto}}
+        @media (max-width:1000px){.semaforo{grid-template-columns:1fr 1fr}.cifras{grid-template-columns:1fr 1fr}.cifras a:nth-child(3){padding-left:0;border-left:0}}
+        @media (max-width:560px){.semaforo{grid-template-columns:1fr}.antetitulo{margin-top:2rem}}
+        @media print{.intro{min-height:auto;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}.bajar{display:none}}
+
         footer{margin-top:2rem;color:var(--suave);font-size:.78rem;text-align:center;border-top:1px solid var(--borde);padding-top:.6rem}
         .imprimir{position:fixed;right:1rem;bottom:1rem;background:var(--verde);color:#fff;border:0;border-radius:99px;padding:.55rem 1.1rem;font:inherit;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.2)}
         @media (max-width:900px){
@@ -182,18 +232,48 @@
     </style>
 </head>
 <body>
-<div class="pag">
-    <header class="cab">
-        <div>
-            <div class="sub">Caracterización de proceso · Innovación, Desarrollo y Transferencia de Conocimiento</div>
-            <h1>FabLab · cómo opera hoy lo aprobado en el INV-200</h1>
+<header class="intro">
+    <div class="intro-in">
+        <div class="marca">
+            <span class="puntos" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            FabLab · {{ config('fabos.lab.institution') }}
         </div>
-        <div class="meta">
-            Código: INV-200 · Versión 5<br>
-            Alcance FabLab: filas 6 y 7<br>
-            Cifras en vivo · {{ $generada->format('d/m/Y H:i') }}
+
+        <p class="antetitulo">
+            {{ $proxima ? 'Auditoría ' . mb_strtolower(\App\Models\Auditoria::TIPOS[$proxima->tipo] ?? '') . ' · ' . $proxima->realizada_at->timezone($tz)->locale('es')->translatedFormat('l j \d\e F, g:i a') : 'Auditoría de calidad' }}
+            · ISO 9001:2015
+        </p>
+        <h1>Cómo opera hoy<br>lo aprobado en el <em>INV-200</em></h1>
+        <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios de los laboratorios de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
+
+        <div class="semaforo">
+            @foreach ($procedimientos as $p)
+                <a href="#{{ $p['codigo'] }}" class="luz {{ $estados[$p['estado']][1] }}">
+                    <span class="foco"></span>
+                    <span><b>{{ $p['codigo'] }}</b>{{ $p['nombre'] }}</span>
+                    <small>{{ $estados[$p['estado']][0] }}</small>
+                </a>
+            @endforeach
         </div>
-    </header>
+
+        <div class="cifras">
+            <a href="{{ $e['reservas'] }}" target="_blank"><b>{{ $n($c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado']) }}</b><span>reservas realizadas{{ $desde ? ' desde ' . $desde : '' }}</span></a>
+            <a href="{{ $e['proyectos'] }}" target="_blank"><b>{{ $n($c['proyectos']) }}</b><span>proyectos recibidos · {{ $n($c['proyectos_externos']) }} externos</span></a>
+            <a href="{{ $e['ordenes'] }}" target="_blank"><b>{{ $n($c['preventivas'] + $c['correctivas']) }}</b><span>mantenimientos cerrados{{ $primeraOrden ? ' desde ' . $primeraOrden : '' }}</span></a>
+            <a href="{{ $e['activos'] }}" target="_blank"><b>{{ $n($c['fijos']) }}</b><span>activos fijos con ficha y QR</span></a>
+        </div>
+
+        <div class="pie-intro">
+            <span>INV-200 · Versión 5 · filas 6 y 7</span>
+            <span>Cifras en vivo · {{ $generada->format('d/m/Y H:i') }}</span>
+        </div>
+    </div>
+    <a class="bajar" href="#detalle" aria-label="Ver el detalle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </a>
+</header>
+
+<div class="pag" id="detalle">
 
     <section class="tarjetas">
         <div class="tarjeta">
@@ -218,12 +298,6 @@
         </div>
     </section>
 
-    <section class="kpis">
-        <a class="kpi" href="{{ $e['reservas'] }}" target="_blank"><b>{{ $n($c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado']) }}</b><span>reservas realizadas{{ $desde ? ' desde ' . $desde : '' }}</span></a>
-        <a class="kpi" href="{{ $e['proyectos'] }}" target="_blank"><b>{{ $n($c['proyectos']) }}</b><span>proyectos recibidos ({{ $n($c['proyectos_externos']) }} externos)</span></a>
-        <a class="kpi" href="{{ $e['ordenes'] }}" target="_blank"><b>{{ $n($c['preventivas'] + $c['correctivas']) }}</b><span>mantenimientos cerrados{{ $primeraOrden ? ' desde ' . $primeraOrden : '' }}</span></a>
-        <a class="kpi" href="{{ $e['activos'] }}" target="_blank"><b>{{ $n($c['fijos']) }}</b><span>activos fijos con ficha y QR</span></a>
-    </section>
 
     @foreach ([6 => 'SERVICIOS LABORATORIOS DE INVESTIGACIÓN', 7 => 'ELABORACIÓN DE ESCENARIOS DE REALIDAD VIRTUAL'] as $fila => $titulo)
         <div class="banda">{{ $fila }} · {{ $titulo }}</div>
@@ -245,7 +319,7 @@
             @endif
         </div>
         @foreach (collect($procedimientos)->where('fila', $fila) as $p)
-            <article class="proc">
+            <article class="proc" id="{{ $p['codigo'] }}">
                 <h3>
                     <span class="cod">{{ $p['codigo'] }}</span> {{ $p['nombre'] }}
                     <span class="ver">{{ $p['version'] }}</span>

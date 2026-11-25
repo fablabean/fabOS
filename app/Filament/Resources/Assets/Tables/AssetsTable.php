@@ -281,7 +281,9 @@ class AssetsTable
                         ->schema([
                             \Filament\Forms\Components\Select::make('esquema_color')
                                 ->label('Esquema de color (INV-118)')
-                                ->options(Asset::nombresDeEsquema())
+                                ->options(Asset::esquemasConColor())
+                                ->native(false)
+                                ->allowHtml()
                                 ->required(),
                         ])
                         ->action(function (\Illuminate\Support\Collection $records, array $data) {
