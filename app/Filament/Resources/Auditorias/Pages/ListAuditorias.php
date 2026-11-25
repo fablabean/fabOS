@@ -55,6 +55,48 @@ class ListAuditorias extends ListRecords
                         ->send();
                 }),
 
+            /*
+             * Lo que operó antes de FabOS, estimado a mano. La presentación lo
+             * suma en la portada y lo pone aparte en cada evidencia, marcado
+             * como estimado: el auditor ve qué contó el sistema y qué no.
+             */
+            Action::make('historico')
+                ->label('Cifras anteriores')
+                ->icon('heroicon-o-clock')
+                ->color('gray')
+                ->visible(fn () => auth()->user()?->hasAnyRole([\App\Models\User::ROL_ADMINISTRADOR, \App\Models\User::ROL_SUPERADMIN]) ?? false)
+                ->modalHeading('Cifras estimadas antes de FabOS')
+                ->modalDescription('Lo que operó el laboratorio antes de que FabOS lo registrara. Se muestra como estimado («≈») junto a la cifra del sistema. Deja en blanco lo que no se sepa.')
+                ->modalWidth('2xl')
+                ->fillForm(fn () => [
+                    'periodo' => \App\Http\Controllers\CalidadController::historico()['periodo'],
+                    'valores' => \App\Http\Controllers\CalidadController::historico()['valores'],
+                ])
+                ->schema([
+                    \Filament\Forms\Components\TextInput::make('periodo')
+                        ->label('Periodo que cubre')
+                        ->placeholder('2023 – agosto 2026')
+                        ->maxLength(80),
+                    \Filament\Schemas\Components\Grid::make(2)->schema(
+                        collect(\App\Http\Controllers\CalidadController::CIFRAS_HISTORICAS)
+                            ->map(fn ($nombre, $clave) => \Filament\Forms\Components\TextInput::make("valores.{$clave}")
+                                ->label($nombre)
+                                ->numeric()
+                                ->minValue(0)
+                                ->placeholder('—'))
+                            ->values()
+                            ->all()
+                    ),
+                ])
+                ->action(function (array $data) {
+                    \App\Models\Setting::put(\App\Http\Controllers\CalidadController::HISTORICO, [
+                        'periodo' => $data['periodo'] ?? null,
+                        'valores' => collect($data['valores'] ?? [])->filter(fn ($v) => filled($v))->map(fn ($v) => (int) $v)->all(),
+                    ], 'calidad');
+
+                    \Filament\Notifications\Notification::make()->success()->title('Cifras anteriores guardadas')->send();
+                }),
+
             CreateAction::make()->label('Registrar auditoría'),
         ];
     }

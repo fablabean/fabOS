@@ -53,6 +53,51 @@ class CalidadController extends Controller
     /** Si la presentación INV-200 se ve sin iniciar sesión. */
     public const PRESENTACION_PUBLICA = 'calidad.presentacion_publica';
 
+    /**
+     * Lo que operó antes de FabOS, estimado a mano (§ auditoría).
+     *
+     * El sistema cuenta desde que existe; el laboratorio venía trabajando
+     * desde antes. Para que la presentación no parezca que todo empezó en
+     * septiembre, cada cifra que es un flujo —reservas, proyectos,
+     * mantenimientos— admite un estimado del periodo anterior, que se enseña
+     * aparte y marcado como estimado. Las cifras de estado (activos, equipos
+     * de apoyo, pauta) no lo llevan: son de hoy.
+     */
+    public const HISTORICO = 'calidad.historico';
+
+    /** @var array<string, string> clave de la cifra => cómo se llama */
+    public const CIFRAS_HISTORICAS = [
+        'reservas_espacios'      => 'Reservas de espacios',
+        'reservas_herramientas'  => 'Préstamos de herramientas',
+        'reservas_prototipado'   => 'Reservas de impresión 3D y láser',
+        'asesorias'              => 'Asesorías',
+        'actas_prestamo'         => 'Actas o formatos de préstamo',
+        'proyectos'              => 'Proyectos recibidos (todos)',
+        'proyectos_externos'     => 'Proyectos con cliente externo',
+        'proyectos_externos_fin' => 'Proyectos externos finalizados',
+        'proyectos_vr'           => 'Proyectos de realidad virtual',
+        'reservas_vr'            => 'Reservas de realidad virtual',
+        'preventivas'            => 'Mantenimientos preventivos',
+        'correctivas'            => 'Mantenimientos correctivos',
+        'actas_baja'             => 'Actas de baja',
+    ];
+
+    /** @return array{periodo: ?string, valores: array<string, int>} */
+    public static function historico(): array
+    {
+        $guardado = \App\Models\Setting::get(self::HISTORICO, []);
+        $guardado = is_array($guardado) ? $guardado : [];
+
+        return [
+            'periodo' => filled($guardado['periodo'] ?? null) ? (string) $guardado['periodo'] : null,
+            'valores' => collect($guardado['valores'] ?? [])
+                ->only(array_keys(self::CIFRAS_HISTORICAS))
+                ->map(fn ($v) => max(0, (int) $v))
+                ->filter()
+                ->all(),
+        ];
+    }
+
     public static function presentacionPublica(): bool
     {
         return (bool) \App\Models\Setting::get(self::PRESENTACION_PUBLICA, false);
@@ -92,6 +137,7 @@ class CalidadController extends Controller
                     ? asset('storage/' . $l->imagen_path) : null,
             'generada'    => now(config('fabos.lab.timezone')),
             'delEquipo'   => $delEquipo,
+            'historico'   => self::historico(),
         ]);
     }
 

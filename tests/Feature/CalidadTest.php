@@ -238,6 +238,28 @@ class CalidadTest extends TestCase
         $this->get(route('calidad.caracterizacion'))->assertRedirect(route('login'));
     }
 
+    public function test_las_cifras_anteriores_se_suman_en_la_portada_y_van_aparte(): void
+    {
+        Livewire::test(ListAuditorias::class)
+            ->callAction('historico', [
+                'periodo' => '2023 – agosto 2026',
+                'valores' => ['preventivas' => 40, 'correctivas' => 12, 'proyectos' => ''],
+            ])
+            ->assertHasNoActionErrors();
+
+        $h = \App\Http\Controllers\CalidadController::historico();
+        $this->assertSame(['preventivas' => 40, 'correctivas' => 12], $h['valores']);
+
+        $equipo = $this->activo('Láser');
+        WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'cerrada', 'reported_issue' => 'Revisión']);
+
+        $this->get(route('calidad.caracterizacion'))
+            ->assertOk()
+            ->assertSee('≈53', false)
+            ->assertSee('+≈40 antes', false)
+            ->assertSee('2023 – agosto 2026', false);
+    }
+
     public function test_el_interruptor_del_admin_la_abre(): void
     {
         Livewire::test(ListAuditorias::class)->callAction('publica');

@@ -6,6 +6,21 @@
     $desde = $c['reservas_desde'] ? \Illuminate\Support\Carbon::parse($c['reservas_desde'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
     $primeraOrden = $c['primera_orden'] ? \Illuminate\Support\Carbon::parse($c['primera_orden'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
 
+    // Lo estimado antes de FabOS: se suma en la portada y va aparte en cada evidencia.
+    $antes = fn (string ...$claves) => array_sum(array_map(fn ($k) => $historico['valores'][$k] ?? 0, $claves));
+    $periodoAntes = $historico['periodo'];
+    $kpis = [
+        ['url' => $e['reservas'], 'hoy' => $c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado'],
+            'antes' => $antes('reservas_espacios', 'reservas_herramientas', 'reservas_prototipado'),
+            'texto' => 'reservas realizadas', 'desde' => $desde],
+        ['url' => $e['proyectos'], 'hoy' => $c['proyectos'], 'antes' => $antes('proyectos'),
+            'texto' => 'proyectos recibidos · ' . $n($c['proyectos_externos'] + $antes('proyectos_externos')) . ' externos', 'desde' => null],
+        ['url' => $e['ordenes'], 'hoy' => $c['preventivas'] + $c['correctivas'], 'antes' => $antes('preventivas', 'correctivas'),
+            'texto' => 'mantenimientos cerrados', 'desde' => $primeraOrden],
+        ['url' => $e['activos'], 'hoy' => $c['fijos'], 'antes' => 0,
+            'texto' => 'activos fijos con ficha y QR', 'desde' => null],
+    ];
+
     /*
      * Los cinco procedimientos del FABLAB dentro de la caracterización. Cada
      * uno: lo aprobado, cómo se cumple hoy, las evidencias y lo que se ajustó.
@@ -17,8 +32,8 @@
             'aprobado' => 'Solicitud del cliente externo, estimación del costo por la Unidad, propuesta, relación contractual, revisión del modelo con autorización del cliente, impresión y postproceso, entrega con aceptación por escrito y factura.',
             'hoy' => 'Cada encargo externo es un proyecto en FabOS con cliente, propuesta (cotizador), aceptación registrada, contrato, ejecución con reservas de máquina, entrega y pago. La solicitud entra por el formulario público o la registra el equipo cuando llega por correo o por Gerencia.',
             'evidencias' => [
-                ['Proyectos con cliente externo', $c['proyectos_externos'], $e['proyectos']],
-                ['Externos finalizados', $c['proyectos_externos_fin'], $e['proyectos']],
+                ['Proyectos con cliente externo', $c['proyectos_externos'], $e['proyectos'], 'proyectos_externos'],
+                ['Externos finalizados', $c['proyectos_externos_fin'], $e['proyectos'], 'proyectos_externos_fin'],
                 ['Formulario de solicitud', null, $e['solicitar']],
             ],
             'ajustes' => [],
@@ -29,9 +44,9 @@
             'aprobado' => 'Agendamiento por QR, espacio apartado automáticamente, acompañamiento del personal, herramientas de riesgo operadas solo por el equipo, cierre verificando el estado. El formato INV-115-f1 solo para lo que sale del laboratorio.',
             'hoy' => 'Reservas de espacios y herramientas en FabOS (QR en el laboratorio y en cada equipo), con llegada y salida registradas. Las máquinas de riesgo exigen certifab. Lo que sale del laboratorio se documenta con el acta FRF-207-f7 de Planta Física, firmada en pantalla y con su devolución.',
             'evidencias' => [
-                ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas']],
-                ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas']],
-                ['Actas de préstamo (FRF-207-f7)', $c['actas_prestamo'], $e['actas']],
+                ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas'], 'reservas_espacios'],
+                ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas'], 'reservas_herramientas'],
+                ['Actas de préstamo (FRF-207-f7)', $c['actas_prestamo'], $e['actas'], 'actas_prestamo'],
                 ['Etiquetas QR de los equipos', null, $e['etiquetas']],
             ],
             'ajustes' => ['El formato INV-115-f1 dejó de usarse: se reemplazó por el FRF-207-f7 de Planta Física para los activos clave, en acuerdo con esa área.'],
@@ -42,8 +57,8 @@
             'aprobado' => 'Agendamiento de asesoría o servicio (impresión 3D y corte láser), envío del archivo, verificación del material, asesoría y fabricación, cierre con la pieza recibida a satisfacción.',
             'hoy' => 'Las reservas de impresión 3D y corte láser llevan el archivo, el propósito y el material estimado y usado; las asesorías se agendan con el equipo. La reserva se cierra al completarse, y la inasistencia queda registrada.',
             'evidencias' => [
-                ['Reservas de impresión 3D y láser realizadas', $c['reservas_prototipado'], $e['reservas']],
-                ['Asesorías realizadas', $c['asesorias'], $e['reservas']],
+                ['Reservas de impresión 3D y láser realizadas', $c['reservas_prototipado'], $e['reservas'], 'reservas_prototipado'],
+                ['Asesorías realizadas', $c['asesorias'], $e['reservas'], 'asesorias'],
                 ['Página pública de reservas', null, $e['reservar']],
             ],
             'ajustes' => [],
@@ -57,9 +72,9 @@
                 ['Activos fijos en inventario', $c['fijos'], $e['activos']],
                 ['Equipos de apoyo (Anexo 2)', $c['de_apoyo'], $e['activos_apoyo']],
                 ['Equipos en la pauta preventiva', $c['con_plan'], $e['pauta']],
-                ['Mantenimientos preventivos cerrados', $c['preventivas'], $e['preventivas']],
-                ['Mantenimientos correctivos cerrados', $c['correctivas'], $e['correctivas']],
-                ['Actas de baja (ADF-207-f3)', $c['actas_baja'], $e['actas_baja']],
+                ['Mantenimientos preventivos cerrados', $c['preventivas'], $e['preventivas'], 'preventivas'],
+                ['Mantenimientos correctivos cerrados', $c['correctivas'], $e['correctivas'], 'correctivas'],
+                ['Actas de baja (ADF-207-f3)', $c['actas_baja'], $e['actas_baja'], 'actas_baja'],
             ],
             'ajustes' => [
                 'Hoja de vida INV-113-f1 generada por FabOS: el historial de mantenimientos es un enlace (y un QR) a las órdenes de esa máquina, no una tabla copiada a mano.',
@@ -72,8 +87,8 @@
             'aprobado' => 'Notificación del ganador de la convocatoria interna, reunión y acta con el plan de trabajo, desarrollo, entrega formal de la experiencia y cierre por correo.',
             'hoy' => 'No llegaron solicitudes por el protocolo anterior, así que no hay casos pasados que mostrar. Hoy toda solicitud, interna o externa, entra como proyecto del área VR: propuesta, plan de trabajo con tareas y responsables, reservas de la sala, entrega y cierre. Es el mismo flujo que ya se usa con los encargos externos del laboratorio.',
             'evidencias' => [
-                ['Proyectos del área de realidad virtual', $c['proyectos_vr'], $e['proyectos']],
-                ['Reservas de equipos de realidad virtual', $c['reservas_vr'], $e['reservas']],
+                ['Proyectos del área de realidad virtual', $c['proyectos_vr'], $e['proyectos'], 'proyectos_vr'],
+                ['Reservas de equipos de realidad virtual', $c['reservas_vr'], $e['reservas'], 'reservas_vr'],
                 ['Formulario de solicitud de proyecto', null, $e['solicitar']],
             ],
             'ajustes' => [],
@@ -211,6 +226,9 @@
         .cifras b{display:block;font-size:clamp(2rem,4vw,3rem);font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
         .cifras span{display:block;margin-top:.35rem;font-size:.85rem;color:#bfe9df}
         .cifras a:hover b{color:#7fe3cf}
+        .cifras span.desglose{margin-top:.15rem;font-size:.74rem;color:#94d6c8}
+        .ev .val{text-align:right;white-space:nowrap}
+        .ev .val small{display:block;font-size:.72rem;color:var(--suave);font-weight:400}
         .pie-intro{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:2.4rem;font-size:.78rem;color:#94d6c8;letter-spacing:.03em}
         .bajar{position:absolute;left:50%;bottom:1.2rem;transform:translateX(-50%);color:#bdf3e7;width:2.6rem;height:2.6rem;display:grid;place-items:center;
             border:1px solid rgba(255,255,255,.25);border-radius:50%;animation:flota 2.2s ease-in-out infinite}
@@ -273,10 +291,17 @@
         </div>
 
         <div class="cifras">
-            <a href="{{ $e['reservas'] }}" target="_blank"><b>{{ $n($c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado']) }}</b><span>reservas realizadas{{ $desde ? ' desde ' . $desde : '' }}</span></a>
-            <a href="{{ $e['proyectos'] }}" target="_blank"><b>{{ $n($c['proyectos']) }}</b><span>proyectos recibidos · {{ $n($c['proyectos_externos']) }} externos</span></a>
-            <a href="{{ $e['ordenes'] }}" target="_blank"><b>{{ $n($c['preventivas'] + $c['correctivas']) }}</b><span>mantenimientos cerrados{{ $primeraOrden ? ' desde ' . $primeraOrden : '' }}</span></a>
-            <a href="{{ $e['activos'] }}" target="_blank"><b>{{ $n($c['fijos']) }}</b><span>activos fijos con ficha y QR</span></a>
+            @foreach ($kpis as $k)
+                <a href="{{ $k['url'] }}" target="_blank">
+                    <b>{{ $k['antes'] ? '≈' : '' }}{{ $n($k['hoy'] + $k['antes']) }}</b>
+                    <span>{{ $k['texto'] }}</span>
+                    @if ($k['antes'])
+                        <span class="desglose">{{ $n($k['hoy']) }} en FabOS{{ $k['desde'] ? ' desde ' . $k['desde'] : '' }} · ≈{{ $n($k['antes']) }} antes{{ $periodoAntes ? ' (' . $periodoAntes . ')' : '' }}</span>
+                    @elseif ($k['desde'])
+                        <span class="desglose">en FabOS desde {{ $k['desde'] }}</span>
+                    @endif
+                </a>
+            @endforeach
         </div>
 
         <div class="pie-intro">
@@ -346,8 +371,20 @@
                 <div>
                     <h4>Evidencias</h4>
                     <ul class="ev">
-                        @foreach ($p['evidencias'] as [$texto, $valor, $url])
-                            <li><a href="{{ $url }}" target="_blank">{{ $texto }}</a>@if ($valor !== null)<b>{{ is_numeric($valor) ? $n($valor) : $valor }}</b>@endif</li>
+                        @foreach ($p['evidencias'] as $fila)
+                            @php
+                                [$texto, $valor, $url] = $fila;
+                                $previo = isset($fila[3]) ? ($historico['valores'][$fila[3]] ?? 0) : 0;
+                            @endphp
+                            <li>
+                                <a href="{{ $url }}" target="_blank">{{ $texto }}</a>
+                                @if ($valor !== null)
+                                    <span class="val">
+                                        <b>{{ is_numeric($valor) ? $n($valor) : $valor }}</b>
+                                        @if ($previo)<small title="Estimado antes de FabOS{{ $periodoAntes ? ' · ' . $periodoAntes : '' }}">+≈{{ $n($previo) }} antes</small>@endif
+                                    </span>
+                                @endif
+                            </li>
                         @endforeach
                     </ul>
                 </div>
