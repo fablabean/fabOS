@@ -71,6 +71,10 @@ class CalidadController extends Controller
             'enlaces'     => $this->enlaces(),
             'auditorias'  => Auditoria::orderByDesc('realizada_at')->get(),
             'logo'        => $this->logoParaFondoOscuro(),
+            // El de la Universidad, de la franja de logos del sitio (Comunicaciones → Logos).
+            'logoEan'     => ($l = \App\Models\Logo::where('is_active', true)->where('nombre', 'ilike', 'universidad%ean%')->first())
+                && \Illuminate\Support\Facades\Storage::disk('public')->exists($l->imagen_path)
+                    ? asset('storage/' . $l->imagen_path) : null,
             'generada'    => now(config('fabos.lab.timezone')),
         ]);
     }

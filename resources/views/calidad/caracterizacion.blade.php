@@ -176,12 +176,15 @@
         .marca{gap:1rem}
         .logo{display:inline-grid;place-items:center;line-height:0}
         .logo img{height:3.8rem;width:auto;max-width:min(30rem,70vw);object-fit:contain}
-        .logo + .marca-txt{border-left:1px solid rgba(255,255,255,.3);padding-left:1rem}
+        .logo + .marca-txt{border-left:1px solid rgba(255,255,255,.3);padding-left:1.2rem}
+        /* El logo de la Universidad viene negro: en blanco sobre el verde. */
+        .marca-txt.ean{line-height:0}
+        .marca-txt.ean img{height:3.2rem;width:auto;filter:brightness(0) invert(1)}
         .logo.tarjeta{background:#fff;border-radius:14px;padding:.55rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
         .logo.tarjeta img{height:4.6rem}
         .marca-txt{line-height:1.25;font-size:1rem;color:#fff}
         .marca-txt small{font-size:.75rem;color:#a7e8da;letter-spacing:.08em}
-        @media (max-width:560px){.logo img{height:2.6rem}.logo.tarjeta img{height:3.2rem}.logo + .marca-txt{display:none}}
+        @media (max-width:560px){.logo img{height:2.6rem}.logo.tarjeta img{height:3.2rem}.marca{flex-wrap:wrap}.marca-txt.ean img{height:2.3rem}.logo + .marca-txt{padding-left:.8rem}}
         .puntos{display:grid;grid-template-columns:repeat(3,6px);gap:4px}
         .puntos i{width:6px;height:6px;border-radius:50%;background:#7fe3cf}
         .puntos i:nth-child(2),.puntos i:nth-child(6){opacity:.45}
@@ -240,7 +243,11 @@
         <div class="marca">
             @if ($logo)
                 <span class="logo {{ $logo['tarjeta'] ? 'tarjeta' : '' }}"><img src="{{ $logo['url'] }}" alt="{{ config('fabos.lab.name') }}"></span>
-                <span class="marca-txt"><small>{{ config('fabos.lab.institution') }}</small></span>
+                @if ($logoEan)
+                    <span class="marca-txt ean"><img src="{{ $logoEan }}" alt="{{ config('fabos.lab.institution') }}"></span>
+                @else
+                    <span class="marca-txt"><small>{{ config('fabos.lab.institution') }}</small></span>
+                @endif
             @else
                 <span class="puntos" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
                 <span class="marca-txt">FabLab<br><small>{{ config('fabos.lab.institution') }}</small></span>
