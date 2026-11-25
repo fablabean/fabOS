@@ -90,6 +90,14 @@
   .tabla tr.listo td{color:var(--muted)} .tabla tr.listo td a{color:var(--muted)}
   .estado{font-size:.8rem;white-space:nowrap}
   .tabla tfoot td{font-weight:700;border-bottom:0;padding-top:.8rem}
+  /* El trabajo autónomo: después de la sesión, en otro color. */
+  .tabla tr.fila-auto td{color:var(--accent2);font-weight:600;padding-top:.75rem;padding-bottom:.75rem;
+    background:color-mix(in srgb,var(--accent2) 9%,transparent);border-top:1px dashed color-mix(in srgb,var(--accent2) 55%,transparent);border-bottom:1px dashed color-mix(in srgb,var(--accent2) 55%,transparent)}
+  .tabla tr.fila-auto td:first-child{border-left:1px dashed color-mix(in srgb,var(--accent2) 55%,transparent);border-radius:10px 0 0 10px}
+  .tabla tr.fila-auto td:last-child{border-right:1px dashed color-mix(in srgb,var(--accent2) 55%,transparent);border-radius:0 10px 10px 0}
+  .tabla tr.fila-auto td a{color:var(--accent2)} .tabla tr.fila-auto td a:hover{color:var(--ink)}
+  .tabla tr.fila-auto small{display:block;font-weight:400;font-size:.82rem;color:var(--soft);margin-top:.15rem}
+  @media (min-width:700px){.tabla tr.fila-auto td.mono{white-space:nowrap}}
   .aviso-plan{font-size:.85rem;margin-top:.6rem;color:var(--muted)}
   .aviso-plan.mal{color:var(--bad)}
   .resumen-ritmo{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem;margin:1.3rem 0 0}
@@ -335,7 +343,7 @@
       <p class="nota">Guárdalo: tómale foto o anótalo. Sirve también el jueves.</p>
       <p>Agrégame en LinkedIn y escríbeme con tu ID: así sé que estuviste en el bootcamp y te respondo a ti.</p>
       <div class="acciones">
-        <a class="boton pri" data-linkedin href="#" target="_blank" rel="noopener" hidden>Agregarme en LinkedIn ↗</a>
+        <a class="boton pri" data-linkedin href="https://www.linkedin.com/in/erickhansen/" target="_blank" rel="noopener" hidden>Agregarme en LinkedIn ↗</a>
         <button type="button" class="boton" data-copiar>Copiar mensaje para LinkedIn</button>
         <button type="button" class="boton" data-cerrar>Listo, seguir con la sesión</button>
       </div>
@@ -360,7 +368,8 @@
     <table class="tabla">
       <thead><tr><th>Hora</th><th>Bloque</th><th>Min</th><th class="opc">Estado</th></tr></thead>
       <tbody id="filas"></tbody>
-      <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr></tfoot>
+      <tfoot><tr><td></td><td>Total</td><td id="total" class="mono"></td><td class="opc"></td></tr>
+        <tr class="fila-auto"><td class="h" id="auto-h">7:00 p. m.</td><td><a href="#autonomo">Bonus: trabajo autónomo<small>Tú, tu proyecto y el asistente de fabOS. Sin profe mirando 👀</small></a></td><td class="mono">60 + lo que dures 🙂</td><td class="opc">hasta las <span id="auto-fin">8:00 p. m.</span> (o más)</td></tr></tfoot>
     </table>
     <p class="aviso-plan" id="aviso-plan"></p>
     <div class="resumen-ritmo">
@@ -667,6 +676,8 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
       }
     });
     $('#total').textContent = t + ' min';
+    $('#auto-h').textContent = hhmm(inicio + t * MIN);
+    $('#auto-fin').textContent = hhmm(inicio + (t + 60) * MIN);
     var aviso = $('#aviso-plan');
     aviso.classList.toggle('mal', t > DISPONIBLE);
     aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en los 60 minutos de hoy (6:00 a 7:00 p. m.).'
@@ -840,6 +851,12 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   $$('[data-cerrar]', bienv).forEach(function (b) { b.addEventListener('click', cerrar); });
   window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrar(); } });
   $('#mi-id').addEventListener('click', function () { abrir(); });
+  $('[data-linkedin]', bienv).addEventListener('click', function () {
+    var a = this, texto = 'Hola, soy ' + miNombre + '. Estuve en el Bootcamp AGENTIC del FABLAB (mi ID: ' + miId + ').';
+    try { if (navigator.clipboard) { navigator.clipboard.writeText(texto).catch(function () {}); } } catch (_) {}
+    a.textContent = 'Mensaje copiado: pégalo al conectar ↗';
+    setTimeout(function () { a.textContent = 'Agregarme en LinkedIn ↗'; }, 4000);
+  });
   $('[data-copiar]', bienv).addEventListener('click', function () {
     var b = this, texto = 'Hola, soy ' + miNombre + '. Estuve en el Bootcamp AGENTIC del FABLAB (mi ID: ' + miId + ').';
     var listo = function () { b.textContent = 'Copiado ✓ Pégalo al conectar'; setTimeout(function () { b.textContent = 'Copiar mensaje para LinkedIn'; }, 2200); };
