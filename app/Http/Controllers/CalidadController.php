@@ -224,29 +224,31 @@ class CalidadController extends Controller
     }
 
     /**
-     * El logo del laboratorio para la portada, que es verde oscuro.
+     * El símbolo del laboratorio para la portada, que es verde oscuro.
      *
-     * La versión para fondo oscuro va tal cual. Si solo hay la clara —letras
-     * negras—, va sobre una tarjeta blanca: encima del verde no se leería.
+     * El compacto, no el largo: al lado del logo de la Universidad el nombre
+     * sobra. La versión para fondo oscuro va tal cual; la clara —negro sobre
+     * transparente— se invierte y queda blanca. El archivo del repositorio
+     * tiene fondo blanco y no se puede invertir: va sobre una tarjeta.
      *
-     * @return array{url: string, tarjeta: bool}|null
+     * @return array{url: string, tarjeta: bool, invertir: bool}|null
      */
     private function logoParaFondoOscuro(): ?array
     {
         $s = \App\Support\Settings::class;
 
-        if ($ruta = $s::logoLargoOscuro() ?? $s::logoOscuro()) {
-            return ['url' => asset('storage/' . $ruta), 'tarjeta' => false];
+        if ($ruta = $s::logoOscuro()) {
+            return ['url' => asset('storage/' . $ruta), 'tarjeta' => false, 'invertir' => false];
         }
 
-        if ($ruta = $s::logoLargo() ?? $s::logo()) {
-            return ['url' => asset('storage/' . $ruta), 'tarjeta' => true];
+        if ($ruta = $s::logo()) {
+            return ['url' => asset('storage/' . $ruta), 'tarjeta' => false, 'invertir' => true];
         }
 
         $archivo = config('fabos.lab.logo');
 
         return $archivo && is_file(public_path($archivo))
-            ? ['url' => asset($archivo), 'tarjeta' => true]
+            ? ['url' => asset($archivo), 'tarjeta' => true, 'invertir' => false]
             : null;
     }
 

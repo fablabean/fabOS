@@ -7,7 +7,7 @@
     $primeraOrden = $c['primera_orden'] ? \Illuminate\Support\Carbon::parse($c['primera_orden'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
 
     /*
-     * Los cinco procedimientos del FabLab dentro de la caracterización. Cada
+     * Los cinco procedimientos del FABLAB dentro de la caracterización. Cada
      * uno: lo aprobado, cómo se cumple hoy, las evidencias y lo que se ajustó.
      */
     $procedimientos = [
@@ -27,7 +27,7 @@
             'fila' => 6, 'codigo' => 'INV-115', 'nombre' => 'Préstamo de espacios físicos, equipos y/o herramientas', 'version' => 'v0 · 25/Jul/2023',
             'estado' => 'ajustado',
             'aprobado' => 'Agendamiento por QR, espacio apartado automáticamente, acompañamiento del personal, herramientas de riesgo operadas solo por el equipo, cierre verificando el estado. El formato INV-115-f1 solo para lo que sale del laboratorio.',
-            'hoy' => 'Reservas de espacios y herramientas en FabOS (QR en cada laboratorio y en cada equipo), con llegada y salida registradas. Las máquinas de riesgo exigen certifab. Lo que sale del laboratorio se documenta con el acta FRF-207-f7 de Planta Física, firmada en pantalla y con su devolución.',
+            'hoy' => 'Reservas de espacios y herramientas en FabOS (QR en el laboratorio y en cada equipo), con llegada y salida registradas. Las máquinas de riesgo exigen certifab. Lo que sale del laboratorio se documenta con el acta FRF-207-f7 de Planta Física, firmada en pantalla y con su devolución.',
             'evidencias' => [
                 ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas']],
                 ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas']],
@@ -70,7 +70,7 @@
             'fila' => 7, 'codigo' => 'INV-113', 'nombre' => 'Elaboración de escenarios de realidad virtual', 'version' => 'v0 · 14/Jul/2023',
             'estado' => 'sin_casos',
             'aprobado' => 'Notificación del ganador de la convocatoria interna, reunión y acta con el plan de trabajo, desarrollo, entrega formal de la experiencia y cierre por correo.',
-            'hoy' => 'No llegaron solicitudes por el protocolo anterior, así que no hay casos pasados que mostrar. Hoy toda solicitud, interna o externa, entra como proyecto del área VR: propuesta, plan de trabajo con tareas y responsables, reservas de la sala, entrega y cierre. Es el mismo flujo que ya se usa con los encargos externos de los laboratorios.',
+            'hoy' => 'No llegaron solicitudes por el protocolo anterior, así que no hay casos pasados que mostrar. Hoy toda solicitud, interna o externa, entra como proyecto del área VR: propuesta, plan de trabajo con tareas y responsables, reservas de la sala, entrega y cierre. Es el mismo flujo que ya se usa con los encargos externos del laboratorio.',
             'evidencias' => [
                 ['Proyectos del área de realidad virtual', $c['proyectos_vr'], $e['proyectos']],
                 ['Reservas de equipos de realidad virtual', $c['reservas_vr'], $e['reservas']],
@@ -94,7 +94,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Caracterización INV-200 · FabLab</title>
+    <title>Caracterización INV-200 · FABLAB</title>
     <style>
         :root{
             --verde:#00806b; --verde-osc:#00594a; --verde-cl:#e3f2ef; --azul:#0b5a7a;
@@ -173,18 +173,19 @@
             -webkit-mask-image:linear-gradient(115deg,transparent 35%,#000 75%);mask-image:linear-gradient(115deg,transparent 35%,#000 75%)}
         .intro-in{position:relative;width:100%;max-width:76rem;margin:0 auto;padding:3rem 1rem 4.5rem}
         .marca{display:flex;align-items:center;gap:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.85rem;color:#bdf3e7}
-        .marca{gap:1rem}
+        .marca{gap:1.3rem}
         .logo{display:inline-grid;place-items:center;line-height:0}
-        .logo img{height:3.8rem;width:auto;max-width:min(30rem,70vw);object-fit:contain}
-        .logo + .marca-txt{border-left:1px solid rgba(255,255,255,.3);padding-left:1.2rem}
-        /* El logo de la Universidad viene negro: en blanco sobre el verde. */
-        .marca-txt.ean{line-height:0}
-        .marca-txt.ean img{height:3.2rem;width:auto;filter:brightness(0) invert(1)}
-        .logo.tarjeta{background:#fff;border-radius:14px;padding:.55rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-        .logo.tarjeta img{height:4.6rem}
+        .logo img{width:auto;object-fit:contain}
+        /* El de la Universidad viene negro: en blanco sobre el verde. */
+        .logo.ean img{height:3.6rem;filter:brightness(0) invert(1)}
+        /* El símbolo del FABLAB, cuadrado, separado por una línea fina. */
+        .logo.fab,.marca-txt.fab{border-left:1px solid rgba(255,255,255,.3);padding-left:1.3rem}
+        .logo.fab img{height:4.4rem}
+        .logo.fab.invertir img{filter:invert(1)}
+        .logo.tarjeta img{background:#fff;border-radius:10px;padding:.35rem}
         .marca-txt{line-height:1.25;font-size:1rem;color:#fff}
         .marca-txt small{font-size:.75rem;color:#a7e8da;letter-spacing:.08em}
-        @media (max-width:560px){.logo img{height:2.6rem}.logo.tarjeta img{height:3.2rem}.marca{flex-wrap:wrap}.marca-txt.ean img{height:2.3rem}.logo + .marca-txt{padding-left:.8rem}}
+        @media (max-width:560px){.logo.ean img{height:2.6rem}.logo.fab img{height:3.2rem}.logo.fab{padding-left:.9rem}.marca{gap:.9rem}}
         .puntos{display:grid;grid-template-columns:repeat(3,6px);gap:4px}
         .puntos i{width:6px;height:6px;border-radius:50%;background:#7fe3cf}
         .puntos i:nth-child(2),.puntos i:nth-child(6){opacity:.45}
@@ -241,16 +242,16 @@
 <header class="intro">
     <div class="intro-in">
         <div class="marca">
-            @if ($logo)
-                <span class="logo {{ $logo['tarjeta'] ? 'tarjeta' : '' }}"><img src="{{ $logo['url'] }}" alt="{{ config('fabos.lab.name') }}"></span>
-                @if ($logoEan)
-                    <span class="marca-txt ean"><img src="{{ $logoEan }}" alt="{{ config('fabos.lab.institution') }}"></span>
-                @else
-                    <span class="marca-txt"><small>{{ config('fabos.lab.institution') }}</small></span>
-                @endif
+            {{-- Primero la Universidad, después el símbolo del FABLAB. --}}
+            @if ($logoEan)
+                <span class="logo ean"><img src="{{ $logoEan }}" alt="{{ config('fabos.lab.institution') }}"></span>
             @else
-                <span class="puntos" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                <span class="marca-txt">FabLab<br><small>{{ config('fabos.lab.institution') }}</small></span>
+                <span class="marca-txt"><small>{{ config('fabos.lab.institution') }}</small></span>
+            @endif
+            @if ($logo)
+                <span class="logo fab {{ $logo['tarjeta'] ? 'tarjeta' : '' }} {{ $logo['invertir'] ? 'invertir' : '' }}"><img src="{{ $logo['url'] }}" alt="{{ config('fabos.lab.name') }}"></span>
+            @else
+                <span class="marca-txt fab">FABLAB</span>
             @endif
         </div>
 
@@ -259,7 +260,7 @@
             · ISO 9001:2015
         </p>
         <h1>Cómo opera hoy<br>lo aprobado en el <em>INV-200</em></h1>
-        <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios de los laboratorios de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
+        <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios del laboratorio de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
 
         <div class="semaforo">
             @foreach ($procedimientos as $p)
@@ -293,10 +294,10 @@
     <section class="tarjetas">
         <div class="tarjeta">
             <h2>OBJETIVO / PROPÓSITO</h2>
-            <div>Fomentar el desarrollo y el potencial transferible de la investigación, y asimilar, adaptar, generar y divulgar el conocimiento; <span class="fablab">el FabLab lo hace prestando sus laboratorios, fabricando prototipos y desarrollando escenarios de realidad virtual</span>.</div>
+            <div>Fomentar el desarrollo y el potencial transferible de la investigación, y asimilar, adaptar, generar y divulgar el conocimiento; <span class="fablab">el FABLAB lo hace prestando su laboratorio, fabricando prototipos y desarrollando escenarios de realidad virtual</span>.</div>
         </div>
         <div class="tarjeta">
-            <h2>ALCANCE (lo del FabLab)</h2>
+            <h2>ALCANCE (lo del FABLAB)</h2>
             <div>
                 <ul>
                     <li><b>Servicios laboratorios de investigación</b>: INV-114, INV-115, INV-116 e INV-118.</li>
@@ -308,7 +309,7 @@
             <h2>RESPONSABLE</h2>
             <div>
                 <b>Cargo responsable 1:</b> Gerente de Investigación y Transferencia<br>
-                <b>Cargo responsable 2:</b> Coordinadores de área · <span class="fablab">Coordinación FabLab</span>
+                <b>Cargo responsable 2:</b> Coordinadores de área · <span class="fablab">Coordinación FABLAB</span>
             </div>
         </div>
     </section>
@@ -408,7 +409,7 @@
         </table>
     @endif
 
-    <footer>FabOS · FabLab {{ config('fabos.lab.institution') }} · documento de trabajo para la auditoría de calidad (ISO 9001:2015). Los enlaces abren el panel y piden sesión.</footer>
+    <footer>FabOS · FABLAB {{ config('fabos.lab.institution') }} · documento de trabajo para la auditoría de calidad (ISO 9001:2015). Los enlaces abren el panel y piden sesión.</footer>
 </div>
 <button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
 </body>
