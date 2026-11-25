@@ -215,4 +215,33 @@ class CalidadTest extends TestCase
         $this->get(route('activos.hoja-de-vida', $equipo))->assertForbidden();
         $this->get(route('calidad.caracterizacion'))->assertForbidden();
     }
+
+    public function test_la_presentacion_se_abre_y_se_cierra_al_publico(): void
+    {
+        $this->activo('Láser');
+        auth()->logout();
+
+        $this->get(route('calidad.caracterizacion'))->assertRedirect(route('login'));
+
+        \App\Models\Setting::put(\App\Http\Controllers\CalidadController::PRESENTACION_PUBLICA, true, 'calidad');
+
+        $this->get(route('calidad.caracterizacion'))
+            ->assertOk()
+            ->assertSee('INV-200')
+            ->assertDontSee('Registrar una');
+
+        // La hoja de vida no se abre con ella.
+        $this->get(route('activos.hoja-de-vida', Asset::first()))->assertRedirect();
+
+        \App\Models\Setting::put(\App\Http\Controllers\CalidadController::PRESENTACION_PUBLICA, false, 'calidad');
+
+        $this->get(route('calidad.caracterizacion'))->assertRedirect(route('login'));
+    }
+
+    public function test_el_interruptor_del_admin_la_abre(): void
+    {
+        Livewire::test(ListAuditorias::class)->callAction('publica');
+
+        $this->assertTrue(\App\Http\Controllers\CalidadController::presentacionPublica());
+    }
 }

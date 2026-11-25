@@ -159,6 +159,10 @@ Route::get('/qr/{codigo}', EnlaceCortoController::class)
 // el panel. El enlace de siempre sigue sirviendo: ya circula por WhatsApp.
 Route::get('/conoce-el-fablab', [\App\Http\Controllers\ZonaController::class, 'conoceElFablab'])->name('conoce-el-fablab');
 
+// La presentación para la auditoría de calidad (INV-200). Es del equipo; se
+// abre al público solo mientras esté encendida en Documentación → Auditorías.
+Route::get('/calidad/inv-200', [\App\Http\Controllers\CalidadController::class, 'caracterizacion'])->name('calidad.caracterizacion');
+
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
 
@@ -661,7 +665,6 @@ Route::middleware('auth')->group(function () {
     // Los formatos del sistema de calidad (ISO 9001, proceso INV-200), para el equipo.
     Route::get('/activos/{asset}/hoja-de-vida', [\App\Http\Controllers\CalidadController::class, 'hojaDeVida'])->name('activos.hoja-de-vida');
     Route::get('/actas/{acta}/baja', [\App\Http\Controllers\CalidadController::class, 'actaDeBaja'])->name('actas.baja');
-    Route::get('/calidad/inv-200', [\App\Http\Controllers\CalidadController::class, 'caracterizacion'])->name('calidad.caracterizacion');
 
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');

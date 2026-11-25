@@ -384,7 +384,7 @@
     </div>
 
     <h2 class="sec">Auditorías del laboratorio</h2>
-    <p class="nota">Internas y externas, con su resultado y sus mejoras. <a href="{{ $e['nueva_auditoria'] }}" target="_blank">Registrar una</a> · <a href="{{ $e['auditorias'] }}" target="_blank">Ver todas</a></p>
+    <p class="nota">Internas y externas, con su resultado y sus mejoras.@if ($delEquipo) <a href="{{ $e['nueva_auditoria'] }}" target="_blank">Registrar una</a> · <a href="{{ $e['auditorias'] }}" target="_blank">Ver todas</a>@endif</p>
     @if ($auditorias->isEmpty())
         <p style="font-size:.9rem;color:var(--suave)">Todavía no hay auditorías registradas.</p>
     @else

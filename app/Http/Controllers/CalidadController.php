@@ -50,6 +50,14 @@ class CalidadController extends Controller
         ]);
     }
 
+    /** Si la presentación INV-200 se ve sin iniciar sesión. */
+    public const PRESENTACION_PUBLICA = 'calidad.presentacion_publica';
+
+    public static function presentacionPublica(): bool
+    {
+        return (bool) \App\Models\Setting::get(self::PRESENTACION_PUBLICA, false);
+    }
+
     /** El acta de baja ADF-207-f3, desde un acta de movimiento de tipo baja. */
     public function actaDeBaja(Request $request, Acta $acta)
     {
@@ -64,7 +72,14 @@ class CalidadController extends Controller
     /** La caracterización INV-200 del FabLab, con sus evidencias en vivo. */
     public function caracterizacion(Request $request)
     {
-        $this->soloElEquipo($request);
+        $delEquipo = $request->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false;
+
+        // Apagada, es del equipo: quien no ha entrado va a iniciar sesión.
+        if (! $delEquipo && ! self::presentacionPublica()) {
+            abort_if($request->user(), 403);
+
+            return redirect()->guest(route('login'));
+        }
 
         return view('calidad.caracterizacion', [
             'cifras'      => $this->cifras(),
@@ -76,6 +91,7 @@ class CalidadController extends Controller
                 && \Illuminate\Support\Facades\Storage::disk('public')->exists($l->imagen_path)
                     ? asset('storage/' . $l->imagen_path) : null,
             'generada'    => now(config('fabos.lab.timezone')),
+            'delEquipo'   => $delEquipo,
         ]);
     }
 
