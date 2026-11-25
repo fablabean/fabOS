@@ -179,7 +179,13 @@ class MaintenanceService
                     'reported_issue'      => $plan->name,
                     // El formulario se congela con la orden: dentro de dos años
                     // seguirá mostrando el que realmente se usó.
-                    'checklist_snapshot'  => $plan->checklist,
+                    // Primero lo que el INV-118 manda revisar según el color
+                    // del equipo; después lo propio de la franja.
+                    'checklist_snapshot'  => collect($equipo->puntosDeRevision())
+                        ->merge($plan->puntos())
+                        ->unique(fn ($p) => mb_strtolower($p))
+                        ->values()
+                        ->all() ?: $plan->checklist,
                     'due_at'              => $limite,
                 ]);
 

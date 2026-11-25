@@ -199,6 +199,49 @@ class AssetForm
                         TextInput::make('serial')->label('Serie')->maxLength(255),
                     ]),
 
+                /*
+                 * Lo que pide el procedimiento INV-118 (mantenimiento) y su
+                 * formato INV-113-f1 (hoja de vida). Es lo que se audita.
+                 */
+                Section::make('Mantenimiento y hoja de vida')
+                    ->description('Según el procedimiento INV-118: el color dice qué se revisa en cada revisión rutinaria; la frecuencia se fija en Mantenimiento → Pauta preventiva.')
+                    ->columns(2)
+                    ->collapsed(fn (?Asset $record) => $record !== null && filled($record->esquema_color))
+                    ->schema([
+                        Select::make('esquema_color')
+                            ->label('Esquema de color')
+                            ->options(Asset::nombresDeEsquema())
+                            ->placeholder('Sin asignar')
+                            ->live()
+                            ->helperText(fn ($get) => filled($get('esquema_color'))
+                                ? 'Se revisa: ' . mb_strtolower(implode(' · ', Asset::ESQUEMAS[$get('esquema_color')]['puntos'] ?? [])) . '.'
+                                : 'Verde: herramientas y equipos básicos. Amarillo: impresoras y láser. Rojo: CNC, plotter, bordadora y equipos críticos.'),
+
+                        Toggle::make('es_de_apoyo')
+                            ->label('Equipo de apoyo (Anexo 2)')
+                            ->live()
+                            ->helperText('Fuentes, multímetros, osciloscopios, estaciones de soldadura, gafas de RV: hay unidades de sobra y no llevan hoja de vida.'),
+
+                        Repeater::make('accesorios')
+                            ->label('Accesorios o piezas adicionales')
+                            ->schema([
+                                TextInput::make('concepto')->label('Concepto')->required()->maxLength(160)->columnSpan(3),
+                                TextInput::make('cantidad')->label('Cant.')->numeric()->minValue(0)->default(1),
+                            ])
+                            ->columns(['default' => 4])
+                            ->addActionLabel('Añadir accesorio')
+                            ->defaultItems(0)
+                            ->collapsible()
+                            ->visible(fn ($get) => ! $get('es_de_apoyo'))
+                            ->columnSpanFull(),
+
+                        Textarea::make('observaciones')
+                            ->label('Observaciones de la hoja de vida')
+                            ->rows(3)
+                            ->visible(fn ($get) => ! $get('es_de_apoyo'))
+                            ->columnSpanFull(),
+                    ]),
+
                 Section::make('Compra y garantía')
                     ->columns(3)
                     ->collapsed()

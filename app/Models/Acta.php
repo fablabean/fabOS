@@ -70,6 +70,13 @@ class Acta extends Model
         'anulada'    => 'Anulada',
     ];
 
+    /** Los motivos del acta de baja ADF-207-f3, con su texto. */
+    public const MOTIVOS_DE_BAJA = [
+        'deterioro'   => 'Por deterioro, en obsolescencia y/o desuso',
+        'hurto'       => 'Por hurto',
+        'parte_pago'  => 'Como parte de pago',
+    ];
+
     /** B, R, M: bueno, regular, malo, como los marca el formato. */
     public const CONDICIONES = ['B' => 'Bueno', 'R' => 'Regular', 'M' => 'Malo'];
 

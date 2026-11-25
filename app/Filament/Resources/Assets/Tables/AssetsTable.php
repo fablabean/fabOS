@@ -119,6 +119,22 @@ class AssetsTable
                     ->formatStateUsing(fn ($state) => Asset::TIPOS[$state] ?? $state)
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                // El color del INV-118: qué se revisa en la revisión rutinaria.
+                TextColumn::make('esquema_color')
+                    ->label('Color')
+                    ->badge()
+                    ->state(fn (Asset $r) => $r->es_de_apoyo ? 'apoyo' : $r->esquema_color)
+                    ->formatStateUsing(fn ($state) => $state === 'apoyo' ? 'De apoyo' : (Asset::ESQUEMAS[$state]['nombre'] ?? $state))
+                    ->color(fn ($state) => match ($state) {
+                        'verde'    => 'success',
+                        'amarillo' => 'warning',
+                        'rojo'     => 'danger',
+                        default    => 'gray',
+                    })
+                    ->placeholder('sin color')
+                    ->tooltip('Esquema de color del procedimiento INV-118')
+                    ->toggleable(),
+
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -197,6 +213,21 @@ class AssetsTable
                     ->label('Tipo')
                     ->options(Asset::TIPOS),
 
+                SelectFilter::make('esquema_color')
+                    ->label('Esquema de color (INV-118)')
+                    ->options(Asset::nombresDeEsquema() + ['sin' => 'Sin asignar'])
+                    ->query(fn ($query, array $data) => match ($data['value'] ?? null) {
+                        null, ''  => $query,
+                        'sin'     => $query->whereNull('esquema_color')->where('es_de_apoyo', false),
+                        default   => $query->where('esquema_color', $data['value']),
+                    }),
+
+                TernaryFilter::make('es_de_apoyo')
+                    ->label('Equipo de apoyo (Anexo 2)')
+                    ->placeholder('Todos')
+                    ->trueLabel('Solo de apoyo')
+                    ->falseLabel('Sin los de apoyo'),
+
                 TernaryFilter::make('is_reservable')
                     ->label('Reservable')
                     ->placeholder('Todos')
@@ -230,10 +261,50 @@ class AssetsTable
             ->recordActions([
                 self::duplicar(),
                 self::verQr(),
+                Action::make('hojaDeVida')
+                    ->iconButton()
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->tooltip('Hoja de vida (INV-113-f1)')
+                    ->url(fn (Asset $r) => route('activos.hoja-de-vida', $r))
+                    ->openUrlInNewTab()
+                    ->visible(fn (Asset $r) => $r->llevaHojaDeVida()),
                 EditAction::make()->iconButton()->tooltip('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    // Para dejar el Anexo 1 y el Anexo 2 del INV-118 en el
+                    // inventario de una vez, sin abrir ficha por ficha.
+                    \Filament\Actions\BulkAction::make('esquema')
+                        ->label('Asignar esquema de color')
+                        ->icon('heroicon-o-swatch')
+                        ->schema([
+                            \Filament\Forms\Components\Select::make('esquema_color')
+                                ->label('Esquema de color (INV-118)')
+                                ->options(Asset::nombresDeEsquema())
+                                ->required(),
+                        ])
+                        ->action(function (\Illuminate\Support\Collection $records, array $data) {
+                            $records->each->update(['esquema_color' => $data['esquema_color'], 'es_de_apoyo' => false]);
+                            Notification::make()->success()
+                                ->title($records->count() . ' activos en ' . mb_strtolower(Asset::ESQUEMAS[$data['esquema_color']]['nombre']))
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->visible(fn () => auth()->user()?->puedeEnLaSeccion('editar', \App\Support\Secciones::claveDe(\App\Filament\Resources\Assets\AssetResource::class)) ?? false),
+
+                    \Filament\Actions\BulkAction::make('apoyo')
+                        ->label('Marcar como equipo de apoyo')
+                        ->icon('heroicon-o-lifebuoy')
+                        ->requiresConfirmation()
+                        ->modalDescription('Anexo 2 del INV-118: no llevan hoja de vida porque hay unidades de sobra y su falla no detiene el laboratorio.')
+                        ->action(function (\Illuminate\Support\Collection $records) {
+                            $records->each->update(['es_de_apoyo' => true]);
+                            Notification::make()->success()->title($records->count() . ' equipos de apoyo')->send();
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->visible(fn () => auth()->user()?->puedeEnLaSeccion('editar', \App\Support\Secciones::claveDe(\App\Filament\Resources\Assets\AssetResource::class)) ?? false),
+
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),

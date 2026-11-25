@@ -116,6 +116,42 @@ class ActaResource extends Resource
                         ->columnSpanFull(),
                 ]),
 
+            /*
+             * La baja lleva además su propio formato, el ADF-207-f3, que firma
+             * la Vicerrectoría Administrativa y Financiera. Lo que ese formato
+             * pide y el de movimiento no, se anota aquí.
+             */
+            Section::make('Acta de baja (ADF-207-f3)')
+                ->description('Lo que pide el formato de baja de activos. Lo que quede vacío sale en blanco para llenarlo a mano.')
+                ->columns(2)
+                ->visible(fn (Get $get) => $get('tipo') === 'baja')
+                ->schema([
+                    Select::make('baja_motivo')
+                        ->label('Motivo de la baja')
+                        ->options(Acta::MOTIVOS_DE_BAJA)
+                        ->required(fn (Get $get) => $get('tipo') === 'baja')
+                        ->disabled($bloqueada)
+                        ->columnSpanFull(),
+                    TextInput::make('baja_vicerrector')
+                        ->label('Vicerrector(a) Administrativo y Financiero')
+                        ->maxLength(160)
+                        ->disabled($bloqueada),
+                    TextInput::make('baja_proceso')
+                        ->label('Proceso')
+                        ->default('Innovación, Desarrollo y Transferencia de Conocimiento')
+                        ->maxLength(160)
+                        ->disabled($bloqueada),
+                    TextInput::make('baja_responsable')
+                        ->label('Responsable de los activos')
+                        ->maxLength(160)
+                        ->disabled($bloqueada),
+                    TextInput::make('baja_responsable_cargo')
+                        ->label('Su cargo')
+                        ->default('Coordinador(a) FabLab · Unidad de Desarrollo')
+                        ->maxLength(160)
+                        ->disabled($bloqueada),
+                ]),
+
             self::parte('entrega', 'Área de origen · quien entrega', $bloqueada, porDefecto: true),
             self::parte('recibe', 'Área de destino · quien recibe', $bloqueada),
 
@@ -354,6 +390,7 @@ class ActaResource extends Resource
                 self::registrarDevolucion(),
                 ActionGroup::make([
                     self::verFormato(),
+                    self::verActaDeBaja(),
                     self::verDevoluciones(),
                     self::firmarYo(),
                     self::reenviarEnlaces(),
@@ -386,6 +423,17 @@ class ActaResource extends Resource
             ->icon('heroicon-o-arrow-uturn-left')
             ->visible(fn (Acta $r) => $r->devoluciones()->exists())
             ->url(fn (Acta $r) => route('actas.devolver', $r))
+            ->openUrlInNewTab();
+    }
+
+    /** El formato ADF-207-f3, solo en las de baja. */
+    public static function verActaDeBaja(): Action
+    {
+        return Action::make('actaDeBaja')
+            ->label('Acta de baja (ADF-207-f3)')
+            ->icon('heroicon-o-archive-box-x-mark')
+            ->visible(fn (Acta $r) => $r->tipo === 'baja')
+            ->url(fn (Acta $r) => route('actas.baja', $r))
             ->openUrlInNewTab();
     }
 

@@ -26,6 +26,14 @@ class EditAsset extends EditRecord
                 ->url(fn () => WorkOrderResource::getUrl('create', ['equipo' => $this->record->getKey()]))
                 ->visible(fn () => WorkOrderResource::canCreate()),
 
+            Action::make('hojaDeVida')
+                ->label('Hoja de vida')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->url(fn () => route('activos.hoja-de-vida', $this->record))
+                ->openUrlInNewTab()
+                ->visible(fn () => $this->record->llevaHojaDeVida()),
+
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

@@ -658,6 +658,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/rocola/estado', [\App\Http\Controllers\RocolaController::class, 'estado'])->name('rocola.estado');
     Route::post('/rocola', [\App\Http\Controllers\RocolaController::class, 'pedir'])->middleware('throttle:20,1')->name('rocola.pedir');
 
+    // Los formatos del sistema de calidad (ISO 9001, proceso INV-200), para el equipo.
+    Route::get('/activos/{asset}/hoja-de-vida', [\App\Http\Controllers\CalidadController::class, 'hojaDeVida'])->name('activos.hoja-de-vida');
+    Route::get('/actas/{acta}/baja', [\App\Http\Controllers\CalidadController::class, 'actaDeBaja'])->name('actas.baja');
+    Route::get('/calidad/inv-200', [\App\Http\Controllers\CalidadController::class, 'caracterizacion'])->name('calidad.caracterizacion');
+
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');
     Route::get('/actas/{acta}/formato.pdf', [\App\Http\Controllers\ActaController::class, 'pdf'])->name('actas.pdf');

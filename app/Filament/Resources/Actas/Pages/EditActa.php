@@ -19,6 +19,14 @@ class EditActa extends EditRecord
                 ->color('gray')
                 ->url(fn () => route('actas.ver', $this->record))
                 ->openUrlInNewTab(),
+
+            Action::make('actaDeBaja')
+                ->label('Acta de baja (ADF-207-f3)')
+                ->icon('heroicon-o-archive-box-x-mark')
+                ->color('gray')
+                ->visible(fn () => $this->record->tipo === 'baja')
+                ->url(fn () => route('actas.baja', $this->record))
+                ->openUrlInNewTab(),
         ];
     }
 

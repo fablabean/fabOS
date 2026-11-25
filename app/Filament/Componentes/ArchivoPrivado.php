@@ -26,7 +26,9 @@ class ArchivoPrivado
         // Las cotizaciones formales de las requisiciones de compra.
         'compras/',
         // Los manuales de mantenimiento de los equipos.
-        'manuales/', 'reservas/demos/'];
+        'manuales/', 'reservas/demos/',
+        // Los informes de las auditorías de calidad.
+        'calidad/'];
 
     public static function previsualizar(FileUpload $campo): FileUpload
     {

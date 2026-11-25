@@ -1,0 +1,203 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Filament\Pages\PautaPreventiva;
+use App\Filament\Resources\Actas\ActaResource;
+use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Resources\Auditorias\AuditoriaResource;
+use App\Filament\Resources\Projects\ProjectResource;
+use App\Filament\Resources\Reservations\ReservationResource;
+use App\Filament\Resources\WorkOrders\WorkOrderResource;
+use App\Models\Acta;
+use App\Models\Area;
+use App\Models\Asset;
+use App\Models\Auditoria;
+use App\Models\Project;
+use App\Models\Reservation;
+use App\Models\Space;
+use App\Models\User;
+use App\Models\WorkOrder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Los formatos del sistema de calidad y la presentación para la auditoría
+ * (ISO 9001, proceso INV-200 · Innovación, Desarrollo y Transferencia).
+ *
+ * Todo sale de la base en el momento: la presentación no copia cifras que se
+ * quedan viejas el día después, y cada evidencia es un enlace a la pantalla
+ * del panel donde el auditor puede mirar el registro.
+ */
+class CalidadController extends Controller
+{
+    /** La hoja de vida de un equipo: el formato INV-113-f1, llenado con su ficha. */
+    public function hojaDeVida(Request $request, Asset $asset)
+    {
+        $this->soloElEquipo($request);
+
+        $ordenes = $asset->workOrders();
+
+        return view('calidad.hoja-de-vida', [
+            'activo'       => $asset->load('location', 'space', 'area'),
+            'foto'         => $this->fotoUrl($asset->photo_path),
+            'total'        => (clone $ordenes)->count(),
+            'preventivos'  => (clone $ordenes)->where('kind', 'preventivo')->where('status', 'cerrada')->count(),
+            'correctivos'  => (clone $ordenes)->where('kind', 'correctivo')->where('status', 'cerrada')->count(),
+            'ultima'       => (clone $ordenes)->where('status', 'cerrada')->latest('closed_at')->first(),
+            'abiertas'     => (clone $ordenes)->whereIn('status', WorkOrder::ABIERTAS)->count(),
+            'frecuencia'   => $this->frecuenciaDe($asset),
+        ]);
+    }
+
+    /** El acta de baja ADF-207-f3, desde un acta de movimiento de tipo baja. */
+    public function actaDeBaja(Request $request, Acta $acta)
+    {
+        $this->soloElEquipo($request);
+        abort_unless($acta->tipo === 'baja', 404);
+
+        return view('calidad.acta-de-baja', [
+            'acta' => $acta->load('items', 'entrega'),
+        ]);
+    }
+
+    /** La caracterización INV-200 del FabLab, con sus evidencias en vivo. */
+    public function caracterizacion(Request $request)
+    {
+        $this->soloElEquipo($request);
+
+        return view('calidad.caracterizacion', [
+            'cifras'      => $this->cifras(),
+            'enlaces'     => $this->enlaces(),
+            'auditorias'  => Auditoria::orderByDesc('realizada_at')->get(),
+            'generada'    => now(config('fabos.lab.timezone')),
+        ]);
+    }
+
+    /**
+     * Las cifras de cada procedimiento.
+     *
+     * @return array<string, mixed>
+     */
+    private function cifras(): array
+    {
+        $areas = Area::pluck('id', 'slug');
+        $deArea = fn (array $slugs) => Asset::whereIn('area_id', $areas->only($slugs)->values())->pluck('id');
+
+        $prototipado = $deArea(['impresion-3d', 'corte-laser']);
+        $vr = $deArea(['vr']);
+        $herramientas = Asset::whereIn('kind', Asset::DE_PRESTAMO)->pluck('id');
+
+        $reservas = fn () => Reservation::query()->where('is_demo', false);
+        $deEquipos = fn ($ids) => $reservas()->where('reservable_type', (new Asset)->getMorphClass())->whereIn('reservable_id', $ids);
+        $hechas = ['completada', 'en_curso'];
+
+        $fijos = Asset::where('kind', 'fijo')->whereNot('status', 'baja');
+
+        $conPlan = DB::table('asset_maintenance_plan')
+            ->join('maintenance_plans', 'maintenance_plans.id', '=', 'asset_maintenance_plan.maintenance_plan_id')
+            ->where('maintenance_plans.is_active', true)
+            ->distinct()
+            ->count('asset_maintenance_plan.asset_id');
+
+        $proyectos = fn () => Project::query();
+
+        return [
+            'reservas_desde' => $reservas()->min('starts_at'),
+
+            // INV-115 · espacios y herramientas
+            'reservas_espacios'      => $reservas()->where('reservable_type', (new Space)->getMorphClass())->whereIn('status', $hechas)->count(),
+            'reservas_herramientas'  => $deEquipos($herramientas)->whereIn('status', $hechas)->count(),
+            'herramientas'           => $herramientas->count(),
+            'actas_prestamo'         => Acta::whereIn('tipo', ['prestamo_dentro', 'prestamo_fuera'])->whereNot('status', 'anulada')->count(),
+
+            // INV-116 · prototipado rápido
+            'reservas_prototipado'   => $deEquipos($prototipado)->whereIn('status', $hechas)->count(),
+            'asesorias'              => $reservas()->where('mode', 'asesoria')->whereIn('status', $hechas)->count(),
+
+            // INV-114 · impresión a terceros
+            'proyectos_externos'     => $proyectos()->where('client_kind', 'externo')->count(),
+            'proyectos_externos_fin' => $proyectos()->where('client_kind', 'externo')->where('stage', 'cierre')->count(),
+            'proyectos'              => $proyectos()->count(),
+            'proyectos_con_propuesta' => $proyectos()->whereNotNull('proposal_sent_at')->count(),
+            'proyectos_aceptados'    => $proyectos()->whereNotNull('accepted_at')->count(),
+
+            // INV-113 · realidad virtual
+            'proyectos_vr'           => $proyectos()->where('area_id', $areas['vr'] ?? 0)->count(),
+            'reservas_vr'            => $deEquipos($vr)->whereIn('status', $hechas)->count(),
+
+            // INV-118 · mantenimiento
+            'fijos'                  => (clone $fijos)->count(),
+            'con_color'              => (clone $fijos)->whereNotNull('esquema_color')->count(),
+            'por_color'              => Asset::whereNot('status', 'baja')->whereNotNull('esquema_color')
+                ->select('esquema_color', DB::raw('count(*) as n'))->groupBy('esquema_color')->pluck('n', 'esquema_color'),
+            'de_apoyo'               => Asset::where('es_de_apoyo', true)->whereNot('status', 'baja')->count(),
+            'con_plan'               => $conPlan,
+            'preventivas'            => WorkOrder::where('kind', 'preventivo')->where('status', 'cerrada')->count(),
+            'correctivas'            => WorkOrder::where('kind', 'correctivo')->where('status', 'cerrada')->count(),
+            'ordenes_abiertas'       => WorkOrder::whereIn('status', WorkOrder::ABIERTAS)->count(),
+            'primera_orden'          => WorkOrder::min('created_at'),
+            'actas_baja'             => Acta::where('tipo', 'baja')->whereNot('status', 'anulada')->count(),
+            'dados_de_baja'          => Asset::where('status', 'baja')->count(),
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function enlaces(): array
+    {
+        $todosLosProyectos = ['mios' => ['isActive' => false]];
+
+        return [
+            'reservas'          => ReservationResource::getUrl('index', ['filters' => ['mias' => ['isActive' => false]]]),
+            'reservar'          => route('publico.reservas'),
+            'solicitar'         => route('proyectos.solicitar'),
+            'proyectos'         => ProjectResource::getUrl('index', ['filters' => $todosLosProyectos]),
+            'activos'           => AssetResource::getUrl('index'),
+            'activos_color'     => AssetResource::getUrl('index', ['filters' => ['esquema_color' => ['value' => 'sin']]]),
+            'activos_apoyo'     => AssetResource::getUrl('index', ['filters' => ['es_de_apoyo' => ['value' => 1]]]),
+            'pauta'             => PautaPreventiva::getUrl(),
+            'ordenes'           => WorkOrderResource::getUrl('index', ['filters' => ['abiertas' => ['isActive' => false]]]),
+            'preventivas'       => WorkOrderResource::getUrl('index', ['filters' => ['abiertas' => ['isActive' => false], 'kind' => ['value' => 'preventivo']]]),
+            'correctivas'       => WorkOrderResource::getUrl('index', ['filters' => ['abiertas' => ['isActive' => false], 'kind' => ['value' => 'correctivo']]]),
+            'actas'             => ActaResource::getUrl('index'),
+            'actas_baja'        => ActaResource::getUrl('index', ['filters' => ['tipo' => ['value' => 'baja']]]),
+            'actas_prestamo'    => ActaResource::getUrl('index', ['filters' => ['tipo' => ['value' => 'prestamo_fuera']]]),
+            'auditorias'        => AuditoriaResource::getUrl('index'),
+            'nueva_auditoria'   => AuditoriaResource::getUrl('create'),
+            'etiquetas'         => route('etiquetas'),
+        ];
+    }
+
+    /** La franja de la pauta preventiva en que está, como la nombra el INV-118. */
+    private function frecuenciaDe(Asset $asset): ?string
+    {
+        $pauta = DB::table('asset_maintenance_plan')
+            ->join('maintenance_plans', 'maintenance_plans.id', '=', 'asset_maintenance_plan.maintenance_plan_id')
+            ->where('maintenance_plans.is_active', true)
+            ->where('asset_maintenance_plan.asset_id', $asset->id)
+            ->value('maintenance_plans.pauta');
+
+        return match ($pauta) {
+            'mensual'   => 'A · mensual',
+            'bimestral' => 'B · bimestral',
+            'semestral' => 'C · semestral',
+            null        => null,
+            default     => \App\Models\MaintenancePlan::PAUTA[$pauta][1] ?? $pauta,
+        };
+    }
+
+    /** La foto del registro fotográfico, si la ficha tiene una que exista. */
+    private function fotoUrl(?string $ruta): ?string
+    {
+        if (blank($ruta) || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($ruta)) {
+            return null;
+        }
+
+        return asset('storage/' . $ruta);
+    }
+
+    private function soloElEquipo(Request $request): void
+    {
+        abort_unless($request->user()?->hasAnyRole(User::rolesDelEquipo()), 403);
+    }
+}

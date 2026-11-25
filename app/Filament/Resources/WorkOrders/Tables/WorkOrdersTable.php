@@ -78,6 +78,12 @@ class WorkOrdersTable
                 SelectFilter::make('status')->label('Estado')->options(WorkOrder::ESTADOS)->multiple(),
                 SelectFilter::make('kind')->label('Tipo')->options(WorkOrder::TIPOS),
 
+                // El historial de una máquina: es el enlace de su hoja de vida.
+                SelectFilter::make('asset_id')
+                    ->label('Equipo')
+                    ->relationship('asset', 'name')
+                    ->searchable(),
+
                 Filter::make('abiertas')
                     ->label('Solo abiertas')
                     ->query(fn (Builder $query) => $query->whereIn('status', WorkOrder::ABIERTAS))

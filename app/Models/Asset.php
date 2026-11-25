@@ -36,7 +36,92 @@ class Asset extends Model
         'purchase_cost', 'purchased_at', 'warranty_until',
         'photo_path', 'video_url', 'public_description', 'is_public',
         'maintenance_resources',
+        'esquema_color', 'es_de_apoyo', 'accesorios', 'observaciones',
     ];
+
+    /**
+     * El esquema de color del procedimiento INV-118 (§3.6 y §6.2.1).
+     *
+     * Dice qué se mira en la revisión rutinaria: el verde es lo básico de
+     * cualquier herramienta, el amarillo añade lo de una impresora o un láser,
+     * el rojo lo de una máquina con ejes, husillos y sistemas de seguridad. La
+     * lista es la del procedimiento aprobado, palabra por palabra: es lo que
+     * se audita.
+     *
+     * @var array<string, array{nombre: string, color: string, puntos: list<string>}>
+     */
+    public const ESQUEMAS = [
+        'verde' => [
+            'nombre' => 'Verde',
+            'color'  => '#16a34a',
+            'puntos' => [
+                'Limpieza exterior',
+                'Comprobación de partes móviles',
+                'Inspección de daños visibles',
+                'Revisión del cableado y conexiones eléctricas',
+                'Prueba funcional básica',
+                'Revisión de accesorios y consumibles',
+            ],
+        ],
+        'amarillo' => [
+            'nombre' => 'Amarillo',
+            'color'  => '#ca8a04',
+            'puntos' => [
+                'Limpieza exterior',
+                'Comprobación de partes móviles',
+                'Inspección de daños visibles',
+                'Revisión de la estructura externa',
+                'Revisión del cableado y conexiones eléctricas',
+                'Revisión de accesorios',
+                'Verificación de estado del área de trabajo',
+                'Comprobación de sistemas de refrigeración',
+                'Revisión de correas y/o poleas',
+                'Comprobación de sistema de control y correcto funcionamiento',
+            ],
+        ],
+        'rojo' => [
+            'nombre' => 'Rojo',
+            'color'  => '#dc2626',
+            'puntos' => [
+                'Limpieza exterior',
+                'Revisión de la estructura y robustez',
+                'Verificación de cables y conexiones eléctricas',
+                'Inspección de sistemas de lubricación',
+                'Revisión de componentes mecánicos clave (husillos, guías lineales, etc.)',
+                'Inspección de herramientas y portaherramientas',
+                'Verificación de los ejes de movimiento',
+                'Inspección de sistemas de control y/o pantallas',
+                'Revisión de la calidad de las superficies de trabajo',
+                'Inspección de sistemas de seguridad y emergencia',
+                'Revisión de sistemas de aspiración de virutas y/o colección de polvo',
+            ],
+        ],
+    ];
+
+    /** Nombre del esquema, para listas y formatos. */
+    public static function nombresDeEsquema(): array
+    {
+        return collect(self::ESQUEMAS)->map(fn ($e) => $e['nombre'])->all();
+    }
+
+    /** Lo que se revisa según su esquema de color; vacío si no tiene. */
+    public function puntosDeRevision(): array
+    {
+        return self::ESQUEMAS[$this->esquema_color]['puntos'] ?? [];
+    }
+
+    /**
+     * Si lleva hoja de vida (formato INV-113-f1).
+     *
+     * Los equipos de apoyo del Anexo 2 —fuentes, multímetros, osciloscopios,
+     * gafas de realidad virtual— no la llevan: hay unidades de sobra y que una
+     * falle no detiene el laboratorio. Los computadores tampoco: los mantiene
+     * Tecnología (ADF-507).
+     */
+    public function llevaHojaDeVida(): bool
+    {
+        return ! $this->es_de_apoyo && $this->kind !== 'computador';
+    }
 
     /**
      * El modo por defecto también en memoria, no solo en la base de datos.
@@ -63,6 +148,8 @@ class Asset extends Model
             'warranty_until' => 'date',
             'purchase_cost'  => 'decimal:2',
             'maintenance_resources' => 'array',
+            'es_de_apoyo'    => 'boolean',
+            'accesorios'     => 'array',
         ];
     }
 
