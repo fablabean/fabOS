@@ -238,6 +238,27 @@
   .solo-part{display:none !important} body.es-participante .solo-part{display:inline-flex !important}
   #seguir[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 
+  /* Tu ID del bootcamp: se pide el nombre al entrar. */
+  .mi-id{display:none !important} body.es-participante.con-registro .mi-id{display:inline-flex !important}
+  .mi-id b{font-family:"JetBrains Mono",monospace;letter-spacing:.12em;color:var(--accent);margin-left:.35rem}
+  .bienv{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:1rem;background:color-mix(in srgb,var(--bg) 88%,transparent);overflow-y:auto}
+  .bienv[hidden]{display:none}
+  .bienv .caja{width:min(31rem,100%);border:1px solid var(--rule);border-radius:18px;padding:1.5rem 1.5rem 1.3rem;background:var(--card);box-shadow:0 24px 60px rgba(0,0,0,.55)}
+  .bienv h3{margin:0 0 .4rem;font-size:1.35rem}
+  .bienv p{color:var(--soft);font-size:.95rem;margin:.4rem 0}
+  .bienv form{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0 .3rem}
+  .bienv input{flex:1 1 12rem;min-width:0;padding:.65rem .8rem;border-radius:10px;border:1px solid var(--rule);background:var(--bg2);color:var(--ink);font:500 1rem Inter,sans-serif}
+  .bienv input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .bienv input.cod{text-transform:uppercase;letter-spacing:.3em;font-family:"JetBrains Mono",monospace;flex:0 1 9rem}
+  .bienv .error{color:var(--bad);font-size:.85rem;min-height:1.2em;margin:.2rem 0}
+  .bienv .enlace{background:none;border:0;padding:0;color:var(--muted);font:inherit;font-size:.86rem;text-decoration:underline;cursor:pointer}
+  .bienv .codigo{font:800 clamp(2.6rem,10vw,3.6rem) "JetBrains Mono",monospace;letter-spacing:.22em;color:var(--accent);text-align:center;margin:.6rem 0 .1rem;padding:.4rem 0;
+    border:1px dashed color-mix(in srgb,var(--accent) 50%,var(--rule));border-radius:14px}
+  .bienv .nota{font-size:.82rem;color:var(--muted);text-align:center;margin:0 0 .9rem}
+  .bienv .acciones{display:flex;flex-direction:column;gap:.55rem;margin-top:1rem}
+  .bienv .acciones .boton{justify-content:center;text-align:center}
+  .bienv [data-paso]{display:none} .bienv[data-en=nombre] [data-paso=nombre],.bienv[data-en=codigo] [data-paso=codigo],.bienv[data-en=listo] [data-paso=listo]{display:block}
+
   /* Una sección por pantalla: la portada, la agenda y cada bloque. */
   html{scroll-snap-type:y mandatory;scroll-padding-top:var(--barra,3.3rem)}
   header.portada{padding:2.2rem 0 2rem !important}
@@ -259,6 +280,7 @@
   <div class="wrap">
     <div class="marca">BOOTCAMP <b>AGENTIC</b> · día 2 de 3</div>
     <button type="button" class="boton chico solo-profe" id="ver-qr" title="Mostrar el QR en grande">▦ QR</button>
+    <button type="button" class="boton chico mi-id" id="mi-id" title="Tu ID del bootcamp">Recibir mi ID</button>
     <button type="button" class="boton chico solo-part" id="seguir" aria-pressed="true" title="Tu pantalla pasa sola a la sección que muestra quien presenta">● Siguiendo a quien presenta</button>
     <div class="reloj" aria-live="off">
       <div class="txt"><span id="r-hora">—</span><span id="r-bloque">—</span><span class="ritmo" id="r-ritmo">—</span></div>
@@ -288,6 +310,38 @@
 </header>
 
 <div class="qr-grande" id="qr-grande" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m1 0h1m1 0h2m7 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m6 0h1m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h1m3 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h4m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h2m2 0h1m2 0h1m3 0h2m1 0h3m3 0h2m1 0h2m-28 1h4m2 0h3m1 0h1m1 0h1m2 0h3m2 0h2m2 0h1m-25 1h1m2 0h1m1 0h1m2 0h1m5 0h1m3 0h4m1 0h1m1 0h1m-26 1h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-29 1h2m2 0h2m1 0h3m3 0h1m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m1 0h2m1 0h2m2 0h4m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m7 0h2m3 0h1m1 0h1m1 0h1m-28 1h1m1 0h1m2 0h1m1 0h3m1 0h2m1 0h3m7 0h2m-27 1h6m2 0h4m2 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m2 0h2m2 0h3m2 0h1m-25 1h1m3 0h5m1 0h1m1 0h1m4 0h8m1 0h3m-21 1h3m1 0h1m1 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m2 0h1m1 0h1m3 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h2m1 0h1m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m4 0h1m1 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m1 0h2m1 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h10m-28 1h1m5 0h1m2 0h2m1 0h1m2 0h1m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h4m2 0h2m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><b>Escanéalo para seguir en vivo</b><span>fablabean.com/zonas/agentic/dia-2</span></div>
+
+<div class="bienv" id="bienv" hidden data-en="nombre" role="dialog" aria-modal="true" aria-labelledby="bienv-t">
+  <div class="caja">
+    <div data-paso="nombre">
+      <h3 id="bienv-t">¡Hola! ¿Cómo te llamas?</h3>
+      <p>Escribe tu nombre y te doy tu <b>ID del bootcamp</b>: cuatro letras y números que son solo tuyos.</p>
+      <p>Con ese ID te reconozco cuando me escribas. Agrégame en LinkedIn y escríbeme con él: te respondo personalmente tus dudas y, si sale una buena idea, podemos empezar un proyecto juntos.</p>
+      <form id="f-nombre"><input name="nombre" maxlength="80" autocomplete="name" placeholder="Tu nombre y apellido" aria-label="Tu nombre"><button type="submit" class="boton pri">Recibir mi ID</button></form>
+      <p class="error" data-error></p>
+      <button type="button" class="enlace" data-ir="codigo">Ya tengo un ID</button> · <button type="button" class="enlace" data-cerrar>Ahora no</button>
+    </div>
+    <div data-paso="codigo">
+      <h3>Escribe tu ID</h3>
+      <p>El que recibiste antes (en esta sesión o en otra del bootcamp).</p>
+      <form id="f-codigo"><input name="codigo" class="cod" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7Q2" aria-label="Tu ID"><button type="submit" class="boton pri">Es el mío</button></form>
+      <p class="error" data-error></p>
+      <button type="button" class="enlace" data-ir="nombre">No tengo ID todavía</button> · <button type="button" class="enlace" data-cerrar>Ahora no</button>
+    </div>
+    <div data-paso="listo">
+      <h3><span data-nombre></span>, este es tu ID</h3>
+      <div class="codigo" data-codigo>····</div>
+      <p class="nota">Guárdalo: tómale foto o anótalo. Sirve también el jueves.</p>
+      <p>Agrégame en LinkedIn y escríbeme con tu ID: así sé que estuviste en el bootcamp y te respondo a ti.</p>
+      <div class="acciones">
+        <a class="boton pri" data-linkedin href="#" target="_blank" rel="noopener" hidden>Agregarme en LinkedIn ↗</a>
+        <button type="button" class="boton" data-copiar>Copiar mensaje para LinkedIn</button>
+        <button type="button" class="boton" data-cerrar>Listo, seguir con la sesión</button>
+      </div>
+      <p style="text-align:center;margin-top:.8rem"><button type="button" class="enlace" data-ir="nombre">Corregir mi nombre</button></p>
+    </div>
+  </div>
+</div>
 
 <main class="wrap">
 
@@ -721,6 +775,7 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   function aplicar(e) {
     desfase = e.ahora - Date.now();
     soyProfe = !!e.profe;
+    registro(e);
     document.body.classList.add('en-vivo');
     document.body.classList.toggle('es-profe', soyProfe);
     document.body.classList.toggle('es-participante', !soyProfe);
@@ -735,6 +790,77 @@ Lo que tuve que decidir o corregir yo fue <span class="hueco">___</span>.</pre><
   function sondear() {
     if (document.hidden) { return; }
     pedir('/estado?v=' + yo + (profe ? '&profe=' + profe : '')).then(aplicar).catch(function () {});
+  }
+
+  // ---- Tu ID del bootcamp: quien entra escribe su nombre y recibe un ID
+  // corto, para escribirle después a quien presenta (LinkedIn) y que lo
+  // reconozca. Queda en la dirección (#id=…) para que una recarga no lo pierda.
+  var bienv = $('#bienv'), miId = null, miNombre = '', linkedin = null, yaPregunte = false;
+  var guardadoId = ((location.hash.match(/(?:^#|&)id=([A-Za-z0-9]{4})\b/) || [])[1] || lee('id') || '').toUpperCase();
+  function paso(p) {
+    bienv.dataset.en = p;
+    $$('[data-error]', bienv).forEach(function (x) { x.textContent = ''; });
+    var inp = $('[data-paso=' + p + '] input', bienv); if (inp) { setTimeout(function () { inp.focus(); }, 50); }
+  }
+  function abrir(p) { bienv.hidden = false; paso(p || (miId ? 'listo' : 'nombre')); }
+  function cerrar() { bienv.hidden = true; }
+  function soy(r) {
+    miId = r.codigo; miNombre = r.nombre;
+    guarda('id', miId);
+    try { if (!profe) { location.hash = 'id=' + miId; } } catch (_) {}
+    $('#mi-id').innerHTML = 'Tu ID<b></b>'; $('#mi-id b').textContent = miId;
+    $('[data-codigo]', bienv).textContent = miId;
+    $('[data-nombre]', bienv).textContent = (miNombre.split(' ')[0] || miNombre);
+    $('#f-nombre').elements.nombre.value = miNombre;
+  }
+  function enviarRegistro(datos, form) {
+    var b = $('button', form), err = form.parentNode.querySelector('[data-error]');
+    b.disabled = true; err.textContent = '';
+    datos.v = yo;
+    fetch(API + '/registro', { method: 'POST', body: new URLSearchParams(datos) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) { throw new Error(j.error || 'No se pudo.'); } return j; }); })
+      .then(function (j) { soy(j); paso('listo'); })
+      .catch(function (x) { err.textContent = x.message && x.message.length < 80 ? x.message : 'No se pudo. Intenta de nuevo.'; })
+      .then(function () { b.disabled = false; });
+  }
+  $('#f-nombre').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var n = this.elements.nombre.value.trim();
+    if (n.length < 2) { this.parentNode.querySelector('[data-error]').textContent = 'Escribe tu nombre.'; return; }
+    enviarRegistro({ nombre: n }, this);
+  });
+  $('#f-codigo').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var c = this.elements.codigo.value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(c)) { this.parentNode.querySelector('[data-error]').textContent = 'Son 4 letras o números.'; return; }
+    enviarRegistro({ codigo: c }, this);
+  });
+  $$('[data-ir]', bienv).forEach(function (b) { b.addEventListener('click', function () { paso(b.dataset.ir); }); });
+  $$('[data-cerrar]', bienv).forEach(function (b) { b.addEventListener('click', cerrar); });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrar(); } });
+  $('#mi-id').addEventListener('click', function () { abrir(); });
+  $('[data-copiar]', bienv).addEventListener('click', function () {
+    var b = this, texto = 'Hola, soy ' + miNombre + '. Estuve en el Bootcamp AGENTIC del FABLAB (mi ID: ' + miId + ').';
+    var listo = function () { b.textContent = 'Copiado ✓ Pégalo al conectar'; setTimeout(function () { b.textContent = 'Copiar mensaje para LinkedIn'; }, 2200); };
+    var aMano = function () {
+      var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (_) {} t.remove(); listo();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(listo, aMano); } else { aMano(); }
+  });
+  function registro(e) {
+    document.body.classList.toggle('con-registro', !!e.registro);
+    linkedin = e.linkedin || null;
+    var a = $('[data-linkedin]', bienv);
+    if (linkedin) { a.href = linkedin; a.hidden = false; } else { a.hidden = true; }
+    if (!e.registro || e.profe || yaPregunte) { return; }
+    yaPregunte = true;
+    // Quien ya tiene su ID (recarga, otro día) lo recupera sin preguntar.
+    if (/^[A-Z0-9]{4}$/.test(guardadoId)) {
+      fetch(API + '/registro', { method: 'POST', body: new URLSearchParams({ v: yo, codigo: guardadoId }) })
+        .then(function (r) { if (!r.ok) { throw new Error(); } return r.json(); })
+        .then(soy).catch(function () { abrir('nombre'); });
+    } else { abrir('nombre'); }
   }
 
   // El QR en grande, para quien llega tarde. Se cierra con clic o Esc.

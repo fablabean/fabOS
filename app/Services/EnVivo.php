@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ParticipanteEnVivo;
+use App\Models\Setting;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -304,6 +306,71 @@ class EnVivo
         });
     }
 
+    // ------------------------------------------------ quién es (ID del curso)
+
+    /** Dónde se guarda el LinkedIn del profesor (se edita en el panel). */
+    public const LINKEDIN = 'envivo.linkedin';
+
+    /** El curso al que pertenece la sala (el ID sirve en todas sus salas), o null si no pide nombre. */
+    public function grupo(string $sala): ?string
+    {
+        $g = config("fabos.envivo.salas.$sala.registro");
+
+        return is_string($g) && $g !== '' ? $g : null;
+    }
+
+    /**
+     * Quien escribe su nombre recibe un ID. El mismo navegador conserva el
+     * suyo mientras dure la sesión: volver a escribir el nombre lo corrige.
+     */
+    public function registrar(string $sala, string $quien, string $nombre): ?ParticipanteEnVivo
+    {
+        $grupo = $this->grupo($sala);
+        $nombre = mb_substr(trim((string) preg_replace('/\s+/u', ' ', strip_tags($nombre))), 0, 80);
+        if (! $grupo || mb_strlen($nombre) < 2) {
+            return null;
+        }
+
+        $ya = $this->participanteDe($sala, $quien);
+        if ($ya) {
+            $ya->update(['nombre' => $nombre]);
+
+            return $ya;
+        }
+
+        // Un tope por día, por si alguien insiste con un programa.
+        $tope = "envivo:$sala:registros:" . now()->format('Ymd');
+        $this->c()->add($tope, 0, self::DURA);
+        if ($this->c()->increment($tope) > 400) {
+            return null;
+        }
+
+        $p = ParticipanteEnVivo::nuevo($grupo, $sala, $nombre);
+        $this->c()->put("envivo:$sala:soy:$quien", $p->codigo, self::DURA);
+
+        return $p;
+    }
+
+    /** Quien ya tiene su ID lo escribe y vuelve a ser él (otro día, otro navegador). */
+    public function recuperar(string $sala, string $quien, ?string $codigo): ?ParticipanteEnVivo
+    {
+        $codigo = ParticipanteEnVivo::limpiarCodigo($codigo);
+        $grupo = $this->grupo($sala);
+        $p = $codigo && $grupo ? ParticipanteEnVivo::where('grupo', $grupo)->where('codigo', $codigo)->first() : null;
+        if ($p) {
+            $this->c()->put("envivo:$sala:soy:$quien", $p->codigo, self::DURA);
+        }
+
+        return $p;
+    }
+
+    public function participanteDe(string $sala, ?string $quien): ?ParticipanteEnVivo
+    {
+        $codigo = $quien ? $this->c()->get("envivo:$sala:soy:$quien") : null;
+
+        return $codigo ? ParticipanteEnVivo::where('codigo', $codigo)->first() : null;
+    }
+
     // ---------------------------------------------------------------- estado
 
     /**
@@ -331,6 +398,8 @@ class EnVivo
             'seccion' => $this->seccion($sala),
             'revelados' => $this->revelados($sala),
             'profe' => $this->esProfe($sala, $clave),
+            'registro' => $this->grupo($sala) !== null,
+            'linkedin' => $this->grupo($sala) !== null ? (Setting::get(self::LINKEDIN) ?: null) : null,
             'ahora' => (int) floor(microtime(true) * 1000),
         ];
     }

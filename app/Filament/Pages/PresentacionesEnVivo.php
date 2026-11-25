@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Modulo;
+use App\Models\ParticipanteEnVivo;
+use App\Models\Setting;
 use App\Services\EnVivo;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -48,8 +50,32 @@ class PresentacionesEnVivo extends Page
         return 'Abre la presentación con tu enlace de profesor: tú llevas la agenda y los demás la siguen; quien tenga el enlace normal puede votar.';
     }
 
+    /** El LinkedIn del profesor: lo ve quien recibe su ID. */
+    public string $linkedin = '';
+
+    public string $buscar = '';
+
+    public function guardarLinkedin(): void
+    {
+        $url = trim($this->linkedin);
+        if ($url !== '' && ! preg_match('~^https://([a-z]{2,3}\.)?(www\.)?linkedin\.com/~i', $url)) {
+            Notification::make()->title('Pega el enlace de tu perfil de LinkedIn')->body('Empieza por https://www.linkedin.com/in/…')->danger()->send();
+
+            return;
+        }
+        Setting::put(EnVivo::LINKEDIN, $url, 'envivo');
+        Notification::make()->title($url ? 'LinkedIn guardado' : 'LinkedIn quitado')->success()->send();
+    }
+
+    public function quitarParticipante(int $id): void
+    {
+        ParticipanteEnVivo::whereKey($id)->delete();
+        Notification::make()->title('Participante quitado')->success()->send();
+    }
+
     public function mount(EnVivo $envivo): void
     {
+        $this->linkedin = (string) Setting::get(EnVivo::LINKEDIN, '');
         foreach ($this->salas() as $sala => $s) {
             $modulo = $this->modulo($s);
             if ($modulo) {
@@ -97,6 +123,12 @@ class PresentacionesEnVivo extends Page
                 'votos' => $envivo->votos($sala),
                 'agenda' => $envivo->agenda($sala),
             ])->values(),
+            'participantes' => ParticipanteEnVivo::query()
+                ->when(trim($this->buscar) !== '', fn ($q) => $q->where(fn ($q) => $q
+                    ->where('codigo', strtoupper(trim($this->buscar)))
+                    ->orWhere('nombre', 'ilike', '%' . trim($this->buscar) . '%')))
+                ->latest()->limit(300)->get(),
+            'totalParticipantes' => ParticipanteEnVivo::count(),
         ];
     }
 }

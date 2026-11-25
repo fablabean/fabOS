@@ -38,6 +38,26 @@ class EnVivoController extends Controller
         return $this->json($this->envivo->estado($sala, $quien, $request->input('profe')));
     }
 
+    /** Quien escribe su nombre recibe su ID (o lo recupera escribiendo el que ya tiene). */
+    public function registro(Request $request, string $sala): JsonResponse
+    {
+        abort_unless($this->envivo->existe($sala) && $this->envivo->grupo($sala), 404);
+        $quien = $this->quien($request);
+        abort_unless($quien, 422);
+
+        $p = $request->filled('codigo')
+            ? $this->envivo->recuperar($sala, $quien, (string) $request->input('codigo'))
+            : $this->envivo->registrar($sala, $quien, (string) $request->input('nombre'));
+
+        if (! $p) {
+            return response()->json(['error' => $request->filled('codigo') ? 'No encontré ese ID.' : 'Escribe tu nombre.'], 422, [
+                'Access-Control-Allow-Origin' => '*',
+            ]);
+        }
+
+        return $this->json(['codigo' => $p->codigo, 'nombre' => $p->nombre]);
+    }
+
     private function versionMuro(Request $request): ?int
     {
         $m = $request->input('m', $request->query('m'));

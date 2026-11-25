@@ -47,5 +47,58 @@
                 </div>
             </x-filament::section>
         @endforeach
+
+        <x-filament::section>
+            <x-slot name="heading">Participantes con ID ({{ $totalParticipantes }})</x-slot>
+            <x-slot name="description">
+                Quien entra a una presentación que pide nombre recibe un ID de 4 caracteres que sirve en todo el curso.
+                Te lo escriben por LinkedIn y aquí ves quién es.
+            </x-slot>
+
+            <div class="grid gap-4">
+                <form wire:submit="guardarLinkedin" class="flex flex-wrap gap-3 items-end">
+                    <label class="grid gap-1 text-sm flex-1 min-w-[18rem]">
+                        <span class="font-medium">Tu LinkedIn (lo ven al recibir su ID)</span>
+                        <x-filament::input.wrapper>
+                            <x-filament::input type="url" wire:model="linkedin" placeholder="https://www.linkedin.com/in/…" />
+                        </x-filament::input.wrapper>
+                    </label>
+                    <x-filament::button type="submit" size="sm" icon="heroicon-o-check">Guardar</x-filament::button>
+                </form>
+
+                <x-filament::input.wrapper class="max-w-sm">
+                    <x-filament::input type="search" wire:model.live.debounce.400ms="buscar" placeholder="Buscar por ID o nombre" />
+                </x-filament::input.wrapper>
+
+                @if ($participantes->isEmpty())
+                    <p class="text-sm text-gray-500">{{ $buscar !== '' ? 'Nadie con ese ID o nombre.' : 'Todavía nadie ha recibido su ID.' }}</p>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-500 border-b border-gray-200 dark:border-white/10">
+                                    <th class="py-2 pr-4">ID</th><th class="py-2 pr-4">Nombre</th><th class="py-2 pr-4">Curso</th><th class="py-2 pr-4">Desde</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($participantes as $p)
+                                    <tr class="border-b border-gray-100 dark:border-white/5">
+                                        <td class="py-2 pr-4 font-mono font-bold tracking-widest">{{ $p->codigo }}</td>
+                                        <td class="py-2 pr-4">{{ $p->nombre }}</td>
+                                        <td class="py-2 pr-4 text-gray-500">{{ $p->grupo }} · {{ $p->sala }}</td>
+                                        <td class="py-2 pr-4 text-gray-500">{{ $p->created_at->setTimezone(config('fabos.lab.timezone'))->format('d/m/Y g:i a') }}</td>
+                                        <td class="py-2 text-right">
+                                            <x-filament::icon-button icon="heroicon-o-trash" color="danger" size="sm" label="Quitar"
+                                                wire:click="quitarParticipante({{ $p->id }})"
+                                                wire:confirm="¿Quitar a {{ $p->nombre }} ({{ $p->codigo }})?" />
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </x-filament::section>
     </div>
 </x-filament-panels::page>

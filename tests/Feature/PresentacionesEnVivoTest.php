@@ -140,6 +140,35 @@ class PresentacionesEnVivoTest extends TestCase
         $this->assertNull($v['muro']['destacado']);
     }
 
+    public function test_quien_entra_recibe_un_id_y_lo_recupera_otro_dia(): void
+    {
+        $url = '/api/envivo/agentic-dia-2/registro';
+        // El día 1 no pide nombre.
+        $this->post('/api/envivo/' . self::SALA . '/registro', ['v' => 'ana12345', 'nombre' => 'Ana'])->assertNotFound();
+        $this->post($url, ['v' => 'ana12345', 'nombre' => ' '])->assertStatus(422);
+
+        $r = $this->post($url, ['v' => 'ana12345', 'nombre' => '  Ana   María <b>Ruiz</b> '])
+            ->assertOk()->assertHeader('Access-Control-Allow-Origin', '*')->json();
+        $this->assertMatchesRegularExpression('/^[' . \App\Models\ParticipanteEnVivo::LETRAS . ']{4}$/', $r['codigo']);
+        $this->assertSame('Ana María Ruiz', $r['nombre']);
+
+        // El mismo navegador corrige su nombre sin cambiar de ID.
+        $otra = $this->post($url, ['v' => 'ana12345', 'nombre' => 'Ana Ruiz'])->json();
+        $this->assertSame($r['codigo'], $otra['codigo']);
+        $this->assertSame(1, \App\Models\ParticipanteEnVivo::count());
+
+        // Otro navegador lo recupera con el ID (en minúsculas también); uno inventado no.
+        $this->assertSame('Ana Ruiz', $this->post($url, ['v' => 'otro1234', 'codigo' => strtolower($r['codigo'])])->assertOk()->json('nombre'));
+        $this->post($url, ['v' => 'otro1234', 'codigo' => $r['codigo'] === 'ZZZZ' ? 'YYYY' : 'ZZZZ'])->assertStatus(422);
+
+        // El estado dice que esta sala pide nombre y trae el LinkedIn guardado en el panel.
+        \App\Models\Setting::put(EnVivo::LINKEDIN, 'https://www.linkedin.com/in/alguien', 'envivo');
+        $e = $this->getJson('/api/envivo/agentic-dia-2/estado?v=ana12345')->json();
+        $this->assertTrue($e['registro']);
+        $this->assertSame('https://www.linkedin.com/in/alguien', $e['linkedin']);
+        $this->assertFalse($this->estado()['registro']);
+    }
+
     public function test_el_panel_da_el_enlace_de_profesor_y_reinicia(): void
     {
         $admin = User::create(['name' => 'Jefa', 'email' => uniqid() . '@test.co', 'status' => 'activo']);
@@ -155,7 +184,13 @@ class PresentacionesEnVivoTest extends TestCase
         $envivo = app(EnVivo::class);
         $envivo->votar(self::SALA, 'ana12345', 'chat', 1);
 
-        $pagina = Livewire::test(PresentacionesEnVivo::class)->assertOk();
+        $p = \App\Models\ParticipanteEnVivo::nuevo('agentic', 'agentic-dia-2', 'Ana Ruiz');
+        $pagina = Livewire::test(PresentacionesEnVivo::class)->assertOk()->assertSee($p->codigo)->assertSee('Ana Ruiz');
+        $pagina->set('buscar', 'nadie')->assertDontSee('Ana Ruiz')->set('buscar', '');
+        $pagina->set('linkedin', 'https://evil.com/x')->call('guardarLinkedin');
+        $this->assertNull(\App\Models\Setting::get(EnVivo::LINKEDIN));
+        $pagina->set('linkedin', 'https://www.linkedin.com/in/alguien')->call('guardarLinkedin');
+        $this->assertSame('https://www.linkedin.com/in/alguien', \App\Models\Setting::get(EnVivo::LINKEDIN));
         $enlace = $pagina->get('enlaces')[self::SALA];
         $this->assertMatchesRegularExpression('~/zonas/agentic/dia-1#profe=[A-Za-z0-9]{32}$~', $enlace);
         $this->assertTrue($envivo->esProfe(self::SALA, substr($enlace, -32)));

@@ -298,6 +298,8 @@ return [
                 'zona' => 'agentic',
                 'modulo' => 'dia-2',
                 'preguntas' => [],
+                // Quien entra escribe su nombre y recibe un ID que sirve en todo el curso.
+                'registro' => 'agentic',
             ],
         ],
     ],
