@@ -173,6 +173,14 @@
             -webkit-mask-image:linear-gradient(115deg,transparent 35%,#000 75%);mask-image:linear-gradient(115deg,transparent 35%,#000 75%)}
         .intro-in{position:relative;width:100%;max-width:76rem;margin:0 auto;padding:3rem 1rem 4.5rem}
         .marca{display:flex;align-items:center;gap:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.85rem;color:#bdf3e7}
+        .marca{gap:1rem}
+        .logo{display:inline-grid;place-items:center;line-height:0}
+        .logo img{height:5.2rem;width:auto;max-width:16rem;object-fit:contain}
+        .logo.tarjeta{background:#fff;border-radius:14px;padding:.55rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+        .logo.tarjeta img{height:4.6rem}
+        .marca-txt{line-height:1.25;font-size:1rem;color:#fff}
+        .marca-txt small{font-size:.75rem;color:#a7e8da;letter-spacing:.08em}
+        @media (max-width:560px){.logo img{height:4rem}.logo.tarjeta img{height:3.6rem}}
         .puntos{display:grid;grid-template-columns:repeat(3,6px);gap:4px}
         .puntos i{width:6px;height:6px;border-radius:50%;background:#7fe3cf}
         .puntos i:nth-child(2),.puntos i:nth-child(6){opacity:.45}
@@ -229,8 +237,12 @@
 <header class="intro">
     <div class="intro-in">
         <div class="marca">
-            <span class="puntos" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            FabLab · {{ config('fabos.lab.institution') }}
+            @if ($logo)
+                <span class="logo {{ $logo['tarjeta'] ? 'tarjeta' : '' }}"><img src="{{ $logo['url'] }}" alt="{{ config('fabos.lab.name') }}"></span>
+            @else
+                <span class="puntos" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            @endif
+            <span class="marca-txt">FabLab<br><small>{{ config('fabos.lab.institution') }}</small></span>
         </div>
 
         <p class="antetitulo">

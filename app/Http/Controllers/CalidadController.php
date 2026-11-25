@@ -70,6 +70,7 @@ class CalidadController extends Controller
             'cifras'      => $this->cifras(),
             'enlaces'     => $this->enlaces(),
             'auditorias'  => Auditoria::orderByDesc('realizada_at')->get(),
+            'logo'        => $this->logoParaFondoOscuro(),
             'generada'    => now(config('fabos.lab.timezone')),
         ]);
     }
@@ -200,6 +201,33 @@ class CalidadController extends Controller
         }
 
         return asset('storage/' . $ruta);
+    }
+
+    /**
+     * El logo del laboratorio para la portada, que es verde oscuro.
+     *
+     * La versión para fondo oscuro va tal cual. Si solo hay la clara —letras
+     * negras—, va sobre una tarjeta blanca: encima del verde no se leería.
+     *
+     * @return array{url: string, tarjeta: bool}|null
+     */
+    private function logoParaFondoOscuro(): ?array
+    {
+        $s = \App\Support\Settings::class;
+
+        if ($ruta = $s::logoLargoOscuro() ?? $s::logoOscuro()) {
+            return ['url' => asset('storage/' . $ruta), 'tarjeta' => false];
+        }
+
+        if ($ruta = $s::logoLargo() ?? $s::logo()) {
+            return ['url' => asset('storage/' . $ruta), 'tarjeta' => true];
+        }
+
+        $archivo = config('fabos.lab.logo');
+
+        return $archivo && is_file(public_path($archivo))
+            ? ['url' => asset($archivo), 'tarjeta' => true]
+            : null;
     }
 
     private function soloElEquipo(Request $request): void
