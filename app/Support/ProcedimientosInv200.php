@@ -30,13 +30,13 @@ class ProcedimientosInv200
                 'pasos' => [
                     ['num' => '6.1.1', 'titulo' => 'Formulación de la oferta de servicio',
                         'texto' => 'Una vez se consolida el interés del cliente externo en tomar los servicios de impresión, desde la Unidad de Desarrollo **se estima el costo del servicio**, dicho costo es utilizado como referencia por parte de Gerencia Comercial, quien es la encargada de **enviar la propuesta al cliente**.',
-                        'registros' => ['solicitar', 'proyectos_con_propuesta']],
+                        'registros' => ['solicitar', 'proyectos_externos']],
                     ['num' => '6.1.2', 'titulo' => 'Actividades para la impresión',
                         'texto' => "El coordinador de la Unidad de Desarrollo recibe la solicitud de impresión **una vez se haya concretado la relación contractual con el cliente** e informa al profesional especializado por medio de correo electrónico para el inicio con los trabajos de impresión.\n\nSi el cliente proporciona un modelo 3D, el profesional **revisa y evalúa el modelo** para asegurarse de que cumple con los requisitos técnicos y de fabricación. **Previa autorización dada por el cliente** se realizará cualquier modificación necesaria para adaptarlo al proceso de fabricación ofertado. En caso de que el cliente no proporcione un modelo 3D y pague por el servicio de modelado, el profesional con apoyo del auxiliar crea un modelo desde cero utilizando software CAD según las especificaciones y requisitos del cliente.\n\nEl profesional y/o el auxiliar deberán **preparar y ajustar la impresora 3D**: calibrar la máquina, cargar los materiales adecuados y configurar los parámetros de impresión. Cargan el archivo de diseño y comienzan el proceso de impresión; ambos **supervisan el progreso**.\n\nUna vez completada la impresión, retiran la pieza y realizan el **postprocesamiento necesario** (eliminar soportes, lijar o pulir) **e inspecciones de calidad**.",
-                        'registros' => ['proyectos_aceptados', 'proyectos_externos']],
+                        'registros' => ['ext_contratados']],
                     ['num' => '6.1.3', 'titulo' => 'Recepción de producto por parte del cliente',
                         'texto' => 'Con el producto ya terminado **el cliente recibe y aprueba a satisfacción** el mismo según las características definidas en la propuesta de servicio. El personal encargado confirma vía correo al área comercial o área interna encargada del contacto con el cliente, con el fin de **recibir aceptación por escrito** por parte del cliente; una vez recibido el visto bueno, el área encargada deberá hacer las gestiones internas para **generar la factura** correspondiente.',
-                        'registros' => ['proyectos_externos_fin']],
+                        'registros' => ['ext_entregados']],
                 ],
             ],
 

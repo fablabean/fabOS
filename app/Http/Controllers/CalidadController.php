@@ -238,6 +238,19 @@ class CalidadController extends Controller
             'proyectos_con_propuesta' => $proyectos()->whereNotNull('proposal_sent_at')->count(),
             'proyectos_aceptados'    => $proyectos()->whereNotNull('accepted_at')->count(),
 
+            /*
+             * El embudo del INV-114, solo con clientes externos y por etapa,
+             * para que no se contradiga: recibidos ≥ contratados ≥ entregados.
+             * Aparte, cuántos de cada paso tienen la propuesta enviada o la
+             * aceptación firmada dentro de FabOS: muchos se registraron ya
+             * contratados o terminados, y esa diferencia se muestra.
+             */
+            'ext_contratados'          => $proyectos()->where('client_kind', 'externo')->whereIn('stage', ['contrato', 'brief', 'ejecucion', 'pago', 'cierre'])->count(),
+            'ext_propuesta_fabos'      => $proyectos()->where('client_kind', 'externo')->whereNotNull('proposal_sent_at')->count(),
+            'ext_contratados_aceptados' => $proyectos()->where('client_kind', 'externo')->whereIn('stage', ['contrato', 'brief', 'ejecucion', 'pago', 'cierre'])->whereNotNull('accepted_at')->count(),
+            'ext_entregados'           => $proyectos()->where('client_kind', 'externo')->whereIn('stage', ['pago', 'cierre'])->count(),
+            'ext_entregados_aceptados' => $proyectos()->where('client_kind', 'externo')->whereIn('stage', ['pago', 'cierre'])->whereNotNull('accepted_at')->count(),
+
             // INV-113 · realidad virtual
             'proyectos_vr'           => $proyectos()->where('area_id', $areas['vr'] ?? 0)->count(),
             'reservas_vr'            => $deEquipos($vr)->where($realizadas)->count(),

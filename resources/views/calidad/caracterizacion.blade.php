@@ -116,10 +116,13 @@
      */
     $registros = [
         'solicitar'               => ['Formulario de solicitud', null, $e['solicitar']],
-        'proyectos_con_propuesta' => ['Proyectos con propuesta enviada', $c['proyectos_con_propuesta'], $e['proyectos']],
-        'proyectos_aceptados'     => ['Proyectos aceptados por el cliente', $c['proyectos_aceptados'], $e['proyectos']],
-        'proyectos_externos'      => ['Proyectos con cliente externo', $c['proyectos_externos'], $e['proyectos']],
-        'proyectos_externos_fin'  => ['Proyectos externos entregados', $c['proyectos_externos_fin'], $e['proyectos']],
+        // El cuarto dato es el desglose: lo que de esa cifra pasó por el paso dentro de FabOS.
+        'proyectos_externos'      => ['Proyectos externos recibidos', $c['proyectos_externos'], $e['proyectos'],
+            $n($c['ext_propuesta_fabos']) . ' con la propuesta enviada desde FabOS'],
+        'ext_contratados'         => ['Proyectos externos contratados', $c['ext_contratados'], $e['proyectos'],
+            $n($c['ext_contratados_aceptados']) . ' con la aceptación firmada en FabOS; los demás se registraron ya contratados'],
+        'ext_entregados'          => ['Proyectos externos entregados', $c['ext_entregados'], $e['proyectos'],
+            $n($c['ext_entregados_aceptados']) . ' con la aceptación firmada en FabOS; los demás se registraron ya entregados'],
         'actas_prestamo'          => ['Actas de préstamo', $c['actas_prestamo'], $e['actas_prestamo']],
         'reservas_espacios'       => ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas']],
         'reservas_herramientas'   => ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas']],
@@ -315,6 +318,7 @@
         .paso .regs a{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline;text-decoration:none;color:inherit;font-size:.82rem;background:var(--fondo);border:1px solid var(--borde);border-left:3px solid var(--ok);border-radius:5px;padding:.35rem .55rem;margin-bottom:.35rem}
         .paso .regs a:hover{border-color:var(--verde)}
         .paso .regs a b{color:var(--verde-osc);font-variant-numeric:tabular-nums}
+        .paso .regs a small{display:block;font-size:.72rem;color:var(--suave);margin-top:.1rem;line-height:1.35}
         .paso .regs .sin{font-size:.8rem;background:var(--aj-cl);color:var(--aj);border-radius:5px;padding:.35rem .55rem;font-weight:600}
         @media (max-width:760px){.paso{grid-template-columns:1fr;gap:.4rem}}
         @media print{dialog.doc{display:none!important}.ver-doc{display:none}}
@@ -588,8 +592,8 @@
                     <div class="regs">
                         <h4>Registro en FabOS</h4>
                         @forelse ($paso['registros'] as $r)
-                            @php [$rt, $rv, $ru] = $registros[$r]; @endphp
-                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}</span>@if ($rv !== null)<b>{{ $n($rv) }}</b>@endif</a>
+                            @php [$rt, $rv, $ru] = $registros[$r]; $rd = $registros[$r][3] ?? null; @endphp
+                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}@if ($rd)<small>{{ $rd }}</small>@endif</span>@if ($rv !== null)<b>{{ $n($rv) }}</b>@endif</a>
                         @empty
                             @if ($interna)<div class="sin">Sin registro en FabOS</div>@endif
                         @endforelse
