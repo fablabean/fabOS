@@ -110,6 +110,35 @@
         $estados = array_map(fn () => ['Vigente', 'ok'], $estados);
     }
 
+    /*
+     * Los registros de FabOS que evidencian cada actividad de los documentos
+     * (App\Support\ProcedimientosInv200): nombre, cifra y enlace al panel.
+     */
+    $registros = [
+        'solicitar'               => ['Formulario de solicitud', null, $e['solicitar']],
+        'proyectos_con_propuesta' => ['Proyectos con propuesta enviada', $c['proyectos_con_propuesta'], $e['proyectos']],
+        'proyectos_aceptados'     => ['Proyectos aceptados por el cliente', $c['proyectos_aceptados'], $e['proyectos']],
+        'proyectos_externos'      => ['Proyectos con cliente externo', $c['proyectos_externos'], $e['proyectos']],
+        'proyectos_externos_fin'  => ['Proyectos externos entregados', $c['proyectos_externos_fin'], $e['proyectos']],
+        'actas_prestamo'          => ['Actas de préstamo', $c['actas_prestamo'], $e['actas_prestamo']],
+        'reservas_espacios'       => ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas']],
+        'reservas_herramientas'   => ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas']],
+        'reservar'                => ['Agendamiento en línea (QR)', null, $e['reservar']],
+        'etiquetas'               => ['Códigos QR de los equipos', null, $e['etiquetas']],
+        'reservas_prototipado'    => ['Reservas de impresión 3D y láser', $c['reservas_prototipado'], $e['reservas']],
+        'asesorias'               => ['Asesorías realizadas', $c['asesorias'], $e['reservas']],
+        'pauta'                   => ['Cronograma de mantenimiento preventivo', null, $e['pauta']],
+        'con_plan'                => ['Equipos en el cronograma preventivo', $c['con_plan'], $e['pauta']],
+        'con_color'               => ['Activos con esquema de color', $c['con_color'], $e['activos']],
+        'fijos'                   => ['Activos con hoja de vida y QR', $c['fijos'], $e['activos']],
+        'de_apoyo'                => ['Equipos de apoyo (Anexo 2)', $c['de_apoyo'], $e['activos_apoyo']],
+        'preventivas'             => ['Mantenimientos preventivos cerrados', $c['preventivas'], $e['preventivas']],
+        'correctivas'             => ['Mantenimientos correctivos cerrados', $c['correctivas'], $e['correctivas']],
+        'actas_baja'              => ['Actas de baja (ADF-207-f3)', $c['actas_baja'], $e['actas_baja']],
+        'proyectos_vr'            => ['Proyectos de realidad virtual', $c['proyectos_vr'], $e['proyectos']],
+        'reservas_vr'             => ['Reservas de equipos de realidad virtual', $c['reservas_vr'], $e['reservas']],
+    ];
+
     // La auditoría que viene (o la última), para el antetítulo de la portada.
     $proxima = $auditorias->where('resultado', 'pendiente')->sortBy('realizada_at')->first() ?? $auditorias->first();
 @endphp
@@ -250,6 +279,46 @@
         @media (max-width:560px){.semaforo{grid-template-columns:1fr}.antetitulo{margin-top:2rem}}
         @media print{.intro{min-height:auto;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}.bajar{display:none}}
 
+        /* ------------------------------------------------ el documento, punto por punto */
+        .abre-doc{font:inherit;font-weight:700;color:inherit;background:none;border:0;border-bottom:1px dashed currentColor;padding:0;cursor:pointer}
+        .abre-doc:hover{color:var(--verde)}
+        .ver-doc{margin-left:.4rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--verde);background:var(--verde-cl);border:1px solid var(--borde);border-radius:99px;padding:.15rem .7rem;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem}
+        .ver-doc:hover{border-color:var(--verde)}
+        .ver-doc svg{width:14px;height:14px}
+        dialog.doc{width:min(72rem,calc(100vw - 2rem));height:min(88vh,60rem);padding:0;border:1px solid var(--borde);border-radius:10px;background:var(--papel);color:var(--tinta);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+        dialog.doc[open]{display:flex;flex-direction:column}
+        dialog.doc::backdrop{background:rgba(6,20,17,.6)}
+        .doc-cab{display:flex;gap:1rem;align-items:flex-start;padding:1rem 1.2rem .6rem;border-bottom:3px solid var(--verde)}
+        .doc-cab .cod{font-weight:800;color:var(--verde);font-size:.85rem;letter-spacing:.04em}
+        .doc-cab h2{margin:.1rem 0 .15rem;font-size:1.2rem;line-height:1.25}
+        .doc-cab .ver{font-size:.8rem;color:var(--suave)}
+        .doc-cerrar{margin-left:auto;flex:none;width:2.2rem;height:2.2rem;border-radius:50%;border:1px solid var(--borde);background:var(--papel);color:var(--tinta);font-size:1.3rem;line-height:1;cursor:pointer}
+        .doc-tabs{display:flex;gap:.3rem;padding:.5rem 1.2rem 0;border-bottom:1px solid var(--borde)}
+        .doc-tabs button{font:inherit;font-size:.85rem;font-weight:600;background:none;border:0;border-bottom:3px solid transparent;padding:.4rem .7rem;color:var(--suave);cursor:pointer;margin-bottom:-1px}
+        .doc-tabs button[aria-selected="true"]{color:var(--verde);border-bottom-color:var(--verde)}
+        .doc-cuerpo{flex:1;overflow:auto;padding:1rem 1.2rem 1.4rem}
+        .doc-cuerpo[hidden]{display:none}
+        .doc-pdf{padding:0;overflow:hidden}
+        .doc-pdf iframe{width:100%;height:100%;border:0;display:block}
+        .doc-obj{font-size:.88rem;color:var(--suave);margin:0 0 .8rem}
+        .doc-obj b{color:var(--tinta)}
+        .doc-resumen{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1rem;font-size:.8rem}
+        .doc-resumen span{background:var(--verde-cl);color:var(--verde-osc);border-radius:99px;padding:.15rem .65rem;font-weight:600}
+        .doc-resumen span.falta{background:var(--aj-cl);color:var(--aj)}
+        .paso{display:grid;grid-template-columns:4.2rem 1fr 17rem;gap:.9rem;padding:.85rem 0;border-top:1px solid var(--borde)}
+        .paso .num{font-weight:800;color:var(--verde);font-variant-numeric:tabular-nums;font-size:.95rem}
+        .paso h3{margin:0 0 .3rem;font-size:.98rem}
+        .paso p{margin:0 0 .45rem;font-size:.88rem;line-height:1.55}
+        .paso mark{background:#fff3b0;color:inherit;border-radius:3px;padding:0 .15rem;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+        @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .paso mark{background:#5b4a00;color:#fff7d1}}
+        .paso .regs h4{margin:0 0 .3rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--suave)}
+        .paso .regs a{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline;text-decoration:none;color:inherit;font-size:.82rem;background:var(--fondo);border:1px solid var(--borde);border-left:3px solid var(--ok);border-radius:5px;padding:.35rem .55rem;margin-bottom:.35rem}
+        .paso .regs a:hover{border-color:var(--verde)}
+        .paso .regs a b{color:var(--verde-osc);font-variant-numeric:tabular-nums}
+        .paso .regs .sin{font-size:.8rem;background:var(--aj-cl);color:var(--aj);border-radius:5px;padding:.35rem .55rem;font-weight:600}
+        @media (max-width:760px){.paso{grid-template-columns:1fr;gap:.4rem}}
+        @media print{dialog.doc{display:none!important}.ver-doc{display:none}}
+
         footer{margin-top:2rem;color:var(--suave);font-size:.78rem;text-align:center;border-top:1px solid var(--borde);padding-top:.6rem}
         .imprimir{position:fixed;right:1rem;bottom:1rem;background:var(--verde);color:#fff;border:0;border-radius:99px;padding:.55rem 1.1rem;font:inherit;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.2)}
         @media (max-width:900px){
@@ -364,14 +433,14 @@
                 <div><i>Proveedor</i>Cadena de valor · entidades externas</div>
                 <div><i>Entrada</i>Solicitud de agendamiento</div>
                 <div><i>Actividad</i>Revisión y elaboración de prototipos e impresión 3D; préstamo de equipos y herramientas</div>
-                <div><i>Documento</i>INV-114 · INV-115 · INV-116 · INV-118</div>
+                <div><i>Documento</i>@foreach (['INV-114', 'INV-115', 'INV-116', 'INV-118'] as $cod)<button type="button" class="abre-doc" data-doc="{{ $cod }}">{{ $cod }}</button>{{ $loop->last ? '' : ' · ' }}@endforeach</div>
                 <div><i>Salida</i>Prototipo recibido por el cliente; equipos y herramientas en préstamo</div>
                 <div><i>Cliente</i>Cadena de valor · entidades externas</div>
             @else
                 <div><i>Proveedor</i>Cadena de valor</div>
                 <div><i>Entrada</i>Solicitud propuesta de servicio</div>
                 <div><i>Actividad</i>Diseño, estructuración y realización de escenarios de realidad virtual</div>
-                <div><i>Documento</i>INV-113</div>
+                <div><i>Documento</i><button type="button" class="abre-doc" data-doc="INV-113">INV-113</button></div>
                 <div><i>Salida</i>Programa o ejecutable con la experiencia, a satisfacción del cliente</div>
                 <div><i>Cliente</i>Cadena de valor</div>
             @endif
@@ -381,6 +450,9 @@
                 <h3>
                     <span class="cod">{{ $p['codigo'] }}</span> {{ $p['nombre'] }}
                     <span class="ver">{{ $p['version'] }}</span>
+                    @if (isset($documentos[$p['codigo']]))
+                        <button type="button" class="ver-doc" data-doc="{{ $p['codigo'] }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Documento punto por punto</button>
+                    @endif
                     @if ($interna)<span class="estado {{ $estados[$p['estado']][1] }}">{{ $estados[$p['estado']][0] }}</span>@endif
                 </h3>
                 @if ($interna)
@@ -480,6 +552,88 @@
         @endif
     </footer>
 </div>
+@foreach ($documentos as $cod => $d)
+    @php
+        $conPdf = \App\Support\ProcedimientosInv200::pdf($cod) !== null;
+        $claves = substr_count(implode(' ', array_column($d['pasos'], 'texto')), '**') / 2;
+        $sinRegistro = collect($d['pasos'])->filter(fn ($p) => ! $p['registros'])->count();
+    @endphp
+    <dialog class="doc" id="doc-{{ $cod }}" aria-labelledby="doc-{{ $cod }}-t">
+        <div class="doc-cab">
+            <div>
+                <div class="cod">PROCEDIMIENTO {{ $cod }}</div>
+                <h2 id="doc-{{ $cod }}-t">{{ $d['titulo'] }}</h2>
+                <div class="ver">Versión {{ $d['version'] }} · {{ $d['fecha'] }} · 6. Secuencia de actividades</div>
+            </div>
+            <button type="button" class="doc-cerrar" data-cerrar aria-label="Cerrar">×</button>
+        </div>
+        <div class="doc-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected="true" data-tab="pasos">Punto por punto</button>
+            @if ($conPdf)<button type="button" role="tab" aria-selected="false" data-tab="pdf">Documento original</button>@endif
+        </div>
+        <div class="doc-cuerpo" data-panel="pasos">
+            <p class="doc-obj"><b>Objetivo.</b> {{ $d['objetivo'] }}</p>
+            <div class="doc-resumen">
+                <span>{{ count($d['pasos']) }} actividades</span>
+                <span>{{ $claves }} puntos clave resaltados</span>
+                @if ($interna && $sinRegistro)<span class="falta">{{ $sinRegistro }} sin registro en FabOS</span>@endif
+            </div>
+            @foreach ($d['pasos'] as $paso)
+                <div class="paso">
+                    <div class="num">{{ $paso['num'] }}</div>
+                    <div>
+                        <h3>{{ $paso['titulo'] }}</h3>
+                        {!! \App\Support\ProcedimientosInv200::html($paso['texto']) !!}
+                    </div>
+                    <div class="regs">
+                        <h4>Registro en FabOS</h4>
+                        @forelse ($paso['registros'] as $r)
+                            @php [$rt, $rv, $ru] = $registros[$r]; @endphp
+                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}</span>@if ($rv !== null)<b>{{ $n($rv) }}</b>@endif</a>
+                        @empty
+                            @if ($interna)<div class="sin">Sin registro en FabOS</div>@endif
+                        @endforelse
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        @if ($conPdf)
+            <div class="doc-cuerpo doc-pdf" data-panel="pdf" hidden data-src="{{ route('calidad.documento', $cod) }}"></div>
+        @endif
+    </dialog>
+@endforeach
+<script>
+(function () {
+    function abrir(cod) {
+        var d = document.getElementById('doc-' + cod);
+        if (!d) return;
+        mostrar(d, 'pasos');
+        d.showModal();
+    }
+    function mostrar(d, tab) {
+        d.querySelectorAll('[data-tab]').forEach(function (b) { b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'); });
+        d.querySelectorAll('[data-panel]').forEach(function (p) {
+            p.hidden = p.dataset.panel !== tab;
+            // El PDF se carga la primera vez que se pide.
+            if (!p.hidden && p.dataset.src && !p.firstChild) {
+                var f = document.createElement('iframe');
+                f.src = p.dataset.src;
+                f.title = 'Documento original';
+                p.appendChild(f);
+            }
+        });
+    }
+    document.querySelectorAll('[data-doc]').forEach(function (b) {
+        b.addEventListener('click', function () { abrir(b.dataset.doc); });
+    });
+    document.querySelectorAll('dialog.doc').forEach(function (d) {
+        d.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { mostrar(d, b.dataset.tab); }); });
+        d.querySelector('[data-cerrar]').addEventListener('click', function () { d.close(); });
+        // Clic fuera del recuadro: cierra.
+        d.addEventListener('click', function (ev) { if (ev.target === d) d.close(); });
+    });
+})();
+</script>
 <button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
 </body>
 </html>

@@ -280,6 +280,33 @@ class CalidadTest extends TestCase
             ->assertSee('2023 – agosto 2026', false);
     }
 
+    public function test_cada_procedimiento_se_lee_punto_por_punto_con_su_registro(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('calidad/procedimientos/INV-118.pdf', '%PDF-1.4 prueba');
+
+        $this->get(route('calidad.caracterizacion'))
+            ->assertOk()
+            ->assertSee('id="doc-INV-118"', false)
+            ->assertSee('Documento punto por punto')
+            ->assertSee('<mark>se detiene el uso de la máquina de inmediato</mark>', false)
+            ->assertSee('Mantenimientos correctivos cerrados')
+            ->assertSee(route('calidad.documento', 'INV-118'), false)
+            // Sin el PDF cargado, ese procedimiento no ofrece la pestaña.
+            ->assertDontSee(route('calidad.documento', 'INV-114'), false);
+
+        $this->get(route('calidad.documento', 'INV-118'))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->get(route('calidad.documento', 'INV-114'))->assertNotFound();
+
+        // Cerrada al público, el PDF tampoco se ve sin sesión.
+        auth()->logout();
+        $this->get(route('calidad.documento', 'INV-118'))->assertNotFound();
+        \App\Models\Setting::put(\App\Http\Controllers\CalidadController::PRESENTACION_PUBLICA, true, 'calidad');
+        $this->get(route('calidad.documento', 'INV-118'))->assertOk();
+    }
+
     public function test_el_interruptor_del_admin_la_abre(): void
     {
         Livewire::test(ListAuditorias::class)->callAction('publica');

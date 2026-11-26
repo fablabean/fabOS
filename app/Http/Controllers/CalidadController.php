@@ -136,6 +136,24 @@ class CalidadController extends Controller
         return $this->presentacion($delEquipo, false);
     }
 
+    /**
+     * El PDF aprobado de un procedimiento, para verlo dentro de la presentación.
+     * Se abre con las mismas reglas que la versión del auditor.
+     */
+    public function documento(Request $request, string $codigo)
+    {
+        $delEquipo = $request->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false;
+        abort_unless($delEquipo || self::presentacionPublica(), $request->user() ? 403 : 404);
+
+        $ruta = \App\Support\ProcedimientosInv200::pdf($codigo);
+        abort_unless($ruta, 404);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($ruta, $codigo . '.pdf', [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'private, max-age=600',
+        ], 'inline');
+    }
+
     /** La versión de trabajo del equipo: con ajustes, estados y hallazgos. Nunca pública. */
     public function caracterizacionInterna(Request $request)
     {
@@ -151,6 +169,7 @@ class CalidadController extends Controller
     {
         return view('calidad.caracterizacion', [
             'interna'     => $interna,
+            'documentos'  => \App\Support\ProcedimientosInv200::todos(),
             'cifras'      => $this->cifras(),
             'enlaces'     => $this->enlaces(),
             'auditorias'  => Auditoria::orderByDesc('realizada_at')->get(),
