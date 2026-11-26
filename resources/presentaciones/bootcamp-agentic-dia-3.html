@@ -688,6 +688,52 @@
   .pyr-i{width:3rem;height:3rem;border-radius:14px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule);color:var(--accent)}
   .pyr-i .ic{width:1.5rem;height:1.5rem}
   .pyr-i.asi{color:#9C8CFF;border-color:#9C8CFF} .pyr-i.in{color:#5AA9FF;border-color:#5AA9FF}
+  /* día 3: licencias, créditos, editores, guion */
+  .planes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin:1rem 0}
+  @media (max-width:900px){.planes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .plan{border:1px solid var(--rule);border-radius:16px;background:var(--bg2);padding:.9rem;display:flex;flex-direction:column;gap:.45rem}
+  .plan-c{display:flex;align-items:center;gap:.5rem} .plan-c .ic{width:1.4rem;height:1.4rem;color:var(--accent)} .plan-c b{font-size:1.15rem}
+  .plan small{color:var(--muted);font:500 .74rem "JetBrains Mono",monospace}
+  .plan-p{display:flex;flex-direction:column;gap:.3rem}
+  .plan-p span{border:1px solid var(--rule);border-radius:9px;padding:.3rem .55rem;font-size:.84rem;color:var(--soft);background:var(--card)}
+  .plan-p span.pro{border-color:var(--warn);color:var(--ink);font-weight:700;background:color-mix(in srgb,var(--warn) 10%,var(--card))}
+  .plan a{font-size:.8rem;margin-top:auto}
+  .plan.otro{border-style:dashed}
+  .vs-lic{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:1rem 0}
+  @media (max-width:700px){.vs-lic{grid-template-columns:1fr}}
+  .vs-lic div{border:1px solid var(--rule);border-radius:12px;padding:.7rem .9rem;background:var(--bg2);display:flex;flex-direction:column;gap:.2rem}
+  .vs-lic b{font-size:1rem} .vs-lic span{color:var(--soft);font-size:.9rem}
+  .vs-lic .si{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--bg2))}
+  .vs-lic em{font-style:normal;color:var(--accent);font-weight:700}
+  .cred{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:.8rem 0}
+  @media (max-width:800px){.cred{grid-template-columns:1fr}}
+  .cred div{border:1px solid var(--rule);border-radius:12px;padding:.7rem .9rem;background:var(--bg2);display:flex;flex-direction:column;gap:.2rem}
+  .cred a{font:500 .8rem "JetBrains Mono",monospace} .cred span{font-size:.86rem;color:var(--soft)}
+  .tres.una{grid-template-columns:1fr}
+  .editores{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+  @media (max-width:800px){.editores{grid-template-columns:1fr}}
+  .ed-c{border:1px solid var(--rule);border-radius:16px;background:var(--bg2);padding:1rem;display:flex;flex-direction:column;gap:.7rem}
+  .ed-c.pref{border-color:var(--accent)}
+  .ed-t{display:flex;align-items:center;gap:.6rem} .ed-t > .ic{width:1.6rem;height:1.6rem;color:var(--accent)}
+  .ed-t b{display:block;font-size:1.1rem} .ed-t small{color:var(--muted);font:500 .74rem "JetBrains Mono",monospace}
+  .ed-t .tag{margin-left:auto;font:700 .66rem "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em;padding:.2rem .5rem;border-radius:99px;background:var(--accent);color:#06231A}
+  .ed-t .tag.gris{background:var(--card);color:var(--soft);border:1px solid var(--rule)}
+  .ed-mini{display:grid;grid-template-columns:.5fr 1.6fr 1fr;gap:.3rem;height:4.2rem;position:relative}
+  .ed-mini i{border-radius:6px;background:var(--card);border:1px solid var(--rule)}
+  .ed-mini .panel{position:absolute;right:.4rem;bottom:.4rem;font:700 .66rem "JetBrains Mono",monospace;color:var(--accent)}
+  .ed-mini .panel.g{color:#5AA9FF}
+  .ed-c ul{margin:0;padding-left:1.1rem;color:var(--soft);font-size:.9rem} .ed-c li{margin:.25rem 0}
+  .ed-c .ok{font:700 .66rem "JetBrains Mono",monospace;color:var(--accent);text-transform:uppercase;margin-left:.3rem}
+  ol.guion{list-style:none;counter-reset:g;padding:0;margin:1rem 0;display:grid;gap:.8rem}
+  ol.guion > li{counter-increment:g;position:relative;padding-left:2.6rem;color:var(--soft)}
+  ol.guion > li::before{content:counter(g);position:absolute;left:0;top:-.1rem;width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--accent) 16%,var(--card));border:1px solid var(--accent);color:var(--accent);font:800 .9rem Inter,sans-serif}
+  ol.guion > li > b{color:var(--ink)}
+  ol.guion .cmd{margin:.5rem 0 0}
+  .tres-arch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
+  @media (max-width:1000px){.tres-arch{grid-template-columns:1fr}}
+  .tres-arch pre{font-size:.74rem}
+  .cmd.term pre{font-size:.76rem;white-space:pre;overflow-x:auto}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -711,18 +757,18 @@
     <div class="qr-portada"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m2 0h3m7 0h7m-29 1h1m5 0h1m1 0h5m1 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h5m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m4 0h1m4 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m2 0h1m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m2 0h3m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h1m1 0h1m2 0h2m4 0h2m1 0h3m3 0h2m1 0h2m-28 1h2m1 0h1m2 0h5m1 0h1m2 0h3m2 0h2m2 0h1m-21 1h1m4 0h4m1 0h1m3 0h4m1 0h1m1 0h1m-26 1h3m1 0h1m1 0h7m1 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-27 1h1m2 0h1m1 0h1m1 0h1m2 0h2m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m2 0h1m1 0h2m2 0h1m2 0h1m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m2 0h2m3 0h2m2 0h1m6 0h2m3 0h1m1 0h1m1 0h1m-29 1h3m1 0h1m1 0h2m2 0h1m2 0h1m1 0h3m7 0h2m-27 1h1m1 0h2m4 0h1m1 0h1m3 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m4 0h1m5 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m2 0h1m6 0h3m1 0h3m2 0h3m2 0h1m-25 1h1m2 0h6m8 0h8m1 0h3m-21 1h2m4 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m3 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h4m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m2 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m2 0h1m5 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m1 0h2m1 0h10m-28 1h1m5 0h1m5 0h1m1 0h2m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h3m1 0h1m2 0h1m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><div><b>Síguela en tu celular</b><span>fablabean.com/zonas/agentic/dia-3</span><small>Escanéalo: verás la presentación en vivo, al ritmo de quien presenta.</small></div></div>
     <div class="kicker">Sesión 03 · jueves 26 de noviembre · 6:00 p. m.</div>
     <h1>Tu programa habla con la IA, <span>y aparece el agente</span>.</h1>
-    <p class="lead">Tres ejemplos para conectar, y media hora final para tus preguntas. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
+    <p class="lead">Muy práctico: del chat a la API, de la API al editor, y con el editor construimos un agente del FABLAB y lo conectamos por MCP. Al final, media hora para tus preguntas. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
     <div class="datos">
       <div class="dato"><b>Duración</b>2 horas, con media hora final de preguntas</div>
       <div class="dato"><b>Antes</b><a href="https://fablabean.com/zonas/agentic/dia-2" target="_blank" rel="noopener">Día 2 ↗</a> (tu primera versión)</div>
       <div class="dato"><b>Trae</b>Tu llave de API en el <span class="mono">.env</span> (<a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a>)</div>
       <div class="dato"><b>Tu ayuda</b><a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">El asistente del bootcamp ↗</a></div>
-      <div class="dato"><b>Sales con</b>Tu proyecto conectado a la IA</div>
+      <div class="dato"><b>Sales con</b>Un agente que funciona, y la guía para el tuyo</div>
     </div>
     <div class="dias">
       <div class="dia"><span class="n">Día 1 · mar 24</span><span class="t">Entender</span>El problema, el objetivo y la IA en el editor. Qué es una API y para qué sirve.</div>
       <div class="dia"><span class="n">Día 2 · mié 25</span><span class="t">Construir</span>Retos en paralelo, y trabajo autónomo con el asistente de fabOS.</div>
-      <div class="dia hoy"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Una API, una rutina tipo agente y MCP.</div>
+      <div class="dia hoy"><span class="n">Día 3 · jue 26</span><span class="t">Conectar</span>Chat, API, editor, un agente y MCP.</div>
     </div>
   </div>
 </header>
@@ -767,7 +813,7 @@
   <!-- ===================================================== agenda -->
   <section class="agenda" id="agenda">
     <div class="kicker">La agenda de hoy</div>
-    <h2>Cinco bloques, dos horas</h2>
+    <h2>Seis bloques, dos horas</h2>
     <div class="mando">
       <button type="button" class="boton pri" id="empezar">▶ Empezamos ahora</button>
       <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
@@ -837,37 +883,56 @@
         <div class="hecho"><small>martes ✓</small>Problema</div><i>→</i>
         <div class="hecho"><small>martes ✓</small>PROYECTO.md</div><i>→</i>
         <div class="hecho"><small>miércoles ✓</small>Primera versión</div><i>→</i>
-        <div class="hoy"><small>hoy</small>Una API</div><i>→</i>
-        <div class="hoy"><small>hoy</small>Una rutina</div><i>→</i>
+        <div class="hoy"><small>hoy</small>Chat y API</div><i>→</i>
+        <div class="hoy"><small>hoy</small>Un agente</div><i>→</i>
         <div class="hoy"><small>hoy</small>MCP</div>
       </div>
       <div class="facilita">Pregunta a la sala: ¿quién avanzó en el trabajo autónomo?, ¿quién usó el asistente? Mano arriba. El investigador del miércoles ya era un agente conectado por MCP a Chrome: hoy vemos las piezas. Recuérdales el botón «Asistente» de arriba.</div>
     </div>
   </section>
 
-  <!-- ===================================================== 1 · API -->
-  <section class="bloque" id="b-api" data-min="35" data-titulo="Conectar una API">
-    <div class="cab"><div class="num">01</div><div><h2>Conectar una API <span class="hora"></span></h2><p class="para">Tu programa le habla a la IA. Es la pieza más importante de hoy.</p></div></div>
+  <!-- ===================================================== 1 · chat -->
+  <section class="bloque" id="b-chat" data-min="10" data-titulo="El chat y su licencia">
+    <div class="cab"><div class="num">01</div><div><h2>El chat, y lo que vale <span class="hora"></span></h2><p class="para">Donde casi todos empezamos. La versión gratis sirve; la licencia es otra cosa.</p></div></div>
     <div class="cuerpo">
-      <div class="flujo" aria-label="Tu programa manda el pedido con tu llave, el modelo responde y tu programa usa la respuesta">
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><b>Tu programa</b><small>manda el pedido</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg></span><b>Tu llave</b><small>en el .env</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8Z"/></svg></span><b>El modelo</b><small>por API</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg></span><b>La respuesta</b><small>texto o JSON</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span><b>Tu resultado</b><small>hoja, correo, archivo</small></div>
+      <div class="planes">
+        <div class="plan"><div class="plan-c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></svg><b>Claude</b></div><small>claude.ai</small><div class="plan-p"><span>Gratis</span><span class="pro">Pro · ≈ USD 20/mes</span><span>Max · más uso</span></div><a href="https://claude.com/pricing" target="_blank" rel="noopener">planes ↗</a></div>
+        <div class="plan"><div class="plan-c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></svg><b>Gemini</b></div><small>gemini.google.com</small><div class="plan-p"><span>Gratis</span><span class="pro">Google AI Pro · ≈ USD 20/mes</span><span>Ultra</span></div><a href="https://gemini.google/subscriptions/" target="_blank" rel="noopener">planes ↗</a></div>
+        <div class="plan"><div class="plan-c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></svg><b>ChatGPT</b></div><small>chatgpt.com</small><div class="plan-p"><span>Gratis</span><span class="pro">Plus · ≈ USD 20/mes</span><span>Pro</span></div><a href="https://chatgpt.com/pricing" target="_blank" rel="noopener">planes ↗</a></div>
+        <div class="plan otro"><div class="plan-c"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></svg><b>Otros</b></div><small>Copilot, Perplexity, DeepSeek…</small><div class="plan-p"><span>Gratis</span><span class="pro">Licencia mensual</span></div></div>
       </div>
-      <p class="para fl-desc">Una llamada = una llave, un modelo, unas instrucciones fijas y un texto que cambia. Se paga por tokens.</p>
-      <div class="anatomia">
-        <div><b>Llave</b>En el <span class="mono">.env</span>, nunca en el código.</div>
-        <div><b>Modelo</b>Pequeño: rápido y barato. Grande: más capaz.</div>
-        <div><b>System</b>El oficio fijo: «eres un clasificador de correos».</div>
-        <div><b>Mensaje</b>Lo que cambia: el correo, el texto.</div>
-        <div><b>Respuesta</b>Pídela en JSON si la lee otro programa.</div>
-        <div><b>Tokens</b>Lo que se cobra: lo que entra más lo que sale.</div>
+      <div class="vs-lic">
+        <div><b>Gratis</b><span>Pocos mensajes, modelos más pequeños, sin proyectos ni conectores.</span></div>
+        <div class="si"><b>Con licencia</b><span>El mejor modelo, más uso, archivos largos, proyectos, conectores <em>y el editor</em> (Claude Code viene con Pro).</span></div>
+      </div>
+      <p class="para fl-desc">Una suscripción es un <b>valor fijo al mes</b> por persona. Precios aproximados: revisa los vigentes en cada página.</p>
+      <div class="facilita">Muestra en vivo tu chat con licencia: un proyecto, un archivo largo o un conector. Pregunta a la sala quién paga alguna y cuál.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 · API -->
+  <section class="bloque" id="b-api" data-min="15" data-titulo="La API y sus créditos">
+    <div class="cab"><div class="num">02</div><div><h2>La API: se paga con créditos <span class="hora"></span></h2><p class="para">Ya no chateas tú: tu programa le habla a la IA, y cada llamada se descuenta de tu saldo.</p></div></div>
+    <div class="cuerpo">
+      <div class="flujo" aria-label="Compras créditos, creas una llave, tu programa llama al modelo y se descuenta por tokens">
+        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6 15h4"/></svg></span><b>Compras créditos</b><small>prepago, desde USD 5</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg></span><b>Creas una llave</b><small>va en el .env</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><b>Tu programa llama</b><small>una vez o mil</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8Z"/></svg></span><b>El modelo responde</b><small>texto o JSON</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2"/></svg></span><b>Se descuenta</b><small>por tokens usados</small></div>
+      </div>
+      <div class="cred">
+        <div><b>Claude</b><a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com ↗</a><span>Créditos prepago. Tope de gasto mensual.</span></div>
+        <div><b>Gemini</b><a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com ↗</a><span>Nivel gratis con límites; luego facturación de Google Cloud.</span></div>
+        <div><b>OpenAI</b><a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com ↗</a><span>Créditos prepago. Límites de uso por proyecto.</span></div>
+      </div>
+      <div class="vs-lic">
+        <div><b>Licencia del chat</b><span>Valor fijo al mes. Para ti, en la pantalla.</span></div>
+        <div class="si"><b>Créditos de la API</b><span>Pagas lo que uses. Para tus programas: con un modelo pequeño, mil correos cuestan centavos.</span></div>
       </div>
       <div class="dos-ej">
         <div>
-          <h3>El ejemplo: <span class="mono">oficio.py</span></h3>
+          <h3>La llamada más simple</h3>
           <p class="para">Tu IA: <span class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></span></p>
         <div class="cmd" data-ia="claude"><div class="lbl">oficio.py · Claude</div><pre>from dotenv import load_dotenv
 import anthropic
@@ -922,35 +987,65 @@ def clasificar(texto):
 print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre></div>
         </div>
         <div>
-          <h3>Ahora en tu proyecto</h3>
-          <div class="cmd"><div class="lbl">Pedido para copiar en tu editor</div><pre>Lee PROYECTO.md. Agrega al proyecto una función que use la API de
-<span data-ia="claude">Anthropic (modelo claude-haiku-5-5, llave ANTHROPIC_API_KEY)</span><span data-ia="gemini">Gemini (modelo gemini-flash-latest, llave GEMINI_API_KEY)</span><span data-ia="gpt">OpenAI (modelo gpt-5-mini, llave OPENAI_API_KEY)</span> desde el .env
-para <span class="hueco">[clasificar / resumir / extraer]</span> <span class="hueco">[qué cosa]</span>.
-Que responda solo en JSON con estos campos: <span class="hueco">[campos]</span>.
-Primero muéstrame el plan en pocos pasos.
-Luego crea ia.py y un probar.py con mis tres ejemplos reales.
-No muestres ni copies el contenido del .env.</pre></div>
-          <p class="nota"><b>La llave es dinero:</b> en el <span class="mono">.env</span>, fuera de Git y fuera del chat. Pon un tope de gasto en la consola de tu proveedor.</p>
+          <h3>Cuida el saldo</h3>
+          <div class="tres una">
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg> La llave es dinero</h4>En el <span class="mono">.env</span>, fuera de Git y fuera del chat. Si se escapa, bórrala y crea otra.</div>
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Pon un tope</h4>Límite de gasto mensual en la consola. Un programa en bucle puede hacer miles de llamadas.</div>
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Mira el consumo</h4>Cada respuesta trae sus tokens: entrada + salida. La consola muestra cuánto llevas.</div>
+          </div>
         </div>
       </div>
-      <p class="ayuda-asist"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>¿Te trabaste? Pregúntale al <a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">asistente del bootcamp ↗</a> con tu ID, mientras seguimos.</span></p>
-      <div class="crono" data-cuenta="1200"><div class="cifra">20:00</div><button type="button" class="boton pri" data-crono="ir">▶ A conectar</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
-      <label class="check"><input type="checkbox"><span>Mi programa le habló a la IA y usó su respuesta</span></label>
+      <div class="facilita">Abre tu consola de Anthropic: muestra el saldo de créditos, el tope mensual y dónde se crea la llave (sin mostrar la llave). Luego corre oficio.py y mira los tokens que imprime.</div>
     </div>
   </section>
 
-  <!-- ===================================================== 2 · rutina -->
-  <section class="bloque" id="b-rutina" data-min="30" data-titulo="Una rutina que trabaja sola">
-    <div class="cab"><div class="num">02</div><div><h2>Una rutina que trabaja sola <span class="hora"></span></h2><p class="para">La API dentro de un bucle, con herramientas y un horario: eso ya es un agente.</p></div></div>
+  <!-- ===================================================== 3 · editor -->
+  <section class="bloque" id="b-editor" data-min="15" data-titulo="El editor y su IA">
+    <div class="cab"><div class="num">03</div><div><h2>El editor, con la IA adentro <span class="hora"></span></h2><p class="para">Dos editores que se parecen mucho. Cada uno se integra con una IA.</p></div></div>
     <div class="cuerpo">
-      <div class="flujo" aria-label="A las 8 de la mañana la rutina despierta, lee la carpeta, piensa con la IA, escribe el resultado y te avisa">
-        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><b>8:00 a. m.</b><small>el horario la despierta</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Lee</b><small>la carpeta «entrada»</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>Piensa</b><small>la IA por API</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span><b>Escribe</b><small>resumen.csv</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><b>Te avisa</b><small>un correo o un mensaje</small></div>
+      <div class="editores">
+        <div class="ed-c pref">
+          <div class="ed-t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/><path d="m8 12-2 2 2 2M12 16h4"/></svg><div><b>Visual Studio Code</b><small>code.visualstudio.com · gratis</small></div><span class="tag">el de hoy</span></div>
+          <div class="ed-mini" aria-hidden="true"><i></i><i class="largo"></i><i></i><span class="panel">Claude Code</span></div>
+          <ul>
+            <li><b>Claude</b> → extensión <span class="mono">Claude Code</span> <span class="ok">por defecto</span></li>
+            <li><b>Gemini</b> → extensión <span class="mono">Gemini Code Assist</span></li>
+            <li><b>GPT</b> → extensión <span class="mono">Codex</span> o GitHub Copilot</li>
+          </ul>
+        </div>
+        <div class="ed-c">
+          <div class="ed-t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/><path d="m8 12-2 2 2 2M12 16h4"/></svg><div><b>Antigravity</b><small>antigravity.google · de Google</small></div><span class="tag gris">se parece a Code</span></div>
+          <div class="ed-mini" aria-hidden="true"><i></i><i class="largo"></i><i></i><span class="panel g">Agente</span></div>
+          <ul>
+            <li>Hecho sobre la base de VS Code: la vista <b>Editor</b> se ve casi igual.</li>
+            <li>Trae <b>Gemini</b> adentro, sin instalar nada más.</li>
+            <li>También deja elegir otros modelos.</li>
+          </ul>
+        </div>
       </div>
-      <p class="para fl-desc">Lo rutinario: lo que haces igual cada día. Tú pones el objetivo y los límites; la rutina hace las vueltas.</p>
+      <h3>Cómo se conecta Claude Code en VS Code</h3>
+      <div class="flujo" aria-label="Instalar la extensión, iniciar sesión, abrir la carpeta, pedir">
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/><path d="m8 12-2 2 2 2M12 16h4"/></svg></span><b>Extensiones</b><small>busca «Claude Code»</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg></span><b>Inicia sesión</b><small>con tu licencia Pro o con créditos</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Abre tu carpeta</b><small>la del bootcamp</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>Pide</b><small>lee, propone y pide permiso</small></div>
+      </div>
+      <p class="para fl-desc">Aquí se juntan las dos cosas: el editor usa tu <b>licencia</b> (o tus <b>créditos</b>) para trabajar contigo.</p>
+      <div class="facilita">Muestra tu VS Code con Claude Code abierto en una carpeta nueva «agente-fablab»: es donde construimos el siguiente bloque. Si tienes Antigravity, ábrelo solo un momento para que vean que es casi igual.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 4 · agente -->
+  <section class="bloque" id="b-agente" data-min="35" data-titulo="Construimos un agente">
+    <div class="cab"><div class="num">04</div><div><h2>Construimos un agente <span class="hora"></span></h2><p class="para">El agente de solicitudes del FABLAB: lee lo que llega, decide qué es, lo registra y deja la respuesta lista. Tú revisas y envías.</p></div></div>
+    <div class="cuerpo">
+      <div class="flujo" aria-label="Llegan solicitudes, el agente las lee, las clasifica, las registra y deja un borrador; tú revisas">
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Llegan</b><small>3 solicitudes en «entrada»</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>El agente</b><small>piensa con la API</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span><b>Registra</b><small>solicitudes.csv</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span><b>Redacta</b><small>un borrador por cada una</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><b>Tú revisas</b><small>y decides si se envía</small></div>
+      </div>
       <div class="bucle">
         <svg viewBox="0 0 360 256" role="img" aria-label="El bucle del agente: pensar, usar una herramienta, mirar el resultado y repetir hasta cumplir el objetivo">
           <defs>
@@ -976,109 +1071,118 @@ No muestres ni copies el contenido del .env.</pre></div>
           <text class="s" x="232" y="18">listo: entrega</text>
         </svg>
         <ul class="piezas">
-          <li><b>Herramientas:</b> funciones de tu programa que la IA puede pedir: leer la carpeta, escribir una fila, mandar un aviso.</li>
-          <li><b>Bucle:</b> pensar → actuar → mirar, hasta cumplir el objetivo.</li>
-          <li><b>Límites:</b> máximo de pasos, qué puede tocar y qué necesita tu permiso.</li>
-          <li><b>El modelo nunca ejecuta:</b> solo pide. Quien ejecuta es tu código.</li>
+          <li><b>Herramientas:</b> listar, leer, registrar y redactar. Nada más.</li>
+          <li><b>Reglas tuyas:</b> RESERVA, COTIZACIÓN, DAÑO u OTRO. Un DAÑO siempre es urgente.</li>
+          <li><b>Límites:</b> máximo 15 pasos; nunca envía correos ni borra archivos.</li>
+          <li><b>El modelo solo pide:</b> quien ejecuta es el código que tú aprobaste.</li>
         </ul>
       </div>
-      <div class="dos-ej">
-        <div>
-          <h3>El ejemplo: tu rutina</h3>
-          <div class="cmd"><div class="lbl">Pedido para copiar en tu editor</div><pre>Lee PROYECTO.md e ia.py. Crea rutina.py: un agente pequeño con
-<span data-ia="claude">la API de Anthropic (tool use)</span><span data-ia="gemini">la API de Gemini (function calling)</span><span data-ia="gpt">la API de OpenAI (function calling)</span> y estas herramientas:
-1. leer los archivos nuevos de la carpeta «entrada»
-2. <span class="hueco">[lo que hace con cada uno: clasificar, resumir…]</span>
-3. agregar una fila a resumen.csv
-Objetivo: <span class="hueco">___</span>.
-Límites: máximo 8 pasos, no borra nada, y anota cada paso en rutina.log.
-Muéstrame el plan antes de escribir código.</pre></div>
-        </div>
-        <div>
-          <h3>Ponla en horario</h3>
-          <div class="horario">
-            <div><b>Windows</b><span>Programador de tareas</span><pre>schtasks /create /sc daily /st 08:00 /tn "Mi rutina" /tr "python C:\bootcamp\rutina.py"</pre></div>
-            <div><b>Mac o Linux</b><span>cron · de lunes a viernes</span><pre>0 8 * * 1-5  cd ~/bootcamp &amp;&amp; python3 rutina.py</pre></div>
-            <div><b>En la nube</b><span>sin tu computador prendido</span><p>Una rutina programada de <span data-ia="claude">Claude Code (<span class="mono">/schedule</span>)</span><span data-ia="gemini">GitHub Actions</span><span data-ia="gpt">GitHub Actions</span> o un servidor.</p></div>
+
+      <h3>El guion, paso a paso</h3>
+      <ol class="guion">
+        <li><b>Crea la carpeta</b> <span class="mono">agente-fablab</span> con tu <span class="mono">.env</span> y una carpeta <span class="mono">entrada</span> con estas tres solicitudes:
+          <div class="tres-arch">
+            <div class="cmd"><div class="lbl">entrada/correo-1.txt</div><pre>De: Laura Gómez
+Asunto: Láser mañana
+¿Puedo usar la cortadora láser mañana a las 3 p. m.?
+Es para la maqueta de Arquitectura que entrego el viernes.</pre></div>
+            <div class="cmd"><div class="lbl">entrada/correo-2.txt</div><pre>De: Andrés Ruiz
+Asunto: Cotización llaveros
+¿Cuánto cuesta grabar 50 llaveros de madera con el logo
+de mi emprendimiento? Los necesito en dos semanas.</pre></div>
+            <div class="cmd"><div class="lbl">entrada/correo-3.txt</div><pre>De: Camila Torres
+Asunto: Impresora 3D
+La impresora de la mesa 2 no calienta. Dejé una pieza
+a medias y huele a quemado.</pre></div>
           </div>
-          <p class="nota"><b>Primero a mano:</b> córrela tú unas veces y lee rutina.log. Solo cuando confíes, ponle horario.</p>
-        </div>
+        </li>
+        <li><b>Pídele el agente a Claude Code</b>, y que te muestre el plan primero:
+          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Vamos a construir un agente para el FABLAB. Lee los archivos de la carpeta entrada.
+Crea agente.py que use la API de Anthropic (modelo claude-haiku-5-5, llave
+ANTHROPIC_API_KEY del .env) con tool use y estas cuatro herramientas:
+- listar_solicitudes(): los .txt de entrada/
+- leer_solicitud(nombre)
+- registrar(nombre, tipo, urgente, resumen): agrega una fila a solicitudes.csv
+- borrador(nombre, texto): guarda la respuesta propuesta en borradores/
+Tipos: RESERVA, COTIZACIÓN, DAÑO u OTRO. Un DAÑO siempre es urgente.
+Objetivo: todas las solicitudes registradas y con su borrador.
+Límites: máximo 15 pasos; nunca envía correos ni borra archivos;
+imprime cada paso que da y, al final, los tokens usados.
+Primero muéstrame el plan. No escribas código hasta que lo apruebe.</pre></div>
+        </li>
+        <li><b>Lee el plan en voz alta</b> con la sala: ¿están las cuatro herramientas?, ¿los límites?, ¿la regla del DAÑO? Corrige lo que falte y apruébalo.</li>
+        <li><b>Acepta los archivos</b> que propone (revísalos: Claude Code pide permiso para cada uno) y córrelo: <span class="mono">python agente.py</span></li>
+        <li><b>Mira cómo trabaja.</b> Cada línea es una vuelta del bucle:
+          <div class="cmd term"><div class="lbl">Lo que verás (ilustrativo)</div><pre><span class="c">[1]</span>  listar_solicitudes()          → correo-1.txt, correo-2.txt, correo-3.txt
+<span class="c">[2]</span>  leer_solicitud("correo-1.txt")
+<span class="c">[3]</span>  registrar(correo-1, RESERVA, urgente=no, "Láser mañana 3 p. m., maqueta")
+<span class="c">[4]</span>  borrador(correo-1, "Hola, Laura: …")
+<span class="c">[5]</span>  leer_solicitud("correo-2.txt")
+<span class="c">[6]</span>  registrar(correo-2, COTIZACIÓN, urgente=no, "50 llaveros grabados, 2 semanas")
+<span class="c">[7]</span>  borrador(correo-2, "Hola, Andrés: …")
+<span class="c">[8]</span>  leer_solicitud("correo-3.txt")
+<span class="c">[9]</span>  registrar(correo-3, DAÑO, urgente=SÍ, "Impresora mesa 2 no calienta, olor a quemado")
+<span class="c">[10]</span> borrador(correo-3, "Hola, Camila: …")
+<span class="c">listo</span> 3 registradas · 1 urgente · 3 borradores · tokens: 4.200 + 1.100</pre></div>
+        </li>
+        <li><b>Revisa el resultado:</b> abre <span class="mono">solicitudes.csv</span> y la carpeta <span class="mono">borradores</span>. ¿Le respondería así a Laura? Si no, se ajustan las instrucciones, no el código.</li>
+        <li><b>Si te convence, ponle horario</b> (cada mañana a las 8): <span class="mono">schtasks /create /sc daily /st 08:00 /tn "Agente FABLAB" /tr "python C:\agente-fablab\agente.py"</span></li>
+      </ol>
+      <div class="vs-lic">
+        <div><b>Lo hace el agente</b><span>Leer, clasificar, registrar y redactar, una y otra vez.</span></div>
+        <div class="si"><b>Lo haces tú</b><span>Las reglas, los límites, revisar los borradores y decidir qué se envía.</span></div>
       </div>
+      <div class="crono" data-cuenta="1200"><div class="cifra">20:00</div><button type="button" class="boton pri" data-crono="ir">▶ Construyámoslo</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
       <p class="ayuda-asist"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>¿Te trabaste? Pregúntale al <a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">asistente del bootcamp ↗</a> con tu ID, mientras seguimos.</span></p>
-      <div class="crono" data-cuenta="900"><div class="cifra">15:00</div><button type="button" class="boton pri" data-crono="ir">▶ A construir</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
-      <label class="check"><input type="checkbox"><span>Mi rutina corrió una vez y entiendo cada paso de su log</span></label>
+      <label class="check"><input type="checkbox"><span>El agente registró las tres solicitudes y dejó sus borradores</span></label>
+      <div class="facilita">Hazlo en vivo en VS Code con Claude Code. Si algo falla, mejor: lee el error con la sala y pídele a Claude Code que lo arregle. Quien quiera, lo sigue en su equipo con el mismo pedido.</div>
     </div>
   </section>
 
-  <!-- ===================================================== 3 · MCP -->
-  <section class="bloque" id="b-mcp" data-min="15" data-titulo="Un paso más: MCP">
-    <div class="cab"><div class="num">03</div><div><h2>Un paso más: MCP <span class="hora"></span></h2><p class="para">Al revés de la API: ahora es la IA la que se conecta a tus sistemas.</p></div></div>
+  <!-- ===================================================== 5 · MCP -->
+  <section class="bloque" id="b-mcp" data-min="15" data-titulo="MCP para el agente">
+    <div class="cab"><div class="num">05</div><div><h2>Le sumamos MCP al agente <span class="hora"></span></h2><p class="para">El agente ya funciona con una carpeta. Con MCP se conecta a donde de verdad llegan las solicitudes.</p></div></div>
     <div class="cuerpo">
-      <div class="mcp" aria-label="La IA se conecta por MCP a tus archivos, tu correo, una base de datos o la web">
-        <div class="mcp-ia"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/></svg><b>Tu IA</b><small>Claude, el editor, un chat</small></div>
+      <div class="mcp" aria-label="El agente se conecta por MCP a la carpeta compartida, el correo, el calendario de reservas o Drive">
+        <div class="mcp-ia"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><b>El agente</b><small>Claude Code con tus reglas</small></div>
         <div class="mcp-bus"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg><b>MCP</b><small>un enchufe estándar, como el USB-C</small></div>
         <div class="mcp-srv">
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Tus archivos</span>
+          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Carpeta compartida</span>
+          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>El correo</span>
+          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario de reservas</span>
           <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7Z"/><path d="m8 3 6 11H2M16 3l-6 11 4 7"/></svg>Drive</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Correo</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Una base de datos</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>El navegador</span>
         </div>
       </div>
-      <p class="para fl-desc">Con la API, <b>tu programa</b> llama a la IA. Con MCP, <b>la IA</b> usa herramientas que otros ya construyeron, sin que programes la conexión.</p>
-      <div class="dos-ej">
-        <div>
-          <h3>El ejemplo: tus archivos, en Claude Code</h3>
-          <div class="cmd"><div class="lbl">En la terminal</div><pre>claude mcp add archivos -- npx -y @modelcontextprotocol/server-filesystem C:\bootcamp</pre></div>
-          <p class="para">Luego, en Claude Code: <span class="mono">/mcp</span> muestra lo conectado. Ya puedes pedir «busca en mis archivos del bootcamp…».</p>
-        </div>
-        <div>
-          <h3>Ya lo usaste</h3>
-          <div class="tres">
-            <div><h4>Claude in Chrome</h4>El investigador del miércoles: la IA conectada a tu navegador.</div>
-            <div><h4>Conectores</h4>En claude.ai, Drive, Gmail o Calendar se conectan con un clic.</div>
-            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Con cuidado</h4>Solo conectores de confianza: la IA actúa con tus permisos.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================================================== 4 · cierre -->
-  <section class="bloque" id="b-cierre" data-min="10" data-titulo="Muestra final">
-    <div class="cab"><div class="num">04</div><div><h2>Muestra final <span class="hora"></span></h2><p class="para">Un minuto por persona. Mostrar algo a medias también vale.</p></div></div>
-    <div class="cuerpo">
-      <div class="camino-fin" aria-label="Chat, editor, API, rutina y MCP">
-        <div class="hecho"><small>martes</small>Chat y editor</div><i>→</i>
-        <div class="hecho"><small>miércoles</small>Primera versión</div><i>→</i>
-        <div class="hecho"><small>hoy</small>API</div><i>→</i>
-        <div class="hecho"><small>hoy</small>Rutina · agente</div><i>→</i>
-        <div class="luego"><small>siguiente</small>MCP</div>
-      </div>
-      <div class="cmd"><div class="lbl">Tu minuto</div><pre>El problema era: <span class="hueco">___</span>
-Lo que construí (y lo muestro): <span class="hueco">___</span>
-Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span></pre></div>
-      <div class="crono" data-cuenta="60">
-        <div class="cifra">1:00</div>
-        <button type="button" class="boton pri" data-crono="ir">▶ Siguiente persona</button>
-        <button type="button" class="boton chico" data-crono="parar">Parar</button>
-        <span class="cuantos">Van <b data-crono="n">0</b> muestras</span>
-      </div>
+      <p class="para fl-desc">Con la API, <b>tu programa</b> llama a la IA. Con MCP, <b>la IA</b> usa conexiones que otros ya construyeron: no programas la conexión.</p>
+      <h3>El ejemplo: la carpeta compartida de solicitudes</h3>
+      <ol class="guion">
+        <li><b>Conecta el MCP</b> en la terminal de VS Code:
+          <div class="cmd"><div class="lbl">En la terminal</div><pre>claude mcp add solicitudes -- npx -y @modelcontextprotocol/server-filesystem C:\agente-fablab\entrada</pre></div>
+        </li>
+        <li><b>Revisa que quedó:</b> en Claude Code, escribe <span class="mono">/mcp</span>.</li>
+        <li><b>Pídele lo mismo, ahora por MCP:</b>
+          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Usa el MCP «solicitudes» para revisar las solicitudes nuevas.
+Haz lo mismo que agente.py: clasifica (RESERVA, COTIZACIÓN, DAÑO u OTRO),
+registra en solicitudes.csv y deja un borrador por cada una.
+No envíes nada ni borres archivos. Al final, dime cuáles son urgentes.</pre></div>
+        </li>
+      </ol>
       <div class="tres">
-        <div><h4>El problema</h4>Lo conoces tú.</div>
-        <div><h4>El criterio</h4>Saber si sirve, qué recortar y cuándo parar.</div>
-        <div><h4>La responsabilidad</h4>Lo que sale de tu solución lleva tu nombre.</div>
+        <div><h4>Lo mismo con el correo</h4>Con un MCP de correo, el agente lee la bandeja real en lugar de la carpeta.</div>
+        <div><h4>Y con el calendario</h4>Para una RESERVA, revisa si el láser está libre antes de redactar.</div>
+        <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Con cuidado</h4>Solo conectores de confianza: el agente actúa con tus permisos.</div>
       </div>
+      <div class="facilita">Muestra el /mcp y corre el pedido. Cierra con la idea: el agente es el mismo; MCP solo le dio manos para llegar a tus sistemas.</div>
     </div>
   </section>
 
   <!-- ===================================================== 5 · preguntas -->
   <section class="bloque" id="b-preguntas" data-min="30" data-titulo="Preguntas y respuestas">
-    <div class="cab"><div class="num">05</div><div><h2>Preguntas y respuestas <span class="hora"></span></h2><p class="para">Media hora para lo que quedó dando vueltas.</p></div></div>
+    <div class="cab"><div class="num">06</div><div><h2>Preguntas y respuestas <span class="hora"></span></h2><p class="para">Media hora para lo que quedó dando vueltas.</p></div></div>
     <div class="cuerpo">
       <div class="pyr">
         <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg></span><b>Tu proyecto</b><small>¿Qué te falta para que funcione en un caso real?</small></div>
-        <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span><b>Lo que sigue</b><small>¿API, rutina o MCP? ¿Por dónde empiezo?</small></div>
+        <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span><b>Lo que sigue</b><small>¿Licencia, créditos, agente o MCP? ¿Por dónde empiezo?</small></div>
         <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg></span><b>Lo que no quedó claro</b><small>Llaves, costos, permisos, errores.</small></div>
       </div>
       <p class="para fl-desc">Y después del bootcamp, por dos caminos:</p>
