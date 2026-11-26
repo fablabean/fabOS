@@ -754,6 +754,36 @@
   .prep > span{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--rule);border-radius:10px;padding:.35rem .65rem;background:var(--card);font-size:.88rem}
   .prep .ic{width:1rem;height:1rem;color:var(--accent)}
   .ver-codigo.replica .ver-codigo-c{max-width:none}
+  /* día 3: MCP frente a la API */
+  .mcp-vs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0 .6rem}
+  @media (max-width:800px){.mcp-vs{grid-template-columns:1fr}}
+  .mv{border:1px solid var(--rule);border-radius:18px;background:var(--bg2);padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.8rem}
+  .mv.mcp2{border-color:var(--accent)}
+  .mv-t span{display:block;font:600 .66rem "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .mv-t b{font-size:1.3rem}
+  .mv-centro{display:flex;align-items:center;justify-content:center;gap:.5rem;border:1px solid var(--rule);border-radius:12px;padding:.55rem;background:var(--card);font-weight:700}
+  .mv-centro > .ic{width:1.3rem;height:1.3rem;color:var(--accent2)}
+  .mv.mcp2 .mv-centro > .ic{color:var(--accent)}
+  .mv-centro .enchufe{display:inline-flex;align-items:center;gap:.25rem;margin-left:.4rem;padding:.15rem .55rem;border-radius:99px;background:var(--accent);color:#06231A;font:800 .78rem Inter,sans-serif}
+  .mv-centro .enchufe .ic{width:.95rem;height:.95rem}
+  .cbs{display:grid;gap:.4rem}
+  .cb{display:grid;grid-template-columns:1.9rem auto 1fr auto;align-items:center;gap:.55rem}
+  .cb-i{width:1.9rem;height:1.9rem;border-radius:9px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule)}
+  .cb-i .ic{width:1rem;height:1rem;color:var(--soft)}
+  .cb b{font-size:.92rem}
+  .cb-l{height:0;border-top:2px dashed var(--accent2)}
+  .cb small{font:600 .66rem "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--accent2)}
+  .cb.hecho .cb-l{border-top:2px solid var(--accent)} .cb.hecho small{color:var(--accent)} .cb.hecho .cb-i .ic{color:var(--accent)}
+  .mv-pie{margin:auto 0 0;font-weight:700;border-top:1px dashed var(--rule);padding-top:.6rem}
+  .mv-pie em{font-style:normal;color:var(--accent2)} .mv.mcp2 .mv-pie em{color:var(--accent)}
+  .usb{display:flex;align-items:center;justify-content:center;gap:.6rem;font-size:1.08rem;text-align:center;margin:.6rem 0 1.2rem}
+  .usb .ic{width:1.5rem;height:1.5rem;color:var(--accent);flex:none}
+  .demo3{display:grid;grid-template-columns:1.25fr 1fr 1.25fr;gap:.8rem;margin:.6rem 0 1rem}
+  @media (max-width:900px){.demo3{grid-template-columns:1fr}}
+  .demo3 > div{border:1px solid var(--rule);border-radius:14px;background:var(--bg2);padding:.8rem .9rem;display:flex;flex-direction:column;gap:.45rem;min-width:0}
+  .demo3 .n{width:1.7rem;height:1.7rem;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,var(--card));border:1px solid var(--accent);color:var(--accent);font-weight:800;font-size:.85rem}
+  .demo3 b{font-size:1rem} .demo3 p{margin:0;color:var(--soft);font-size:.9rem} .demo3 em{font-style:normal;color:var(--accent);font-weight:700}
+  .demo3 .cmd{margin:0} .demo3 pre{font-size:.72rem;white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -1164,39 +1194,48 @@ Primero muéstrame el plan. No escribas código hasta que lo apruebe.</pre></div
   </section>
 
   <!-- ===================================================== 5 · MCP -->
-  <section class="bloque" id="b-mcp" data-min="15" data-titulo="MCP para el agente">
-    <div class="cab"><div class="num">05</div><div><h2>Le sumamos MCP al agente <span class="hora"></span></h2><p class="para">La máquina del tiempo ya deja sus fichas en una carpeta. Con MCP, la IA las usa sin que programes nada más.</p></div></div>
+  <section class="bloque" id="b-mcp" data-min="15" data-titulo="MCP">
+    <div class="cab"><div class="num">05</div><div><h2>MCP: herramientas que se enchufan <span class="hora"></span></h2><p class="para">Con la API, tú programas cada conexión. Con MCP, la conexión ya viene hecha.</p></div></div>
     <div class="cuerpo">
-      <div class="mcp" aria-label="La IA se conecta por MCP a tu carpeta, Drive, el correo o el calendario">
-        <div class="mcp-ia"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><b>El agente</b><small>Claude Code con tus reglas</small></div>
-        <div class="mcp-bus"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg><b>MCP</b><small>un enchufe estándar, como el USB-C</small></div>
-        <div class="mcp-srv">
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Tus fichas</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>El correo</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7Z"/><path d="m8 3 6 11H2M16 3l-6 11 4 7"/></svg>Drive</span>
+      <div class="mcp-vs">
+        <div class="mv api">
+          <div class="mv-t"><span>Lo que hicimos</span><b>Con la API</b></div>
+          <div class="mv-centro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span class="mono">historia.py</span></div>
+          <div class="cbs">
+            <div class="cb "><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M4 19V5M8 7h7"/></svg></span><b>Wikipedia</b><i class="cb-l"></i><small>código tuyo</small></div>
+            <div class="cb "><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span><b>iTunes</b><i class="cb-l"></i><small>código tuyo</small></div>
+            <div class="cb "><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg></span><b>Gemini</b><i class="cb-l"></i><small>código tuyo</small></div>
+          </div>
+          <p class="mv-pie">3 conexiones, <em>programadas una por una</em>.</p>
+        </div>
+        <div class="mv mcp2">
+          <div class="mv-t"><span>Lo que sigue</span><b>Con MCP</b></div>
+          <div class="mv-centro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>Claude Code</span><span class="enchufe"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg>MCP</span></div>
+          <div class="cbs">
+            <div class="cb hecho"><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Tus archivos</b><i class="cb-l"></i><small>ya hecho</small></div>
+            <div class="cb hecho"><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7Z"/><path d="m8 3 6 11H2M16 3l-6 11 4 7"/></svg></span><b>Drive</b><i class="cb-l"></i><small>ya hecho</small></div>
+            <div class="cb hecho"><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><b>Correo</b><i class="cb-l"></i><small>ya hecho</small></div>
+            <div class="cb hecho"><span class="cb-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.2M8.9 13.8 4.8 6.7M15.1 13.8 11 21"/></svg></span><b>Chrome</b><i class="cb-l"></i><small>ya hecho</small></div>
+          </div>
+          <p class="mv-pie">Cada conector trae sus herramientas: <em>solo se enchufa</em>.</p>
         </div>
       </div>
-      <p class="para fl-desc">Con la API, <b>tu programa</b> llama a la IA. Con MCP, <b>la IA</b> usa conexiones que otros ya construyeron: no programas la conexión.</p>
-      <h3>El ejemplo: de las fichas a la clase</h3>
-      <ol class="guion">
-        <li><b>Conecta el MCP</b> en la terminal de VS Code:
-          <div class="cmd"><div class="lbl">En la terminal</div><pre>claude mcp add fichas -- npx -y @modelcontextprotocol/server-filesystem C:\historia</pre></div>
-        </li>
-        <li><b>Revisa que quedó:</b> en Claude Code, escribe <span class="mono">/mcp</span>.</li>
-        <li><b>Pídele lo mismo, ahora por MCP:</b>
-          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Usa el MCP «fichas» para leer las fichas que hizo historia.py.
-Con ellas arma clase.md: una actividad de 20 minutos para estudiantes de
-colegio, con tres preguntas sobre el evento, una sobre la música y una
-línea de tiempo. Usa solo lo que está en las fichas y sus enlaces.</pre></div>
-        </li>
-      </ol>
-      <div class="tres">
-        <div><h4>Con Drive</h4>Las fichas, directo a la carpeta compartida del curso.</div>
-        <div><h4>Con el calendario</h4>Una efeméride para cada clase del semestre.</div>
-        <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Con cuidado</h4>Solo conectores de confianza: el agente actúa con tus permisos.</div>
+      <p class="usb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg><span><b>Como el USB:</b> cada servicio hace su conector una vez, y cualquier IA lo enchufa.</span></p>
+
+      <h3>En vivo: enchufar las fichas de la máquina del tiempo</h3>
+      <div class="demo3">
+        <div><span class="n">1</span><b>Enchufa</b><div class="cmd"><pre>claude mcp add fichas -- npx -y @modelcontextprotocol/server-filesystem C:\historia</pre></div></div>
+        <div><span class="n">2</span><b>Mira lo que trajo</b><p>En Claude Code: <span class="mono">/mcp</span>. Aparecen herramientas que <em>nadie programó hoy</em>: leer, listar, buscar.</p></div>
+        <div><span class="n">3</span><b>Úsalo</b><div class="cmd"><pre>Con el MCP «fichas», lee las fichas de historia.py y arma clase.md:
+una actividad de 20 minutos con tres preguntas y una línea de tiempo.</pre></div></div>
       </div>
-      <div class="facilita">Muestra el /mcp y corre el pedido. Cierra con la idea: historia.py lo programaste tú; con MCP la IA usa una conexión que ya existe para seguir el trabajo.</div>
+
+      <div class="tres">
+        <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.2M8.9 13.8 4.8 6.7M15.1 13.8 11 21"/></svg> Ya lo usaste</h4>El investigador del miércoles: Claude conectado a Chrome. Eso era MCP.</div>
+        <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg> El mismo agente</h4>Pensar, actuar, mirar. MCP solo le da más manos.</div>
+        <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Con cuidado</h4>El conector actúa con tus permisos: si enchufas tu correo, la IA lo lee.</div>
+      </div>
+      <div class="facilita">Pregunta primero: «¿cuántas conexiones programamos en historia.py?» (tres). Luego: «¿y si fueran Drive, Gmail, Calendar… para cada IA?». Ahí entra el USB. En la demo, detente en /mcp: «estas herramientas no las escribimos». Cierra: «en historia.py le dimos herramientas programándolas; con MCP, enchufándolas».</div>
     </div>
   </section>
 
