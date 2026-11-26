@@ -313,4 +313,29 @@ class CalidadTest extends TestCase
 
         $this->assertTrue(\App\Http\Controllers\CalidadController::presentacionPublica());
     }
+
+    public function test_una_orden_pasada_queda_con_su_fecha_y_no_detiene_el_equipo(): void
+    {
+        $equipo = $this->activo('Creality Hi Combo 1');
+
+        Livewire::test(\App\Filament\Resources\WorkOrders\Pages\CreateWorkOrder::class)
+            ->fillForm([
+                'retroactiva'    => true,
+                'asset_id'       => $equipo->id,
+                'kind'           => 'correctivo',
+                'reported_issue' => 'Motor dañado',
+                'abierta_el'     => '2026-03-10 09:00',
+                'closed_at'      => '2026-03-12 16:30',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $orden = WorkOrder::sole();
+        $this->assertSame('cerrada', $orden->status);
+        $this->assertFalse($orden->stops_equipment);
+        // Hora de Bogotá: 09:00 -05:00 son las 14:00 UTC.
+        $this->assertSame('2026-03-10 14:00', $orden->created_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('2026-03-12 21:30', $orden->closed_at->format('Y-m-d H:i'));
+        $this->assertNotSame('mantenimiento', $equipo->fresh()->status);
+    }
 }

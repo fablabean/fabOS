@@ -33,6 +33,45 @@ class WorkOrderForm
     {
         return $schema
             ->components([
+                /*
+                 * Una orden de algo que ya pasó: lo que se arregló antes de
+                 * FabOS, o lo que no se alcanzó a registrar a tiempo. Queda
+                 * con su fecha real, cerrada, y no toca el estado del equipo.
+                 */
+                Section::make('Orden de algo que ya pasó')
+                    ->columns(2)
+                    ->visibleOn('create')
+                    ->schema([
+                        Toggle::make('retroactiva')
+                            ->label('Registrar una orden pasada')
+                            ->helperText('Con su fecha real. Queda cerrada y no saca el equipo de servicio.')
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state) {
+                                    $set('status', 'cerrada');
+                                    $set('stops_equipment', false);
+                                }
+                            })
+                            ->columnSpanFull(),
+
+                        DateTimePicker::make('abierta_el')
+                            ->label('Se abrió el')
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone'))
+                            ->maxDate(now())
+                            ->visible(fn (Get $get) => (bool) $get('retroactiva'))
+                            ->required(fn (Get $get) => (bool) $get('retroactiva')),
+
+                        DateTimePicker::make('closed_at')
+                            ->label('Se cerró el')
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone'))
+                            ->maxDate(now())
+                            ->afterOrEqual('abierta_el')
+                            ->visible(fn (Get $get) => (bool) $get('retroactiva'))
+                            ->required(fn (Get $get) => $get('retroactiva') && $get('status') === 'cerrada'),
+                    ]),
+
                 Section::make('Qué pasó')
                     ->columns(2)
                     ->schema([
@@ -173,19 +212,25 @@ class WorkOrderForm
                     ->schema([
                         DateTimePicker::make('down_since')
                             ->label('Detenido desde')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone')),
 
                         DateTimePicker::make('up_since')
                             ->label('De vuelta en servicio')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone')),
 
                         DateTimePicker::make('due_at')
                             ->label('Debe atenderse antes de')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone')),
 
                         DateTimePicker::make('closed_at')
                             ->label('Cerrada el')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->timezone(config('fabos.lab.timezone'))
+                            // Al registrar una pasada se pide arriba.
+                            ->hidden(fn (Get $get, string $operation) => $operation === 'create' && $get('retroactiva')),
                     ]),
             ]);
     }
