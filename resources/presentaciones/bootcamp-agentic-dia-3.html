@@ -739,6 +739,9 @@
   .ver-codigo > summary::-webkit-details-marker{display:none}
   .ver-codigo[open] > summary{border-color:var(--accent)}
   .ver-codigo-c{margin-top:.8rem;max-width:52rem}
+  .archs{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+  .archs .arch{display:inline-flex;align-items:center;gap:.3rem;border:1px solid var(--rule);border-radius:8px;padding:.2rem .5rem;background:var(--card);font:500 .74rem "JetBrains Mono",monospace;color:var(--soft)}
+  .archs .ic{width:.9rem;height:.9rem;color:var(--muted)}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -762,7 +765,7 @@
     <div class="qr-portada"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m2 0h3m7 0h7m-29 1h1m5 0h1m1 0h5m1 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h5m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m4 0h1m4 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m2 0h1m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m2 0h3m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h1m1 0h1m2 0h2m4 0h2m1 0h3m3 0h2m1 0h2m-28 1h2m1 0h1m2 0h5m1 0h1m2 0h3m2 0h2m2 0h1m-21 1h1m4 0h4m1 0h1m3 0h4m1 0h1m1 0h1m-26 1h3m1 0h1m1 0h7m1 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-27 1h1m2 0h1m1 0h1m1 0h1m2 0h2m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m2 0h1m1 0h2m2 0h1m2 0h1m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m2 0h2m3 0h2m2 0h1m6 0h2m3 0h1m1 0h1m1 0h1m-29 1h3m1 0h1m1 0h2m2 0h1m2 0h1m1 0h3m7 0h2m-27 1h1m1 0h2m4 0h1m1 0h1m3 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m4 0h1m5 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m2 0h1m6 0h3m1 0h3m2 0h3m2 0h1m-25 1h1m2 0h6m8 0h8m1 0h3m-21 1h2m4 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m3 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h4m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m2 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m2 0h1m5 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m1 0h2m1 0h10m-28 1h1m5 0h1m5 0h1m1 0h2m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h3m1 0h1m2 0h1m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><div><b>Síguela en tu celular</b><span>fablabean.com/zonas/agentic/dia-3</span><small>Escanéalo: verás la presentación en vivo, al ritmo de quien presenta.</small></div></div>
     <div class="kicker">Sesión 03 · jueves 26 de noviembre · 6:00 p. m.</div>
     <h1>Tu programa habla con la IA, <span>y aparece el agente</span>.</h1>
-    <p class="lead">Muy práctico: del chat a la API, de la API al editor, y con el editor construimos un agente del FABLAB y lo conectamos por MCP. Al final, media hora para tus preguntas. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
+    <p class="lead">Muy práctico: del chat a la API, de la API al editor, y con el editor construimos un agente que ordena una carpeta, y lo conectamos por MCP. Al final, media hora para tus preguntas. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
     <div class="datos">
       <div class="dato"><b>Duración</b>2 horas, con media hora final de preguntas</div>
       <div class="dato"><b>Antes</b><a href="https://fablabean.com/zonas/agentic/dia-2" target="_blank" rel="noopener">Día 2 ↗</a> (tu primera versión)</div>
@@ -1034,20 +1037,20 @@ print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre
         <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>Pide</b><small>lee, propone y pide permiso</small></div>
       </div>
       <p class="para fl-desc">Aquí se juntan las dos cosas: el editor usa tu <b>licencia</b> (o tus <b>créditos</b>) para trabajar contigo.</p>
-      <div class="facilita">Muestra tu VS Code con Claude Code abierto en una carpeta nueva «agente-fablab»: es donde construimos el siguiente bloque. Si tienes Antigravity, ábrelo solo un momento para que vean que es casi igual.</div>
+      <div class="facilita">Muestra tu VS Code con Claude Code abierto en una carpeta nueva «agente»: es donde construimos el siguiente bloque. Si tienes Antigravity, ábrelo solo un momento para que vean que es casi igual.</div>
     </div>
   </section>
 
   <!-- ===================================================== 4 · agente -->
   <section class="bloque" id="b-agente" data-min="35" data-titulo="Construimos un agente">
-    <div class="cab"><div class="num">04</div><div><h2>Construimos un agente <span class="hora"></span></h2><p class="para">El agente de solicitudes del FABLAB: lee lo que llega, decide qué es, lo registra y deja la respuesta lista. Tú revisas y envías.</p></div></div>
+    <div class="cab"><div class="num">04</div><div><h2>Construimos un agente <span class="hora"></span></h2><p class="para">El agente que ordena una carpeta revuelta: lee cada archivo, decide a dónde va, lo mueve y te deja un informe. Lo pruebas con archivos de mentira.</p></div></div>
     <div class="cuerpo">
-      <div class="flujo" aria-label="Llegan solicitudes, el agente las lee, las clasifica, las registra y deja un borrador; tú revisas">
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Llegan</b><small>3 solicitudes en «entrada»</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>El agente</b><small>piensa con la API</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span><b>Registra</b><small>solicitudes.csv</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span><b>Redacta</b><small>un borrador por cada una</small></div><i class="fl-f" aria-hidden="true"></i>
-        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><b>Tú revisas</b><small>y decides si se envía</small></div>
+      <div class="flujo" aria-label="Una carpeta revuelta, el agente lee, decide, mueve y deja un informe; tú revisas">
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="m9 11 6 4M15 11l-6 4"/></svg></span><b>Una carpeta revuelta</b><small>8 archivos de prueba</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>El agente lee</b><small>y piensa con la API</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/><path d="M5 6v12"/></svg></span><b>Decide y mueve</b><small>FACTURAS, ESTUDIO, PERSONAL</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n "><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span><b>Deja un informe</b><small>con el total de facturas</small></div><i class="fl-f" aria-hidden="true"></i>
+        <div class="fl-n ac2"><span class="fl-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><b>Tú revisas</b><small>en el explorador</small></div>
       </div>
       <div class="bucle">
         <svg viewBox="0 0 360 256" role="img" aria-label="El bucle del agente: pensar, usar una herramienta, mirar el resultado y repetir hasta cumplir el objetivo">
@@ -1074,108 +1077,102 @@ print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre
           <text class="s" x="232" y="18">listo: entrega</text>
         </svg>
         <ul class="piezas">
-          <li><b>Herramientas:</b> listar, leer, registrar y redactar. Nada más.</li>
-          <li><b>Reglas tuyas:</b> RESERVA, COTIZACIÓN, DAÑO u OTRO. Un DAÑO siempre es urgente.</li>
-          <li><b>Límites:</b> máximo 15 pasos; nunca envía correos ni borra archivos.</li>
-          <li><b>El modelo solo pide:</b> quien ejecuta es el código que tú aprobaste.</li>
+          <li><b>Herramientas:</b> listar, leer, mover e informar. Nada más.</li>
+          <li><b>Por qué IA y no una regla:</b> «doc1.txt» no dice qué es; hay que leerlo y entenderlo.</li>
+          <li><b>Límites:</b> máximo 20 pasos; nunca borra; no sale de la carpeta.</li>
+          <li><b>El modelo solo pide:</b> quien mueve los archivos es el código que tú aprobaste.</li>
         </ul>
       </div>
 
       <h3>El guion, paso a paso</h3>
       <ol class="guion">
-        <li><b>Crea la carpeta</b> <span class="mono">agente-fablab</span> con tu <span class="mono">.env</span> y una carpeta <span class="mono">entrada</span> con estas tres solicitudes:
-          <div class="tres-arch">
-            <div class="cmd"><div class="lbl">entrada/correo-1.txt</div><pre>De: Laura Gómez
-Asunto: Láser mañana
-¿Puedo usar la cortadora láser mañana a las 3 p. m.?
-Es para la maqueta de Arquitectura que entrego el viernes.</pre></div>
-            <div class="cmd"><div class="lbl">entrada/correo-2.txt</div><pre>De: Andrés Ruiz
-Asunto: Cotización llaveros
-¿Cuánto cuesta grabar 50 llaveros de madera con el logo
-de mi emprendimiento? Los necesito en dos semanas.</pre></div>
-            <div class="cmd"><div class="lbl">entrada/correo-3.txt</div><pre>De: Camila Torres
-Asunto: Impresora 3D
-La impresora de la mesa 2 no calienta. Dejé una pieza
-a medias y huele a quemado.</pre></div>
-          </div>
+        <li><b>Abre una carpeta vacía</b> <span class="mono">agente</span> en VS Code, con tu <span class="mono">.env</span> (la llave). Pídele a Claude Code los archivos de prueba:
+          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Crea una carpeta «revuelto» con estos 8 archivos de texto de prueba,
+cada uno con una sola línea:
+doc1.txt           «Factura N.º 2231 · Energía · Total a pagar: $184.500 · Vence el 30 de noviembre»
+scan_0034.txt      «Recibo de caja · Papelería El Lápiz · 3 cuadernos · $23.000»
+whatsapp_0912.txt  «Factura electrónica FE-889 · Internet hogar · $95.000»
+apuntes.txt        «Estadística: media, mediana y moda. Ejercicios 1 a 5 para el lunes.»
+clase3.txt         «Clase 3: el ciclo de vida del producto y sus cuatro etapas.»
+final_v3.txt       «Informe del proyecto final. Introducción: el problema que resolvemos…»
+nota.txt           «Comprar: huevos, café y pan.»
+importante.txt     «Cita médica el martes 2 de diciembre a las 7 a. m.»</pre></div>
+          <div class="archs" aria-label="Los ocho archivos de prueba"><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>doc1.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>scan_0034.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>whatsapp_0912.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>apuntes.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>clase3.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>final_v3.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>nota.txt</span><span class="arch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>importante.txt</span></div>
         </li>
-        <li><b>Pídele el agente a Claude Code</b>, y que te muestre el plan primero:
-          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Vamos a construir un agente para el FABLAB. Lee los archivos de la carpeta entrada.
-Crea agente.py que use la API de Anthropic (modelo claude-haiku-5-5, llave
-ANTHROPIC_API_KEY del .env) con tool use y estas cuatro herramientas:
-- listar_solicitudes(): los .txt de entrada/
-- leer_solicitud(nombre)
-- registrar(nombre, tipo, urgente, resumen): agrega una fila a solicitudes.csv
-- borrador(nombre, texto): guarda la respuesta propuesta en borradores/
-Tipos: RESERVA, COTIZACIÓN, DAÑO u OTRO. Un DAÑO siempre es urgente.
-Objetivo: todas las solicitudes registradas y con su borrador.
-Límites: máximo 15 pasos; nunca envía correos ni borra archivos;
-imprime cada paso que da y, al final, los tokens usados.
+        <li><b>Pídele el agente</b>, y que te muestre el plan primero:
+          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Crea agente.py: un agente que use la API de Anthropic (modelo claude-haiku-5-5,
+llave ANTHROPIC_API_KEY del .env) con tool use y estas cuatro herramientas:
+- listar(): los archivos de la carpeta revuelto/
+- leer(nombre): el contenido de un archivo
+- mover(nombre, carpeta): lo mueve a revuelto/FACTURAS, ESTUDIO o PERSONAL
+- informe(texto): escribe informe.md
+Objetivo: dejar cada archivo en su carpeta y un informe con lo que hizo
+y el total de las facturas.
+Límites: máximo 20 pasos; nunca borra; no sale de revuelto/;
+imprime cada paso y, al final, los tokens usados.
 Primero muéstrame el plan. No escribas código hasta que lo apruebe.</pre></div>
         </li>
-        <li><b>Lee el plan en voz alta</b> con la sala: ¿están las cuatro herramientas?, ¿los límites?, ¿la regla del DAÑO? Corrige lo que falte y apruébalo.</li>
-        <li><b>Acepta los archivos</b> que propone (revísalos: Claude Code pide permiso para cada uno) y córrelo: <span class="mono">python agente.py</span></li>
-        <li><b>Mira cómo trabaja.</b> Cada línea es una vuelta del bucle:
-          <div class="cmd term"><div class="lbl">Lo que verás (ilustrativo)</div><pre><span class="c">[1]</span>  listar_solicitudes()          → correo-1.txt, correo-2.txt, correo-3.txt
-<span class="c">[2]</span>  leer_solicitud("correo-1.txt")
-<span class="c">[3]</span>  registrar(correo-1, RESERVA, urgente=no, "Láser mañana 3 p. m., maqueta")
-<span class="c">[4]</span>  borrador(correo-1, "Hola, Laura: …")
-<span class="c">[5]</span>  leer_solicitud("correo-2.txt")
-<span class="c">[6]</span>  registrar(correo-2, COTIZACIÓN, urgente=no, "50 llaveros grabados, 2 semanas")
-<span class="c">[7]</span>  borrador(correo-2, "Hola, Andrés: …")
-<span class="c">[8]</span>  leer_solicitud("correo-3.txt")
-<span class="c">[9]</span>  registrar(correo-3, DAÑO, urgente=SÍ, "Impresora mesa 2 no calienta, olor a quemado")
-<span class="c">[10]</span> borrador(correo-3, "Hola, Camila: …")
-<span class="c">listo</span> 3 registradas · 1 urgente · 3 borradores · tokens: 4.200 + 1.100</pre></div>
+        <li><b>Lee el plan en voz alta</b> con la sala: ¿están las cuatro herramientas?, ¿los límites?, ¿que nunca borre? Corrige lo que falte y apruébalo.</li>
+        <li><b>Córrelo</b> (<span class="mono">python agente.py</span>) con el explorador de VS Code abierto: se ve cómo los archivos se van moviendo.
+          <div class="cmd term"><div class="lbl">Lo que verás (ilustrativo)</div><pre><span class="c">[1]</span>  listar()                      → 8 archivos
+<span class="c">[2]</span>  leer("doc1.txt")
+<span class="c">[3]</span>  mover("doc1.txt", FACTURAS)
+<span class="c">[4]</span>  leer("scan_0034.txt")
+<span class="c">[5]</span>  mover("scan_0034.txt", FACTURAS)
+<span class="c">[6]</span>  leer("whatsapp_0912.txt")
+<span class="c">[7]</span>  mover("whatsapp_0912.txt", FACTURAS)
+<span class="c">…</span>   (lo mismo con los otros cinco)
+<span class="c">[18]</span>  informe(3 facturas · total $302.500)
+<span class="c">listo</span> 8 archivos en 3 carpetas · tokens: 3.900 + 900</pre></div>
         </li>
-        <li><b>Revisa el resultado:</b> abre <span class="mono">solicitudes.csv</span> y la carpeta <span class="mono">borradores</span>. ¿Le respondería así a Laura? Si no, se ajustan las instrucciones, no el código.</li>
-        <li><b>Si te convence, ponle horario</b> (cada mañana a las 8): <span class="mono">schtasks /create /sc daily /st 08:00 /tn "Agente FABLAB" /tr "python C:\agente-fablab\agente.py"</span></li>
+        <li><b>Revisa el resultado:</b> abre las tres carpetas e <span class="mono">informe.md</span>. ¿Acertó con «doc1.txt»? ¿Sumó bien? Si algo quedó mal, se ajusta el pedido, no se arregla a mano.</li>
+        <li><b>Vuelve a revolverlo y repite:</b> pídele a Claude Code «devuelve todo a revuelto/» y corre otra vez. Un agente sirve si funciona siempre, no una vez.</li>
       </ol>
       <div class="vs-lic">
-        <div><b>Lo hace el agente</b><span>Leer, clasificar, registrar y redactar, una y otra vez.</span></div>
-        <div class="si"><b>Lo haces tú</b><span>Las reglas, los límites, revisar los borradores y decidir qué se envía.</span></div>
+        <div><b>Lo hace el agente</b><span>Leer, decidir y mover, archivo por archivo, sin cansarse.</span></div>
+        <div class="si"><b>Lo haces tú</b><span>Las carpetas, las reglas, los límites y revisar que el resultado esté bien.</span></div>
       </div>
       <div class="crono" data-cuenta="1200"><div class="cifra">20:00</div><button type="button" class="boton pri" data-crono="ir">▶ Construyámoslo</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
       <p class="ayuda-asist"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>¿Te trabaste? Pregúntale al <a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">asistente del bootcamp ↗</a> con tu ID, mientras seguimos.</span></p>
-      <label class="check"><input type="checkbox"><span>El agente registró las tres solicitudes y dejó sus borradores</span></label>
-      <div class="facilita">Hazlo en vivo en VS Code con Claude Code. Si algo falla, mejor: lee el error con la sala y pídele a Claude Code que lo arregle. Quien quiera, lo sigue en su equipo con el mismo pedido.</div>
+      <label class="check"><input type="checkbox"><span>Mi agente ordenó la carpeta y dejó su informe</span></label>
+      <div class="facilita">Hazlo en vivo en VS Code con Claude Code, con el explorador a la vista. Si algo falla, mejor: lee el error con la sala y pídele a Claude Code que lo arregle. Quien quiera lo sigue en su equipo con los mismos pedidos: no necesita nada más que su llave.</div>
     </div>
   </section>
 
   <!-- ===================================================== 5 · MCP -->
   <section class="bloque" id="b-mcp" data-min="15" data-titulo="MCP para el agente">
-    <div class="cab"><div class="num">05</div><div><h2>Le sumamos MCP al agente <span class="hora"></span></h2><p class="para">El agente ya funciona con una carpeta. Con MCP se conecta a donde de verdad llegan las solicitudes.</p></div></div>
+    <div class="cab"><div class="num">05</div><div><h2>Le sumamos MCP al agente <span class="hora"></span></h2><p class="para">El agente ya ordena una carpeta de prueba. Con MCP, la misma IA llega a donde están tus archivos de verdad.</p></div></div>
     <div class="cuerpo">
-      <div class="mcp" aria-label="El agente se conecta por MCP a la carpeta compartida, el correo, el calendario de reservas o Drive">
+      <div class="mcp" aria-label="La IA se conecta por MCP a tu carpeta, Drive, el correo o el calendario">
         <div class="mcp-ia"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><b>El agente</b><small>Claude Code con tus reglas</small></div>
         <div class="mcp-bus"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg><b>MCP</b><small>un enchufe estándar, como el USB-C</small></div>
         <div class="mcp-srv">
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Carpeta compartida</span>
+          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Tu carpeta</span>
           <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>El correo</span>
-          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario de reservas</span>
+          <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario</span>
           <span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7Z"/><path d="m8 3 6 11H2M16 3l-6 11 4 7"/></svg>Drive</span>
         </div>
       </div>
       <p class="para fl-desc">Con la API, <b>tu programa</b> llama a la IA. Con MCP, <b>la IA</b> usa conexiones que otros ya construyeron: no programas la conexión.</p>
-      <h3>El ejemplo: la carpeta compartida de solicitudes</h3>
+      <h3>El ejemplo: la misma carpeta, ahora por MCP</h3>
       <ol class="guion">
         <li><b>Conecta el MCP</b> en la terminal de VS Code:
-          <div class="cmd"><div class="lbl">En la terminal</div><pre>claude mcp add solicitudes -- npx -y @modelcontextprotocol/server-filesystem C:\agente-fablab\entrada</pre></div>
+          <div class="cmd"><div class="lbl">En la terminal</div><pre>claude mcp add carpeta -- npx -y @modelcontextprotocol/server-filesystem C:\agente\revuelto</pre></div>
         </li>
         <li><b>Revisa que quedó:</b> en Claude Code, escribe <span class="mono">/mcp</span>.</li>
         <li><b>Pídele lo mismo, ahora por MCP:</b>
-          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Usa el MCP «solicitudes» para revisar las solicitudes nuevas.
-Haz lo mismo que agente.py: clasifica (RESERVA, COTIZACIÓN, DAÑO u OTRO),
-registra en solicitudes.csv y deja un borrador por cada una.
-No envíes nada ni borres archivos. Al final, dime cuáles son urgentes.</pre></div>
+          <div class="cmd"><div class="lbl">Pedido para copiar en Claude Code</div><pre>Devuelve todos los archivos a revuelto/.
+Luego, sin usar agente.py, usa el MCP «carpeta» para ordenarlos tú:
+FACTURAS, ESTUDIO o PERSONAL, y un informe.md con el total de las facturas.
+No borres nada. Dime qué hiciste en cada paso.</pre></div>
         </li>
       </ol>
       <div class="tres">
-        <div><h4>Lo mismo con el correo</h4>Con un MCP de correo, el agente lee la bandeja real en lugar de la carpeta.</div>
-        <div><h4>Y con el calendario</h4>Para una RESERVA, revisa si el láser está libre antes de redactar.</div>
+        <div><h4>Con Drive</h4>Con su MCP, la IA ordena tus documentos de Drive con las mismas reglas.</div>
+        <div><h4>Con el correo</h4>Las facturas que llegan por correo, al informe del mes.</div>
         <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Con cuidado</h4>Solo conectores de confianza: el agente actúa con tus permisos.</div>
       </div>
-      <div class="facilita">Muestra el /mcp y corre el pedido. Cierra con la idea: el agente es el mismo; MCP solo le dio manos para llegar a tus sistemas.</div>
+      <div class="facilita">Muestra el /mcp y corre el pedido. Cierra con la idea: el trabajo es el mismo; con agente.py lo programaste tú, con MCP la IA usa una conexión que ya existe.</div>
     </div>
   </section>
 
