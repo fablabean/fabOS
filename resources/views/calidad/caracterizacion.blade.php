@@ -437,14 +437,14 @@
                 <div><i>Proveedor</i>Cadena de valor · entidades externas</div>
                 <div><i>Entrada</i>Solicitud de agendamiento</div>
                 <div><i>Actividad</i>Revisión y elaboración de prototipos e impresión 3D; préstamo de equipos y herramientas</div>
-                <div><i>Documento</i>@foreach (['INV-114', 'INV-115', 'INV-116', 'INV-118'] as $cod)<button type="button" class="abre-doc" data-doc="{{ $cod }}">{{ $cod }}</button>{{ $loop->last ? '' : ' · ' }}@endforeach</div>
+                <div><i>Documento</i>@foreach (['INV-114', 'INV-115', 'INV-116', 'INV-118'] as $cod)<button type="button" class="abre-doc" data-doc="{{ $cod }}" data-abrir="pdf" title="Ver el documento completo">{{ $cod }}</button>{{ $loop->last ? '' : ' · ' }}@endforeach</div>
                 <div><i>Salida</i>Prototipo recibido por el cliente; equipos y herramientas en préstamo</div>
                 <div><i>Cliente</i>Cadena de valor · entidades externas</div>
             @else
                 <div><i>Proveedor</i>Cadena de valor</div>
                 <div><i>Entrada</i>Solicitud propuesta de servicio</div>
                 <div><i>Actividad</i>Diseño, estructuración y realización de escenarios de realidad virtual</div>
-                <div><i>Documento</i><button type="button" class="abre-doc" data-doc="INV-113">INV-113</button></div>
+                <div><i>Documento</i><button type="button" class="abre-doc" data-doc="INV-113" data-abrir="pdf" title="Ver el documento completo">INV-113</button></div>
                 <div><i>Salida</i>Programa o ejecutable con la experiencia, a satisfacción del cliente</div>
                 <div><i>Cliente</i>Cadena de valor</div>
             @endif
@@ -608,10 +608,11 @@
 @endforeach
 <script>
 (function () {
-    function abrir(cod) {
+    // Los códigos de la caracterización abren el documento completo; el botón de cada procedimiento, punto por punto.
+    function abrir(cod, tab) {
         var d = document.getElementById('doc-' + cod);
         if (!d) return;
-        mostrar(d, 'pasos');
+        mostrar(d, tab && d.querySelector('[data-panel="' + tab + '"]') ? tab : 'pasos');
         d.showModal();
     }
     function mostrar(d, tab) {
@@ -628,7 +629,7 @@
         });
     }
     document.querySelectorAll('[data-doc]').forEach(function (b) {
-        b.addEventListener('click', function () { abrir(b.dataset.doc); });
+        b.addEventListener('click', function () { abrir(b.dataset.doc, b.dataset.abrir); });
     });
     document.querySelectorAll('dialog.doc').forEach(function (d) {
         d.querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { mostrar(d, b.dataset.tab); }); });
