@@ -282,7 +282,7 @@
         /* ------------------------------------------------ el documento, punto por punto */
         .abre-doc{font:inherit;font-weight:700;color:inherit;background:none;border:0;border-bottom:1px dashed currentColor;padding:0;cursor:pointer}
         .abre-doc:hover{color:var(--verde)}
-        .ver-doc{margin-left:.4rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--verde);background:var(--verde-cl);border:1px solid var(--borde);border-radius:99px;padding:.15rem .7rem;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem}
+        .ver-doc{margin-right:.15rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--verde);background:var(--verde-cl);border:1px solid var(--borde);border-radius:99px;padding:.15rem .7rem;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem}
         .ver-doc:hover{border-color:var(--verde)}
         .ver-doc svg{width:14px;height:14px}
         dialog.doc{width:min(72rem,calc(100vw - 2rem));height:min(88vh,60rem);padding:0;border:1px solid var(--borde);border-radius:10px;background:var(--papel);color:var(--tinta);box-shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -448,11 +448,11 @@
         @foreach (collect($procedimientos)->where('fila', $fila) as $p)
             <article class="proc {{ $interna ? '' : 'dos' }}" id="{{ $p['codigo'] }}">
                 <h3>
-                    <span class="cod">{{ $p['codigo'] }}</span> {{ $p['nombre'] }}
-                    <span class="ver">{{ $p['version'] }}</span>
                     @if (isset($documentos[$p['codigo']]))
                         <button type="button" class="ver-doc" data-doc="{{ $p['codigo'] }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Documento punto por punto</button>
                     @endif
+                    <span class="cod">{{ $p['codigo'] }}</span> {{ $p['nombre'] }}
+                    <span class="ver">{{ $p['version'] }}</span>
                     @if ($interna)<span class="estado {{ $estados[$p['estado']][1] }}">{{ $estados[$p['estado']][0] }}</span>@endif
                 </h3>
                 @if ($interna)
