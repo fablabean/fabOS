@@ -114,7 +114,14 @@ class CalidadController extends Controller
         ]);
     }
 
-    /** La caracterización INV-200 del FabLab, con sus evidencias en vivo. */
+    /**
+     * La caracterización INV-200 para el auditor.
+     *
+     * Sigue el formato del documento del proceso: lo aprobado y sus registros.
+     * Los ajustes, el estado de cada procedimiento y los hallazgos de las
+     * auditorías van en la versión interna; las mejoras las plantea el equipo.
+     * Es la que se abre al público con el interruptor de Auditorías.
+     */
     public function caracterizacion(Request $request)
     {
         $delEquipo = $request->user()?->hasAnyRole(User::rolesDelEquipo()) ?? false;
@@ -126,7 +133,24 @@ class CalidadController extends Controller
             return redirect()->guest(route('login'));
         }
 
+        return $this->presentacion($delEquipo, false);
+    }
+
+    /** La versión de trabajo del equipo: con ajustes, estados y hallazgos. Nunca pública. */
+    public function caracterizacionInterna(Request $request)
+    {
+        if (! $request->user()) {
+            return redirect()->guest(route('login'));
+        }
+        $this->soloElEquipo($request);
+
+        return $this->presentacion(true, true);
+    }
+
+    private function presentacion(bool $delEquipo, bool $interna)
+    {
         return view('calidad.caracterizacion', [
+            'interna'     => $interna,
             'cifras'      => $this->cifras(),
             'enlaces'     => $this->enlaces(),
             'auditorias'  => Auditoria::orderByDesc('realizada_at')->get(),

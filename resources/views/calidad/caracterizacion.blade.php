@@ -46,7 +46,7 @@
             'evidencias' => [
                 ['Reservas de espacios realizadas', $c['reservas_espacios'], $e['reservas'], 'reservas_espacios'],
                 ['Préstamos de herramientas realizados', $c['reservas_herramientas'], $e['reservas'], 'reservas_herramientas'],
-                ['Actas de préstamo (FRF-207-f7)', $c['actas_prestamo'], $e['actas'], 'actas_prestamo'],
+                ['Actas de préstamo (FRF-207-f7)', $c['actas_prestamo'], $e['actas'], 'actas_prestamo', 'Actas de préstamo'],
                 ['Etiquetas QR de los equipos', null, $e['etiquetas']],
             ],
             'ajustes' => ['El formato INV-115-f1 dejó de usarse: se reemplazó por el FRF-207-f7 de Planta Física para los activos clave, en acuerdo con esa área.'],
@@ -101,6 +101,15 @@
         'sin_casos' => ['Listo · sin casos', 'nada'],
     ];
 
+    /*
+     * La del auditor sigue el documento del proceso: lo aprobado y sus
+     * registros, todos vigentes. Sin estados, ajustes ni hallazgos: esos son
+     * del equipo, que plantea las mejoras.
+     */
+    if (! $interna) {
+        $estados = array_map(fn () => ['Vigente', 'ok'], $estados);
+    }
+
     // La auditoría que viene (o la última), para el antetítulo de la portada.
     $proxima = $auditorias->where('resultado', 'pendiente')->sortBy('realizada_at')->first() ?? $auditorias->first();
 @endphp
@@ -109,7 +118,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Caracterización INV-200 · FABLAB</title>
+    <title>{{ $interna ? 'INV-200 · versión interna' : 'Caracterización INV-200' }} · FABLAB</title>
     <style>
         :root{
             --verde:#00806b; --verde-osc:#00594a; --verde-cl:#e3f2ef; --azul:#0b5a7a;
@@ -150,6 +159,9 @@
         .flujo div:nth-child(odd) i{background:var(--azul)} .flujo div:nth-child(even) i{background:var(--verde)}
         .proc{background:var(--papel);border:1px solid var(--borde);border-top:0;padding:1rem 1.1rem;display:grid;grid-template-columns:1.05fr 1.05fr .9fr;gap:1.1rem}
         .proc:last-of-type{border-radius:0 0 6px 6px}
+        .proc.dos{grid-template-columns:1.4fr 1fr}
+        .formatos.dos{grid-template-columns:repeat(2,1fr)}
+        .interna-aviso{display:inline-block;background:#facc15;color:#3b2f00;font-weight:800;border-radius:99px;padding:.1rem .6rem;letter-spacing:.04em}
         .proc h3{grid-column:1/-1;margin:0;display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;font-size:1.08rem}
         .proc h3 .cod{color:var(--verde);font-weight:800}
         .proc h3 .ver{font-weight:400;font-size:.8rem;color:var(--suave)}
@@ -277,8 +289,13 @@
             {{ $proxima ? 'Auditoría ' . mb_strtolower(\App\Models\Auditoria::TIPOS[$proxima->tipo] ?? '') . ' · ' . $proxima->realizada_at->timezone($tz)->locale('es')->translatedFormat('l j \d\e F, g:i a') : 'Auditoría de calidad' }}
             · ISO 9001:2015
         </p>
-        <h1>Cómo opera hoy<br>lo aprobado en el <em>INV-200</em></h1>
-        <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios del laboratorio de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
+        @if ($interna)
+            <h1>Cómo opera hoy<br>lo aprobado en el <em>INV-200</em></h1>
+            <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios del laboratorio de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
+        @else
+            <h1>Caracterización<br>del proceso <em>INV-200</em></h1>
+            <p class="bajada">Innovación, Desarrollo y Transferencia de Conocimiento: los servicios de los laboratorios de investigación y la elaboración de escenarios de realidad virtual, con sus registros en FabOS.</p>
+        @endif
 
         <div class="semaforo">
             @foreach ($procedimientos as $p)
@@ -305,7 +322,7 @@
         </div>
 
         <div class="pie-intro">
-            <span>INV-200 · Versión 5 · filas 6 y 7</span>
+            <span>@if ($interna)<span class="interna-aviso">VERSIÓN INTERNA</span> · @endif INV-200 · Versión 5 · filas 6 y 7</span>
             <span>Cifras en vivo · {{ $generada->format('d/m/Y H:i') }}</span>
         </div>
     </div>
@@ -360,20 +377,25 @@
             @endif
         </div>
         @foreach (collect($procedimientos)->where('fila', $fila) as $p)
-            <article class="proc" id="{{ $p['codigo'] }}">
+            <article class="proc {{ $interna ? '' : 'dos' }}" id="{{ $p['codigo'] }}">
                 <h3>
                     <span class="cod">{{ $p['codigo'] }}</span> {{ $p['nombre'] }}
                     <span class="ver">{{ $p['version'] }}</span>
-                    <span class="estado {{ $estados[$p['estado']][1] }}">{{ $estados[$p['estado']][0] }}</span>
+                    @if ($interna)<span class="estado {{ $estados[$p['estado']][1] }}">{{ $estados[$p['estado']][0] }}</span>@endif
                 </h3>
-                <div><h4>Lo aprobado</h4><p>{{ $p['aprobado'] }}</p></div>
-                <div><h4>Cómo se cumple hoy en FabOS</h4><p>{{ $p['hoy'] }}</p></div>
+                @if ($interna)
+                    <div><h4>Lo aprobado</h4><p>{{ $p['aprobado'] }}</p></div>
+                    <div><h4>Cómo se cumple hoy en FabOS</h4><p>{{ $p['hoy'] }}</p></div>
+                @else
+                    <div><h4>Procedimiento</h4><p>{{ $p['aprobado'] }}</p></div>
+                @endif
                 <div>
-                    <h4>Evidencias</h4>
+                    <h4>{{ $interna ? 'Evidencias' : 'Registros' }}</h4>
                     <ul class="ev">
                         @foreach ($p['evidencias'] as $fila)
                             @php
                                 [$texto, $valor, $url] = $fila;
+                                $texto = ! $interna && isset($fila[4]) ? $fila[4] : $texto;
                                 $previo = isset($fila[3]) ? ($historico['valores'][$fila[3]] ?? 0) : 0;
                             @endphp
                             <li>
@@ -388,7 +410,7 @@
                         @endforeach
                     </ul>
                 </div>
-                @if ($p['ajustes'])
+                @if ($interna && $p['ajustes'])
                     <div class="ajustes">
                         <b>Ajustado</b>
                         <ul>@foreach ($p['ajustes'] as $a)<li>{{ $a }}</li>@endforeach</ul>
@@ -400,7 +422,7 @@
 
     <h2 class="sec">Formatos</h2>
     <p class="nota">Los formatos de los procedimientos y cómo se llevan hoy.</p>
-    <div class="formatos">
+    <div class="formatos {{ $interna ? '' : 'dos' }}">
         <div class="formato">
             <span class="tag" style="background:var(--ok-cl);color:var(--ok)">En FabOS</span>
             <b>INV-113-f1</b> · Hoja de vida de equipos y herramientas<br>
@@ -408,19 +430,22 @@
             <br><a href="{{ $e['activos'] }}" target="_blank">Ver activos →</a>
         </div>
         <div class="formato">
-            <span class="tag" style="background:var(--ok-cl);color:var(--ok)">Creado</span>
+            <span class="tag" style="background:var(--ok-cl);color:var(--ok)">{{ $interna ? 'Creado' : 'En FabOS' }}</span>
             <b>ADF-207-f3</b> · Acta de baja de activos<br>
             Sale del acta de movimiento de tipo «baja»: los activos, el motivo y las firmas de la Vicerrectoría Administrativa y Financiera.
             <br><a href="{{ $e['actas_baja'] }}" target="_blank">Ver actas de baja →</a>
         </div>
+        @if ($interna)
         <div class="formato">
             <span class="tag" style="background:var(--na-cl);color:var(--na)">Acoplado</span>
             <b>INV-115-f1</b> · Préstamo de equipos<br>
             Ya no se usa: los préstamos de activos clave se documentan con el formato FRF-207-f7 de Planta Física, firmado en pantalla y con su devolución.
             <br><a href="{{ $e['actas'] }}" target="_blank">Ver actas de movimiento →</a>
         </div>
+        @endif
     </div>
 
+    @if ($interna)
     <h2 class="sec">Auditorías del laboratorio</h2>
     <p class="nota">Internas y externas, con su resultado y sus mejoras.@if ($delEquipo) <a href="{{ $e['nueva_auditoria'] }}" target="_blank">Registrar una</a> · <a href="{{ $e['auditorias'] }}" target="_blank">Ver todas</a>@endif</p>
     @if ($auditorias->isEmpty())
@@ -445,8 +470,15 @@
             @endforeach
         </table>
     @endif
+    @endif
 
-    <footer>FabOS · FABLAB {{ config('fabos.lab.institution') }} · documento de trabajo para la auditoría de calidad (ISO 9001:2015). Los enlaces abren el panel y piden sesión.</footer>
+    <footer>
+        @if ($interna)
+            FabOS · FABLAB {{ config('fabos.lab.institution') }} · versión interna de trabajo, solo para el equipo. La del auditor: <a href="{{ route('calidad.caracterizacion') }}" target="_blank">{{ route('calidad.caracterizacion') }}</a>.
+        @else
+            FabOS · FABLAB {{ config('fabos.lab.institution') }} · caracterización INV-200 para la auditoría de calidad (ISO 9001:2015). Los enlaces abren el panel y piden sesión.
+        @endif
+    </footer>
 </div>
 <button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
 </body>

@@ -19,11 +19,21 @@ class ListAuditorias extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // La del auditor: el formato del documento del proceso, sin ajustes ni hallazgos.
             Action::make('presentacion')
                 ->label('Presentación INV-200')
                 ->icon('heroicon-o-presentation-chart-bar')
                 ->color('gray')
+                ->tooltip('La versión para el auditor')
                 ->url(fn () => route('calidad.caracterizacion'))
+                ->openUrlInNewTab(),
+
+            // La de trabajo: estados, ajustes y hallazgos. Nunca pública.
+            Action::make('interna')
+                ->label('Versión interna')
+                ->icon('heroicon-o-document-magnifying-glass')
+                ->color('gray')
+                ->url(fn () => route('calidad.caracterizacion.interna'))
                 ->openUrlInNewTab(),
 
             /*
@@ -45,7 +55,7 @@ class ListAuditorias extends ListRecords
                     : 'Abrir la presentación al público')
                 ->modalDescription(fn () => \App\Http\Controllers\CalidadController::presentacionPublica()
                     ? 'Volverá a pedir iniciar sesión.'
-                    : 'Cualquiera con el enlace ' . route('calidad.caracterizacion') . ' la verá sin iniciar sesión, con las cifras y las auditorías registradas. Los enlaces a las evidencias del panel siguen pidiendo sesión.')
+                    : 'Cualquiera con el enlace ' . route('calidad.caracterizacion') . ' la verá sin iniciar sesión, con las cifras y las auditorías registradas. Los enlaces a las evidencias del panel siguen pidiendo sesión, y la versión interna sigue siendo solo del equipo.')
                 ->action(function () {
                     $abrir = ! \App\Http\Controllers\CalidadController::presentacionPublica();
                     \App\Models\Setting::put(\App\Http\Controllers\CalidadController::PRESENTACION_PUBLICA, $abrir, 'calidad');

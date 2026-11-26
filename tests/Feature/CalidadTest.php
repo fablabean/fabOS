@@ -197,12 +197,28 @@ class CalidadTest extends TestCase
 
         $this->activo('Láser', ['esquema_color' => 'amarillo']);
 
+        // Los hallazgos van en la versión interna, no en la del auditor.
+        $this->get(route('calidad.caracterizacion.interna'))
+            ->assertOk()
+            ->assertSee('VERSIÓN INTERNA')
+            ->assertSeeInOrder(['INV-114', 'INV-115', 'INV-116', 'INV-118', 'INV-113'])
+            ->assertSee('Cumple · ajustado')
+            ->assertSee('Auditoría externa ISO 9001')
+            ->assertSee('Faltan evidencias de mantenimientos anteriores');
+
         $this->get(route('calidad.caracterizacion'))
             ->assertOk()
             ->assertSee('INV-200')
             ->assertSeeInOrder(['INV-114', 'INV-115', 'INV-116', 'INV-118', 'INV-113'])
-            ->assertSee('Auditoría externa ISO 9001')
-            ->assertSee('Faltan evidencias de mantenimientos anteriores');
+            ->assertSee('Vigente')
+            ->assertDontSee('VERSIÓN INTERNA')
+            ->assertDontSee('ajustado')
+            ->assertDontSee('sin casos')
+            ->assertDontSee('Acoplado')
+            ->assertDontSee('dejó de usarse')
+            ->assertDontSee('Cómo se cumple hoy')
+            ->assertDontSee('Auditoría externa ISO 9001')
+            ->assertDontSee('Faltan evidencias de mantenimientos anteriores');
     }
 
     public function test_los_formatos_son_solo_para_el_equipo(): void
@@ -214,6 +230,7 @@ class CalidadTest extends TestCase
 
         $this->get(route('activos.hoja-de-vida', $equipo))->assertForbidden();
         $this->get(route('calidad.caracterizacion'))->assertForbidden();
+        $this->get(route('calidad.caracterizacion.interna'))->assertForbidden();
     }
 
     public function test_la_presentacion_se_abre_y_se_cierra_al_publico(): void
@@ -229,6 +246,9 @@ class CalidadTest extends TestCase
             ->assertOk()
             ->assertSee('INV-200')
             ->assertDontSee('Registrar una');
+
+        // La interna no se abre con ella.
+        $this->get(route('calidad.caracterizacion.interna'))->assertRedirect(route('login'));
 
         // La hoja de vida no se abre con ella.
         $this->get(route('activos.hoja-de-vida', Asset::first()))->assertRedirect();

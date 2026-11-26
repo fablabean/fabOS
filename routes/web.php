@@ -167,6 +167,8 @@ Route::get('/conoce-el-fablab', [\App\Http\Controllers\ZonaController::class, 'c
 // La presentación para la auditoría de calidad (INV-200). Es del equipo; se
 // abre al público solo mientras esté encendida en Documentación → Auditorías.
 Route::get('/calidad/inv-200', [\App\Http\Controllers\CalidadController::class, 'caracterizacion'])->name('calidad.caracterizacion');
+// La versión interna, con ajustes y hallazgos: solo el equipo, aunque la otra esté abierta.
+Route::get('/calidad/inv-200/interna', [\App\Http\Controllers\CalidadController::class, 'caracterizacionInterna'])->name('calidad.caracterizacion.interna');
 
 // Catalogo de formacion: publico, porque es la vitrina de lo que se ensena (§9).
 Route::get('/formacion', [TrainingController::class, 'index'])->name('formacion');
