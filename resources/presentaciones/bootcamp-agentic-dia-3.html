@@ -678,6 +678,16 @@
   .ayuda-asist .ic{width:1.3rem;height:1.3rem;color:#9C8CFF;flex:none}
   .boton.asist{border-color:#9C8CFF;color:var(--ink)} .boton.asist .ic{width:1rem;height:1rem;color:#9C8CFF}
   .dato a.link-asist{font-weight:700}
+  /* día 3: preguntas y respuestas */
+  .pyr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:1rem 0}
+  .pyr.dos{grid-template-columns:repeat(2,minmax(0,1fr));max-width:44rem;margin-left:auto;margin-right:auto}
+  @media (max-width:700px){.pyr,.pyr.dos{grid-template-columns:1fr}}
+  .pyr-c{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.3rem;border:1px solid var(--rule);border-radius:16px;background:var(--bg2);padding:1.1rem .9rem;color:var(--ink);font:inherit;text-decoration:none;cursor:default}
+  a.pyr-c,button.pyr-c{cursor:pointer} a.pyr-c:hover,button.pyr-c:hover{border-color:var(--accent)}
+  .pyr-c b{font-size:1.05rem} .pyr-c small{font-size:.85rem;color:var(--muted)}
+  .pyr-i{width:3rem;height:3rem;border-radius:14px;display:grid;place-items:center;background:var(--card);border:1px solid var(--rule);color:var(--accent)}
+  .pyr-i .ic{width:1.5rem;height:1.5rem}
+  .pyr-i.asi{color:#9C8CFF;border-color:#9C8CFF} .pyr-i.in{color:#5AA9FF;border-color:#5AA9FF}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -701,9 +711,9 @@
     <div class="qr-portada"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="qr" role="img" aria-label="Código QR de la presentación"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0e1513" d="M2 2.5h7m2 0h1m2 0h3m7 0h7m-29 1h1m5 0h1m1 0h5m1 0h1m1 0h3m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m1 0h2m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h3m1 0h2m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h5m3 0h3m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m4 0h1m4 0h2m2 0h1m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m2 0h1m2 0h2m4 0h1m-21 1h1m5 0h1m1 0h1m1 0h1m2 0h3m1 0h1m1 0h1m1 0h2m2 0h3m-27 1h1m1 0h1m1 0h1m2 0h2m4 0h2m1 0h3m3 0h2m1 0h2m-28 1h2m1 0h1m2 0h5m1 0h1m2 0h3m2 0h2m2 0h1m-21 1h1m4 0h4m1 0h1m3 0h4m1 0h1m1 0h1m-26 1h3m1 0h1m1 0h7m1 0h1m1 0h1m3 0h1m1 0h2m4 0h1m-27 1h1m2 0h1m1 0h1m1 0h1m2 0h2m1 0h2m1 0h3m1 0h3m2 0h2m-29 1h1m2 0h1m1 0h2m2 0h1m2 0h1m1 0h2m2 0h1m1 0h2m3 0h2m-27 1h1m2 0h2m3 0h2m2 0h1m6 0h2m3 0h1m1 0h1m1 0h1m-29 1h3m1 0h1m1 0h2m2 0h1m2 0h1m1 0h3m7 0h2m-27 1h1m1 0h2m4 0h1m1 0h1m3 0h3m2 0h2m1 0h3m1 0h3m-29 1h2m4 0h1m5 0h1m1 0h3m1 0h3m1 0h1m1 0h2m2 0h1m-29 1h1m2 0h1m6 0h3m1 0h3m2 0h3m2 0h1m-25 1h1m2 0h6m8 0h8m1 0h3m-21 1h2m4 0h2m1 0h2m1 0h1m3 0h2m-26 1h7m3 0h1m1 0h1m2 0h3m1 0h2m1 0h1m1 0h3m-27 1h1m5 0h1m2 0h4m3 0h1m3 0h1m3 0h1m2 0h1m-28 1h1m1 0h3m1 0h1m3 0h1m2 0h4m2 0h7m1 0h1m-28 1h1m1 0h3m1 0h1m2 0h1m5 0h2m1 0h1m1 0h2m3 0h2m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m1 0h2m1 0h10m-28 1h1m5 0h1m5 0h1m1 0h2m6 0h1m2 0h2m1 0h1m-29 1h7m1 0h3m1 0h1m2 0h1m1 0h1m1 0h1m3 0h2m1 0h1"/></svg><div><b>Síguela en tu celular</b><span>fablabean.com/zonas/agentic/dia-3</span><small>Escanéalo: verás la presentación en vivo, al ritmo de quien presenta.</small></div></div>
     <div class="kicker">Sesión 03 · jueves 26 de noviembre · 6:00 p. m.</div>
     <h1>Tu programa habla con la IA, <span>y aparece el agente</span>.</h1>
-    <p class="lead">Una hora, tres ejemplos para conectar. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
+    <p class="lead">Tres ejemplos para conectar, y media hora final para tus preguntas. Primero tu programa le habla a la IA por API. Después, una rutina que trabaja sola, como un agente. Y un vistazo a MCP: la IA conectada a tus sistemas.</p>
     <div class="datos">
-      <div class="dato"><b>Duración</b>1 hora</div>
+      <div class="dato"><b>Duración</b>2 horas, con media hora final de preguntas</div>
       <div class="dato"><b>Antes</b><a href="https://fablabean.com/zonas/agentic/dia-2" target="_blank" rel="noopener">Día 2 ↗</a> (tu primera versión)</div>
       <div class="dato"><b>Trae</b>Tu llave de API en el <span class="mono">.env</span> (<a href="https://fablabean.com/zonas/agentic/preparate" target="_blank" rel="noopener">Prepárate ↗</a>)</div>
       <div class="dato"><b>Tu ayuda</b><a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">El asistente del bootcamp ↗</a></div>
@@ -757,7 +767,7 @@
   <!-- ===================================================== agenda -->
   <section class="agenda" id="agenda">
     <div class="kicker">La agenda de hoy</div>
-    <h2>Cuatro bloques, sesenta minutos</h2>
+    <h2>Cinco bloques, dos horas</h2>
     <div class="mando">
       <button type="button" class="boton pri" id="empezar">▶ Empezamos ahora</button>
       <button type="button" class="boton" id="a-las-6">Empezó a las 6:00 p. m.</button>
@@ -836,7 +846,7 @@
   </section>
 
   <!-- ===================================================== 1 · API -->
-  <section class="bloque" id="b-api" data-min="20" data-titulo="Conectar una API">
+  <section class="bloque" id="b-api" data-min="35" data-titulo="Conectar una API">
     <div class="cab"><div class="num">01</div><div><h2>Conectar una API <span class="hora"></span></h2><p class="para">Tu programa le habla a la IA. Es la pieza más importante de hoy.</p></div></div>
     <div class="cuerpo">
       <div class="flujo" aria-label="Tu programa manda el pedido con tu llave, el modelo responde y tu programa usa la respuesta">
@@ -924,12 +934,13 @@ No muestres ni copies el contenido del .env.</pre></div>
         </div>
       </div>
       <p class="ayuda-asist"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>¿Te trabaste? Pregúntale al <a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">asistente del bootcamp ↗</a> con tu ID, mientras seguimos.</span></p>
+      <div class="crono" data-cuenta="1200"><div class="cifra">20:00</div><button type="button" class="boton pri" data-crono="ir">▶ A conectar</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
       <label class="check"><input type="checkbox"><span>Mi programa le habló a la IA y usó su respuesta</span></label>
     </div>
   </section>
 
   <!-- ===================================================== 2 · rutina -->
-  <section class="bloque" id="b-rutina" data-min="20" data-titulo="Una rutina que trabaja sola">
+  <section class="bloque" id="b-rutina" data-min="30" data-titulo="Una rutina que trabaja sola">
     <div class="cab"><div class="num">02</div><div><h2>Una rutina que trabaja sola <span class="hora"></span></h2><p class="para">La API dentro de un bucle, con herramientas y un horario: eso ya es un agente.</p></div></div>
     <div class="cuerpo">
       <div class="flujo" aria-label="A las 8 de la mañana la rutina despierta, lee la carpeta, piensa con la IA, escribe el resultado y te avisa">
@@ -994,12 +1005,13 @@ Muéstrame el plan antes de escribir código.</pre></div>
         </div>
       </div>
       <p class="ayuda-asist"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg><span>¿Te trabaste? Pregúntale al <a class="link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener">asistente del bootcamp ↗</a> con tu ID, mientras seguimos.</span></p>
+      <div class="crono" data-cuenta="900"><div class="cifra">15:00</div><button type="button" class="boton pri" data-crono="ir">▶ A construir</button><button type="button" class="boton chico" data-crono="parar">Parar</button></div>
       <label class="check"><input type="checkbox"><span>Mi rutina corrió una vez y entiendo cada paso de su log</span></label>
     </div>
   </section>
 
   <!-- ===================================================== 3 · MCP -->
-  <section class="bloque" id="b-mcp" data-min="10" data-titulo="Un paso más: MCP">
+  <section class="bloque" id="b-mcp" data-min="15" data-titulo="Un paso más: MCP">
     <div class="cab"><div class="num">03</div><div><h2>Un paso más: MCP <span class="hora"></span></h2><p class="para">Al revés de la API: ahora es la IA la que se conecta a tus sistemas.</p></div></div>
     <div class="cuerpo">
       <div class="mcp" aria-label="La IA se conecta por MCP a tus archivos, tu correo, una base de datos o la web">
@@ -1033,8 +1045,8 @@ Muéstrame el plan antes de escribir código.</pre></div>
   </section>
 
   <!-- ===================================================== 4 · cierre -->
-  <section class="bloque" id="b-cierre" data-min="10" data-titulo="Muestra y cierre">
-    <div class="cab"><div class="num">04</div><div><h2>Muestra y cierre del bootcamp <span class="hora"></span></h2><p class="para">Un minuto por persona. Mostrar algo a medias también vale.</p></div></div>
+  <section class="bloque" id="b-cierre" data-min="10" data-titulo="Muestra final">
+    <div class="cab"><div class="num">04</div><div><h2>Muestra final <span class="hora"></span></h2><p class="para">Un minuto por persona. Mostrar algo a medias también vale.</p></div></div>
     <div class="cuerpo">
       <div class="camino-fin" aria-label="Chat, editor, API, rutina y MCP">
         <div class="hecho"><small>martes</small>Chat y editor</div><i>→</i>
@@ -1057,7 +1069,25 @@ Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span></pre
         <div><h4>El criterio</h4>Saber si sirve, qué recortar y cuándo parar.</div>
         <div><h4>La responsabilidad</h4>Lo que sale de tu solución lleva tu nombre.</div>
       </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 5 · preguntas -->
+  <section class="bloque" id="b-preguntas" data-min="30" data-titulo="Preguntas y respuestas">
+    <div class="cab"><div class="num">05</div><div><h2>Preguntas y respuestas <span class="hora"></span></h2><p class="para">Media hora para lo que quedó dando vueltas.</p></div></div>
+    <div class="cuerpo">
+      <div class="pyr">
+        <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg></span><b>Tu proyecto</b><small>¿Qué te falta para que funcione en un caso real?</small></div>
+        <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span><b>Lo que sigue</b><small>¿API, rutina o MCP? ¿Por dónde empiezo?</small></div>
+        <div class="pyr-c"><span class="pyr-i"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12Z"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg></span><b>Lo que no quedó claro</b><small>Llaves, costos, permisos, errores.</small></div>
+      </div>
+      <p class="para fl-desc">Y después del bootcamp, por dos caminos:</p>
+      <div class="pyr dos">
+        <a class="pyr-c link-asist" href="https://fablabean.com/asistente/agentic" target="_blank" rel="noopener"><span class="pyr-i asi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg></span><b>El asistente ↗</b><small>Sigue con tu ID, una hora al día.</small></a>
+        <button type="button" class="pyr-c" data-abrir-id><span class="pyr-i in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7h.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/></svg></span><b>Escríbeme por LinkedIn</b><small>Con tu ID: te respondo a ti.</small></button>
+      </div>
       <p class="nota ok"><b>Gracias por estos tres días.</b> El material sigue en la zona del Bootcamp AGENTIC en fabOS, el asistente sigue con tu ID, y el FABLAB EAN tiene las puertas abiertas para seguir construyendo.</p>
+      <div class="facilita">Junta las preguntas que se repiten y respóndelas una vez. Si alguien quiere seguir con su proyecto en el FABLAB, que te escriba por LinkedIn con su ID.</div>
     </div>
   </section>
 
@@ -1102,7 +1132,7 @@ Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span></pre
   var bloques = $$('section.bloque:not(.repaso):not(.extra)').map(function (s) {
     return { el: s, id: s.id, titulo: s.dataset.titulo, min: +s.dataset.min, base: +s.dataset.min, listo: null };
   });
-  var DISPONIBLE = 60;
+  var DISPONIBLE = 120;
   var MIN = 60000;
   // Arranca a las 6:00 p. m. de hoy; «Empezamos ahora» lo mueve.
   var inicio = (function () { var d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })();
@@ -1206,9 +1236,9 @@ Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span></pre
     $('#total').textContent = t + ' min';
     var aviso = $('#aviso-plan');
     aviso.classList.toggle('mal', t > DISPONIBLE);
-    aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en los 60 minutos de hoy (6:00 a 7:00 p. m.).'
-      : t > DISPONIBLE ? 'El plan se pasa ' + (t - DISPONIBLE) + ' min de los 60 de hoy: recorta algún bloque.'
-      : 'Sobran ' + (DISPONIBLE - t) + ' min de los 60 de hoy.';
+    aviso.textContent = t === DISPONIBLE ? 'El plan cabe justo en las dos horas de hoy (6:00 a 8:00 p. m.).'
+      : t > DISPONIBLE ? 'El plan se pasa ' + (t - DISPONIBLE) + ' min de los 120 de hoy: recorta algún bloque.'
+      : 'Sobran ' + (DISPONIBLE - t) + ' min de los 120 de hoy.';
 
     // El ritmo: dónde deberíamos ir y dónde vamos.
     var hechos = actual < 0 ? t : desde(actual);
@@ -1378,6 +1408,7 @@ Lo que decidí yo y la IA no podía decidir: <span class="hueco">___</span></pre
   $$('[data-cerrar]', bienv).forEach(function (b) { b.addEventListener('click', cerrar); });
   window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrar(); } });
   $('#mi-id').addEventListener('click', function () { abrir(); });
+  $$('[data-abrir-id]').forEach(function (b) { b.addEventListener('click', function () { abrir(); }); });
   $('[data-linkedin]', bienv).addEventListener('click', function () {
     var a = this, texto = 'Hola, soy ' + miNombre + '. Estuve en el Bootcamp AGENTIC del FABLAB (mi ID: ' + miId + ').';
     try { if (navigator.clipboard) { navigator.clipboard.writeText(texto).catch(function () {}); } } catch (_) {}
