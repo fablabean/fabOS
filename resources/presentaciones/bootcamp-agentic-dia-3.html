@@ -734,6 +734,11 @@
   @media (max-width:1000px){.tres-arch{grid-template-columns:1fr}}
   .tres-arch pre{font-size:.74rem}
   .cmd.term pre{font-size:.76rem;white-space:pre;overflow-x:auto}
+  .ver-codigo{margin:.6rem 0 1rem}
+  .ver-codigo > summary{list-style:none;width:max-content}
+  .ver-codigo > summary::-webkit-details-marker{display:none}
+  .ver-codigo[open] > summary{border-color:var(--accent)}
+  .ver-codigo-c{margin-top:.8rem;max-width:52rem}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -930,9 +935,15 @@
         <div><b>Licencia del chat</b><span>Valor fijo al mes. Para ti, en la pantalla.</span></div>
         <div class="si"><b>Créditos de la API</b><span>Pagas lo que uses. Para tus programas: con un modelo pequeño, mil correos cuestan centavos.</span></div>
       </div>
-      <div class="dos-ej">
-        <div>
-          <h3>La llamada más simple</h3>
+      <h3>Cuida el saldo</h3>
+      <div class="tres">
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg> La llave es dinero</h4>En el <span class="mono">.env</span>, fuera de Git y fuera del chat. Si se escapa, bórrala y crea otra.</div>
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Pon un tope</h4>Límite de gasto mensual en la consola. Un programa en bucle puede hacer miles de llamadas.</div>
+            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Mira el consumo</h4>Cada respuesta trae sus tokens: entrada + salida. La consola muestra cuánto llevas.</div>
+      </div>
+      <details class="ver-codigo">
+        <summary class="boton chico">Ver la llamada en código</summary>
+        <div class="ver-codigo-c">
           <p class="para">Tu IA: <span class="so" role="group" aria-label="Tu IA"><button type="button" data-ia-elige="claude" aria-pressed="true">Claude</button><button type="button" data-ia-elige="gemini" aria-pressed="false">Gemini</button><button type="button" data-ia-elige="gpt" aria-pressed="false">GPT</button></span></p>
         <div class="cmd" data-ia="claude"><div class="lbl">oficio.py · Claude</div><pre>from dotenv import load_dotenv
 import anthropic
@@ -986,15 +997,7 @@ def clasificar(texto):
 
 print(clasificar("Asunto: su factura vence hoy y se suspende el servicio"))</pre></div>
         </div>
-        <div>
-          <h3>Cuida el saldo</h3>
-          <div class="tres una">
-            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg> La llave es dinero</h4>En el <span class="mono">.env</span>, fuera de Git y fuera del chat. Si se escapa, bórrala y crea otra.</div>
-            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg> Pon un tope</h4>Límite de gasto mensual en la consola. Un programa en bucle puede hacer miles de llamadas.</div>
-            <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Mira el consumo</h4>Cada respuesta trae sus tokens: entrada + salida. La consola muestra cuánto llevas.</div>
-          </div>
-        </div>
-      </div>
+      </details>
       <div class="facilita">Abre tu consola de Anthropic: muestra el saldo de créditos, el tope mensual y dónde se crea la llave (sin mostrar la llave). Luego corre oficio.py y mira los tokens que imprime.</div>
     </div>
   </section>
