@@ -106,13 +106,13 @@
   <div class="tarjeta">
     <div class="kicker">Asistente del bootcamp</div>
     <h1>Entra con tu <span>ID del bootcamp</span></h1>
-    <p>Son 4 letras o números. Los recibiste al escribir tu nombre en la presentación del día 2 (también están en la barra de arriba de esa página).</p>
+    <p>Son 4 letras o números. Los recibiste al escribir tu nombre en la presentación del bootcamp (también están en la barra de arriba de esa página).</p>
     @if (! $activo)
       <p class="reloj apagado">El asistente está apagado por ahora. Quien dicta el bootcamp lo vuelve a prender.</p>
     @endif
     <form method="post" action="{{ route('asistente.agentic.entrar') }}">
       @csrf
-      <input name="codigo" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7Q2" aria-label="Tu ID" value="{{ old('codigo') }}" autofocus required>
+      <input name="codigo" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7Q2" aria-label="Tu ID" value="{{ old('codigo', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr((string) request('id'), 0, 4)))) }}" autofocus required>
       <button class="enviar" type="submit">Entrar</button>
     </form>
     @if (session('error_id'))<p class="error">{{ session('error_id') }}</p>@endif

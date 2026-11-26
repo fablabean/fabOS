@@ -40,7 +40,7 @@ class AsistenteAgenticController extends Controller
     {
         $p = $acceso->participante((string) $request->input('codigo'));
         if (! $p) {
-            return back()->withInput()->with('error_id', 'No encontré ese ID. Son 4 letras o números: los recibiste al entrar a la presentación del día 2.');
+            return back()->withInput()->with('error_id', 'No encontré ese ID. Son 4 letras o números: los recibiste al entrar a la presentación del bootcamp.');
         }
         $request->session()->regenerate();
         $request->session()->put(self::SESION, $p->codigo);
