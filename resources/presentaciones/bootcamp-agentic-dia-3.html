@@ -784,6 +784,18 @@
   .demo3 .n{width:1.7rem;height:1.7rem;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,var(--card));border:1px solid var(--accent);color:var(--accent);font-weight:800;font-size:.85rem}
   .demo3 b{font-size:1rem} .demo3 p{margin:0;color:var(--soft);font-size:.9rem} .demo3 em{font-style:normal;color:var(--accent);font-weight:700}
   .demo3 .cmd{margin:0} .demo3 pre{font-size:.72rem;white-space:pre-wrap;word-break:break-word}
+  .lectura{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin:.2rem 0 1rem}
+  .lectura .seg{display:flex;flex-direction:column;align-items:center;gap:.3rem;text-align:center}
+  .lectura code{font:600 .88rem "JetBrains Mono",monospace;padding:.35rem .6rem;border-radius:8px;border:1px solid var(--rule);background:var(--code);color:var(--soft);word-break:break-all}
+  .lectura small{font-size:.76rem;color:var(--muted);max-width:14rem}
+  .lectura .nom code{border-color:#9C8CFF;color:#C9C0FF} .lectura .nom small{color:#9C8CFF}
+  .lectura .con code{border-color:var(--accent);color:var(--accent)} .lectura .con small{color:var(--accent);font-weight:700}
+  .lectura .per code{border-color:var(--warn);color:var(--warn)} .lectura .per small{color:var(--warn)}
+  .quien{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.5rem .9rem;border:1px dashed var(--rule);border-radius:14px;padding:.7rem 1rem;margin:0 0 1rem;font-size:.88rem;color:var(--soft)}
+  .quien b{color:var(--ink)}
+  .quien span{border:1px solid var(--rule);border-radius:10px;padding:.3rem .6rem;background:var(--bg2)}
+  .quien i{font-style:normal;font-weight:700;color:var(--ink);margin-right:.3rem}
+  .quien small{flex-basis:100%;text-align:center;color:var(--muted);font-size:.78rem}
 </style>
 </head>
 <body class="nivel-basico ia-claude">
@@ -1230,6 +1242,20 @@ Primero muéstrame el plan. No escribas código hasta que lo apruebe.</pre></div
 una actividad de 20 minutos con tres preguntas y una línea de tiempo.</pre></div></div>
       </div>
 
+      <div class="lectura" aria-label="Cómo se lee el comando">
+        <div class="seg"><code>claude mcp add</code><small>enchufa un conector</small></div>
+        <div class="seg nom"><code>fichas</code><small>el nombre que tú le pones</small></div>
+        <div class="seg"><code>-- npx -y</code><small>lo descarga y lo ejecuta</small></div>
+        <div class="seg con"><code>@modelcontextprotocol/server-filesystem</code><small>el conector: lo publicó el proyecto MCP</small></div>
+        <div class="seg per"><code>C:\historia</code><small>lo único que puede tocar</small></div>
+      </div>
+      <div class="quien">
+        <b>¿Quién hace los conectores?</b>
+        <span><i>La empresa del servicio</i> Notion, GitHub… los oficiales</span>
+        <span><i>El proyecto MCP</i> los de referencia, como este de archivos</span>
+        <span><i>La comunidad</i> cualquiera: revisa antes de enchufar</span>
+        <small>Se buscan en claude.ai → Conectores, o en registry.modelcontextprotocol.io</small>
+      </div>
       <div class="tres">
         <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 8.5h8.2M8.9 13.8 4.8 6.7M15.1 13.8 11 21"/></svg> Ya lo usaste</h4>El investigador del miércoles: Claude conectado a Chrome. Eso era MCP.</div>
         <div><h4><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="3"/><circle cx="12" cy="5" r="1.6"/><path d="M12 6.6V10"/><path d="M9 15h.01M15 15h.01"/></svg> El mismo agente</h4>Pensar, actuar, mirar. MCP solo le da más manos.</div>
