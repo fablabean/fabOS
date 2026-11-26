@@ -303,6 +303,14 @@ return [
                 // El bloque 4: mensajes cortos que lee la IA del FabLab (la IA adentro del programa).
                 'tweets' => true,
             ],
+            // Sin votos ni muro: la agenda, seguir a quien presenta y el mismo ID.
+            'agentic-dia-3' => [
+                'titulo' => 'Bootcamp AGENTIC · Día 3',
+                'zona' => 'agentic',
+                'modulo' => 'dia-3',
+                'preguntas' => [],
+                'registro' => 'agentic',
+            ],
         ],
     ],
 
