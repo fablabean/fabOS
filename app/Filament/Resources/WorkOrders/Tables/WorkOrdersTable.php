@@ -127,6 +127,14 @@ class WorkOrdersTable
                         );
                     }),
 
+                Action::make('informe')
+                    ->label('Informe')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->tooltip('Informe de Diagnóstico de Revisión Rutinaria (PDF)')
+                    ->url(fn (WorkOrder $record) => route('ordenes.informe', $record))
+                    ->visible(fn (WorkOrder $record) => $record->tieneInforme()),
+
                 EditAction::make(),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

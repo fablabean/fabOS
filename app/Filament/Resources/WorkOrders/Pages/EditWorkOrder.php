@@ -19,6 +19,12 @@ class EditWorkOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            \Filament\Actions\Action::make('informe')
+                ->label('Descargar informe')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->url(fn () => route('ordenes.informe', $this->record))
+                ->visible(fn () => $this->record->tieneInforme()),
             DeleteAction::make(),
         ];
     }

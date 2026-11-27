@@ -50,6 +50,33 @@ class CalidadController extends Controller
         ]);
     }
 
+    /**
+     * El «Informe de Diagnóstico de Revisión Rutinaria» (INV-118 §6.2-6.3) de
+     * una orden preventiva cerrada, con el mismo texto del informe en papel.
+     */
+    public function informeDeRevision(Request $request, WorkOrder $orden)
+    {
+        $this->soloElEquipo($request);
+        abort_unless($orden->tieneInforme(), 404);
+
+        $orden->load('asset.area');
+        $activo = $orden->asset;
+        $esquema = $orden->esquema_revision ?: $activo?->esquema_color;
+        $fecha = ($orden->closed_at ?? $orden->created_at)->setTimezone(config('fabos.lab.timezone'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('calidad.informe-revision', [
+            'orden'     => $orden,
+            'fecha'     => $fecha,
+            'activo'    => $activo,
+            'esquema'   => \App\Models\Asset::ESQUEMAS[$esquema]['nombre'] ?? ($esquema ? ucfirst($esquema) : '—'),
+            'resultado' => $orden->resultado_revision ?: 'todo_ok',
+        ])->setPaper('letter');
+
+        $nombre = $fecha->format('d,m,Y') . ' ' . \Illuminate\Support\Str::of($activo?->name ?? 'equipo')->replaceMatches('/[^\pL\pN ]+/u', '')->squish() . '.pdf';
+
+        return $pdf->download($nombre);
+    }
+
     /** Si la presentación INV-200 se ve sin iniciar sesión. */
     public const PRESENTACION_PUBLICA = 'calidad.presentacion_publica';
 

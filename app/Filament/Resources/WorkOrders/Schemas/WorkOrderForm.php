@@ -174,6 +174,21 @@ class WorkOrderForm
                 Section::make('Qué se hizo')
                     ->columns(2)
                     ->schema([
+                        // La revisión rutinaria (INV-118 §6.2-6.3): con qué
+                        // esquema se revisó y qué se concluyó. Es lo que sale
+                        // en el informe que se descarga de la orden cerrada.
+                        Select::make('esquema_revision')
+                            ->label('Esquema de la revisión')
+                            ->options(\App\Models\Asset::nombresDeEsquema())
+                            ->placeholder('El del equipo')
+                            ->visible(fn (Get $get) => $get('kind') === 'preventivo'),
+
+                        Select::make('resultado_revision')
+                            ->label('Resultado de la revisión')
+                            ->options(WorkOrder::RESULTADOS)
+                            ->default('todo_ok')
+                            ->visible(fn (Get $get) => $get('kind') === 'preventivo'),
+
                         Textarea::make('diagnosis')
                             ->label('Diagnóstico')
                             ->rows(3)

@@ -13,7 +13,7 @@ class WorkOrder extends Model
         'asset_id', 'maintenance_plan_id', 'kind', 'status', 'priority',
         'reported_issue', 'reported_by', 'assigned_to',
         'checklist_snapshot', 'checklist_answers',
-        'diagnosis', 'work_done', 'photos', 'reference_videos', 'cost',
+        'diagnosis', 'resultado_revision', 'esquema_revision', 'work_done', 'photos', 'reference_videos', 'cost',
         'stops_equipment', 'down_since', 'up_since', 'due_at', 'closed_at',
     ];
 
@@ -45,6 +45,22 @@ class WorkOrder extends Model
     public const PRIORIDADES = [
         'baja' => 'Baja', 'normal' => 'Normal', 'alta' => 'Alta', 'critica' => 'Crítica',
     ];
+
+    /**
+     * El diagnóstico de la revisión rutinaria (INV-118 §6.3): lo que dice el
+     * «Informe de Diagnóstico de Revisión Rutinaria» de una orden preventiva.
+     */
+    public const RESULTADOS = [
+        'todo_ok'     => 'Todo OK',
+        'menores'     => 'Problemas menores',
+        'importantes' => 'Problemas importantes',
+    ];
+
+    /** Una preventiva cerrada se descarga como el informe de la revisión. */
+    public function tieneInforme(): bool
+    {
+        return $this->kind === 'preventivo' && $this->status === 'cerrada';
+    }
 
     /** Estados en los que la orden sigue viva. */
     public const ABIERTAS = ['abierta', 'en_proceso'];

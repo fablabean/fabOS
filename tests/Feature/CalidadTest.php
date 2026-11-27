@@ -338,4 +338,26 @@ class CalidadTest extends TestCase
         $this->assertSame('2026-03-12 21:30', $orden->closed_at->format('Y-m-d H:i'));
         $this->assertNotSame('mantenimiento', $equipo->fresh()->status);
     }
+
+    public function test_la_preventiva_cerrada_se_descarga_como_informe_de_revision_rutinaria(): void
+    {
+        $equipo = $this->activo('FLSun T1 Pro', ['asset_tag' => '60501', 'esquema_color' => 'amarillo']);
+        $orden = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'cerrada',
+            'reported_issue' => 'Revisión rutinaria', 'resultado_revision' => 'menores', 'diagnosis' => 'Correa floja en el eje X',
+            'closed_at' => '2026-09-22 15:00:00']);
+
+        $r = $this->get(route('ordenes.informe', $orden))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('22,09,2026 FLSun T1 Pro.pdf', $r->headers->get('content-disposition'));
+        $html = view('calidad.informe-revision', ['orden' => $orden, 'fecha' => $orden->closed_at, 'activo' => $equipo->load('area'),
+            'esquema' => 'Amarillo', 'resultado' => 'menores'])->render();
+        $this->assertStringContainsString('Problemas menores', $html);
+        $this->assertStringContainsString('Correa floja en el eje X', $html);
+        $this->assertStringContainsString('60501', $html);
+
+        // Solo las preventivas cerradas tienen informe.
+        $abierta = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'abierta', 'reported_issue' => 'x']);
+        $correctiva = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'correctivo', 'status' => 'cerrada', 'reported_issue' => 'x', 'closed_at' => now()]);
+        $this->get(route('ordenes.informe', $abierta))->assertNotFound();
+        $this->get(route('ordenes.informe', $correctiva))->assertNotFound();
+    }
 }
