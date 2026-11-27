@@ -263,12 +263,13 @@ class CalidadTest extends TestCase
         Livewire::test(ListAuditorias::class)
             ->callAction('historico', [
                 'periodo' => '2023 – agosto 2026',
-                'valores' => ['preventivas' => 40, 'correctivas' => 12, 'proyectos' => ''],
+                // Como se escriben a mano: con punto de miles o con «≈».
+                'valores' => ['preventivas' => '40', 'correctivas' => '≈12', 'proyectos' => '', 'reservas_espacios' => '1.200'],
             ])
             ->assertHasNoActionErrors();
 
         $h = \App\Http\Controllers\CalidadController::historico();
-        $this->assertSame(['preventivas' => 40, 'correctivas' => 12], $h['valores']);
+        $this->assertEqualsCanonicalizing(['reservas_espacios' => 1200, 'preventivas' => 40, 'correctivas' => 12], $h['valores']);
 
         $equipo = $this->activo('Láser');
         WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'cerrada', 'reported_issue' => 'Revisión']);

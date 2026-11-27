@@ -89,22 +89,42 @@ class ListAuditorias extends ListRecords
                         ->maxLength(80),
                     \Filament\Schemas\Components\Grid::make(2)->schema(
                         collect(\App\Http\Controllers\CalidadController::CIFRAS_HISTORICAS)
+                            // Texto y no número: un campo numérico del navegador
+                            // descarta en silencio «1.200» o «≈300», y la cifra
+                            // se perdía sin aviso. Aquí se toman solo los dígitos.
                             ->map(fn ($nombre, $clave) => \Filament\Forms\Components\TextInput::make("valores.{$clave}")
                                 ->label($nombre)
-                                ->numeric()
-                                ->minValue(0)
+                                ->inputMode('numeric')
+                                ->rule('nullable')
+                                ->rule('regex:/^\D{0,3}[\d.,\s]+\D{0,8}$/u')
+                                ->validationMessages(['regex' => 'Escribe un número, por ejemplo 1200 o 1.200.'])
                                 ->placeholder('—'))
                             ->values()
                             ->all()
                     ),
                 ])
                 ->action(function (array $data) {
+                    $valores = collect($data['valores'] ?? [])
+                        ->map(fn ($v) => preg_replace('/\D+/', '', (string) $v))
+                        ->filter(fn ($v) => $v !== '')
+                        ->map(fn ($v) => (int) $v)
+                        ->all();
+
                     \App\Models\Setting::put(\App\Http\Controllers\CalidadController::HISTORICO, [
                         'periodo' => $data['periodo'] ?? null,
-                        'valores' => collect($data['valores'] ?? [])->filter(fn ($v) => filled($v))->map(fn ($v) => (int) $v)->all(),
+                        'valores' => $valores,
                     ], 'calidad');
 
-                    \Filament\Notifications\Notification::make()->success()->title('Cifras anteriores guardadas')->send();
+                    // Lo que quedó, para que se note si algo no entró.
+                    $nombres = \App\Http\Controllers\CalidadController::CIFRAS_HISTORICAS;
+                    $visibles = collect($valores)->filter()->map(fn ($v, $k) => ($nombres[$k] ?? $k) . ': ' . number_format($v, 0, ',', '.'));
+
+                    \Filament\Notifications\Notification::make()->success()
+                        ->title('Cifras anteriores guardadas')
+                        ->body($visibles->isEmpty()
+                            ? 'Ninguna mayor que cero: la presentación no muestra cifras anteriores.'
+                            : $visibles->join(' · '))
+                        ->send();
                 }),
 
             CreateAction::make()->label('Registrar auditoría'),
