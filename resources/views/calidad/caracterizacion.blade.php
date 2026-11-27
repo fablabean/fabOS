@@ -11,8 +11,10 @@
     $periodoAntes = $historico['periodo'];
     // Lo que se usaba antes de FabOS: Microsoft Bookings por QR, como lo enlazan los documentos.
     $bookingsLab = 'https://outlook.office365.com/owa/calendar/Laboratoriosdeinnovacin1@universidadean.edu.co/bookings/';
-    $metro = ($pm = \App\Models\Project::where('name', 'VR Metro')->first())
-        ? \App\Filament\Resources\Projects\ProjectResource::getUrl('edit', ['record' => $pm]) : null;
+    // Los proyectos de clientes de fuera, todos (no solo los míos ni solo los activos).
+    $externos = \App\Filament\Resources\Projects\ProjectResource::getUrl('index', ['filters' => [
+        'mios' => ['isActive' => false], 'status' => ['value' => ''], 'client_kind' => ['value' => 'externo'],
+    ]]);
     $kpis = [
         ['url' => $e['reservas'], 'hoy' => $c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado'],
             'antes' => $antes('reservas_espacios', 'reservas_herramientas', 'reservas_prototipado'),
@@ -110,9 +112,9 @@
             'ajustes' => [],
             'situacion' => [
                 'No se ejecutaron convocatorias; por eso se plantea un plan de mejora para recibir solicitudes externas.',
-                'El proyecto VR Metro llegó por una fuente distinta a la convocatoria oficial y se implementó la prueba para aplicar a futuros casos. Seguimos trabajando en la mejora de esta dinámica.',
+                'Las solicitudes externas que llegan hoy no entran por la dinámica de convocatoria anterior: se administran como proyectos en FabOS, con su propuesta, plan de trabajo, entrega y cierre.',
             ],
-            'casos' => $metro ? [['Proyecto VR Metro', $metro]] : [],
+            'casos' => [['Proyectos externos', $externos]],
         ],
     ];
 

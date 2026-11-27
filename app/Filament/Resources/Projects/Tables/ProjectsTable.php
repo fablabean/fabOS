@@ -279,6 +279,9 @@ class ProjectsTable
                 // otra manera. Es a donde llevan las tarjetas de alianzas.
                 SelectFilter::make('modality')->label('Modalidad')->options(Project::MODALIDADES),
 
+                // Los de clientes de fuera: a donde lleva la caracterización (INV-113/114).
+                SelectFilter::make('client_kind')->label('Cliente')->options(Project::CLIENTES),
+
                 SelectFilter::make('stage')->label('Etapa')->options(Project::ETAPAS),
                 SelectFilter::make('status')->label('Estado')->options(Project::ESTADOS)->default('activo'),
                 SelectFilter::make('lead_id')->label('Responsable')->relationship('lead', 'name'),

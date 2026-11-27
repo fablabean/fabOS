@@ -17,7 +17,7 @@
                     <span><i>Ahora</i><a href="{{ $reservar }}" target="_blank">Reserva en FabOS mediante QR</a></span>
                 @endif
                 @foreach ($p['casos'] ?? [] as [$nombre, $url])
-                    <span><i>Caso</i><a href="{{ $url }}" target="_blank">{{ $nombre }}</a></span>
+                    <span><i>Ver</i><a href="{{ $url }}" target="_blank">{{ $nombre }}</a></span>
                 @endforeach
             </div>
         @endif
