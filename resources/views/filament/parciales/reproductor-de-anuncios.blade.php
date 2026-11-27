@@ -149,6 +149,6 @@
 </script>
 <style>
     @keyframes anuncio-sonando { 50% { opacity: .45; } }
-    .anuncio-sonando { color: rgb(var(--success-600, 22 163 74)) !important; animation: anuncio-sonando 1s ease-in-out infinite; }
+    .anuncio-sonando { color: var(--success-600,rgb(22 163 74)) !important; animation: anuncio-sonando 1s ease-in-out infinite; }
     .anuncio-sonando svg { color: inherit !important; }
 </style>

@@ -204,7 +204,8 @@ class IngresoConAppTest extends TestCase
 
         $this->actingAs($persona)->get('/cuenta/app')->assertOk()->assertSee('Escanea este código');
 
-        $secreto = session('2fa_secreto_provisional');
+        // El secreto en alta vive en la base (sin confirmar), no en la sesión.
+        $secreto = \Illuminate\Support\Facades\Crypt::decryptString($persona->fresh()->two_factor_secret);
 
         $this->actingAs($persona)
             ->post('/cuenta/app/activar', ['codigo' => app(Google2FA::class)->getCurrentOtp($secreto)])

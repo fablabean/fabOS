@@ -1,0 +1,397 @@
+{
+  "_generado": "2026-11-05T13:29:06+00:00",
+  "ajedrez": {
+    "fuente": {
+      "triangulos": 1838,
+      "vertices": 5514,
+      "mallas": 6,
+      "llamadas": 6,
+      "materiales": 4,
+      "texturas": [],
+      "bytes": 137188
+    },
+    "optimizado": {
+      "triangulos": 1838,
+      "vertices": 5046,
+      "mallas": 4,
+      "llamadas": 4,
+      "materiales": 4,
+      "texturas": [],
+      "bytes": 57532,
+      "bytesAR": 136132,
+      "bytesUSDZ": 364495,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.12,
+      "alto": 0.081,
+      "fondo": 0.0614
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 2
+    },
+    "msCargaPrueba": 1,
+    "msConstruccion": 363
+  },
+  "cubo": {
+    "fuente": {
+      "triangulos": 12,
+      "vertices": 36,
+      "mallas": 1,
+      "llamadas": 1,
+      "materiales": 1,
+      "texturas": [],
+      "bytes": 1904
+    },
+    "optimizado": {
+      "triangulos": 12,
+      "vertices": 24,
+      "mallas": 1,
+      "llamadas": 1,
+      "materiales": 1,
+      "texturas": [],
+      "bytes": 2208,
+      "bytesAR": 1848,
+      "bytesUSDZ": 3835,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.03,
+      "alto": 0.03,
+      "fondo": 0.03
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 1,
+    "msConstruccion": 363
+  },
+  "engranajes": {
+    "fuente": {
+      "triangulos": 2138,
+      "vertices": 6414,
+      "mallas": 16,
+      "llamadas": 16,
+      "materiales": 5,
+      "texturas": [],
+      "bytes": 135324
+    },
+    "optimizado": {
+      "triangulos": 2138,
+      "vertices": 5144,
+      "mallas": 15,
+      "llamadas": 15,
+      "materiales": 5,
+      "texturas": [],
+      "bytes": 62960,
+      "bytesAR": 123452,
+      "bytesUSDZ": 301970,
+      "animaciones": [
+        {
+          "nombre": "Girar la manivela",
+          "duracion": 8
+        }
+      ]
+    },
+    "medidas": {
+      "ancho": 0.1148,
+      "alto": 0.049,
+      "fondo": 0.1157
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 1
+    },
+    "msCargaPrueba": 11,
+    "msConstruccion": 5070
+  },
+  "impresion": {
+    "fuente": {
+      "triangulos": 1604,
+      "vertices": 4812,
+      "mallas": 8,
+      "llamadas": 8,
+      "materiales": 6,
+      "texturas": [],
+      "bytes": 122592
+    },
+    "optimizado": {
+      "triangulos": 1604,
+      "vertices": 3418,
+      "mallas": 8,
+      "llamadas": 8,
+      "materiales": 6,
+      "texturas": [],
+      "bytes": 44184,
+      "bytesAR": 100072,
+      "bytesUSDZ": 259216,
+      "animaciones": [
+        {
+          "nombre": "Imprimir la capa",
+          "duracion": 8
+        }
+      ]
+    },
+    "medidas": {
+      "ancho": 0.0583,
+      "alto": 0.0952,
+      "fondo": 0.0513
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 2,
+    "msConstruccion": 432
+  },
+  "jarron": {
+    "fuente": {
+      "triangulos": 1600,
+      "vertices": 4800,
+      "mallas": 1,
+      "llamadas": 1,
+      "materiales": 1,
+      "texturas": [],
+      "bytes": 116284
+    },
+    "optimizado": {
+      "triangulos": 1600,
+      "vertices": 3637,
+      "mallas": 1,
+      "llamadas": 1,
+      "materiales": 1,
+      "texturas": [],
+      "bytes": 36604,
+      "bytesAR": 98140,
+      "bytesUSDZ": 263800,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.143,
+      "alto": 0.2,
+      "fondo": 0.143
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 3,
+    "msConstruccion": 501
+  },
+  "litofania": {
+    "fuente": {
+      "triangulos": 2459,
+      "vertices": 7377,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 179828
+    },
+    "optimizado": {
+      "triangulos": 2459,
+      "vertices": 7008,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 74192,
+      "bytesAR": 186228,
+      "bytesUSDZ": 509696,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.1477,
+      "alto": 0.0968,
+      "fondo": 0.0579
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 1,
+    "msConstruccion": 453
+  },
+  "maceta": {
+    "fuente": {
+      "triangulos": 2436,
+      "vertices": 7308,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 178016
+    },
+    "optimizado": {
+      "triangulos": 2436,
+      "vertices": 7169,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 76196,
+      "bytesAR": 189784,
+      "bytesUSDZ": 511219,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.132,
+      "alto": 0.134,
+      "fondo": 0.116
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 2,
+    "msConstruccion": 474
+  },
+  "pez": {
+    "fuente": {
+      "triangulos": 2218,
+      "vertices": 6654,
+      "mallas": 13,
+      "llamadas": 13,
+      "materiales": 12,
+      "texturas": [],
+      "bytes": 185676
+    },
+    "optimizado": {
+      "triangulos": 2218,
+      "vertices": 4918,
+      "mallas": 12,
+      "llamadas": 12,
+      "materiales": 12,
+      "texturas": [],
+      "bytes": 77112,
+      "bytesAR": 158496,
+      "bytesUSDZ": 381110,
+      "animaciones": [
+        {
+          "nombre": "Nadar",
+          "duracion": 2.4
+        }
+      ]
+    },
+    "medidas": {
+      "ancho": 0.1586,
+      "alto": 0.0089,
+      "fondo": 0.0675
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 1
+    },
+    "msCargaPrueba": 3,
+    "msConstruccion": 313
+  },
+  "soporte-celular": {
+    "fuente": {
+      "triangulos": 1258,
+      "vertices": 3774,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 93272
+    },
+    "optimizado": {
+      "triangulos": 1258,
+      "vertices": 3004,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 26460,
+      "bytesAR": 82828,
+      "bytesUSDZ": 221252,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.0826,
+      "alto": 0.1494,
+      "fondo": 0.072
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 1,
+    "msConstruccion": 391
+  },
+  "tornillo": {
+    "fuente": {
+      "triangulos": 1712,
+      "vertices": 5136,
+      "mallas": 2,
+      "llamadas": 2,
+      "materiales": 2,
+      "texturas": [],
+      "bytes": 129468
+    },
+    "optimizado": {
+      "triangulos": 1712,
+      "vertices": 5067,
+      "mallas": 2,
+      "llamadas": 2,
+      "materiales": 2,
+      "texturas": [],
+      "bytes": 60748,
+      "bytesAR": 138416,
+      "bytesUSDZ": 370774,
+      "animaciones": [
+        {
+          "nombre": "Enroscar la tuerca",
+          "duracion": 8
+        }
+      ]
+    },
+    "medidas": {
+      "ancho": 0.03,
+      "alto": 0.0725,
+      "fondo": 0.0346
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 0
+    },
+    "msCargaPrueba": 2,
+    "msConstruccion": 366
+  },
+  "trofeo": {
+    "fuente": {
+      "triangulos": 1016,
+      "vertices": 3048,
+      "mallas": 4,
+      "llamadas": 4,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 76536
+    },
+    "optimizado": {
+      "triangulos": 1016,
+      "vertices": 2993,
+      "mallas": 3,
+      "llamadas": 3,
+      "materiales": 3,
+      "texturas": [],
+      "bytes": 34344,
+      "bytesAR": 81128,
+      "bytesUSDZ": 217784,
+      "animaciones": []
+    },
+    "medidas": {
+      "ancho": 0.085,
+      "alto": 0.194,
+      "fondo": 0.0862
+    },
+    "informe": {
+      "simplificadas": [],
+      "juntadas": 1
+    },
+    "msCargaPrueba": 2,
+    "msConstruccion": 314
+  }
+}

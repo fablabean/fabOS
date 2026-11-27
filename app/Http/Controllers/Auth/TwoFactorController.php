@@ -29,9 +29,9 @@ class TwoFactorController extends Controller
         }
 
         // El secreto se guarda al entrar aquí, pero no queda en vigor hasta
-        // confirmarlo: si alguien no termina, no se bloquea a sí mismo.
-        $secreto = $request->session()->get('2fa_secreto_provisional')
-            ?? tap($this->dosFactores->generarSecreto($user), fn ($s) => $request->session()->put('2fa_secreto_provisional', $s));
+        // confirmarlo: si alguien no termina, no se bloquea a sí mismo. Si
+        // vuelve a la pantalla, ve el MISMO QR (el que está en la base).
+        $secreto = $this->dosFactores->secretoParaDarDeAlta($user);
 
         return view('auth.dos-factores.configurar', [
             'secreto' => $secreto,
@@ -113,8 +113,7 @@ class TwoFactorController extends Controller
             ]);
         }
 
-        $secreto = $request->session()->get('2fa_secreto_provisional')
-            ?? tap($this->dosFactores->generarSecreto($user), fn ($s) => $request->session()->put('2fa_secreto_provisional', $s));
+        $secreto = $this->dosFactores->secretoParaDarDeAlta($user);
 
         return view('cuenta.app', [
             'activa'   => false,
