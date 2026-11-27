@@ -12,7 +12,6 @@
     // Lo que se usaba antes de FabOS: Microsoft Bookings por QR, como lo enlazan los documentos.
     $bookingsLab = 'https://outlook.office365.com/owa/calendar/Laboratoriosdeinnovacin1@universidadean.edu.co/bookings/';
     $bookingsVr = 'https://outlook.office365.com/owa/calendar/Solicitudreservarealidadvirtual@universidadean.edu.co/bookings/';
-    $agendamientos = 'https://universidadeaneduco-my.sharepoint.com/personal/prototipado_universidadean_edu_co/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fprototipado%5Funiversidadean%5Fedu%5Fco%2FDocuments%2FAgendamientos%20laboratorios%20de%20innovaci%C3%B3n&ga=1';
     $metro = ($pm = \App\Models\Project::where('name', 'VR Metro')->first())
         ? \App\Filament\Resources\Projects\ProjectResource::getUrl('edit', ['record' => $pm]) : null;
     $kpis = [
@@ -62,7 +61,7 @@
                 'El formato de préstamo INV-115-f1 no se aplicó: este año los activos que lo requerían fueron manipulados por personal interno y capacitado, en casos excepcionales y justificados. Las solicitudes en que el activo salía de la Universidad siguieron el protocolo de Planta Física (FRF-207-f7).',
                 'Oportunidad de mejora: se está analizando usar ese mismo formato para los préstamos internos; ya se están haciendo pruebas.',
             ],
-            'plataformas' => ['antes' => $bookingsLab, 'carpeta' => $agendamientos],
+            'plataformas' => ['antes' => $bookingsLab],
         ],
         [
             'fila' => 6, 'codigo' => 'INV-116', 'nombre' => 'Préstamo de servicios de prototipado rápido', 'version' => 'v0 · 12/Ago/2023',
@@ -76,7 +75,7 @@
             ],
             'ajustes' => [],
             'situacion' => ['Las reservas de prototipado y las asesorías se muestran en la nueva plataforma y en la anterior.'],
-            'plataformas' => ['antes' => $bookingsLab, 'carpeta' => $agendamientos],
+            'plataformas' => ['antes' => $bookingsLab],
         ],
         [
             'fila' => 6, 'codigo' => 'INV-118', 'nombre' => 'Mantenimiento de equipos de laboratorios', 'version' => 'v0 · 11/Sep/2024',

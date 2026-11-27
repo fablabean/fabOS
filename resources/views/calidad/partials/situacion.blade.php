@@ -14,7 +14,7 @@
                     <span><i>Registros anteriores</i><a href="{{ $p['plataformas']['carpeta'] }}" target="_blank" rel="noopener">Agendamientos laboratorios de innovación</a></span>
                 @endif
                 @if (! empty($p['plataformas']))
-                    <span><i>Ahora</i><a href="{{ $reservar }}" target="_blank">Reservas en FabOS</a></span>
+                    <span><i>Ahora</i><a href="{{ $reservar }}" target="_blank">Reserva en FabOS mediante QR</a></span>
                 @endif
                 @foreach ($p['casos'] ?? [] as [$nombre, $url])
                     <span><i>Caso</i><a href="{{ $url }}" target="_blank">{{ $nombre }}</a></span>
