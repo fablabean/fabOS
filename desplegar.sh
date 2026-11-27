@@ -232,6 +232,9 @@ $COMPOSE exec -T laravel.test sh -c 'mkdir -p public/3d/subidos && chown -R sail
 $ARTISAN config:cache
 $ARTISAN route:cache
 $ARTISAN view:cache
+# Las pantallas del panel y los íconos. Si quedan de un `optimize` viejo, una
+# pantalla nueva abre por su dirección pero no sale en el menú.
+$ARTISAN filament:optimize
 
 # Quien escucha a las cámaras es un proceso que no termina: sin reiniciarlo se
 # quedaría con el código y la configuración de antes del despliegue.
