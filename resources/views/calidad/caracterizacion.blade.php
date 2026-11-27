@@ -285,7 +285,10 @@
         .intro h1{margin:0;font-size:clamp(2.3rem,6vw,4.6rem);line-height:1.02;letter-spacing:-.025em;font-weight:800;color:#fff}
         .intro h1 em{font-style:normal;background:linear-gradient(90deg,#7fe3cf,#c8f7ec);-webkit-background-clip:text;background-clip:text;color:transparent}
         .bajada{max-width:44rem;margin:1.3rem 0 0;font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.55;color:#cdeee6}
-        .semaforo{display:grid;grid-template-columns:repeat(5,1fr);gap:.7rem;margin-top:2.6rem}
+        .grupos{display:grid;grid-template-columns:4fr 1fr;gap:1.1rem;margin-top:2.6rem}
+        .grupo{border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:.8rem .8rem .85rem;background:rgba(255,255,255,.03)}
+        .grupo h2{margin:0 0 .7rem .15rem;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#a7e8da}
+        .semaforo{display:grid;grid-template-columns:repeat(var(--n,1),1fr);gap:.7rem}
         .luz{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:.65rem;row-gap:.35rem;align-items:start;
             text-decoration:none;color:#eafaf6;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
             border-radius:12px;padding:.8rem .85rem;backdrop-filter:blur(6px);transition:transform .15s,background .15s}
@@ -311,7 +314,7 @@
             border:1px solid rgba(255,255,255,.25);border-radius:50%;animation:flota 2.2s ease-in-out infinite}
         @keyframes flota{50%{transform:translate(-50%,6px)}}
         @media (prefers-reduced-motion:reduce){.bajar{animation:none}html{scroll-behavior:auto}}
-        @media (max-width:1000px){.semaforo{grid-template-columns:1fr 1fr}.cifras{grid-template-columns:1fr 1fr}.cifras a:nth-child(3){padding-left:0;border-left:0}}
+        @media (max-width:1000px){.grupos{grid-template-columns:1fr}.semaforo{grid-template-columns:1fr 1fr}.cifras{grid-template-columns:1fr 1fr}.cifras a:nth-child(3){padding-left:0;border-left:0}}
         @media (max-width:560px){.semaforo{grid-template-columns:1fr}.antetitulo{margin-top:2rem}}
         @media print{.intro{min-height:auto;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}.bajar{display:none}}
 
@@ -400,16 +403,29 @@
             <p class="bajada">Caracterización del proceso de Innovación, Desarrollo y Transferencia de Conocimiento: los servicios del laboratorio de investigación y la elaboración de escenarios de realidad virtual, con cada evidencia en FabOS.</p>
         @else
             <h1>Caracterización<br>del proceso <em>INV-200</em></h1>
-            <p class="bajada">Innovación, Desarrollo y Transferencia de Conocimiento: los servicios de los laboratorios de investigación y la elaboración de escenarios de realidad virtual, con sus registros en FabOS.</p>
+            <p class="bajada">Innovación, Desarrollo y Transferencia de Conocimiento: subprocesos y procedimientos, con sus registros en FabOS.</p>
         @endif
 
-        <div class="semaforo">
-            @foreach ($procedimientos as $p)
-                <a href="#{{ $p['codigo'] }}" class="luz {{ $estados[$p['estado']][1] }}">
-                    <span class="foco"></span>
-                    <span><b>{{ $p['codigo'] }}</b>{{ $p['nombre'] }}</span>
-                    <small>{{ $estados[$p['estado']][0] }}</small>
-                </a>
+        @php
+            // Los procedimientos, agrupados por el subproceso del INV-200 al que pertenecen.
+            $grupos = collect($procedimientos)->groupBy(fn ($p) => $p['codigo'] === 'INV-113'
+                ? 'Elaboración de escenarios de realidad virtual'
+                : 'Servicios de los laboratorios de investigación');
+        @endphp
+        <div class="grupos">
+            @foreach ($grupos as $grupo => $lista)
+                <section class="grupo" style="--n:{{ $lista->count() }}">
+                    <h2>{{ $grupo }}</h2>
+                    <div class="semaforo">
+                        @foreach ($lista as $p)
+                            <a href="#{{ $p['codigo'] }}" class="luz {{ $estados[$p['estado']][1] }}">
+                                <span class="foco"></span>
+                                <span><b>{{ $p['codigo'] }}</b>{{ $p['nombre'] }}</span>
+                                <small>{{ $estados[$p['estado']][0] }}</small>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
             @endforeach
         </div>
 
