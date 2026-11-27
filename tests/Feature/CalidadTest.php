@@ -274,11 +274,21 @@ class CalidadTest extends TestCase
         $equipo = $this->activo('Láser');
         WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'cerrada', 'reported_issue' => 'Revisión']);
 
-        $this->get(route('calidad.caracterizacion'))
+        // La interna las suma en la portada y las pone aparte en cada evidencia.
+        $this->get(route('calidad.caracterizacion.interna'))
             ->assertOk()
             ->assertSee('≈53', false)
             ->assertSee('+≈40 antes', false)
             ->assertSee('2023 – agosto 2026', false);
+
+        // La del auditor no trae cifras en la portada ni en las tarjetas:
+        // solo dentro del documento, junto a la actividad que respaldan.
+        $html = $this->get(route('calidad.caracterizacion'))->assertOk()->assertDontSee('≈53', false)->getContent();
+        $portada = \Illuminate\Support\Str::before($html, '<dialog');
+        $this->assertStringNotContainsString('+≈40 antes', $portada);
+        $this->assertStringContainsString('+≈40 antes', \Illuminate\Support\Str::after($html, '<dialog'));
+        $this->assertStringContainsString('Situación actual', $portada);
+        $this->assertStringContainsString('Microsoft Bookings', $portada);
     }
 
     public function test_cada_procedimiento_se_lee_punto_por_punto_con_su_registro(): void

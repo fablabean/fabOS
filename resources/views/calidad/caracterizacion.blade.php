@@ -9,6 +9,12 @@
     // Lo estimado antes de FabOS: se suma en la portada y va aparte en cada evidencia.
     $antes = fn (string ...$claves) => array_sum(array_map(fn ($k) => $historico['valores'][$k] ?? 0, $claves));
     $periodoAntes = $historico['periodo'];
+    // Lo que se usaba antes de FabOS: Microsoft Bookings por QR, como lo enlazan los documentos.
+    $bookingsLab = 'https://outlook.office365.com/owa/calendar/Laboratoriosdeinnovacin1@universidadean.edu.co/bookings/';
+    $bookingsVr = 'https://outlook.office365.com/owa/calendar/Solicitudreservarealidadvirtual@universidadean.edu.co/bookings/';
+    $agendamientos = 'https://universidadeaneduco-my.sharepoint.com/personal/prototipado_universidadean_edu_co/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fprototipado%5Funiversidadean%5Fedu%5Fco%2FDocuments%2FAgendamientos%20laboratorios%20de%20innovaci%C3%B3n&ga=1';
+    $metro = ($pm = \App\Models\Project::where('name', 'VR Metro')->first())
+        ? \App\Filament\Resources\Projects\ProjectResource::getUrl('edit', ['record' => $pm]) : null;
     $kpis = [
         ['url' => $e['reservas'], 'hoy' => $c['reservas_espacios'] + $c['reservas_herramientas'] + $c['reservas_prototipado'],
             'antes' => $antes('reservas_espacios', 'reservas_herramientas', 'reservas_prototipado'),
@@ -37,6 +43,7 @@
                 ['Formulario de solicitud', null, $e['solicitar']],
             ],
             'ajustes' => [],
+            'situacion' => ['Desde el año pasado no han llegado nuevas solicitudes del área comercial de la Gerencia de Investigaciones. Por eso se está consolidando una estrategia que integre nuevos canales para recibir clientes externos, con la misma secuencia de actividades.'],
         ],
         [
             'fila' => 6, 'codigo' => 'INV-115', 'nombre' => 'Préstamo de espacios físicos, equipos y/o herramientas', 'version' => 'v0 · 25/Jul/2023',
@@ -50,6 +57,12 @@
                 ['Etiquetas QR de los equipos', null, $e['etiquetas']],
             ],
             'ajustes' => ['El formato INV-115-f1 dejó de usarse: se reemplazó por el FRF-207-f7 de Planta Física para los activos clave, en acuerdo con esa área.'],
+            'situacion' => [
+                'Las reservas de espacios y herramientas se muestran en la nueva plataforma y en la anterior.',
+                'El formato de préstamo INV-115-f1 no se aplicó: este año los activos que lo requerían fueron manipulados por personal interno y capacitado, en casos excepcionales y justificados. Las solicitudes en que el activo salía de la Universidad siguieron el protocolo de Planta Física (FRF-207-f7).',
+                'Oportunidad de mejora: se está analizando usar ese mismo formato para los préstamos internos; ya se están haciendo pruebas.',
+            ],
+            'plataformas' => ['antes' => $bookingsLab, 'carpeta' => $agendamientos],
         ],
         [
             'fila' => 6, 'codigo' => 'INV-116', 'nombre' => 'Préstamo de servicios de prototipado rápido', 'version' => 'v0 · 12/Ago/2023',
@@ -62,6 +75,8 @@
                 ['Página pública de reservas', null, $e['reservar']],
             ],
             'ajustes' => [],
+            'situacion' => ['Las reservas de prototipado y las asesorías se muestran en la nueva plataforma y en la anterior.'],
+            'plataformas' => ['antes' => $bookingsLab, 'carpeta' => $agendamientos],
         ],
         [
             'fila' => 6, 'codigo' => 'INV-118', 'nombre' => 'Mantenimiento de equipos de laboratorios', 'version' => 'v0 · 11/Sep/2024',
@@ -80,6 +95,10 @@
                 'Hoja de vida INV-113-f1 generada por FabOS: el historial de mantenimientos es un enlace (y un QR) a las órdenes de esa máquina, no una tabla copiada a mano.',
                 'Acta de baja ADF-207-f3, generada desde el acta de movimiento de tipo baja.',
             ],
+            'situacion' => [
+                'La hoja de vida de cada equipo se genera actualizada desde FabOS, enlazada con su historial de mantenimientos.',
+                'Los informes de mantenimiento realizados se cargan en el historial del activo respectivo; los nuevos se registran directamente en FabOS y se descargan en el formato del laboratorio.',
+            ],
         ],
         [
             'fila' => 7, 'codigo' => 'INV-113', 'nombre' => 'Elaboración de escenarios de realidad virtual', 'version' => 'v0 · 14/Jul/2023',
@@ -92,6 +111,12 @@
                 ['Formulario de solicitud de proyecto', null, $e['solicitar']],
             ],
             'ajustes' => [],
+            'situacion' => [
+                'No se ejecutaron convocatorias por el cambio de gerente; por eso se plantea un plan de mejora para recibir solicitudes externas.',
+                'El proyecto VR Metro llegó por una fuente distinta a la convocatoria oficial y se desarrolló con este protocolo.',
+            ],
+            'casos' => $metro ? [['Proyecto VR Metro', $metro]] : [],
+            'plataformas' => ['antes' => $bookingsVr],
         ],
     ];
 
@@ -205,6 +230,15 @@
         .ev li{display:flex;justify-content:space-between;gap:.6rem;padding:.28rem 0;border-bottom:1px dashed var(--borde)}
         .ev li:last-child{border-bottom:0}
         .ev b{font-variant-numeric:tabular-nums;color:var(--verde-osc);white-space:nowrap}
+        .situacion{margin-top:.8rem;background:var(--verde-cl);border-left:3px solid var(--verde);border-radius:4px;padding:.55rem .75rem;font-size:.86rem}
+        .situacion h4{margin-bottom:.3rem}
+        .situacion p{margin:0 0 .35rem}
+        .situacion p:last-of-type{margin-bottom:0}
+        .situacion .plat{display:flex;flex-wrap:wrap;gap:.3rem 1rem;margin-top:.5rem;font-size:.8rem}
+        .situacion .plat i{font-style:normal;color:var(--suave);margin-right:.25rem}
+        .sit-int{grid-column:1/-1}
+        .sit-int .situacion{margin-top:0}
+        .paso .regs a b small.antes{display:block;text-align:right;font-weight:400}
         .ajustes{grid-column:1/-1;background:var(--aj-cl);border-radius:4px;padding:.55rem .8rem;font-size:.85rem}
         .ajustes ul{margin:.2rem 0 0;padding-left:1.1rem}
         .formatos{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:.8rem}
@@ -380,6 +414,7 @@
             @endforeach
         </div>
 
+        @if ($interna)
         <div class="cifras">
             @foreach ($kpis as $k)
                 <a href="{{ $k['url'] }}" target="_blank">
@@ -393,10 +428,11 @@
                 </a>
             @endforeach
         </div>
+        @endif
 
         <div class="pie-intro">
             <span>@if ($interna)<span class="interna-aviso">VERSIÓN INTERNA</span> · @endif INV-200 · Versión 5 · filas 6 y 7</span>
-            <span>Cifras en vivo · {{ $generada->format('d/m/Y H:i') }}</span>
+            <span>{{ $interna ? 'Cifras en vivo' : 'Registros en FabOS' }} · {{ $generada->format('d/m/Y H:i') }}</span>
         </div>
     </div>
     <a class="bajar" href="#detalle" aria-label="Ver el detalle">
@@ -463,7 +499,10 @@
                     <div><h4>Lo aprobado</h4><p>{{ $p['aprobado'] }}</p></div>
                     <div><h4>Cómo se cumple hoy en FabOS</h4><p>{{ $p['hoy'] }}</p></div>
                 @else
-                    <div><h4>Procedimiento</h4><p>{{ $p['aprobado'] }}</p></div>
+                    <div>
+                        <h4>Procedimiento</h4><p>{{ $p['aprobado'] }}</p>
+                        @include('calidad.partials.situacion', ['p' => $p, 'reservar' => $e['reservar']])
+                    </div>
                 @endif
                 <div>
                     <h4>{{ $interna ? 'Evidencias' : 'Registros' }}</h4>
@@ -476,7 +515,7 @@
                             @endphp
                             <li>
                                 <a href="{{ $url }}" target="_blank">{{ $texto }}</a>
-                                @if ($valor !== null)
+                                @if ($interna && $valor !== null)
                                     <span class="val">
                                         <b>{{ is_numeric($valor) ? $n($valor) : $valor }}</b>
                                         @if ($previo)<small title="Estimado antes de FabOS{{ $periodoAntes ? ' · ' . $periodoAntes : '' }}">+≈{{ $n($previo) }} antes</small>@endif
@@ -486,6 +525,9 @@
                         @endforeach
                     </ul>
                 </div>
+                @if ($interna && ! empty($p['situacion']))
+                    <div class="sit-int">@include('calidad.partials.situacion', ['p' => $p, 'reservar' => $e['reservar']])</div>
+                @endif
                 @if ($interna && $p['ajustes'])
                     <div class="ajustes">
                         <b>Ajustado</b>
@@ -593,7 +635,7 @@
                         <h4>Registro en FabOS</h4>
                         @forelse ($paso['registros'] as $r)
                             @php [$rt, $rv, $ru] = $registros[$r]; $rd = $registros[$r][3] ?? null; @endphp
-                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}@if ($rd)<small>{{ $rd }}</small>@endif</span>@if ($rv !== null)<b>{{ $n($rv) }}</b>@endif</a>
+                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}@if ($rd)<small>{{ $rd }}</small>@endif</span>@if ($rv !== null)<b>{{ $n($rv) }}@if ($hv = $historico['valores'][$r] ?? 0)<small class="antes">+≈{{ $n($hv) }} antes{{ $periodoAntes ? ' · ' . $periodoAntes : '' }}</small>@endif</b>@endif</a>
                         @empty
                             @if ($interna)<div class="sin">Sin registro en FabOS</div>@endif
                         @endforelse
