@@ -122,17 +122,17 @@ class AssetsTable
                 // El color del INV-118: qué se revisa en la revisión rutinaria.
                 TextColumn::make('esquema_color')
                     ->label('Color')
-                    ->badge()
+                    ->alignCenter()
                     ->state(fn (Asset $r) => $r->es_de_apoyo ? 'apoyo' : $r->esquema_color)
-                    ->formatStateUsing(fn ($state) => $state === 'apoyo' ? 'De apoyo' : (Asset::ESQUEMAS[$state]['nombre'] ?? $state))
-                    ->color(fn ($state) => match ($state) {
-                        'verde'    => 'success',
-                        'amarillo' => 'warning',
-                        'rojo'     => 'danger',
-                        default    => 'gray',
-                    })
-                    ->placeholder('sin color')
-                    ->tooltip('Esquema de color del procedimiento INV-118')
+                    // Solo el círculo del color; el nombre va en el tooltip.
+                    // El equipo de apoyo, un círculo gris vacío.
+                    ->formatStateUsing(fn ($state) => new \Illuminate\Support\HtmlString(
+                        $state === 'apoyo'
+                            ? '<span style="display:inline-block;width:.85rem;height:.85rem;border-radius:50%;border:2px solid #9ca3af"></span>'
+                            : '<span style="display:inline-block;width:.85rem;height:.85rem;border-radius:50%;background:' . e(Asset::ESQUEMAS[$state]['color'] ?? '#9ca3af') . ';box-shadow:0 0 0 2px ' . e(Asset::ESQUEMAS[$state]['color'] ?? '#9ca3af') . '33"></span>'
+                    ))
+                    ->placeholder('—')
+                    ->tooltip(fn ($state) => $state === 'apoyo' ? 'Equipo de apoyo (Anexo 2)' : (isset(Asset::ESQUEMAS[$state]) ? 'Esquema ' . Asset::ESQUEMAS[$state]['nombre'] . ' (INV-118)' : 'Sin esquema de color'))
                     ->toggleable(),
 
                 TextColumn::make('status')
