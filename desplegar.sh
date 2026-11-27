@@ -223,6 +223,11 @@ else
     $ARTISAN storage:link
 fi
 
+# Donde se guardan los modelos que se suben a la Galería 3D desde el panel.
+# Está dentro de public/ (se sirve sin enlace) y el servidor corre como
+# «sail»: tiene que poder escribir ahí.
+$COMPOSE exec -T laravel.test sh -c 'mkdir -p public/3d/subidos && chown -R sail:sail public/3d/subidos'
+
 # Cachés: se rehacen en cada despliegue, no una sola vez.
 $ARTISAN config:cache
 $ARTISAN route:cache

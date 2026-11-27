@@ -22,8 +22,8 @@
             border: 1px solid rgb(0 0 0 / .12); background: rgb(0 0 0 / .02); color: inherit;
             max-width: 11rem; white-space: nowrap; cursor: pointer;
         }
-        .anuncio-favorito:hover { border-color: rgb(var(--primary-500, 245 158 11)); }
-        .anuncio-favorito svg { width: .8rem; height: .8rem; flex: none; color: rgb(var(--primary-600, 217 119 6)); }
+        .anuncio-favorito:hover { border-color: var(--primary-500,rgb(245 158 11)); }
+        .anuncio-favorito svg { width: .8rem; height: .8rem; flex: none; color: var(--primary-600,rgb(217 119 6)); }
         .anuncio-favorito span { overflow: hidden; text-overflow: ellipsis; }
         .dark .anuncio-favorito { border-color: rgb(255 255 255 / .15); background: rgb(255 255 255 / .04); }
         @media (max-width: 64rem) {

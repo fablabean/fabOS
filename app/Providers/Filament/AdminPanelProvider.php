@@ -88,6 +88,14 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::SIDEBAR_NAV_START,
                 fn (): string => view('filament.parciales.buscador-menu')->render(),
             )
+            // Galería 3D → Subir modelo: el mapa de importación de three.js
+            // tiene que ir antes que cualquier otro módulo de la página, o el
+            // navegador lo ignora. Solo en esa pantalla.
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn (): string => view('filament.galeria-3d.mapa-de-importacion')->render(),
+                scopes: \App\Filament\Resources\Galeria3d\Pages\SubirModelo3d::class,
+            )
             // Los estilos propios del panel: el semaforo de las entregas.
             ->renderHook(
                 PanelsRenderHook::HEAD_END,

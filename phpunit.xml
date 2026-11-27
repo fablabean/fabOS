@@ -24,6 +24,11 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <env name="GALERIA3D_TUNEL_CELULAR" value=""/>
+        <!-- Las pruebas no dependen de los plazos que cada laboratorio ponga en su .env -->
+        <env name="PROYECTO_DIAS_MINIMOS_INTERNO" value="0"/>
+        <env name="GALERIA3D_TUNEL_CELULAR_PROPIO" value=""/>
+        <env name="GALERIA3D_TUNEL_COMPROBAR_DNS" value="false"/>
         <env name="OTP_CAPTURA_ALMACEN" value="array"/>
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_URL" value=""/>

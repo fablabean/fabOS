@@ -47,6 +47,18 @@ return [
             'report' => false,
         ],
 
+        // Los modelos que se suben a la Galería 3D desde el panel. Dentro de
+        // public/ y no en storage/app/public: así se sirven sin el enlace
+        // public/storage, que en Windows con Docker no siempre se puede crear.
+        'galeria3d' => [
+            'driver' => 'local',
+            'root' => public_path('3d/subidos'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/3d/subidos',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

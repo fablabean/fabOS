@@ -37,6 +37,28 @@ class TwoFactorService
         return $secreto;
     }
 
+    /**
+     * El secreto que se está dando de alta (guardado pero sin confirmar), o
+     * uno nuevo si no hay ninguno.
+     *
+     * Antes se recordaba en la sesión y, si la sesión no lo tenía, se
+     * generaba otro. Con el servidor lento, o abriendo la pantalla dos veces,
+     * dos peticiones a la vez generaban dos secretos distintos: la pantalla
+     * enseñaba el QR de uno y en la base quedaba el otro, así que ningún
+     * código de la app coincidía. Ahora manda la base: mientras no se
+     * confirme, se muestra siempre el mismo secreto.
+     */
+    public function secretoParaDarDeAlta(User $user): string
+    {
+        $user->refresh();
+
+        if ($user->two_factor_confirmed_at === null && ($secreto = $this->secretoDe($user))) {
+            return $secreto;
+        }
+
+        return $this->generarSecreto($user);
+    }
+
     /** URI que lee la app de autenticación al escanear el QR. */
     public function uriDeRegistro(User $user, string $secreto): string
     {
@@ -67,7 +89,9 @@ class TwoFactorService
             return false;
         }
 
-        return (bool) $this->totp->verifyKey($secreto, trim($codigo), 1);
+        // Ventana de 2: acepta el código de hasta un minuto antes o después, por
+        // si la hora del teléfono va un poco corrida o la página tardó en enviar.
+        return (bool) $this->totp->verifyKey($secreto, preg_replace('/\s+/', '', $codigo), 2);
     }
 
     /** Consume un código de recuperación. Sirve una sola vez. */

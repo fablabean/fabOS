@@ -33,6 +33,7 @@
     </a>
     <a href="{{ route('formacion') }}">Formación</a>
     <a href="{{ route('proyectos.solicitar') }}">Proyectos</a>
+    <a href="{{ route('galeria.index') }}">Galería 3D</a>
     <a href="{{ route('alianzas.index') }}">Alianzas</a>
     <a href="{{ route('tienda.publica') }}">Tienda</a>
     <a href="{{ route('preguntas.index') }}">Preguntas</a>

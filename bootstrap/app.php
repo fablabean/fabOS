@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // navegador bloquea las peticiones de Livewire por contenido mixto.
         $middleware->trustProxies(at: '*');
 
+        // Por un túnel temporal (el del celular, *.trycloudflare.com) solo se ve
+        // la Galería 3D: el panel local entra sin segundo factor.
+        $middleware->append(\App\Http\Middleware\SoloGaleriaPorTunelTemporal::class);
+
         /*
          * El captcha, para colgarlo de las rutas publicas que mandan correo.
          * Se le pasa el campo del formulario donde pintar el error:

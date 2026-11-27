@@ -17,6 +17,14 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            # Varios procesos de PHP atendiendo a la vez (PHP_CLI_SERVER_WORKERS
+            # del .env). Sin --no-reload, `artisan serve` ignora ese valor y
+            # atiende todo con UN solo proceso, en fila: cada página trae unos
+            # 15 archivos, y el celular que abre la Galería 3D por el QR
+            # esperaba su turno detrás del computador (20 segundos o más; el
+            # lector de QR se rendía). Con --no-reload, al cambiar el .env hay
+            # que reiniciar: docker compose restart laravel.test
+            SUPERVISOR_PHP_COMMAND: '/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan serve --host=0.0.0.0 --port=80 --no-reload'
         volumes:
             - '.:/var/www/html'
             # OPcache para la consola: las pruebas arrancan Laravel y

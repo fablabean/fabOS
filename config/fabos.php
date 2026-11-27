@@ -187,6 +187,12 @@ return [
     */
     'sesion' => [
         'dias_segundo_factor' => (int) env('SEGUNDO_FACTOR_DIAS', 7),
+
+        // Solo para probar en el propio computador (APP_ENV=local): con
+        // SEGUNDO_FACTOR_EN_LOCAL=false el panel no pide la app de
+        // autenticación. En cualquier otro entorno se ignora: un servidor
+        // no se puede quedar sin segundo factor por un .env mal copiado.
+        'segundo_factor_en_local' => (bool) env('SEGUNDO_FACTOR_EN_LOCAL', true),
     ],
 
     /*

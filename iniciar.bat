@@ -68,8 +68,13 @@ if errorlevel 1 (
 
 REM ---------- 5) Permisos y migraciones ----------
 REM En Windows el montaje entrega las carpetas como root y el servidor corre
-REM como "sail": sin esto la aplicacion no puede escribir sus registros.
-docker compose exec -T laravel.test chown -R sail:sail storage bootstrap/cache >nul 2>&1
+REM como "sail": sin esto la aplicacion no puede escribir sus registros
+REM ni guardar los modelos que se suben a la Galeria 3D.
+docker compose exec -T laravel.test sh -c "mkdir -p public/3d/subidos && chown -R sail:sail storage bootstrap/cache public/3d/subidos" >nul 2>&1
+
+REM El volumen de librerias (vendor) se crea como root: se le da a "sail"
+REM para que composer pueda instalar dentro.
+docker compose exec -T laravel.test chown sail:sail vendor >nul 2>&1
 
 REM Si las librerias viven en un volumen de Docker (compose.override.yaml) y
 REM estan vacias o cambio composer.lock, se instalan dentro del contenedor.

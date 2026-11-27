@@ -259,6 +259,12 @@ class User extends Authenticatable implements FilamentUser, \Filament\Models\Con
      */
     public function segundoFactorObligatorio(): bool
     {
+        // En el computador de quien desarrolla se puede apagar (ver
+        // config/fabos.php). Solo en «local»: en producción no hay manera.
+        if (app()->environment('local') && ! config('fabos.sesion.segundo_factor_en_local', true)) {
+            return false;
+        }
+
         return $this->hasAnyRole([self::ROL_ADMINISTRADOR, self::ROL_SUPERADMIN]);
     }
 

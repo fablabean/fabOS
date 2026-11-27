@@ -37,6 +37,7 @@ class MapaDelSitio
             ->merge($this->programas())
             ->merge($this->preguntas())
             ->merge($this->alianzas())
+            ->merge($this->galeria3d())
             ->merge($this->practicas())
             ->merge($this->paginasDeContenido())
             ->merge($this->equipos())
@@ -54,6 +55,7 @@ class MapaDelSitio
             ['formacion', 'Formación: cursos, talleres y eventos', 'Catálogo de cursos, talleres y eventos de fabricación digital, del primer contacto (bit) a Fab Academy (tera).', 0.9],
             ['publico.reservas', 'Reservar máquinas, espacios y asesorías', 'Equipos de fabricación digital que se pueden reservar, con o sin acompañamiento.', 0.8],
             ['proyectos.solicitar', 'Solicitar un proyecto', 'Encarga al laboratorio el diseño o la fabricación de un proyecto.', 0.7],
+            ['galeria.index', 'Galería 3D', 'Modelos 3D de lo que se fabrica en el laboratorio, para girarlos en el navegador y verlos en realidad aumentada.', 0.6],
             ['alianzas.index', 'Alianzas', 'Proyectos abiertos a aliados: empresas, instituciones y personas que aportan.', 0.6],
             ['preguntas.index', 'Preguntas', 'Preguntas y respuestas sobre el laboratorio, sus máquinas y sus servicios.', 0.6],
             ['practicas.index', 'Prácticas', 'Convocatorias abiertas para hacer prácticas en el laboratorio.', 0.5],
@@ -114,6 +116,16 @@ class MapaDelSitio
                 route('preguntas.show', $q), $q->title, Str::limit(strip_tags((string) $q->body), 200),
                 'Preguntas', $q->updated_at, $q->frecuente ? 0.6 : 0.4,
             ));
+    }
+
+    /** Cada modelo de la Galería 3D, con su dirección propia (la del QR). */
+    private function galeria3d(): Collection
+    {
+        return \App\Support\Galeria3d::modelos()
+            ->map(fn (array $m) => $this->fila(
+                route('galeria.show', $m['slug']), $m['nombre'] . ' — Galería 3D', $m['resumen'], 'Galería 3D', null, 0.4,
+            ))
+            ->values();
     }
 
     private function alianzas(): Collection
