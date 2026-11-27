@@ -396,4 +396,18 @@ class CalidadTest extends TestCase
             $this->assertStringContainsString($texto, $html);
         }
     }
+
+    public function test_el_enlace_a_proyectos_externos_muestra_todos_los_de_fuera(): void
+    {
+        $base = ['stage' => 'idea', 'source' => 'correo', 'organization' => 'Acme', 'contact_name' => 'Ana',
+            'contact_email' => 'ana@acme.co', 'summary' => 'x', 'lead_id' => $this->jefa->id];
+        $cerrado = \App\Models\Project::create($base + ['name' => 'Metro cerrado', 'status' => 'cerrado', 'client_kind' => 'externo']);
+        $activo = \App\Models\Project::create($base + ['name' => 'Externo activo', 'status' => 'activo', 'client_kind' => 'externo']);
+        $interno = \App\Models\Project::create($base + ['name' => 'De la facultad', 'status' => 'activo', 'client_kind' => 'interno']);
+
+        Livewire::withQueryParams(['filters' => ['mios' => ['isActive' => '0'], 'status' => ['value' => ''], 'client_kind' => ['value' => 'externo']]])
+            ->test(\App\Filament\Resources\Projects\Pages\ListProjects::class)
+            ->assertCanSeeTableRecords([$cerrado, $activo])
+            ->assertCanNotSeeTableRecords([$interno]);
+    }
 }
