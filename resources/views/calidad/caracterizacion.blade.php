@@ -635,7 +635,8 @@
                         <h4>Registro en FabOS</h4>
                         @forelse ($paso['registros'] as $r)
                             @php [$rt, $rv, $ru] = $registros[$r]; $rd = $registros[$r][3] ?? null; @endphp
-                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}@if ($rd)<small>{{ $rd }}</small>@endif</span>@if ($rv !== null)<b>{{ $n($rv) }}@if ($hv = $historico['valores'][$r] ?? 0)<small class="antes">+≈{{ $n($hv) }} antes{{ $periodoAntes ? ' · ' . $periodoAntes : '' }}</small>@endif</b>@endif</a>
+                            {{-- La del auditor, sin números: solo el registro y su enlace. --}}
+                            <a href="{{ $ru }}" target="_blank"><span>{{ $rt }}@if ($interna && $rd)<small>{{ $rd }}</small>@endif</span>@if ($interna && $rv !== null)<b>{{ $n($rv) }}@if ($hv = $historico['valores'][$r] ?? 0)<small class="antes">+≈{{ $n($hv) }} antes{{ $periodoAntes ? ' · ' . $periodoAntes : '' }}</small>@endif</b>@endif</a>
                         @empty
                             @if ($interna)<div class="sin">Sin registro en FabOS</div>@endif
                         @endforelse

@@ -281,12 +281,10 @@ class CalidadTest extends TestCase
             ->assertSee('+≈40 antes', false)
             ->assertSee('2023 – agosto 2026', false);
 
-        // La del auditor no trae cifras en la portada ni en las tarjetas:
-        // solo dentro del documento, junto a la actividad que respaldan.
+        // La del auditor no trae cifras: ni en la portada ni en los documentos.
         $html = $this->get(route('calidad.caracterizacion'))->assertOk()->assertDontSee('≈53', false)->getContent();
         $portada = \Illuminate\Support\Str::before($html, '<dialog');
-        $this->assertStringNotContainsString('+≈40 antes', $portada);
-        $this->assertStringContainsString('+≈40 antes', \Illuminate\Support\Str::after($html, '<dialog'));
+        $this->assertStringNotContainsString('class="antes"', $html);
         $this->assertStringContainsString('Situación actual', $portada);
         $this->assertStringContainsString('Microsoft Bookings', $portada);
     }
