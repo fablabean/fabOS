@@ -57,7 +57,6 @@
             ],
             'ajustes' => ['El formato INV-115-f1 dejó de usarse: se reemplazó por el FRF-207-f7 de Planta Física para los activos clave, en acuerdo con esa área.'],
             'situacion' => [
-                'Las reservas de espacios y herramientas se muestran en la nueva plataforma y en la anterior.',
                 'El formato de préstamo INV-115-f1 no se aplicó: este año los activos que lo requerían fueron manipulados por personal interno y capacitado, en casos excepcionales y justificados. Las solicitudes en que el activo salía de la Universidad siguieron el protocolo de Planta Física (FRF-207-f7).',
                 'Oportunidad de mejora: se está analizando usar ese mismo formato para los préstamos internos; ya se están haciendo pruebas.',
             ],
@@ -74,7 +73,7 @@
                 ['Página pública de reservas', null, $e['reservar']],
             ],
             'ajustes' => [],
-            'situacion' => ['Las reservas de prototipado y las asesorías se muestran en la nueva plataforma y en la anterior.'],
+            'situacion' => ['Hoy, en el mismo momento en que se piden servicios de producción, se agendan: la solicitud permite adjuntar los archivos, verificarlos y separar si es una asesoría o una producción.'],
             'plataformas' => ['antes' => $bookingsLab],
         ],
         [
