@@ -117,6 +117,13 @@ Route::post('/asistente/agentic/mensaje', [\App\Http\Controllers\AsistenteAgenti
     ->middleware('throttle:asistente-agentic')
     ->name('asistente.agentic.mensaje');
 
+// La evaluación del Bootcamp AGENTIC: enlace libre, sin cuenta.
+Route::get('/evaluacion/agentic', [\App\Http\Controllers\EvaluacionAgenticController::class, 'pagina'])
+    ->name('evaluacion.agentic');
+Route::post('/evaluacion/agentic', [\App\Http\Controllers\EvaluacionAgenticController::class, 'responder'])
+    ->middleware('throttle:90,1') // toda la sala responde desde la misma IP de la U
+    ->name('evaluacion.agentic.responder');
+
 // La carpeta multimedia: lo que las animaciones cargan por su dirección.
 Route::get('/multimedia/{codigo}/{nombre?}', \App\Http\Controllers\MultimediaController::class)
     ->where(['codigo' => '[a-z0-9]{10}', 'nombre' => '[A-Za-z0-9._-]+'])

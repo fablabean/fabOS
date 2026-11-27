@@ -311,6 +311,65 @@
             </div>
         </x-filament::section>
 
+        {{-- -------------------------------------------------- evaluación --}}
+        <x-filament::section>
+            <x-slot name="heading">Evaluación del bootcamp ({{ $evaluaciones->count() }})</x-slot>
+            <x-slot name="description">
+                Diez preguntas sobre los tres días. El enlace es libre: se entra sin cuenta, con el nombre y el ID si lo tienen.
+                Cada quien ve su resultado y la explicación al enviar.
+            </x-slot>
+            <div class="grid gap-4">
+                <div style="display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;">
+                    <code style="font-size: .85rem; padding: .35rem .6rem; border-radius: .5rem; background: rgb(0 0 0 / .05);">{{ route('evaluacion.agentic') }}</code>
+                    @if ($evaluaciones->isNotEmpty())
+                        <span style="font-size: .85rem;">Promedio: <strong>{{ number_format($evaluaciones->avg('aciertos'), 1, ',', '') }} de {{ $evaluaciones->first()->total }}</strong></span>
+                    @endif
+                    <div style="margin-left: auto; display: flex; gap: .5rem;">
+                        @if ($evaluaciones->isNotEmpty())
+                            <x-filament::button size="sm" color="gray" wire:click="descargarEvaluaciones" icon="heroicon-m-arrow-down-tray">CSV</x-filament::button>
+                        @endif
+                        <x-filament::button tag="a" href="{{ route('evaluacion.agentic') }}" target="_blank" size="sm" color="gray" icon="heroicon-m-arrow-top-right-on-square">
+                            Abrir la evaluación
+                        </x-filament::button>
+                    </div>
+                </div>
+                @if ($evaluaciones->isNotEmpty())
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; font-size: .85rem; border-collapse: collapse;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid rgb(0 0 0 / .1);">
+                                    <th style="padding: .4rem .5rem;">Hora</th>
+                                    <th style="padding: .4rem .5rem;">Nombre</th>
+                                    <th style="padding: .4rem .5rem;">ID</th>
+                                    <th style="padding: .4rem .5rem;">Aciertos</th>
+                                    <th style="padding: .4rem .5rem;">Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($evaluaciones as $ev)
+                                    <tr style="border-bottom: 1px solid rgb(0 0 0 / .05);">
+                                        <td style="padding: .35rem .5rem; white-space: nowrap;">{{ $ev->created_at->setTimezone(config('fabos.lab.timezone'))->format('d/m H:i') }}</td>
+                                        <td style="padding: .35rem .5rem;">{{ $ev->nombre }}</td>
+                                        <td style="padding: .35rem .5rem; font-family: monospace;">{{ $ev->codigo ?? '—' }}</td>
+                                        <td style="padding: .35rem .5rem;">{{ $ev->aciertos }} / {{ $ev->total }}</td>
+                                        <td style="padding: .35rem .5rem;">{{ $ev->nota() }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="font-size: .8rem; opacity: .75;">
+                        Aciertos por pregunta:
+                        @foreach ($aciertosPorPregunta as $n => $pct)
+                            <span style="white-space: nowrap; margin-right: .6rem;">P{{ $n + 1 }} {{ $pct }} %</span>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="ev-vacio">Todavía nadie la ha respondido.</div>
+                @endif
+            </div>
+        </x-filament::section>
+
         {{-- ----------------------------------------------- participantes --}}
         <x-filament::section>
             <x-slot name="heading">Participantes con ID ({{ $totalParticipantes }})</x-slot>

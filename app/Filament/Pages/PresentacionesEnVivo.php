@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\ControlaSuAcceso;
+use App\Models\EvaluacionBootcamp;
 use App\Models\Modulo;
 use App\Models\ParticipanteEnVivo;
 use App\Models\SesionEnVivo;
@@ -10,6 +11,7 @@ use App\Models\Setting;
 use App\Services\EnVivo;
 use App\Services\HistorialEnVivo;
 use App\Services\Ia\AccesoAlAsistente;
+use App\Support\EvaluacionAgentic;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -148,6 +150,27 @@ class PresentacionesEnVivo extends Page
         }, 'en-vivo-' . $s->sala . '-' . $s->fecha->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /** Las evaluaciones del bootcamp, en CSV para Excel: una columna por pregunta. */
+    public function descargarEvaluaciones(): StreamedResponse
+    {
+        $preguntas = EvaluacionAgentic::preguntas();
+        $zona = config('fabos.lab.timezone');
+
+        return response()->streamDownload(function () use ($preguntas, $zona) {
+            $f = fopen('php://output', 'w');
+            fwrite($f, "\xEF\xBB\xBF");
+            fputcsv($f, array_merge(['Hora', 'Nombre', 'ID', 'Aciertos', 'Total', 'Nota'],
+                array_map(fn ($i) => 'P' . ($i + 1), array_keys($preguntas))), ';');
+            foreach (EvaluacionBootcamp::where('grupo', EvaluacionAgentic::GRUPO)->oldest()->get() as $e) {
+                fputcsv($f, array_merge(
+                    [$e->created_at->setTimezone($zona)->format('Y-m-d H:i'), $e->nombre, $e->codigo ?? '', $e->aciertos, $e->total, $e->nota()],
+                    array_map(fn ($p, $i) => strtoupper($e->respuestas[$i] ?? '') . (($e->respuestas[$i] ?? null) === $p['correcta'] ? ' ✓' : ''), $preguntas, array_keys($preguntas)),
+                ), ';');
+            }
+            fclose($f);
+        }, 'evaluacion-bootcamp-agentic.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function guardarAhora(HistorialEnVivo $historial): void
     {
         $n = collect(array_keys($this->salas()))->filter(fn ($sala) => $historial->guardar($sala))->count();
@@ -206,6 +229,9 @@ class PresentacionesEnVivo extends Page
                     ->orWhere('nombre', 'ilike', '%' . trim($this->buscar) . '%')))
                 ->latest()->limit(300)->get(),
             'totalParticipantes' => ParticipanteEnVivo::count(),
+            'evaluaciones' => $evaluaciones = EvaluacionBootcamp::where('grupo', EvaluacionAgentic::GRUPO)->latest()->get(),
+            'aciertosPorPregunta' => collect(EvaluacionAgentic::preguntas())->map(fn ($p, $i) => $evaluaciones->isEmpty() ? 0
+                : (int) round(100 * $evaluaciones->filter(fn ($e) => ($e->respuestas[$i] ?? null) === $p['correcta'])->count() / $evaluaciones->count())),
             'asistenteActivo' => app(AccesoAlAsistente::class)->activo(),
             'acceso' => app(AccesoAlAsistente::class),
         ];
