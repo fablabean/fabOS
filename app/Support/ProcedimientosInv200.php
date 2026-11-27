@@ -19,6 +19,8 @@ class ProcedimientosInv200
 {
     public const CARPETA = 'calidad/procedimientos';
 
+    public const MAESTRO = 'INV-200';
+
     /** @return array<string, array{titulo: string, version: string, fecha: string, objetivo: string, pasos: list<array{num: string, titulo: string, texto: string, registros: list<string>}>}> */
     public static function todos(): array
     {
@@ -158,6 +160,7 @@ class ProcedimientosInv200
     {
         $ruta = self::CARPETA . '/' . $codigo . '.pdf';
 
-        return array_key_exists($codigo, self::todos()) && \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta) ? $ruta : null;
+        // INV-200 es el documento maestro: la caracterización de la que parten los procedimientos.
+        return ($codigo === self::MAESTRO || array_key_exists($codigo, self::todos())) && \Illuminate\Support\Facades\Storage::disk('local')->exists($ruta) ? $ruta : null;
     }
 }

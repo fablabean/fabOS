@@ -320,6 +320,25 @@ class CalidadTest extends TestCase
         $this->get(route('calidad.documento', 'INV-118'))->assertOk();
     }
 
+    public function test_la_portada_abre_el_documento_maestro_inv_200(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        // Sin el PDF cargado, la portada no ofrece el botón.
+        $this->get(route('calidad.caracterizacion'))->assertOk()->assertDontSee('id="doc-INV-200"', false);
+        $this->get(route('calidad.documento', 'INV-200'))->assertNotFound();
+
+        \Illuminate\Support\Facades\Storage::disk('local')->put('calidad/procedimientos/INV-200.pdf', '%PDF-1.4 prueba');
+        $this->get(route('calidad.caracterizacion'))
+            ->assertOk()
+            ->assertSee('data-doc="INV-200"', false)
+            ->assertSee('id="doc-INV-200"', false)
+            ->assertSee(route('calidad.documento', 'INV-200'), false);
+        $this->get(route('calidad.documento', 'INV-200'))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
     public function test_el_interruptor_del_admin_la_abre(): void
     {
         Livewire::test(ListAuditorias::class)->callAction('publica');

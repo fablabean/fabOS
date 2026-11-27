@@ -2,6 +2,8 @@
     $c = $cifras;
     $e = $enlaces;
     $tz = config('fabos.lab.timezone');
+    // El documento maestro (INV-200), si su PDF está cargado: se abre desde la portada.
+    $maestro = \App\Support\ProcedimientosInv200::pdf(\App\Support\ProcedimientosInv200::MAESTRO) !== null;
     $n = fn ($v) => number_format((int) $v, 0, ',', '.');
     $desde = $c['reservas_desde'] ? \Illuminate\Support\Carbon::parse($c['reservas_desde'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
     $primeraOrden = $c['primera_orden'] ? \Illuminate\Support\Carbon::parse($c['primera_orden'])->timezone($tz)->locale('es')->translatedFormat('F Y') : null;
@@ -285,6 +287,10 @@
         .intro h1{margin:0;font-size:clamp(2.3rem,6vw,4.6rem);line-height:1.02;letter-spacing:-.025em;font-weight:800;color:#fff}
         .intro h1 em{font-style:normal;background:linear-gradient(90deg,#7fe3cf,#c8f7ec);-webkit-background-clip:text;background-clip:text;color:transparent}
         .bajada{max-width:44rem;margin:1.3rem 0 0;font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.55;color:#cdeee6}
+        .ver-maestro{margin-top:1.1rem;display:inline-flex;align-items:center;gap:.5rem;font:inherit;font-size:.9rem;font-weight:600;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:.45rem 1rem;cursor:pointer;transition:background .15s}
+        .ver-maestro:hover{background:rgba(255,255,255,.18)}
+        .ver-maestro svg{width:17px;height:17px;flex:none}
+        @media print{.ver-maestro{display:none}}
         .grupos{display:grid;grid-template-columns:3.7fr 1.3fr;grid-template-rows:auto auto;column-gap:1.1rem;margin-top:2.6rem}
         .grupo{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:.7rem;border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:.8rem .8rem .85rem;background:rgba(255,255,255,.03)}
         .grupo h2{margin:0 0 0 .15rem;align-self:end;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#a7e8da}
@@ -404,6 +410,9 @@
         @else
             <h1>Caracterización<br>del proceso <em>INV-200</em></h1>
             <p class="bajada">Innovación, Desarrollo y Transferencia de Conocimiento: subprocesos y procedimientos, con sus registros en FabOS.</p>
+        @endif
+        @if ($maestro)
+            <button type="button" class="ver-maestro" data-doc="INV-200" data-abrir="pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Ver la caracterización INV-200: el documento del que parte todo</button>
         @endif
 
         @php
@@ -616,6 +625,19 @@
         @endif
     </footer>
 </div>
+@if ($maestro)
+    <dialog class="doc" id="doc-INV-200" aria-labelledby="doc-INV-200-t">
+        <div class="doc-cab">
+            <div>
+                <div class="cod">CARACTERIZACIÓN DE PROCESO INV-200</div>
+                <h2 id="doc-INV-200-t">Innovación, Desarrollo y Transferencia de Conocimiento</h2>
+                <div class="ver">Versión 5 · el documento maestro del que parten los procedimientos INV-113 a INV-118</div>
+            </div>
+            <button type="button" class="doc-cerrar" data-cerrar aria-label="Cerrar">×</button>
+        </div>
+        <div class="doc-cuerpo doc-pdf" data-panel="pdf" data-src="{{ route('calidad.documento', 'INV-200') }}"></div>
+    </dialog>
+@endif
 @foreach ($documentos as $cod => $d)
     @php
         $conPdf = \App\Support\ProcedimientosInv200::pdf($cod) !== null;
