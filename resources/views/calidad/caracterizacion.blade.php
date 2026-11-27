@@ -109,8 +109,8 @@
             ],
             'ajustes' => [],
             'situacion' => [
-                'No se ejecutaron convocatorias por el cambio de gerente; por eso se plantea un plan de mejora para recibir solicitudes externas.',
-                'El proyecto VR Metro llegó por una fuente distinta a la convocatoria oficial y se desarrolló con este protocolo.',
+                'No se ejecutaron convocatorias; por eso se plantea un plan de mejora para recibir solicitudes externas.',
+                'El proyecto VR Metro llegó por una fuente distinta a la convocatoria oficial y se desarrolló un plan de mejora para poder atender estas solicitudes.',
             ],
             'casos' => $metro ? [['Proyecto VR Metro', $metro]] : [],
         ],
