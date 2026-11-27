@@ -216,7 +216,8 @@
         .flujo div:nth-child(odd) i{background:var(--azul)} .flujo div:nth-child(even) i{background:var(--verde)}
         .proc{background:var(--papel);border:1px solid var(--borde);border-top:0;padding:1rem 1.1rem;display:grid;grid-template-columns:1.05fr 1.05fr .9fr;gap:1.1rem}
         .proc:last-of-type{border-radius:0 0 6px 6px}
-        .proc.dos{grid-template-columns:1.4fr 1fr}
+        .proc.dos{grid-template-columns:1fr}
+        .proc.dos > div{max-width:58rem}
         .formatos.dos{grid-template-columns:repeat(2,1fr)}
         .interna-aviso{display:inline-block;background:#facc15;color:#3b2f00;font-weight:800;border-radius:99px;padding:.1rem .6rem;letter-spacing:.04em}
         .proc h3{grid-column:1/-1;margin:0;display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;font-size:1.08rem}
@@ -504,8 +505,10 @@
                         @include('calidad.partials.situacion', ['p' => $p, 'reservar' => $e['reservar']])
                     </div>
                 @endif
+                {{-- La del auditor no lista registros: están en el documento punto por punto. --}}
+                @if ($interna)
                 <div>
-                    <h4>{{ $interna ? 'Evidencias' : 'Registros' }}</h4>
+                    <h4>Evidencias</h4>
                     <ul class="ev">
                         @foreach ($p['evidencias'] as $fila)
                             @php
@@ -525,6 +528,7 @@
                         @endforeach
                     </ul>
                 </div>
+                @endif
                 @if ($interna && ! empty($p['situacion']))
                     <div class="sit-int">@include('calidad.partials.situacion', ['p' => $p, 'reservar' => $e['reservar']])</div>
                 @endif
