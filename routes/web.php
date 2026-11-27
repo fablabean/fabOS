@@ -675,7 +675,7 @@ Route::middleware('auth')->group(function () {
     // Los formatos del sistema de calidad (ISO 9001, proceso INV-200), para el equipo.
     Route::get('/activos/{asset}/hoja-de-vida', [\App\Http\Controllers\CalidadController::class, 'hojaDeVida'])->name('activos.hoja-de-vida');
     Route::get('/actas/{acta}/baja', [\App\Http\Controllers\CalidadController::class, 'actaDeBaja'])->name('actas.baja');
-    Route::get('/ordenes/{orden}/informe-de-revision.pdf', [\App\Http\Controllers\CalidadController::class, 'informeDeRevision'])->name('ordenes.informe');
+    Route::get('/ordenes/{orden}/informe.pdf', [\App\Http\Controllers\CalidadController::class, 'informeDeRevision'])->name('ordenes.informe');
 
     // El acta de movimiento de activos (formato FRF-207-f7), para el equipo (§8).
     Route::get('/actas/{acta}/formato', [\App\Http\Controllers\ActaController::class, 'ver'])->name('actas.ver');

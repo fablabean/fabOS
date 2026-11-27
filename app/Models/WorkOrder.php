@@ -13,7 +13,8 @@ class WorkOrder extends Model
         'asset_id', 'maintenance_plan_id', 'kind', 'status', 'priority',
         'reported_issue', 'reported_by', 'assigned_to',
         'checklist_snapshot', 'checklist_answers',
-        'diagnosis', 'resultado_revision', 'esquema_revision', 'work_done', 'photos', 'reference_videos', 'cost',
+        'diagnosis', 'resultado_revision', 'esquema_revision', 'work_done',
+        'piezas_reemplazadas', 'estado_post', 'pruebas_realizadas', 'recomendaciones', 'photos', 'reference_videos', 'cost',
         'stops_equipment', 'down_since', 'up_since', 'due_at', 'closed_at',
     ];
 
@@ -23,6 +24,7 @@ class WorkOrder extends Model
             'checklist_snapshot' => 'array',
             'checklist_answers'  => 'array',
             'photos'             => 'array',
+            'piezas_reemplazadas' => 'array',
             'reference_videos'   => 'array',
             'stops_equipment'    => 'boolean',
             'cost'               => 'decimal:2',
@@ -56,10 +58,14 @@ class WorkOrder extends Model
         'importantes' => 'Problemas importantes',
     ];
 
-    /** Una preventiva cerrada se descarga como el informe de la revisión. */
+    /**
+     * Toda orden cerrada se descarga como informe: la preventiva como el de
+     * Diagnóstico de Revisión Rutinaria; la correctiva como el Informe de
+     * Mantenimiento (INV-118 §6.4).
+     */
     public function tieneInforme(): bool
     {
-        return $this->kind === 'preventivo' && $this->status === 'cerrada';
+        return $this->status === 'cerrada';
     }
 
     /** Estados en los que la orden sigue viva. */

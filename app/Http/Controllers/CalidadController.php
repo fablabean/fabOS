@@ -64,15 +64,33 @@ class CalidadController extends Controller
         $esquema = $orden->esquema_revision ?: $activo?->esquema_color;
         $fecha = ($orden->closed_at ?? $orden->created_at)->setTimezone(config('fabos.lab.timezone'));
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('calidad.informe-revision', [
+        $datos = [
             'orden'     => $orden,
             'fecha'     => $fecha,
             'activo'    => $activo,
             'esquema'   => \App\Models\Asset::ESQUEMAS[$esquema]['nombre'] ?? ($esquema ? ucfirst($esquema) : '—'),
             'resultado' => $orden->resultado_revision ?: 'todo_ok',
-        ])->setPaper('letter');
+        ];
 
-        $nombre = $fecha->format('d,m,Y') . ' ' . \Illuminate\Support\Str::of($activo?->name ?? 'equipo')->replaceMatches('/[^\pL\pN ]+/u', '')->squish() . '.pdf';
+        // La correctiva sale como el Informe de Mantenimiento (§6.4).
+        if ($orden->kind !== 'preventivo') {
+            $orden->load(['assignedTo', 'asset.location']);
+            $zona = config('fabos.lab.timezone');
+            $datos['inicio'] = ($orden->down_since ?? $orden->created_at)->setTimezone($zona);
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            $orden->kind === 'preventivo' ? 'calidad.informe-revision' : 'calidad.informe-mantenimiento',
+            $datos,
+        )->setPaper('letter');
+
+        $equipo = \Illuminate\Support\Str::of($activo?->name ?? 'equipo')->replaceMatches('/[^\pL\pN ]+/u', '')->squish();
+        // Como los nombra el laboratorio: «22,09,2026 Equipo» la revisión,
+        // «Informe de Mantenimiento Equipo Sep2026» el correctivo.
+        $nombre = ($orden->kind === 'preventivo'
+            ? $fecha->format('d,m,Y') . ' ' . $equipo
+            : 'Informe de Mantenimiento ' . $equipo . ' ' . ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][$fecha->month - 1] . $fecha->format('Y')
+        ) . '.pdf';
 
         return $pdf->download($nombre);
     }

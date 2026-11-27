@@ -354,10 +354,33 @@ class CalidadTest extends TestCase
         $this->assertStringContainsString('Correa floja en el eje X', $html);
         $this->assertStringContainsString('60501', $html);
 
-        // Solo las preventivas cerradas tienen informe.
+        // Una orden abierta todavía no tiene informe.
         $abierta = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'preventivo', 'status' => 'abierta', 'reported_issue' => 'x']);
-        $correctiva = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'correctivo', 'status' => 'cerrada', 'reported_issue' => 'x', 'closed_at' => now()]);
         $this->get(route('ordenes.informe', $abierta))->assertNotFound();
-        $this->get(route('ordenes.informe', $correctiva))->assertNotFound();
+    }
+
+    public function test_la_correctiva_cerrada_se_descarga_como_informe_de_mantenimiento(): void
+    {
+        $equipo = $this->activo('Ender 3 v3 SE 1', ['asset_tag' => '58370', 'esquema_color' => 'amarillo', 'brand' => 'Creality', 'model' => 'Ender-3 V3 SE']);
+        $tecnico = User::factory()->create(['name' => 'Laura Técnica']);
+        $orden = WorkOrder::create(['asset_id' => $equipo->id, 'kind' => 'correctivo', 'status' => 'cerrada',
+            'reported_issue' => 'Garganta rota', 'assigned_to' => $tecnico->id,
+            'work_done' => 'Desmonte del hotend antiguo y montaje de uno nuevo',
+            'diagnosis' => 'Ruptura en la garganta interna',
+            'piezas_reemplazadas' => [['nombre' => 'Hotend', 'cantidad' => 1]],
+            'estado_post' => 'Perfecto funcionamiento', 'pruebas_realizadas' => 'Impresión 2x2',
+            'recomendaciones' => 'Destapar atascos con cuidado',
+            'down_since' => '2026-09-18 09:00:00', 'closed_at' => '2026-09-18 15:00:00']);
+
+        $r = $this->get(route('ordenes.informe', $orden))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('Informe de Mantenimiento Ender 3 v3 SE 1 Sep2026.pdf', $r->headers->get('content-disposition'));
+
+        $html = view('calidad.informe-mantenimiento', ['orden' => $orden->load(['assignedTo', 'asset.location', 'asset.area']),
+            'fecha' => $orden->closed_at, 'inicio' => $orden->down_since, 'activo' => $orden->asset, 'esquema' => 'Amarillo',
+            'resultado' => 'todo_ok'])->render();
+        foreach (['58370', 'Creality Ender-3 V3 SE', 'Correctivo', '18/09/2026', 'Laura Técnica', 'Hotend',
+            'Ruptura en la garganta interna', 'Perfecto funcionamiento', 'Impresión 2x2', 'Destapar atascos con cuidado'] as $texto) {
+            $this->assertStringContainsString($texto, $html);
+        }
     }
 }

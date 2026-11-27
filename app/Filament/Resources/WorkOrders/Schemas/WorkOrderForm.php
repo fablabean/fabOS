@@ -201,6 +201,39 @@ class WorkOrderForm
                             ->columnSpanFull()
                             ->placeholder('Qué se cambió, ajustó o limpió, y con qué repuesto'),
 
+                        // Lo que pide el Informe de Mantenimiento (INV-118 §6.4)
+                        // y sale en el PDF de la correctiva cerrada.
+                        \Filament\Forms\Components\Repeater::make('piezas_reemplazadas')
+                            ->label('Piezas o componentes reemplazados')
+                            ->schema([
+                                TextInput::make('nombre')->label('Pieza o componente')->required(),
+                                TextInput::make('cantidad')->label('Cantidad')->numeric()->minValue(1)->default(1)->required(),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(0)
+                            ->addActionLabel('Agregar pieza')
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('kind') === 'correctivo'),
+
+                        Textarea::make('estado_post')
+                            ->label('Estado del equipo después del mantenimiento')
+                            ->rows(2)
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('kind') === 'correctivo'),
+
+                        Textarea::make('pruebas_realizadas')
+                            ->label('Pruebas realizadas')
+                            ->rows(2)
+                            ->columnSpanFull()
+                            ->placeholder('Cómo se comprobó que quedó bien')
+                            ->visible(fn (Get $get) => $get('kind') === 'correctivo'),
+
+                        Textarea::make('recomendaciones')
+                            ->label('Recomendaciones futuras')
+                            ->rows(2)
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('kind') === 'correctivo'),
+
                         FileUpload::make('photos')
                             ->label('Evidencia fotográfica')
                             ->image()
