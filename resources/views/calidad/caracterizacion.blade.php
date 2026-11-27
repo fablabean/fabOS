@@ -11,7 +11,6 @@
     $periodoAntes = $historico['periodo'];
     // Lo que se usaba antes de FabOS: Microsoft Bookings por QR, como lo enlazan los documentos.
     $bookingsLab = 'https://outlook.office365.com/owa/calendar/Laboratoriosdeinnovacin1@universidadean.edu.co/bookings/';
-    $bookingsVr = 'https://outlook.office365.com/owa/calendar/Solicitudreservarealidadvirtual@universidadean.edu.co/bookings/';
     $metro = ($pm = \App\Models\Project::where('name', 'VR Metro')->first())
         ? \App\Filament\Resources\Projects\ProjectResource::getUrl('edit', ['record' => $pm]) : null;
     $kpis = [
@@ -114,7 +113,6 @@
                 'El proyecto VR Metro llegó por una fuente distinta a la convocatoria oficial y se desarrolló con este protocolo.',
             ],
             'casos' => $metro ? [['Proyecto VR Metro', $metro]] : [],
-            'plataformas' => ['antes' => $bookingsVr],
         ],
     ];
 
