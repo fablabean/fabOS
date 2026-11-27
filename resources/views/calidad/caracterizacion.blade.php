@@ -343,8 +343,19 @@
         .doc-tabs button[aria-selected="true"]{color:var(--verde);border-bottom-color:var(--verde)}
         .doc-cuerpo{flex:1;overflow:auto;padding:1rem 1.2rem 1.4rem}
         .doc-cuerpo[hidden]{display:none}
-        .doc-pdf{padding:0;overflow:hidden}
-        .doc-pdf iframe{width:100%;height:100%;border:0;display:block}
+        .doc-pdf{padding:0;background:#525659}
+        /* El PDF se dibuja con PDF.js: así sus enlaces abren en otra pestaña (el visor del navegador los abre encima). */
+        .pdf-barra{position:sticky;top:0;z-index:2;display:flex;justify-content:flex-end;padding:.45rem .8rem;background:#3b3f42}
+        .pdf-barra a{color:#fff;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:.2rem .75rem}
+        .pdf-barra a:hover{background:rgba(255,255,255,.12)}
+        .pdf-hojas{padding:1rem}
+        .pdf-pag{position:relative;width:100%;margin:0 auto 1rem;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+        .pdf-pag canvas{display:block;width:100%;height:100%}
+        .pdf-pag a:focus-visible{outline:2px solid var(--verde)}
+        .pdf-pag a{position:absolute;display:block}
+        .pdf-pag a:hover{background:rgba(0,107,89,.14);outline:1px solid rgba(0,107,89,.5)}
+        .pdf-aviso{color:#fff;text-align:center;font-size:.9rem;margin:2rem 0}
+        .pdf-aviso a{color:#9ff0dd}
         .doc-obj{font-size:.88rem;color:var(--suave);margin:0 0 .8rem}
         .doc-obj b{color:var(--tinta)}
         .doc-resumen{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1rem;font-size:.8rem}
@@ -703,12 +714,59 @@
         d.querySelectorAll('[data-panel]').forEach(function (p) {
             p.hidden = p.dataset.panel !== tab;
             // El PDF se carga la primera vez que se pide.
-            if (!p.hidden && p.dataset.src && !p.firstChild) {
-                var f = document.createElement('iframe');
-                f.src = p.dataset.src;
-                f.title = 'Documento original';
-                p.appendChild(f);
+            if (!p.hidden && p.dataset.src && !p.firstChild) verPdf(p);
+        });
+    }
+    // PDF.js, solo cuando se abre el primer documento.
+    var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', cargando;
+    function pdfjs() {
+        if (!cargando) cargando = new Promise(function (ok, mal) {
+            var s = document.createElement('script');
+            s.src = PDFJS;
+            s.onload = function () { pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS.replace('pdf.min.js', 'pdf.worker.min.js'); ok(pdfjsLib); };
+            s.onerror = mal;
+            document.head.appendChild(s);
+        });
+        return cargando;
+    }
+    // Cada página en un lienzo, con sus enlaces encima: abren en otra pestaña, sin sacar a nadie de la presentación.
+    function verPdf(p) {
+        var src = p.dataset.src;
+        p.innerHTML = '<div class="pdf-barra"><a href="' + src + '" target="_blank" rel="noopener">Abrir el PDF en otra pestaña</a></div><div class="pdf-hojas"><p class="pdf-aviso">Cargando el documento…</p></div>';
+        var hojas = p.querySelector('.pdf-hojas');
+        pdfjs().then(function (lib) { return lib.getDocument(src).promise; }).then(async function (doc) {
+            hojas.innerHTML = '';
+            var ancho = Math.min(hojas.clientWidth - 32, 1100), r = window.devicePixelRatio || 1;
+            for (var i = 1; i <= doc.numPages; i++) {
+                var pag = await doc.getPage(i);
+                var vp = pag.getViewport({ scale: ancho / pag.getViewport({ scale: 1 }).width });
+                var caja = document.createElement('div');
+                caja.className = 'pdf-pag';
+                // Ancho máximo el de la página, pero nunca más que el panel: todo en proporción.
+                caja.style.maxWidth = vp.width + 'px';
+                caja.style.aspectRatio = vp.width + ' / ' + vp.height;
+                var c = document.createElement('canvas');
+                c.width = Math.floor(vp.width * r);
+                c.height = Math.floor(vp.height * r);
+                caja.appendChild(c);
+                hojas.appendChild(caja);
+                await pag.render({ canvasContext: c.getContext('2d'), viewport: vp, transform: r !== 1 ? [r, 0, 0, r, 0, 0] : null }).promise;
+                (await pag.getAnnotations()).forEach(function (a) {
+                    if (a.subtype !== 'Link' || !a.url) return;
+                    var q = vp.convertToViewportRectangle(a.rect), l = document.createElement('a');
+                    l.href = a.url;
+                    l.target = '_blank';
+                    l.rel = 'noopener';
+                    l.title = a.url;
+                    l.style.left = Math.min(q[0], q[2]) / vp.width * 100 + '%';
+                    l.style.top = Math.min(q[1], q[3]) / vp.height * 100 + '%';
+                    l.style.width = Math.abs(q[2] - q[0]) / vp.width * 100 + '%';
+                    l.style.height = Math.abs(q[3] - q[1]) / vp.height * 100 + '%';
+                    caja.appendChild(l);
+                });
             }
+        }).catch(function () {
+            hojas.innerHTML = '<p class="pdf-aviso">No se pudo mostrar aquí. <a href="' + src + '" target="_blank" rel="noopener">Abrir el PDF</a></p>';
         });
     }
     document.querySelectorAll('[data-doc]').forEach(function (b) {
