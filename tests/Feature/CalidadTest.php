@@ -287,6 +287,10 @@ class CalidadTest extends TestCase
         $this->assertStringNotContainsString('class="antes"', $html);
         $this->assertStringContainsString('Situación actual', $portada);
         $this->assertStringContainsString('Microsoft Bookings', $portada);
+
+        // Para el auditor el sistema no lleva marca.
+        $this->assertStringNotContainsString('FabOS', $html);
+        $this->assertStringContainsString('Reserva en el Sistema del Laboratorio mediante QR', $html);
     }
 
     public function test_cada_procedimiento_se_lee_punto_por_punto_con_su_registro(): void

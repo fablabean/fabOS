@@ -212,6 +212,24 @@ class CalidadController extends Controller
 
     private function presentacion(bool $delEquipo, bool $interna)
     {
+        $vista = $this->vistaDePresentacion($delEquipo, $interna);
+
+        if ($interna) {
+            return $vista;
+        }
+
+        // Para el auditor el sistema no lleva marca: es «el Sistema del Laboratorio».
+        return response(strtr($vista->render(), [
+            'en FabOS'    => 'en el Sistema del Laboratorio',
+            'En FabOS'    => 'En el Sistema del Laboratorio',
+            'desde FabOS' => 'desde el Sistema del Laboratorio',
+            'FabOS ·'     => 'Sistema del Laboratorio ·',
+            'FabOS'       => 'el Sistema del Laboratorio',
+        ]));
+    }
+
+    private function vistaDePresentacion(bool $delEquipo, bool $interna)
+    {
         return view('calidad.caracterizacion', [
             'interna'     => $interna,
             'documentos'  => \App\Support\ProcedimientosInv200::todos(),
