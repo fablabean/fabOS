@@ -241,5 +241,32 @@ class PresentacionesEnVivoTest extends TestCase
 
         $pagina->call('reiniciarVotos', self::SALA);
         $this->assertSame([0, 0, 0], $envivo->votos(self::SALA)['chat']);
+
+        // Lo votado antes de poner en cero quedó en el historial, y se ve y se descarga.
+        $s = \App\Models\SesionEnVivo::where('sala', self::SALA)->sole();
+        $this->assertSame([0, 1, 0], $s->datos['votos']['1']['chat']);
+        $pagina->call('verSesion', $s->id)->assertSee('Votos')->call('descargar', $s->id)->assertFileDownloaded('en-vivo-' . self::SALA . '-' . $s->fecha->format('Y-m-d') . '.csv');
+    }
+
+    public function test_lo_de_la_sesion_queda_en_la_base_aunque_la_cache_se_borre(): void
+    {
+        $envivo = app(EnVivo::class);
+        $historial = app(\App\Services\HistorialEnVivo::class);
+        $this->assertNull($historial->guardar(self::SALA), 'sin nada que guardar, no crea filas');
+
+        $envivo->guardarAgenda(self::SALA, ['inicio' => now()->subHour()->getTimestampMs(), 'listos' => ['b-chat' => 1], 'min' => []]);
+        $envivo->votar(self::SALA, 'ana12345', 'chat', 2);
+        $envivo->aportar(self::SALA, 'ana12345', ['nombre' => 'Ana', 'problema' => 'Ordenar las facturas']);
+        $historial->guardar(self::SALA);
+
+        // La caché vence (dos días después): lo guardado se queda.
+        \Illuminate\Support\Facades\Cache::store('array')->flush();
+        $s = $historial->guardar(self::SALA) ?? \App\Models\SesionEnVivo::where('sala', self::SALA)->sole();
+
+        $this->assertSame(1, \App\Models\SesionEnVivo::count());
+        $this->assertSame([0, 0, 1], $s->datos['votos']['1']['chat']);
+        $this->assertSame('Ordenar las facturas', collect($s->datos['muro'])->first()['problema']);
+        $this->assertArrayNotHasKey('quien', collect($s->datos['muro'])->first());
+        $this->assertSame(['votos' => 1, 'muro' => 1, 'tweets' => 0, 'bloques' => 1, 'pico' => 0], $s->cifras());
     }
 }

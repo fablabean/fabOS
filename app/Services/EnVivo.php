@@ -84,6 +84,7 @@ class EnVivo
         }
         $c->add("$base:$opcion", 0, self::DURA);
         $c->increment("$base:$opcion");
+        app(HistorialEnVivo::class)->programar($sala);
 
         return true;
     }
@@ -170,6 +171,7 @@ class EnVivo
         $inicio = isset($agenda['inicio']) && is_numeric($agenda['inicio']) ? (int) $agenda['inicio'] : null;
 
         $this->c()->put("envivo:$sala:agenda", ['inicio' => $inicio, 'listos' => $listos, 'min' => $min], self::DURA);
+        app(HistorialEnVivo::class)->programar($sala);
     }
 
     public function reiniciarAgenda(string $sala): void
@@ -301,6 +303,7 @@ class EnVivo
             $this->c()->put("envivo:$sala:muro", $nuevo, self::DURA);
             $this->c()->add("envivo:$sala:muro:version", 0, self::DURA * 7);
             $this->c()->increment("envivo:$sala:muro:version");
+            app(HistorialEnVivo::class)->programar($sala);
 
             return true;
         });

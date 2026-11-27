@@ -5,13 +5,16 @@ namespace App\Filament\Pages;
 use App\Filament\Concerns\ControlaSuAcceso;
 use App\Models\Modulo;
 use App\Models\ParticipanteEnVivo;
+use App\Models\SesionEnVivo;
 use App\Models\Setting;
 use App\Services\EnVivo;
+use App\Services\HistorialEnVivo;
 use App\Services\Ia\AccesoAlAsistente;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Las presentaciones en vivo: desde aquí el profesor abre su enlace (el que
@@ -109,9 +112,52 @@ class PresentacionesEnVivo extends Page
         }
     }
 
+    /** La sesión del historial que está abierta (su detalle). */
+    public ?int $abierta = null;
+
+    public function verSesion(int $id): void
+    {
+        $this->abierta = $this->abierta === $id ? null : $id;
+    }
+
+    /** Los tweets y el muro de una sesión, en CSV para Excel. */
+    public function descargar(int $id): StreamedResponse
+    {
+        $s = SesionEnVivo::findOrFail($id);
+        $zona = config('fabos.lab.timezone');
+        $hora = fn ($ms) => $ms ? \Illuminate\Support\Carbon::createFromTimestampMs($ms)->setTimezone($zona)->format('Y-m-d H:i') : '';
+
+        return response()->streamDownload(function () use ($s, $hora) {
+            $f = fopen('php://output', 'w');
+            fwrite($f, "ï»¿");
+            fputcsv($f, ['Tipo', 'Hora', 'ID', 'Nombre', 'Texto', 'Tono', 'Hashtag', 'Respuesta de la IA'], ';');
+            foreach (collect($s->datos['tweets'] ?? [])->sortBy('t') as $tw) {
+                fputcsv($f, ['Tweet', $hora($tw['t'] ?? null), $tw['codigo'] ?? '', $tw['nombre'] ?? '', $tw['texto'] ?? '', $tw['tono'] ?? '', $tw['hashtag'] ?? '', $tw['respuesta'] ?? ''], ';');
+            }
+            foreach (collect($s->datos['muro'] ?? [])->sortBy('t') as $m) {
+                $texto = collect(['trabajo' => 'Trabajo', 'problema' => 'Problema', 'aquien' => 'A quién', 'cuanto' => 'Cuánto', 'gustaria' => 'Le gustaría'])
+                    ->filter(fn ($l, $k) => filled($m[$k] ?? null))->map(fn ($l, $k) => "$l: " . $m[$k])->implode(' | ');
+                fputcsv($f, ['Muro', $hora($m['t'] ?? null), '', $m['nombre'] ?? '', $texto, '', '', ''], ';');
+            }
+            foreach ($s->datos['votos'] ?? [] as $ronda => $preguntas) {
+                foreach ($preguntas as $p => $cuentas) {
+                    fputcsv($f, ['Votos', '', '', "Ronda $ronda", $p . ': ' . implode(' · ', $cuentas), '', '', ''], ';');
+                }
+            }
+            fclose($f);
+        }, 'en-vivo-' . $s->sala . '-' . $s->fecha->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function guardarAhora(HistorialEnVivo $historial): void
+    {
+        $n = collect(array_keys($this->salas()))->filter(fn ($sala) => $historial->guardar($sala))->count();
+        Notification::make()->title($n ? "Guardado: $n " . ($n === 1 ? 'sesión' : 'sesiones') : 'No hay nada en vivo para guardar')->success()->send();
+    }
+
     public function reiniciarVotos(string $sala, EnVivo $envivo): void
     {
         abort_unless($envivo->existe($sala), 404);
+        app(HistorialEnVivo::class)->guardar($sala);
         $envivo->reiniciarVotos($sala);
         Notification::make()->title('Votos en cero')->success()->send();
     }
@@ -119,6 +165,7 @@ class PresentacionesEnVivo extends Page
     public function reiniciarAgenda(string $sala, EnVivo $envivo): void
     {
         abort_unless($envivo->existe($sala), 404);
+        app(HistorialEnVivo::class)->guardar($sala);
         $envivo->reiniciarAgenda($sala);
         Notification::make()->title('Agenda reiniciada')->body('Vuelve a empezar a las 6:00 p. m. hasta que pulses «Empezamos ahora».')->success()->send();
     }
@@ -147,7 +194,12 @@ class PresentacionesEnVivo extends Page
                 'vivos' => $envivo->vivos($sala),
                 'votos' => $envivo->votos($sala),
                 'agenda' => $envivo->agenda($sala),
+                'preguntas' => $envivo->preguntas($sala),
+                'registrados' => ParticipanteEnVivo::where('sala', $sala)->count(),
+                'tweets' => (bool) ($s['tweets'] ?? false),
+                'muro' => (bool) ($s['muro'] ?? false),
             ])->values(),
+            'historial' => SesionEnVivo::orderByDesc('fecha')->orderBy('sala')->limit(60)->get(),
             'participantes' => ParticipanteEnVivo::query()
                 ->when(trim($this->buscar) !== '', fn ($q) => $q->where(fn ($q) => $q
                     ->where('codigo', strtoupper(trim($this->buscar)))

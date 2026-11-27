@@ -149,6 +149,7 @@ class TweetsEnVivo
             $c->put("envivo:$sala:tweets", $nuevo, self::DURA);
             $c->add("envivo:$sala:tweets:version", 0, self::DURA * 7);
             $c->increment("envivo:$sala:tweets:version");
+            app(HistorialEnVivo::class)->programar($sala);
 
             return true;
         });
